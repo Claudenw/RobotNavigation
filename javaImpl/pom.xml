@@ -39,45 +39,20 @@
 			<version>${junit.platform.version}</version>
 			<scope>test</scope>
 		</dependency>
-		<!-- deeplearning4j-core: contains main functionality and neural
-			networks -->
-		<dependency>
-			<groupId>org.deeplearning4j</groupId>
-			<artifactId>deeplearning4j-core</artifactId>
-			<version>${dl4j-master.version}</version>
-		</dependency>
-
-		<!--
-        ND4J backend: every project needs one of these. The backend defines the
-			hardware on which network training
-        will occur. "nd4j-native-platform" is for CPUs only (for running on all
-			operating systems).
-        -->
-		<dependency>
-			<groupId>org.nd4j</groupId>
-			<artifactId>nd4j-native</artifactId>
-			<version>${dl4j-master.version}</version>
-		</dependency>
-
-		<!-- CUDA: to use GPU for training (CUDA) instead of CPU, uncomment
-			this, and remove nd4j-native-platform -->
-		<!-- Requires CUDA to be installed to use. Change the version (8.0,
-			9.0, 9.1) to change the CUDA version -->
-
-
-		<!-- Optional, but recommended: if you use CUDA, also use CuDNN. To
-			use this, CuDNN must also be installed -->
-		<!-- See:
-		https://deeplearning4j.konduit.ai/config/backends/config-cudnn#using-deeplearning-4-j-with-cudnn -->
-
-
+		
 		<dependency>
 			<groupId>ch.qos.logback</groupId>
 			<artifactId>logback-classic</artifactId>
 			<version>${logback.version}</version>
 		</dependency>
 		
-		
+		<!-- https://mvnrepository.com/artifact/org.apache.commons/commons-math3 -->
+<dependency>
+    <groupId>org.apache.commons</groupId>
+    <artifactId>commons-math3</artifactId>
+    <version>3.6.1</version>
+</dependency>
+
 <!-- https://mvnrepository.com/artifact/org.apache.commons/commons-lang3 -->
 <dependency>
     <groupId>org.apache.commons</groupId>

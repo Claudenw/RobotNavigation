@@ -1,8 +1,9 @@
-package org.xenei.robot.navigation;
+package org.xenei.robot.utils;
 
 public class DoubleUtils {
-    private DoubleUtils() {}
-    
+    private DoubleUtils() {
+    }
+
     public static double valueOrZero(double value) {
         return Double.isNaN(value) ? 0.0 : value;
     }

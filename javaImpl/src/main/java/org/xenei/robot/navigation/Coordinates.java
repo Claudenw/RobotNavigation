@@ -1,5 +1,9 @@
 package org.xenei.robot.navigation;
 
+import java.util.Comparator;
+
+import org.apache.commons.math3.util.Precision;
+
 public class Coordinates {
 
     private Integer hashCode = null;
@@ -7,6 +11,21 @@ public class Coordinates {
     private final double range;
     private final double x;
     private final double y;
+
+    public static Comparator<Coordinates> XYCompr = (one, two) -> {
+        int x = Double.compare(one.x, two.x);
+        return x == 0 ? Double.compare(one.y, two.y) : x;
+    };
+
+    public static Comparator<Coordinates> ThetaCompr = (one, two) -> {
+        int x = Double.compare(one.theta, two.theta);
+        return x == 0 ? Double.compare(one.range, two.range) : x;
+    };
+
+    public static Comparator<Coordinates> RangeCompr = (one, two) -> {
+        int x = Double.compare(one.range, two.range);
+        return x == 0 ? Double.compare(one.theta, two.theta) : x;
+    };
 
     public static final double normalize(double angle) {
         return Math.atan2(Math.sin(angle), Math.cos(angle));
@@ -68,8 +87,9 @@ public class Coordinates {
     @Override
     public boolean equals(Object other) {
         if (other instanceof Coordinates) {
-            Coordinates otherC = (Coordinates) other;
-            return x == otherC.x && y == otherC.y;
+            Coordinates c = (Coordinates) other;
+            return Precision.equals(Double.hashCode(range), Double.hashCode(c.range), 0.5)
+                    && Precision.equals(distanceTo(c), 0.0, 0.5);
         }
         return false;
     }
@@ -93,10 +113,10 @@ public class Coordinates {
     public double getY() {
         return y;
     }
-    
+
     @Override
     public String toString() {
-        return String.format( "Coordinates[x:%s,y:%s r:%s theta:%s (%s)]", x, y, range, theta, getThetaDegrees());
+        return String.format("Coordinates[x:%s,y:%s r:%s theta:%s (%s)]", x, y, range, theta, getThetaDegrees());
     }
 
     public final Coordinates plus(Coordinates other) {
@@ -104,7 +124,7 @@ public class Coordinates {
         double y = this.y + other.y;
         return Coordinates.fromXY(x, y);
     }
-    
+
     public final Coordinates minus(Coordinates other) {
         double x = this.x - other.x;
         double y = this.y - other.y;

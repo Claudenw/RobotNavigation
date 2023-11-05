@@ -1,39 +1,52 @@
-package org.xenei.robot.map;
+package org.xenei.robot.planner;
+
+import java.util.Comparator;
 
 import org.xenei.robot.navigation.Coordinates;
 
-public class PlanRecord  {
+public class PlanRecord {
     private Coordinates position;
     private double cost;
-    
+
+    public static Comparator<PlanRecord> CostCompr = (one, two) -> {
+        int x = Double.compare(one.cost, two.cost);
+        return x == 0 ? Coordinates.RangeCompr.compare(one.position, two.position) : x;
+    };
+
     public PlanRecord(Coordinates position, double cost) {
         this.position = position;
         this.cost = cost;
     }
+
     @Override
     public int hashCode() {
         return position.hashCode();
     }
-    
+
     @Override
     public boolean equals(Object pr) {
         if (pr instanceof PlanRecord) {
-            return position.equals(((PlanRecord)pr).position);
+            return position.equals(((PlanRecord) pr).position);
         }
         return false;
     }
-    
+
+    /**
+     * 
+     * @return distance to target
+     */
     public double cost() {
         return cost;
     }
-    
+
     public Coordinates position() {
         return position;
     }
-    
+
     public void setImpossible() {
         cost = Double.POSITIVE_INFINITY;
     }
+
     @Override
     public String toString() {
         return String.format("PlanRecord[x:%s, y:%s, d:%s]", position.getX(), position.getY(), cost);

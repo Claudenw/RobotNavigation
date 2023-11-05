@@ -3,7 +3,6 @@ package org.xenei.robot.testUtils;
 import static org.junit.Assert.assertArrayEquals;
 
 import org.junit.jupiter.api.Test;
-import org.xenei.robot.map.ActiveMap;
 import org.xenei.robot.navigation.Coordinates;
 import org.xenei.robot.navigation.Position;
 
@@ -37,7 +36,6 @@ public class FakeSensorTest {
         };
         // @formatter:on
         Position postition = new Position(Coordinates.fromXY(x, y), Math.toRadians(h));
-        ActiveMap map = MapLibrary.map1();
 
         Coordinates[] actual = new FakeSensor(MapLibrary.map1()).sense(postition);
 
