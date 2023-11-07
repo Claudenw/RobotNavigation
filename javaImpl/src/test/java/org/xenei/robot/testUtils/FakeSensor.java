@@ -1,23 +1,25 @@
 package org.xenei.robot.testUtils;
 
+import java.util.Optional;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xenei.robot.navigation.Coordinates;
 import org.xenei.robot.navigation.Position;
-import org.xenei.robot.utils.ActiveMap;
+import org.xenei.robot.utils.CoordinateMap;
 import org.xenei.robot.utils.Sensor;
 
 public class FakeSensor implements Sensor {
     private static final Logger LOG = LoggerFactory.getLogger(Sensor.class);
     private static final int blocksize = 17;
     private static final double radians = Math.toRadians(360.0 / blocksize);
-    private final ActiveMap map;
+    private final CoordinateMap map;
 
-    public FakeSensor(ActiveMap map) {
+    public FakeSensor(CoordinateMap map) {
         this.map = map;
     }
 
-    public ActiveMap map() {
+    public CoordinateMap map() {
         return map;
     }
 
@@ -35,14 +37,8 @@ public class FakeSensor implements Sensor {
     }
 
     private Coordinates look(Coordinates position, double heading) {
-        Coordinates c = null;
-        for (int range = 1; range <= ActiveMap.maxRange; range++) {
-            c = Coordinates.fromRadians(heading, range * map.scale());
-            if (map.isEnabled(position.plus(c))) {
-                return c;
-            }
-        }
-        return Coordinates.fromRadians(heading, Double.POSITIVE_INFINITY);
+        Optional<Coordinates> result = map.look( position, heading, 350);
+        return result.orElse(Coordinates.fromRadians(heading, Double.POSITIVE_INFINITY));
     }
 
 }

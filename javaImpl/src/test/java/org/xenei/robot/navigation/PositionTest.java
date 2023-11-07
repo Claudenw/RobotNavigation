@@ -3,10 +3,9 @@ package org.xenei.robot.navigation;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import org.junit.jupiter.api.Test;
+import org.xenei.robot.testUtils.DoubleUtils;
 
 public class PositionTest {
-
-    private static final double DELTA = 0.00000000001;
 
     @Test
     public void zigZagTest() {
@@ -16,16 +15,16 @@ public class PositionTest {
 
         Coordinates cmd = Coordinates.fromDegrees(45, 2);
         Position nxt = initial.nextPosition(cmd);
-        assertEquals(radians, nxt.getHeadingRadians(), DELTA);
-        assertEquals(sqrt2, nxt.getX(), DELTA);
-        assertEquals(sqrt2, nxt.getY(), DELTA);
+        assertEquals(radians, nxt.getHeadingRadians(), DoubleUtils.DELTA);
+        assertEquals(sqrt2, nxt.getX(), DoubleUtils.DELTA);
+        assertEquals(sqrt2, nxt.getY(), DoubleUtils.DELTA);
 
         cmd = Coordinates.fromDegrees(-45, 2);
         nxt = nxt.nextPosition(cmd);
 
-        assertEquals(sqrt2 + 2, nxt.getX(), DELTA);
-        assertEquals(sqrt2, nxt.getY(), DELTA);
-        assertEquals(0.0, nxt.getHeadingRadians(), DELTA);
+        assertEquals(sqrt2 + 2, nxt.getX(), DoubleUtils.DELTA);
+        assertEquals(sqrt2, nxt.getY(), DoubleUtils.DELTA);
+        assertEquals(0.0, nxt.getHeadingRadians(), DoubleUtils.DELTA);
     }
 
     @Test
@@ -36,24 +35,24 @@ public class PositionTest {
 
         Coordinates cmd = Coordinates.fromDegrees(45, 2);
         Position nxt = initial.nextPosition(cmd);
-        assertEquals(radians, nxt.getHeadingRadians(), DELTA);
-        assertEquals(sqrt2, nxt.getX(), DELTA);
-        assertEquals(sqrt2, nxt.getY(), DELTA);
+        assertEquals(radians, nxt.getHeadingRadians(), DoubleUtils.DELTA);
+        assertEquals(sqrt2, nxt.getX(), DoubleUtils.DELTA);
+        assertEquals(sqrt2, nxt.getY(), DoubleUtils.DELTA);
 
         cmd = Coordinates.fromDegrees(-90, 2);
         nxt = nxt.nextPosition(cmd);
-        assertEquals(-45, nxt.getHeadingDegrees(), DELTA);
-        assertEquals(sqrt2 * 2, nxt.getX(), DELTA);
-        assertEquals(0.0, nxt.getY(), DELTA);
+        assertEquals(-45, nxt.getHeadingDegrees(), DoubleUtils.DELTA);
+        assertEquals(sqrt2 * 2, nxt.getX(), DoubleUtils.DELTA);
+        assertEquals(0.0, nxt.getY(), DoubleUtils.DELTA);
 
         nxt = nxt.nextPosition(cmd);
-        assertEquals(-135, nxt.getHeadingDegrees(), DELTA);
-        assertEquals(sqrt2, nxt.getX(), DELTA);
-        assertEquals(-sqrt2, nxt.getY(), DELTA);
+        assertEquals(-135, nxt.getHeadingDegrees(), DoubleUtils.DELTA);
+        assertEquals(sqrt2, nxt.getX(), DoubleUtils.DELTA);
+        assertEquals(-sqrt2, nxt.getY(), DoubleUtils.DELTA);
 
         nxt = nxt.nextPosition(cmd);
-        assertEquals(135, nxt.getHeadingDegrees(), DELTA);
-        assertEquals(0, nxt.getX(), DELTA);
-        assertEquals(0, nxt.getY(), DELTA);
+        assertEquals(135, nxt.getHeadingDegrees(), DoubleUtils.DELTA);
+        assertEquals(0, nxt.getX(), DoubleUtils.DELTA);
+        assertEquals(0, nxt.getY(), DoubleUtils.DELTA);
     }
 }

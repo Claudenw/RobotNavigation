@@ -22,7 +22,7 @@ public class Position extends Coordinates {
     }
 
     public Position(double x, double y, double heading) {
-        super(normalAtan(x, y), Math.sqrt(x * x + y * y), x, y);
+        super(Math.atan(y/x), Math.sqrt(x * x + y * y), x, y);
         this.heading = heading;
     }
 
@@ -48,6 +48,6 @@ public class Position extends Coordinates {
 
     @Override
     public String toString() {
-        return String.format("Position[ x:%s y:%s heading:%s ]", getX(), getY(), Math.toDegrees(heading));
+        return String.format("Position[ %s heading:%.4f ]", super.toString(), Math.toDegrees(heading));
     }
 }

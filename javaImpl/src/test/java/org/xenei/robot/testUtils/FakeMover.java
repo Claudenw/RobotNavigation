@@ -21,7 +21,12 @@ public class FakeMover implements Mover {
 
     @Override
     public Position move(Coordinates location) {
-        Coordinates move = Coordinates.fromRadians(position.angleTo(location), speed);
+        double theta = position.angleTo(location);
+        double range = position.distanceTo(location);
+        Coordinates check = Coordinates.fromDegrees(-90, 2);
+        double th = check.getThetaDegrees();
+        Coordinates move = Coordinates.fromRadians(theta, range);
+        th = move.getThetaDegrees();
         position = position.nextPosition(move);
         if (LOG.isDebugEnabled()) {
             LOG.debug("New position {}", position);

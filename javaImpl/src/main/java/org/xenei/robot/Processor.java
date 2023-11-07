@@ -14,6 +14,7 @@ public class Processor implements Runnable {
     public Processor(Sensor sensor, Mover mover) {
         this.mover = mover;
         this.planner = new Planner(sensor);
+
     }
 
     public void gotoTarget(Coordinates target) {
@@ -34,5 +35,9 @@ public class Processor implements Runnable {
         while (running) {
             step();
         }
+    }
+
+    public Planner getPlanner() {
+        return planner;
     }
 }

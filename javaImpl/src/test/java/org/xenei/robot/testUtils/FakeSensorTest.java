@@ -37,7 +37,7 @@ public class FakeSensorTest {
         // @formatter:on
         Position postition = new Position(Coordinates.fromXY(x, y), Math.toRadians(h));
 
-        Coordinates[] actual = new FakeSensor(MapLibrary.map1()).sense(postition);
+        Coordinates[] actual = new FakeSensor(MapLibrary.map1('#')).sense(postition);
 
         for (Coordinates c : actual)
             System.out.println(c);

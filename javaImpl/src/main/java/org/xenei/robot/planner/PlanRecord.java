@@ -7,6 +7,7 @@ import org.xenei.robot.navigation.Coordinates;
 public class PlanRecord {
     private Coordinates position;
     private double cost;
+    private double maskingCost;
 
     public static Comparator<PlanRecord> CostCompr = (one, two) -> {
         int x = Double.compare(one.cost, two.cost);
@@ -16,6 +17,7 @@ public class PlanRecord {
     public PlanRecord(Coordinates position, double cost) {
         this.position = position;
         this.cost = cost;
+        this.maskingCost = Double.NaN;
     }
 
     @Override
@@ -30,13 +32,21 @@ public class PlanRecord {
         }
         return false;
     }
+    
+    public void setMaskingCost(double value) {
+        maskingCost = value;
+    }
+    
+    public void clearMaskingCost() {
+        maskingCost = Double.NaN;
+    }
 
     /**
      * 
      * @return distance to target
      */
     public double cost() {
-        return cost;
+        return Double.isNaN(maskingCost) ? cost : maskingCost;
     }
 
     public Coordinates position() {
@@ -49,6 +59,6 @@ public class PlanRecord {
 
     @Override
     public String toString() {
-        return String.format("PlanRecord[x:%s, y:%s, d:%s]", position.getX(), position.getY(), cost);
+        return String.format("PlanRecord[%s, cost:%.4f]", position, cost());
     }
 }

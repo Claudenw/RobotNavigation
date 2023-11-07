@@ -2,8 +2,6 @@ package org.xenei.robot.navigation;
 
 import java.util.Comparator;
 
-import org.apache.commons.math3.util.Precision;
-
 public class Coordinates {
 
     private Integer hashCode = null;
@@ -28,15 +26,8 @@ public class Coordinates {
     };
 
     public static final double normalize(double angle) {
+        // should this account for NaN?
         return Math.atan2(Math.sin(angle), Math.cos(angle));
-    }
-
-    protected static final double normalAtan(double x, double y) {
-        double theta = Math.atan(y / x);
-        if (Double.isNaN(theta)) {
-            return 0.0;
-        }
-        return theta;
     }
 
     public static final Coordinates fromDegrees(double theta, double r) {
@@ -44,11 +35,11 @@ public class Coordinates {
     }
 
     public static final Coordinates fromRadians(double theta, double r) {
-        return new Coordinates(normalize(theta), r, r * Math.cos(theta), r * Math.sin(theta));
+        return new Coordinates(theta, r, r * Math.cos(theta), r * Math.sin(theta));
     }
 
     public static final Coordinates fromXY(double x, double y) {
-        return new Coordinates(normalAtan(x, y), Math.sqrt(x * x + y * y), x, y);
+        return new Coordinates(Math.atan(y / x), Math.sqrt(x * x + y * y), x, y);
     }
 
     protected Coordinates(Coordinates other) {
@@ -58,15 +49,33 @@ public class Coordinates {
         this.y = other.y;
     }
 
+    // bitmasking negative number check
+    private static boolean isNeg(double d) {
+        return (Double.doubleToLongBits(d) & 0x8000000000000000L) != 0;
+    }
+
     protected Coordinates(double theta, double range, double x, double y) {
-        this.theta = Double.isNaN(theta) ? 0.0 : theta;
+        double t = normalize(theta);
+        boolean yNeg = isNeg(y);
+        boolean tNeg = isNeg(t);
+
+        if (yNeg && !tNeg) {
+            t -= Math.PI;
+        } else if (!yNeg && tNeg) {
+            t += Math.PI;
+        }
+        this.theta = t;
         this.range = range;
         this.x = x;
         this.y = y;
     }
 
     public double angleTo(Coordinates other) {
-        return normalAtan(this.x - other.x, this.y - other.y);
+        // angle to
+        Coordinates c = this.minus(other);
+        // angle will be pointing the wrong way. So reverse it.
+        double angle = normalize(c.getThetaRadians() + Math.PI);
+        return angle;
     }
 
     public double distanceTo(Coordinates other) {
@@ -75,11 +84,20 @@ public class Coordinates {
         return Math.sqrt(newX * newX + newY * newY);
     }
 
+    private Coordinates quantized() {
+        long qX = Math.round(this.x);
+        long qY = Math.round(this.y);
+        if (x == qX && y == qY) {
+            return this;
+        }
+        return Coordinates.fromXY(qX, qY);
+    }
+
     @Override
     public int hashCode() {
         Integer result = hashCode;
         if (result == null) {
-            result = hashCode = Double.hashCode(range);
+            result = hashCode = Double.hashCode(quantized().range);
         }
         return result.intValue();
     }
@@ -87,9 +105,9 @@ public class Coordinates {
     @Override
     public boolean equals(Object other) {
         if (other instanceof Coordinates) {
-            Coordinates c = (Coordinates) other;
-            return Precision.equals(Double.hashCode(range), Double.hashCode(c.range), 0.5)
-                    && Precision.equals(distanceTo(c), 0.0, 0.5);
+            Coordinates c = ((Coordinates) other).quantized();
+            Coordinates q = this.quantized();
+            return q.hashCode() == c.hashCode() && q.x == c.x && q.y == c.y;
         }
         return false;
     }
@@ -116,7 +134,8 @@ public class Coordinates {
 
     @Override
     public String toString() {
-        return String.format("Coordinates[x:%s,y:%s r:%s theta:%s (%s)]", x, y, range, theta, getThetaDegrees());
+        return String.format("Coordinates[x:%.4f,y:%.4f r:%.4f theta:%.4f (%.4f)]", x, y, range, theta,
+                getThetaDegrees());
     }
 
     public final Coordinates plus(Coordinates other) {
