@@ -20,13 +20,10 @@ public class FakeMover implements Mover {
     }
 
     @Override
-    public Position move(Coordinates location) {
-        double theta = position.angleTo(location);
-        double range = position.distanceTo(location);
-        Coordinates check = Coordinates.fromDegrees(-90, 2);
-        double th = check.getThetaDegrees();
-        Coordinates move = Coordinates.fromRadians(theta, range);
-        th = move.getThetaDegrees();
+    public Position move(Coordinates move) {
+        if (move.getRange() > speed) {
+            move = Coordinates.fromRadians(move.getThetaRadians(), speed);
+        }
         position = position.nextPosition(move);
         if (LOG.isDebugEnabled()) {
             LOG.debug("New position {}", position);

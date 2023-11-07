@@ -19,7 +19,7 @@ public class PositionTest {
         assertEquals(sqrt2, nxt.getX(), DoubleUtils.DELTA);
         assertEquals(sqrt2, nxt.getY(), DoubleUtils.DELTA);
 
-        cmd = Coordinates.fromDegrees(-45, 2);
+        cmd = Coordinates.fromXY(2,0);
         nxt = nxt.nextPosition(cmd);
 
         assertEquals(sqrt2 + 2, nxt.getX(), DoubleUtils.DELTA);
@@ -39,17 +39,19 @@ public class PositionTest {
         assertEquals(sqrt2, nxt.getX(), DoubleUtils.DELTA);
         assertEquals(sqrt2, nxt.getY(), DoubleUtils.DELTA);
 
-        cmd = Coordinates.fromDegrees(-90, 2);
+        cmd = Coordinates.fromDegrees(-45, 2);
         nxt = nxt.nextPosition(cmd);
         assertEquals(-45, nxt.getHeadingDegrees(), DoubleUtils.DELTA);
         assertEquals(sqrt2 * 2, nxt.getX(), DoubleUtils.DELTA);
         assertEquals(0.0, nxt.getY(), DoubleUtils.DELTA);
 
+        cmd = Coordinates.fromDegrees(-135, 2);
         nxt = nxt.nextPosition(cmd);
         assertEquals(-135, nxt.getHeadingDegrees(), DoubleUtils.DELTA);
         assertEquals(sqrt2, nxt.getX(), DoubleUtils.DELTA);
         assertEquals(-sqrt2, nxt.getY(), DoubleUtils.DELTA);
 
+        cmd = Coordinates.fromDegrees(135, 2);
         nxt = nxt.nextPosition(cmd);
         assertEquals(135, nxt.getHeadingDegrees(), DoubleUtils.DELTA);
         assertEquals(0, nxt.getX(), DoubleUtils.DELTA);

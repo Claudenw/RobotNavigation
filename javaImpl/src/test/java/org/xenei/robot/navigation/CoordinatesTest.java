@@ -296,7 +296,13 @@ public class CoordinatesTest {
     }
 
     private static Stream<Arguments> triCoordinates() {
-        return Stream.of(Arguments.of(Coordinates.fromXY(-2, 3), Coordinates.fromXY(6, 1), Coordinates.fromXY(4, 4)));
+        return Stream.of(
+                Arguments.of(Coordinates.fromXY(-2, 3), Coordinates.fromXY(6, 1), Coordinates.fromXY(4, 4)),
+                Arguments.of(Coordinates.fromRadians(0.7853981633974483, 2), Coordinates.fromRadians(0, 2.8284271247461903), 
+                        Coordinates.fromRadians(0.3217505543966422, 4.47213595499958)),
+                Arguments.of(Coordinates.fromXY(0,0), Coordinates.fromDegrees(45, 1), 
+                        Coordinates.fromDegrees(45, 1))
+                );
     }
 
 }

@@ -26,7 +26,9 @@ public class Processor implements Runnable {
     }
 
     public Position step() {
-        return mover.move(planner.step(mover.position()));
+        Coordinates nextLoc = planner.step(mover.position());
+        Coordinates move = mover.position().minus(nextLoc);
+        return mover.move(move);
     }
 
     @Override

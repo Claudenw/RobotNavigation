@@ -39,11 +39,11 @@ public class Position extends Coordinates {
     }
 
     public Position nextPosition(Coordinates cmd) {
-        double newAngle = Coordinates.normalize(this.heading + cmd.getThetaRadians());
         if (cmd.getRange() == 0) {
-            return new Position(this.getX(), this.getY(), newAngle);
+            return new Position(this.getX(), this.getY(), cmd.getThetaRadians());
         }
-        return new Position(this.plus(Coordinates.fromRadians(newAngle, cmd.getRange())), newAngle);
+        Coordinates nextCoord = this.plus(cmd);
+        return new Position(nextCoord, cmd.getThetaRadians());
     }
 
     @Override
