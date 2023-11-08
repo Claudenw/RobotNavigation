@@ -86,14 +86,22 @@ public class CoordinateMap {
         return sb;
     }
 
+    /**
+     * Scan the map for an entry from the position on the heading upto the max
+     * range.
+     * 
+     * @param position the position to start from
+     * @param heading the heading to check.
+     * @param maxRange the maximum range to check.
+     * @return the natural (not quantized) position of the obstacle.
+     */
     public Optional<Coordinates> look(Coordinates position, double heading, double maxRange) {
-        Coord pos = null;
         int cordRange = fitRange(Math.round(maxRange / scale));
 
         for (int i = 0; i < cordRange; i++) {
-            pos = new Coord(position.plus(Coordinates.fromRadians(heading, i * scale)), ' ');
-            if (points.contains(pos)) {
-                return Optional.of(Coordinates.fromXY(pos.x * scale, pos.y * scale));
+            Coordinates pos = position.plus(Coordinates.fromRadians(heading, i * scale));
+            if (points.contains(new Coord(pos, ' '))) {
+                return Optional.of(pos);
             }
         }
         return Optional.empty();

@@ -21,17 +21,17 @@ public class FakeSensorTest {
 
         // @formatter:off
         Coordinates[] expected = {
-                Coordinates.fromXY(12, 14),
-                Coordinates.fromXY(14, 16),
-                Coordinates.fromXY(10, 16),
-                Coordinates.fromXY(12, 16),
-                Coordinates.fromXY(14, 15),
-                Coordinates.fromXY(13, 16),
-                Coordinates.fromXY(14, 14),
-                Coordinates.fromXY(14, 9),
-                Coordinates.fromXY(10, 14),
-                Coordinates.fromXY(12, 10),
-                Coordinates.fromXY(14, 13),
+                Coordinates.fromXY(1, 0),
+                Coordinates.fromXY(0, 1),
+                Coordinates.fromXY(-1, -5),
+                Coordinates.fromXY(-3, 1),
+                Coordinates.fromXY(-3, -1),
+                Coordinates.fromXY(1, -2),
+                Coordinates.fromXY(1, 1),
+                Coordinates.fromXY(-1, 1),
+                Coordinates.fromXY(-1, -1),
+                Coordinates.fromXY(1, -1),
+                Coordinates.fromXY(1, -6),
         };
         // @formatter:on
         Position postition = new Position(Coordinates.fromXY(x, y), Math.toRadians(h));

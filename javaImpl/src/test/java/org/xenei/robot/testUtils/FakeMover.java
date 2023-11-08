@@ -7,7 +7,7 @@ import org.xenei.robot.navigation.Position;
 import org.xenei.robot.utils.Mover;
 
 public class FakeMover implements Mover {
-    private static final Logger LOG = LoggerFactory.getLogger(Mover.class);
+    private static final Logger LOG = LoggerFactory.getLogger(FakeMover.class);
     private Position position;
     private int speed;
 

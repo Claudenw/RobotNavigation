@@ -1,0 +1,404 @@
+243  [main] DEBUG org.xenei.robot.testUtils.FakeMover - Initial position Position[ Coordinates[x:13.0000,y:15.0000 r:19.8494 theta:0.8567 (49.0856)] heading:0.0000 ]
+263  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 0: Coordinates[x:1.0000,y:0.0000 r:1.0000 theta:0.0000 (0.0000)]
+264  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 1: Coordinates[x:0.9325,y:0.3612 r:1.0000 theta:0.3696 (21.1765)]
+265  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 2: Coordinates[x:0.7390,y:0.6737 r:1.0000 theta:0.7392 (42.3529)]
+266  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 3: Coordinates[x:0.4457,y:0.8952 r:1.0000 theta:1.1088 (63.5294)]
+266  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 4: Coordinates[x:0.0923,y:0.9957 r:1.0000 theta:1.4784 (84.7059)]
+267  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 5: Coordinates[x:-0.2737,y:0.9618 r:1.0000 theta:1.8480 (105.8824)]
+268  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 6: Coordinates[x:-0.6026,y:0.7980 r:1.0000 theta:2.2176 (127.0588)]
+268  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 7: Coordinates[x:-0.8502,y:0.5264 r:1.0000 theta:2.5872 (148.2353)]
+269  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 8: Coordinates[x:-2.9489,y:0.5512 r:3.0000 theta:2.9568 (169.4118)]
+270  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 9: Coordinates[x:-2.9489,y:-0.5512 r:3.0000 theta:-2.9568 (-169.4118)]
+270  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 10: Coordinates[x:-0.8502,y:-0.5264 r:1.0000 theta:-2.5872 (-148.2353)]
+271  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 11: Coordinates[x:-0.6026,y:-0.7980 r:1.0000 theta:-2.2176 (-127.0588)]
+272  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 12: Coordinates[x:-1.3683,y:-4.8091 r:5.0000 theta:-1.8480 (-105.8824)]
+272  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 13: Coordinates[x:0.5536,y:-5.9744 r:6.0000 theta:-1.4784 (-84.7059)]
+273  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 14: Coordinates[x:0.8915,y:-1.7903 r:2.0000 theta:-1.1088 (-63.5294)]
+273  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 15: Coordinates[x:0.7390,y:-0.6737 r:1.0000 theta:-0.7392 (-42.3529)]
+274  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 16: Coordinates[x:0.9325,y:-0.3612 r:1.0000 theta:-0.3696 (-21.1765)]
+280  [main] DEBUG org.xenei.robot.planner.Planner - Sensed Coordinates[x:13.0000,y:16.0000 r:20.6155 theta:0.8885 (50.9061)]
+282  [main] DEBUG org.xenei.robot.planner.Planner - Sensed Coordinates[x:12.0000,y:16.0000 r:20.0000 theta:0.9273 (53.1301)]
+283  [main] DEBUG org.xenei.robot.planner.Planner - Sensed Coordinates[x:10.0000,y:16.0000 r:18.8680 theta:1.0122 (57.9946)]
+283  [main] DEBUG org.xenei.robot.planner.Planner - Sensed Coordinates[x:10.0000,y:14.0000 r:17.2047 theta:0.9505 (54.4623)]
+284  [main] DEBUG org.xenei.robot.planner.Planner - Sensed Coordinates[x:12.0000,y:14.0000 r:18.4391 theta:0.8622 (49.3987)]
+284  [main] DEBUG org.xenei.robot.planner.Planner - Sensed Coordinates[x:12.0000,y:10.0000 r:15.6205 theta:0.6947 (39.8056)]
+284  [main] DEBUG org.xenei.robot.planner.Planner - Sensed Coordinates[x:14.0000,y:9.0000 r:16.6433 theta:0.5713 (32.7352)]
+285  [main] DEBUG org.xenei.robot.planner.Planner - Sensed Coordinates[x:14.0000,y:13.0000 r:19.1050 theta:0.7484 (42.8789)]
+285  [main] DEBUG org.xenei.robot.planner.Planner - Mapped Coordinates[x:13.0000,y:15.0000 r:19.8494 theta:0.8567 (49.0856)]
+286  [main] DEBUG org.xenei.robot.planner.PlannerMap - Added: PlanRecord[Coordinates[x:13.0000,y:15.0000 r:19.8494 theta:0.8567 (49.0856)], cost:19.8494]
+286  [main] DEBUG org.xenei.robot.planner.Planner - Mapped Coordinates[x:11.0000,y:16.0000 r:19.4165 theta:0.9685 (55.4915)]
+287  [main] DEBUG org.xenei.robot.planner.PlannerMap - Added: PlanRecord[Coordinates[x:11.0000,y:16.0000 r:19.4165 theta:0.9685 (55.4915)], cost:19.4165]
+287  [main] DEBUG org.xenei.robot.planner.Planner - Mapped Coordinates[x:13.0000,y:15.0000 r:19.8494 theta:0.8567 (49.0856)]
+288  [main] DEBUG org.xenei.robot.planner.Planner - Mapped Coordinates[x:13.0000,y:15.0000 r:19.8494 theta:0.8567 (49.0856)]
+288  [main] DEBUG org.xenei.robot.planner.Planner - Mapped Coordinates[x:14.0000,y:10.0000 r:17.2047 theta:0.6202 (35.5377)]
+288  [main] DEBUG org.xenei.robot.planner.PlannerMap - Added: PlanRecord[Coordinates[x:14.0000,y:10.0000 r:17.2047 theta:0.6202 (35.5377)], cost:17.2047]
+289  [main] DEBUG org.xenei.robot.planner.Planner - Mapped Coordinates[x:11.0000,y:14.0000 r:17.8045 theta:0.9048 (51.8428)]
+289  [main] DEBUG org.xenei.robot.planner.PlannerMap - Added: PlanRecord[Coordinates[x:11.0000,y:14.0000 r:17.8045 theta:0.9048 (51.8428)], cost:17.8045]
+289  [main] DEBUG org.xenei.robot.planner.Planner - Mapped Coordinates[x:12.0000,y:11.0000 r:16.2788 theta:0.7419 (42.5104)]
+290  [main] DEBUG org.xenei.robot.planner.PlannerMap - Added: PlanRecord[Coordinates[x:12.0000,y:11.0000 r:16.2788 theta:0.7419 (42.5104)], cost:16.2788]
+290  [main] DEBUG org.xenei.robot.planner.Planner - Mapped Coordinates[x:14.0000,y:14.0000 r:19.7990 theta:0.7854 (45.0000)]
+291  [main] DEBUG org.xenei.robot.planner.PlannerMap - Added: PlanRecord[Coordinates[x:14.0000,y:14.0000 r:19.7990 theta:0.7854 (45.0000)], cost:19.7990]
+299  [main] DEBUG o.x.robot.testUtils.ProcessorTest - 
+###########@*@@#
+#             +#
+# ### #####@*@ *
+# #   #        @
+# ######       #
+# #    #     * #
+###    # ####@ *
+#      # # #   @
+#  # # # # #   #
+# ## # # # # # #
+#  # #     # # #
+## # ######### #
+#  # #     #   #
+# ## # ### # # #
+#  # #   # # # #
+######## # # # #
+#        #   # #
+################
+
+300  [main] DEBUG o.x.robot.testUtils.ProcessorTest - Position[ Coordinates[x:13.0000,y:15.0000 r:19.8494 theta:0.8567 (49.0856)] heading:0.0000 ]
+300  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 0: Coordinates[x:1.0000,y:0.0000 r:1.0000 theta:0.0000 (0.0000)]
+301  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 1: Coordinates[x:0.9325,y:0.3612 r:1.0000 theta:0.3696 (21.1765)]
+301  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 2: Coordinates[x:0.7390,y:0.6737 r:1.0000 theta:0.7392 (42.3529)]
+302  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 3: Coordinates[x:0.4457,y:0.8952 r:1.0000 theta:1.1088 (63.5294)]
+302  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 4: Coordinates[x:0.0923,y:0.9957 r:1.0000 theta:1.4784 (84.7059)]
+303  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 5: Coordinates[x:-0.2737,y:0.9618 r:1.0000 theta:1.8480 (105.8824)]
+303  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 6: Coordinates[x:-0.6026,y:0.7980 r:1.0000 theta:2.2176 (127.0588)]
+304  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 7: Coordinates[x:-0.8502,y:0.5264 r:1.0000 theta:2.5872 (148.2353)]
+304  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 8: Coordinates[x:-2.9489,y:0.5512 r:3.0000 theta:2.9568 (169.4118)]
+305  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 9: Coordinates[x:-2.9489,y:-0.5512 r:3.0000 theta:-2.9568 (-169.4118)]
+305  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 10: Coordinates[x:-0.8502,y:-0.5264 r:1.0000 theta:-2.5872 (-148.2353)]
+305  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 11: Coordinates[x:-0.6026,y:-0.7980 r:1.0000 theta:-2.2176 (-127.0588)]
+306  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 12: Coordinates[x:-1.3683,y:-4.8091 r:5.0000 theta:-1.8480 (-105.8824)]
+306  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 13: Coordinates[x:0.5536,y:-5.9744 r:6.0000 theta:-1.4784 (-84.7059)]
+307  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 14: Coordinates[x:0.8915,y:-1.7903 r:2.0000 theta:-1.1088 (-63.5294)]
+307  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 15: Coordinates[x:0.7390,y:-0.6737 r:1.0000 theta:-0.7392 (-42.3529)]
+307  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 16: Coordinates[x:0.9325,y:-0.3612 r:1.0000 theta:-0.3696 (-21.1765)]
+313  [main] DEBUG org.xenei.robot.planner.PlannerMap - cost:20.040561792264647 PlanRecord[Coordinates[x:11.0000,y:14.0000 r:17.8045 theta:0.9048 (51.8428)], cost:17.8045]
+314  [main] DEBUG org.xenei.robot.planner.PlannerMap - cost:20.401926221717368 PlanRecord[Coordinates[x:12.0000,y:11.0000 r:16.2788 theta:0.7419 (42.5104)], cost:16.2788]
+314  [main] DEBUG org.xenei.robot.planner.PlannerMap - cost:21.213203435596427 PlanRecord[Coordinates[x:14.0000,y:14.0000 r:19.7990 theta:0.7854 (45.0000)], cost:19.7990]
+315  [main] DEBUG org.xenei.robot.planner.PlannerMap - cost:21.65255581644739 PlanRecord[Coordinates[x:11.0000,y:16.0000 r:19.4165 theta:0.9685 (55.4915)], cost:19.4165]
+315  [main] DEBUG org.xenei.robot.planner.PlannerMap - cost:22.30367004767804 PlanRecord[Coordinates[x:14.0000,y:10.0000 r:17.2047 theta:0.6202 (35.5377)], cost:17.2047]
+316  [main] DEBUG org.xenei.robot.planner.PlannerMap - getBest() -> PlanRecord[Coordinates[x:11.0000,y:14.0000 r:17.8045 theta:0.9048 (51.8428)], cost:17.8045]
+317  [main] DEBUG org.xenei.robot.testUtils.FakeMover - New position Position[ Coordinates[x:12.1056,y:14.5528 r:18.9296 theta:0.8769 (50.2450)] heading:-153.4349 ]
+320  [main] DEBUG o.x.robot.testUtils.ProcessorTest - 
+###########@*@@#
+#            +=#
+# ### #####@*@ *
+# #   #        @
+# ######       #
+# #    #     * #
+###    # ####@ *
+#      # # #   @
+#  # # # # #   #
+# ## # # # # # #
+#  # #     # # #
+## # ######### #
+#  # #     #   #
+# ## # ### # # #
+#  # #   # # # #
+######## # # # #
+#        #   # #
+################
+
+320  [main] DEBUG o.x.robot.testUtils.ProcessorTest - Position[ Coordinates[x:12.1056,y:14.5528 r:18.9296 theta:0.8769 (50.2450)] heading:-153.4349 ]
+321  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 0: Coordinates[x:-0.8944,y:-0.4472 r:1.0000 theta:-2.6779 (-153.4349)]
+321  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 1: Coordinates[x:-0.6725,y:-0.7401 r:1.0000 theta:-2.3083 (-132.2585)]
+321  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 2: Coordinates[x:-0.3597,y:-0.9331 r:1.0000 theta:-1.9387 (-111.0820)]
+322  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 3: Coordinates[x:0.0016,y:-1.0000 r:1.0000 theta:-1.5691 (-89.9055)]
+322  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 4: Coordinates[x:0.3628,y:-0.9319 r:1.0000 theta:-1.1995 (-68.7291)]
+323  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 5: Coordinates[x:2.0247,y:-2.2137 r:3.0000 theta:-0.8299 (-47.5526)]
+323  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 6: Coordinates[x:1.7918,y:-0.8885 r:2.0000 theta:-0.4604 (-26.3761)]
+324  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 7: Coordinates[x:1.9918,y:-0.1813 r:2.0000 theta:-0.0908 (-5.1997)]
+324  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 8: Coordinates[x:1.9227,y:0.5505 r:2.0000 theta:0.2788 (15.9768)]
+324  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 9: Coordinates[x:1.5940,y:1.2079 r:2.0000 theta:0.6484 (37.1533)]
+325  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 10: Coordinates[x:1.0501,y:1.7022 r:2.0000 theta:1.0180 (58.3298)]
+325  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 11: Coordinates[x:0.1821,y:0.9833 r:1.0000 theta:1.3876 (79.5062)]
+325  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 12: Coordinates[x:-0.1854,y:0.9827 r:1.0000 theta:1.7572 (100.6827)]
+326  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 13: Coordinates[x:-1.0557,y:1.6987 r:2.0000 theta:2.1268 (121.8592)]
+326  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 14: Coordinates[x:-1.5980,y:1.2026 r:2.0000 theta:2.4964 (143.0356)]
+326  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 15: Coordinates[x:-3.8491,y:1.0883 r:4.0000 theta:2.8660 (164.2121)]
+327  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 16: Coordinates[x:-0.9956,y:-0.0939 r:1.0000 theta:-3.0475 (-174.6114)]
+327  [main] DEBUG org.xenei.robot.planner.Planner - Sensed Coordinates[x:11.0000,y:15.0000 r:18.6011 theta:0.9380 (53.7462)]
+327  [main] DEBUG org.xenei.robot.planner.Planner - Sensed Coordinates[x:14.0000,y:14.0000 r:19.7990 theta:0.7854 (45.0000)]
+328  [main] DEBUG org.xenei.robot.planner.PlannerMap - Removed: Coordinates[x:14.0000,y:14.0000 r:19.7990 theta:0.7854 (45.0000)]
+328  [main] DEBUG org.xenei.robot.planner.Planner - Sensed Coordinates[x:14.0000,y:15.0000 r:20.5183 theta:0.8199 (46.9749)]
+328  [main] DEBUG org.xenei.robot.planner.Planner - Sensed Coordinates[x:14.0000,y:16.0000 r:21.2603 theta:0.8520 (48.8141)]
+328  [main] DEBUG org.xenei.robot.planner.Planner - Sensed Coordinates[x:13.0000,y:17.0000 r:21.4009 theta:0.9179 (52.5946)]
+329  [main] DEBUG org.xenei.robot.planner.Planner - Sensed Coordinates[x:11.0000,y:17.0000 r:20.2485 theta:0.9965 (57.0948)]
+329  [main] DEBUG org.xenei.robot.planner.Planner - Sensed Coordinates[x:8.0000,y:16.0000 r:17.8885 theta:1.1071 (63.4349)]
+329  [main] DEBUG org.xenei.robot.planner.Planner - Mapped Coordinates[x:13.0000,y:15.0000 r:19.8494 theta:0.8567 (49.0856)]
+330  [main] DEBUG org.xenei.robot.planner.Planner - Mapped Coordinates[x:13.0000,y:14.0000 r:19.1050 theta:0.8224 (47.1211)]
+330  [main] DEBUG org.xenei.robot.planner.PlannerMap - Added: PlanRecord[Coordinates[x:13.0000,y:14.0000 r:19.1050 theta:0.8224 (47.1211)], cost:19.1050]
+330  [main] DEBUG org.xenei.robot.planner.Planner - Mapped Coordinates[x:13.0000,y:15.0000 r:19.8494 theta:0.8567 (49.0856)]
+331  [main] DEBUG org.xenei.robot.planner.Planner - Mapped Coordinates[x:9.0000,y:16.0000 r:18.3576 theta:1.0584 (60.6422)]
+331  [main] DEBUG org.xenei.robot.planner.PlannerMap - Added: PlanRecord[Coordinates[x:9.0000,y:16.0000 r:18.3576 theta:1.0584 (60.6422)], cost:18.3576]
+331  [main] DEBUG org.xenei.robot.planner.Planner - Mapped Coordinates[x:12.0000,y:15.0000 r:19.2094 theta:0.8961 (51.3402)]
+332  [main] DEBUG org.xenei.robot.planner.Planner - Mapped Coordinates[x:11.0000,y:16.0000 r:19.4165 theta:0.9685 (55.4915)]
+332  [main] DEBUG org.xenei.robot.planner.PlannerMap - cost:19.218707377137953 PlanRecord[Coordinates[x:11.0000,y:14.0000 r:17.8045 theta:0.9048 (51.8428)], cost:17.8045]
+333  [main] DEBUG org.xenei.robot.planner.PlannerMap - cost:20.278820596099706 PlanRecord[Coordinates[x:12.0000,y:11.0000 r:16.2788 theta:0.7419 (42.5104)], cost:16.2788]
+333  [main] DEBUG org.xenei.robot.planner.PlannerMap - cost:20.519186736915895 PlanRecord[Coordinates[x:13.0000,y:14.0000 r:19.1050 theta:0.8224 (47.1211)], cost:19.1050]
+333  [main] DEBUG org.xenei.robot.planner.PlannerMap - cost:20.830701401320695 PlanRecord[Coordinates[x:11.0000,y:16.0000 r:19.4165 theta:0.9685 (55.4915)], cost:19.4165]
+334  [main] DEBUG org.xenei.robot.planner.PlannerMap - cost:21.519837410854198 PlanRecord[Coordinates[x:9.0000,y:16.0000 r:18.3576 theta:1.0584 (60.6422)], cost:18.3576]
+334  [main] DEBUG org.xenei.robot.planner.PlannerMap - cost:21.849433241279208 PlanRecord[Coordinates[x:13.0000,y:15.0000 r:19.8494 theta:0.8567 (49.0856)], cost:20.8494]
+334  [main] DEBUG org.xenei.robot.planner.PlannerMap - cost:22.589815341219758 PlanRecord[Coordinates[x:14.0000,y:10.0000 r:17.2047 theta:0.6202 (35.5377)], cost:17.2047]
+334  [main] DEBUG org.xenei.robot.planner.PlannerMap - getBest() -> PlanRecord[Coordinates[x:11.0000,y:14.0000 r:17.8045 theta:0.9048 (51.8428)], cost:17.8045]
+335  [main] DEBUG org.xenei.robot.testUtils.FakeMover - New position Position[ Coordinates[x:11.2111,y:14.1056 r:18.0182 theta:0.8992 (51.5222)] heading:-153.4349 ]
+336  [main] DEBUG o.x.robot.testUtils.ProcessorTest - 
+            @ @
+#########@*@*@@@
+#           @==@
+# ### #####@+@*@
+# #   #        @
+# ######       #
+# #    #     * #
+###    # ####@ *
+#      # # #   @
+#  # # # # #   #
+# ## # # # # # #
+#  # #     # # #
+## # ######### #
+#  # #     #   #
+# ## # ### # # #
+#  # #   # # # #
+######## # # # #
+#        #   # #
+################
+
+336  [main] DEBUG o.x.robot.testUtils.ProcessorTest - Position[ Coordinates[x:11.2111,y:14.1056 r:18.0182 theta:0.8992 (51.5222)] heading:-153.4349 ]
+337  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 0: Coordinates[x:0.0000,y:0.0000 r:0.0000 theta:NaN (NaN)]
+337  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 1: Coordinates[x:0.0000,y:0.0000 r:0.0000 theta:NaN (NaN)]
+337  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 2: Coordinates[x:0.0000,y:0.0000 r:0.0000 theta:NaN (NaN)]
+338  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 3: Coordinates[x:0.0000,y:0.0000 r:0.0000 theta:NaN (NaN)]
+338  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 4: Coordinates[x:0.0000,y:0.0000 r:0.0000 theta:NaN (NaN)]
+338  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 5: Coordinates[x:0.0000,y:0.0000 r:0.0000 theta:NaN (NaN)]
+338  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 6: Coordinates[x:0.0000,y:0.0000 r:0.0000 theta:NaN (NaN)]
+339  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 7: Coordinates[x:0.0000,y:0.0000 r:0.0000 theta:NaN (NaN)]
+339  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 8: Coordinates[x:0.0000,y:0.0000 r:0.0000 theta:NaN (NaN)]
+339  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 9: Coordinates[x:0.0000,y:0.0000 r:0.0000 theta:NaN (NaN)]
+339  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 10: Coordinates[x:0.0000,y:0.0000 r:0.0000 theta:NaN (NaN)]
+340  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 11: Coordinates[x:0.0000,y:0.0000 r:0.0000 theta:NaN (NaN)]
+340  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 12: Coordinates[x:0.0000,y:0.0000 r:0.0000 theta:NaN (NaN)]
+340  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 13: Coordinates[x:0.0000,y:0.0000 r:0.0000 theta:NaN (NaN)]
+340  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 14: Coordinates[x:0.0000,y:0.0000 r:0.0000 theta:NaN (NaN)]
+341  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 15: Coordinates[x:0.0000,y:0.0000 r:0.0000 theta:NaN (NaN)]
+341  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 16: Coordinates[x:0.0000,y:0.0000 r:0.0000 theta:NaN (NaN)]
+341  [main] DEBUG org.xenei.robot.planner.PlannerMap - cost:19.441098256268084 PlanRecord[Coordinates[x:12.0000,y:11.0000 r:16.2788 theta:0.7419 (42.5104)], cost:16.2788]
+342  [main] DEBUG org.xenei.robot.planner.PlannerMap - cost:21.1049731745428 PlanRecord[Coordinates[x:13.0000,y:14.0000 r:19.1050 theta:0.8224 (47.1211)], cost:19.1050]
+342  [main] DEBUG org.xenei.robot.planner.PlannerMap - cost:21.18598687543201 PlanRecord[Coordinates[x:9.0000,y:16.0000 r:18.3576 theta:1.0584 (60.6422)], cost:18.3576]
+342  [main] DEBUG org.xenei.robot.planner.PlannerMap - cost:21.4164878389476 PlanRecord[Coordinates[x:11.0000,y:16.0000 r:19.4165 theta:0.9685 (55.4915)], cost:19.4165]
+342  [main] DEBUG org.xenei.robot.planner.PlannerMap - cost:22.037799837044737 PlanRecord[Coordinates[x:12.0000,y:15.0000 r:19.2094 theta:0.8961 (51.3402)], cost:20.6236]
+343  [main] DEBUG org.xenei.robot.planner.PlannerMap - cost:22.204650534085253 PlanRecord[Coordinates[x:14.0000,y:10.0000 r:17.2047 theta:0.6202 (35.5377)], cost:17.2047]
+343  [main] DEBUG org.xenei.robot.planner.PlannerMap - cost:24.499714781152093 PlanRecord[Coordinates[x:13.0000,y:15.0000 r:19.8494 theta:0.8567 (49.0856)], cost:22.2636]
+343  [main] DEBUG org.xenei.robot.planner.PlannerMap - getBest() -> PlanRecord[Coordinates[x:12.0000,y:11.0000 r:16.2788 theta:0.7419 (42.5104)], cost:16.2788]
+344  [main] DEBUG org.xenei.robot.testUtils.FakeMover - New position Position[ Coordinates[x:11.4573,y:13.1364 r:17.4308 theta:0.8536 (48.9055)] heading:-75.7476 ]
+344  [main] DEBUG o.x.robot.testUtils.ProcessorTest - 
+            @ @
+#########@*@*@@@
+#           @==@
+# ### #####@=@*@
+# #   #     +  @
+# ######       #
+# #    #     * #
+###    # ####@ *
+#      # # #   @
+#  # # # # #   #
+# ## # # # # # #
+#  # #     # # #
+## # ######### #
+#  # #     #   #
+# ## # ### # # #
+#  # #   # # # #
+######## # # # #
+#        #   # #
+################
+
+345  [main] DEBUG o.x.robot.testUtils.ProcessorTest - Position[ Coordinates[x:11.4573,y:13.1364 r:17.4308 theta:0.8536 (48.9055)] heading:-75.7476 ]
+345  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 0: Coordinates[x:0.7386,y:-2.9077 r:3.0000 theta:-1.3220 (-75.7476)]
+346  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 1: Coordinates[x:2.3188,y:-3.2593 r:4.0000 theta:-0.9524 (-54.5711)]
+346  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 2: Coordinates[x:2.5047,y:-1.6512 r:3.0000 theta:-0.5828 (-33.3946)]
+346  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 3: Coordinates[x:2.9320,y:-0.6349 r:3.0000 theta:-0.2132 (-12.2182)]
+347  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 4: Coordinates[x:2.9634,y:0.4671 r:3.0000 theta:0.1564 (8.9583)]
+347  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 5: Coordinates[x:0.8648,y:0.5020 r:1.0000 theta:0.5260 (30.1348)]
+348  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 6: Coordinates[x:0.6251,y:0.7806 r:1.0000 theta:0.8956 (51.3112)]
+348  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 7: Coordinates[x:0.3009,y:0.9537 r:1.0000 theta:1.2651 (72.4877)]
+349  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 8: Coordinates[x:-0.0639,y:0.9980 r:1.0000 theta:1.6347 (93.6642)]
+349  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 9: Coordinates[x:-0.4201,y:0.9075 r:1.0000 theta:2.0043 (114.8407)]
+350  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 10: Coordinates[x:-0.7195,y:0.6944 r:1.0000 theta:2.3739 (136.0171)]
+351  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 11: Coordinates[x:-0.9218,y:0.3876 r:1.0000 theta:2.7435 (157.1936)]
+352  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 12: Coordinates[x:-5.9976,y:0.1707 r:6.0000 theta:3.1131 (178.3701)]
+352  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 13: Coordinates[x:-5.6542,y:-2.0074 r:6.0000 theta:-2.8004 (-160.4535)]
+353  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 14: Coordinates[x:-3.7894,y:-3.2620 r:5.0000 theta:-2.4308 (-139.2770)]
+354  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 15: Coordinates[x:-1.4131,y:-2.6464 r:3.0000 theta:-2.0612 (-118.1005)]
+354  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 16: Coordinates[x:-0.3617,y:-2.9781 r:3.0000 theta:-1.6916 (-96.9241)]
+355  [main] DEBUG org.xenei.robot.planner.Planner - Sensed Coordinates[x:13.0000,y:10.0000 r:16.4012 theta:0.6557 (37.5686)]
+355  [main] DEBUG org.xenei.robot.planner.Planner - Sensed Coordinates[x:14.0000,y:11.0000 r:17.8045 theta:0.6660 (38.1572)]
+355  [main] DEBUG org.xenei.robot.planner.Planner - Sensed Coordinates[x:14.0000,y:12.0000 r:18.4391 theta:0.7086 (40.6013)]
+356  [main] DEBUG org.xenei.robot.planner.Planner - Sensed Coordinates[x:11.0000,y:14.0000 r:17.8045 theta:0.9048 (51.8428)]
+356  [main] DEBUG org.xenei.robot.planner.PlannerMap - Removed: Coordinates[x:11.0000,y:14.0000 r:17.8045 theta:0.9048 (51.8428)]
+356  [main] DEBUG org.xenei.robot.planner.Planner - Sensed Coordinates[x:5.0000,y:13.0000 r:13.9284 theta:1.2036 (68.9625)]
+357  [main] DEBUG org.xenei.robot.planner.Planner - Sensed Coordinates[x:5.0000,y:11.0000 r:12.0830 theta:1.1442 (65.5560)]
+357  [main] DEBUG org.xenei.robot.planner.Planner - Sensed Coordinates[x:7.0000,y:10.0000 r:12.2066 theta:0.9601 (55.0080)]
+358  [main] DEBUG org.xenei.robot.planner.Planner - Sensed Coordinates[x:10.0000,y:10.0000 r:14.1421 theta:0.7854 (45.0000)]
+358  [main] DEBUG org.xenei.robot.planner.Planner - Sensed Coordinates[x:11.0000,y:10.0000 r:14.8661 theta:0.7378 (42.2737)]
+358  [main] DEBUG org.xenei.robot.planner.Planner - Mapped Coordinates[x:13.0000,y:12.0000 r:17.6918 theta:0.7454 (42.7094)]
+358  [main] DEBUG org.xenei.robot.planner.PlannerMap - Added: PlanRecord[Coordinates[x:13.0000,y:12.0000 r:17.6918 theta:0.7454 (42.7094)], cost:17.6918]
+359  [main] DEBUG org.xenei.robot.planner.Planner - Mapped Coordinates[x:12.0000,y:11.0000 r:16.2788 theta:0.7419 (42.5104)]
+359  [main] DEBUG org.xenei.robot.planner.Planner - Mapped Coordinates[x:6.0000,y:13.0000 r:14.3178 theta:1.1384 (65.2249)]
+360  [main] DEBUG org.xenei.robot.planner.PlannerMap - Added: PlanRecord[Coordinates[x:6.0000,y:13.0000 r:14.3178 theta:1.1384 (65.2249)], cost:14.3178]
+360  [main] DEBUG org.xenei.robot.planner.Planner - Mapped Coordinates[x:8.0000,y:11.0000 r:13.6015 theta:0.9420 (53.9726)]
+360  [main] DEBUG org.xenei.robot.planner.PlannerMap - Added: PlanRecord[Coordinates[x:8.0000,y:11.0000 r:13.6015 theta:0.9420 (53.9726)], cost:13.6015]
+361  [main] DEBUG org.xenei.robot.planner.Planner - Mapped Coordinates[x:10.0000,y:11.0000 r:14.8661 theta:0.8330 (47.7263)]
+361  [main] DEBUG org.xenei.robot.planner.PlannerMap - Added: PlanRecord[Coordinates[x:10.0000,y:11.0000 r:14.8661 theta:0.8330 (47.7263)], cost:14.8661]
+361  [main] DEBUG org.xenei.robot.planner.Planner - Mapped Coordinates[x:13.0000,y:12.0000 r:17.6918 theta:0.7454 (42.7094)]
+361  [main] DEBUG org.xenei.robot.planner.Planner - Mapped Coordinates[x:11.0000,y:13.0000 r:17.0294 theta:0.8685 (49.7636)]
+361  [main] DEBUG org.xenei.robot.planner.Planner - Mapped Coordinates[x:6.0000,y:11.0000 r:12.5300 theta:1.0714 (61.3895)]
+362  [main] DEBUG org.xenei.robot.planner.PlannerMap - Added: PlanRecord[Coordinates[x:6.0000,y:11.0000 r:12.5300 theta:1.0714 (61.3895)], cost:12.5300]
+362  [main] DEBUG org.xenei.robot.planner.Planner - Mapped Coordinates[x:11.0000,y:11.0000 r:15.5563 theta:0.7854 (45.0000)]
+362  [main] DEBUG org.xenei.robot.planner.PlannerMap - Added: PlanRecord[Coordinates[x:11.0000,y:11.0000 r:15.5563 theta:0.7854 (45.0000)], cost:15.5563]
+363  [main] DEBUG org.xenei.robot.planner.PlannerMap - cost:17.102136724818294 PlanRecord[Coordinates[x:10.0000,y:11.0000 r:14.8661 theta:0.8330 (47.7263)], cost:14.8661]
+364  [main] DEBUG org.xenei.robot.planner.PlannerMap - cost:17.207021784199434 PlanRecord[Coordinates[x:8.0000,y:11.0000 r:13.6015 theta:0.9420 (53.9726)], cost:13.6015]
+364  [main] DEBUG org.xenei.robot.planner.PlannerMap - cost:17.556349186104043 PlanRecord[Coordinates[x:11.0000,y:11.0000 r:15.5563 theta:0.7854 (45.0000)], cost:15.5563]
+364  [main] DEBUG org.xenei.robot.planner.PlannerMap - cost:17.915128893276172 PlanRecord[Coordinates[x:6.0000,y:11.0000 r:12.5300 theta:1.0714 (61.3895)], cost:12.5300]
+365  [main] DEBUG org.xenei.robot.planner.PlannerMap - cost:18.514888573599496 PlanRecord[Coordinates[x:12.0000,y:11.0000 r:16.2788 theta:0.7419 (42.5104)], cost:16.2788]
+365  [main] DEBUG org.xenei.robot.planner.PlannerMap - cost:19.317821063276355 PlanRecord[Coordinates[x:6.0000,y:13.0000 r:14.3178 theta:1.1384 (65.2249)], cost:14.3178]
+365  [main] DEBUG org.xenei.robot.planner.PlannerMap - cost:19.92787399045392 PlanRecord[Coordinates[x:13.0000,y:12.0000 r:17.6918 theta:0.7454 (42.7094)], cost:17.6918]
+366  [main] DEBUG org.xenei.robot.planner.PlannerMap - cost:21.34104115204259 PlanRecord[Coordinates[x:13.0000,y:14.0000 r:19.1050 theta:0.8224 (47.1211)], cost:19.1050]
+366  [main] DEBUG org.xenei.robot.planner.PlannerMap - cost:21.447291221204537 PlanRecord[Coordinates[x:14.0000,y:10.0000 r:17.2047 theta:0.6202 (35.5377)], cost:17.2047]
+366  [main] DEBUG org.xenei.robot.planner.PlannerMap - cost:21.963111026149807 PlanRecord[Coordinates[x:9.0000,y:16.0000 r:18.3576 theta:1.0584 (60.6422)], cost:18.3576]
+367  [main] DEBUG org.xenei.robot.planner.PlannerMap - cost:22.4164878389476 PlanRecord[Coordinates[x:11.0000,y:16.0000 r:19.4165 theta:0.9685 (55.4915)], cost:19.4165]
+367  [main] DEBUG org.xenei.robot.planner.PlannerMap - cost:23.85965425217143 PlanRecord[Coordinates[x:12.0000,y:15.0000 r:19.2094 theta:0.8961 (51.3402)], cost:21.6236]
+368  [main] DEBUG org.xenei.robot.planner.PlannerMap - cost:26.092073928398495 PlanRecord[Coordinates[x:13.0000,y:15.0000 r:19.8494 theta:0.8567 (49.0856)], cost:23.2636]
+368  [main] DEBUG org.xenei.robot.planner.PlannerMap - getBest() -> PlanRecord[Coordinates[x:10.0000,y:11.0000 r:14.8661 theta:0.8330 (47.7263)], cost:14.8661]
+368  [main] DEBUG org.xenei.robot.testUtils.FakeMover - New position Position[ Coordinates[x:10.8938,y:12.3103 r:16.4383 theta:0.8464 (48.4932)] heading:-124.3003 ]
+370  [main] DEBUG o.x.robot.testUtils.ProcessorTest - 
+            @ @
+#########@*@*@@@
+#           @==@
+# ### #####@=@*@
+# #   @*    =  @
+# ######    + *@
+# #   @* * *** @
+###    #@##@@@@*
+#      # # #   @
+#  # # # # #   #
+# ## # # # # # #
+#  # #     # # #
+## # ######### #
+#  # #     #   #
+# ## # ### # # #
+#  # #   # # # #
+######## # # # #
+#        #   # #
+################
+
+371  [main] DEBUG o.x.robot.testUtils.ProcessorTest - Position[ Coordinates[x:10.8938,y:12.3103 r:16.4383 theta:0.8464 (48.4932)] heading:-124.3003 ]
+371  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 0: Coordinates[x:-1.6906,y:-2.4783 r:3.0000 theta:-2.1695 (-124.3003)]
+372  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 1: Coordinates[x:-0.4541,y:-1.9478 r:2.0000 theta:-1.7999 (-103.1239)]
+372  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 2: Coordinates[x:0.2802,y:-1.9803 r:2.0000 theta:-1.4303 (-81.9474)]
+373  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 3: Coordinates[x:1.4649,y:-2.6180 r:3.0000 theta:-1.0607 (-60.7709)]
+374  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 4: Coordinates[x:3.0823,y:-2.5494 r:4.0000 theta:-0.6911 (-39.5945)]
+374  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 5: Coordinates[x:2.8463,y:-0.9478 r:3.0000 theta:-0.3215 (-18.4180)]
+375  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 6: Coordinates[x:2.9965,y:0.1444 r:3.0000 theta:0.0481 (2.7585)]
+375  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 7: Coordinates[x:2.7420,y:1.2171 r:3.0000 theta:0.4177 (23.9349)]
+376  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 8: Coordinates[x:1.4115,y:1.4170 r:2.0000 theta:0.7873 (45.1114)]
+376  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 9: Coordinates[x:0.8043,y:1.8312 r:2.0000 theta:1.1569 (66.2879)]
+377  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 10: Coordinates[x:0.0885,y:1.9980 r:2.0000 theta:1.5265 (87.4644)]
+377  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 11: Coordinates[x:-0.6393,y:1.8951 r:2.0000 theta:1.8961 (108.6408)]
+378  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 12: Coordinates[x:-1.2807,y:1.5362 r:2.0000 theta:2.2657 (129.8173)]
+378  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 13: Coordinates[x:-2.6237,y:1.4547 r:3.0000 theta:2.6353 (150.9938)]
+379  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 14: Coordinates[x:-5.9441,y:0.8174 r:6.0000 theta:3.0049 (172.1702)]
+380  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 15: Coordinates[x:-4.8650,y:-1.1542 r:5.0000 theta:-2.9086 (-166.6533)]
+380  [main] DEBUG org.xenei.robot.utils.Sensor - Reading 16: Coordinates[x:-3.2956,y:-2.2670 r:4.0000 theta:-2.5390 (-145.4768)]
+381  [main] DEBUG org.xenei.robot.planner.Planner - Sensed Coordinates[x:9.0000,y:10.0000 r:13.4536 theta:0.8380 (48.0128)]
+381  [main] DEBUG org.xenei.robot.planner.Planner - Sensed Coordinates[x:12.0000,y:9.0000 r:15.0000 theta:0.6435 (36.8699)]
+382  [main] DEBUG org.xenei.robot.planner.Planner - Sensed Coordinates[x:12.0000,y:13.0000 r:17.6918 theta:0.8254 (47.2906)]
+382  [main] DEBUG org.xenei.robot.planner.Planner - Sensed Coordinates[x:8.0000,y:13.0000 r:15.2643 theta:1.0191 (58.3925)]
+382  [main] DEBUG org.xenei.robot.planner.Planner - Sensed Coordinates[x:6.0000,y:11.0000 r:12.5300 theta:1.0714 (61.3895)]
+383  [main] DEBUG org.xenei.robot.planner.PlannerMap - Removed: Coordinates[x:6.0000,y:11.0000 r:12.5300 theta:1.0714 (61.3895)]
+383  [main] DEBUG org.xenei.robot.planner.Planner - Sensed Coordinates[x:8.0000,y:10.0000 r:12.8062 theta:0.8961 (51.3402)]
+383  [main] DEBUG org.xenei.robot.planner.Planner - Mapped Coordinates[x:9.0000,y:13.0000 r:15.8114 theta:0.9653 (55.3048)]
+383  [main] DEBUG org.xenei.robot.planner.PlannerMap - Added: PlanRecord[Coordinates[x:9.0000,y:13.0000 r:15.8114 theta:0.9653 (55.3048)], cost:15.8114]
+384  [main] DEBUG org.xenei.robot.planner.Planner - Mapped Coordinates[x:10.0000,y:11.0000 r:14.8661 theta:0.8330 (47.7263)]
+384  [main] DEBUG org.xenei.robot.planner.Planner - Mapped Coordinates[x:9.0000,y:11.0000 r:14.2127 theta:0.8851 (50.7106)]
+384  [main] DEBUG org.xenei.robot.planner.PlannerMap - Added: PlanRecord[Coordinates[x:9.0000,y:11.0000 r:14.2127 theta:0.8851 (50.7106)], cost:14.2127]
+385  [main] DEBUG org.xenei.robot.planner.Planner - Mapped Coordinates[x:7.0000,y:11.0000 r:13.0384 theta:1.0041 (57.5288)]
+385  [main] DEBUG org.xenei.robot.planner.PlannerMap - Added: PlanRecord[Coordinates[x:7.0000,y:11.0000 r:13.0384 theta:1.0041 (57.5288)], cost:13.0384]
+385  [main] DEBUG org.xenei.robot.planner.Planner - Mapped Coordinates[x:11.0000,y:12.0000 r:16.2788 theta:0.8288 (47.4896)]
+386  [main] DEBUG org.xenei.robot.planner.PlannerMap - cost:16.2802823096916 PlanRecord[Coordinates[x:10.0000,y:11.0000 r:14.8661 theta:0.8330 (47.7263)], cost:14.8661]
+386  [main] DEBUG org.xenei.robot.planner.PlannerMap - cost:16.448738381051683 PlanRecord[Coordinates[x:9.0000,y:11.0000 r:14.2127 theta:0.8851 (50.7106)], cost:14.2127]
+386  [main] DEBUG org.xenei.robot.planner.PlannerMap - cost:16.556349186104043 PlanRecord[Coordinates[x:11.0000,y:11.0000 r:15.5563 theta:0.7854 (45.0000)], cost:15.5563]
+387  [main] DEBUG org.xenei.robot.planner.PlannerMap - cost:16.763748168903824 PlanRecord[Coordinates[x:8.0000,y:11.0000 r:13.6015 theta:0.9420 (53.9726)], cost:13.6015]
+387  [main] DEBUG org.xenei.robot.planner.PlannerMap - cost:17.161510436022958 PlanRecord[Coordinates[x:7.0000,y:11.0000 r:13.0384 theta:1.0041 (57.5288)], cost:13.0384]
+387  [main] DEBUG org.xenei.robot.planner.PlannerMap - cost:17.693034158472802 PlanRecord[Coordinates[x:12.0000,y:11.0000 r:16.2788 theta:0.7419 (42.5104)], cost:16.2788]
+388  [main] DEBUG org.xenei.robot.planner.PlannerMap - cost:18.047456278341684 PlanRecord[Coordinates[x:9.0000,y:13.0000 r:15.8114 theta:0.9653 (55.3048)], cost:15.8114]
+388  [main] DEBUG org.xenei.robot.planner.PlannerMap - cost:19.029386365926403 PlanRecord[Coordinates[x:11.0000,y:13.0000 r:17.0294 theta:0.8685 (49.7636)], cost:18.0294]
+388  [main] DEBUG org.xenei.robot.planner.PlannerMap - cost:19.416840576869138 PlanRecord[Coordinates[x:6.0000,y:13.0000 r:14.3178 theta:1.1384 (65.2249)], cost:14.3178]
+388  [main] DEBUG org.xenei.robot.planner.PlannerMap - cost:19.69180601295413 PlanRecord[Coordinates[x:13.0000,y:12.0000 r:17.6918 theta:0.7454 (42.7094)], cost:17.6918]
+389  [main] DEBUG org.xenei.robot.planner.PlannerMap - cost:20.81020180954924 PlanRecord[Coordinates[x:14.0000,y:10.0000 r:17.2047 theta:0.6202 (35.5377)], cost:17.2047]
+389  [main] DEBUG org.xenei.robot.planner.PlannerMap - cost:21.93340029928899 PlanRecord[Coordinates[x:13.0000,y:14.0000 r:19.1050 theta:0.8224 (47.1211)], cost:19.1050]
+389  [main] DEBUG org.xenei.robot.planner.PlannerMap - cost:22.8296957056854 PlanRecord[Coordinates[x:9.0000,y:16.0000 r:18.3576 theta:1.0584 (60.6422)], cost:18.3576]
+390  [main] DEBUG org.xenei.robot.planner.PlannerMap - cost:23.4164878389476 PlanRecord[Coordinates[x:11.0000,y:16.0000 r:19.4165 theta:0.9685 (55.4915)], cost:19.4165]
+390  [main] DEBUG org.xenei.robot.planner.PlannerMap - cost:25.78586393484002 PlanRecord[Coordinates[x:12.0000,y:15.0000 r:19.2094 theta:0.8961 (51.3402)], cost:22.6236]
+391  [main] DEBUG org.xenei.robot.planner.PlannerMap - cost:27.86919807911629 PlanRecord[Coordinates[x:13.0000,y:15.0000 r:19.8494 theta:0.8567 (49.0856)], cost:24.2636]
+391  [main] DEBUG org.xenei.robot.planner.PlannerMap - getBest() -> PlanRecord[Coordinates[x:10.0000,y:11.0000 r:14.8661 theta:0.8330 (47.7263)], cost:14.8661]
+391  [main] DEBUG org.xenei.robot.testUtils.FakeMover - New position Position[ Coordinates[x:10.3303,y:11.4842 r:15.4467 theta:0.8382 (48.0279)] heading:-124.3003 ]
+392  [main] INFO  o.x.robot.testUtils.ProcessorTest - PROCESSOR DUMP
+392  [main] INFO  o.x.robot.testUtils.ProcessorTest - Map
+393  [main] INFO  o.x.robot.testUtils.ProcessorTest - Coordinates[x:11.0000,y:11.0000 r:15.5563 theta:0.7854 (45.0000)]
+393  [main] INFO  o.x.robot.testUtils.ProcessorTest - Coordinates[x:13.0000,y:15.0000 r:19.8494 theta:0.8567 (49.0856)]
+394  [main] INFO  o.x.robot.testUtils.ProcessorTest - Coordinates[x:6.0000,y:13.0000 r:14.3178 theta:1.1384 (65.2249)]
+394  [main] INFO  o.x.robot.testUtils.ProcessorTest - Coordinates[x:9.0000,y:11.0000 r:14.2127 theta:0.8851 (50.7106)]
+394  [main] INFO  o.x.robot.testUtils.ProcessorTest - Coordinates[x:14.0000,y:10.0000 r:17.2047 theta:0.6202 (35.5377)]
+395  [main] INFO  o.x.robot.testUtils.ProcessorTest - Coordinates[x:7.0000,y:11.0000 r:13.0384 theta:1.0041 (57.5288)]
+395  [main] INFO  o.x.robot.testUtils.ProcessorTest - Coordinates[x:10.0000,y:11.0000 r:14.8661 theta:0.8330 (47.7263)]
+396  [main] INFO  o.x.robot.testUtils.ProcessorTest - Coordinates[x:11.0000,y:16.0000 r:19.4165 theta:0.9685 (55.4915)]
+396  [main] INFO  o.x.robot.testUtils.ProcessorTest - Coordinates[x:13.0000,y:14.0000 r:19.1050 theta:0.8224 (47.1211)]
+397  [main] INFO  o.x.robot.testUtils.ProcessorTest - Coordinates[x:9.0000,y:16.0000 r:18.3576 theta:1.0584 (60.6422)]
+397  [main] INFO  o.x.robot.testUtils.ProcessorTest - Coordinates[x:13.0000,y:12.0000 r:17.6918 theta:0.7454 (42.7094)]
+398  [main] INFO  o.x.robot.testUtils.ProcessorTest - Coordinates[x:11.0000,y:13.0000 r:17.0294 theta:0.8685 (49.7636)]
+398  [main] INFO  o.x.robot.testUtils.ProcessorTest - Coordinates[x:9.0000,y:13.0000 r:15.8114 theta:0.9653 (55.3048)]
+398  [main] INFO  o.x.robot.testUtils.ProcessorTest - Coordinates[x:12.0000,y:11.0000 r:16.2788 theta:0.7419 (42.5104)]
+398  [main] INFO  o.x.robot.testUtils.ProcessorTest - Coordinates[x:12.0000,y:15.0000 r:19.2094 theta:0.8961 (51.3402)]
+399  [main] INFO  o.x.robot.testUtils.ProcessorTest - Coordinates[x:11.0000,y:12.0000 r:16.2788 theta:0.8288 (47.4896)]
+399  [main] INFO  o.x.robot.testUtils.ProcessorTest - Coordinates[x:8.0000,y:11.0000 r:13.6015 theta:0.9420 (53.9726)]
+399  [main] INFO  o.x.robot.testUtils.ProcessorTest - Path
+400  [main] INFO  o.x.robot.testUtils.ProcessorTest - Coordinates[x:13.0000,y:15.0000 r:19.8494 theta:0.8567 (49.0856)]
+400  [main] INFO  o.x.robot.testUtils.ProcessorTest - Coordinates[x:12.0000,y:15.0000 r:19.2094 theta:0.8961 (51.3402)]
+401  [main] INFO  o.x.robot.testUtils.ProcessorTest - Coordinates[x:11.0000,y:14.0000 r:17.8045 theta:0.9048 (51.8428)]
+401  [main] INFO  o.x.robot.testUtils.ProcessorTest - Coordinates[x:11.0000,y:13.0000 r:17.0294 theta:0.8685 (49.7636)]
+401  [main] INFO  o.x.robot.testUtils.ProcessorTest - Coordinates[x:11.0000,y:12.0000 r:16.2788 theta:0.8288 (47.4896)]
+402  [main] INFO  o.x.robot.testUtils.ProcessorTest - Coordinates[x:10.0000,y:11.0000 r:14.8661 theta:0.8330 (47.7263)]
+402  [main] INFO  o.x.robot.testUtils.ProcessorTest - Sensed
+403  [main] INFO  o.x.robot.testUtils.ProcessorTest - Coordinates[x:5.0000,y:11.0000 r:12.0830 theta:1.1442 (65.5560)]
+403  [main] INFO  o.x.robot.testUtils.ProcessorTest - Coordinates[x:5.0000,y:13.0000 r:13.9284 theta:1.2036 (68.9625)]
+403  [main] INFO  o.x.robot.testUtils.ProcessorTest - Coordinates[x:6.0000,y:11.0000 r:12.5300 theta:1.0714 (61.3895)]
+404  [main] INFO  o.x.robot.testUtils.ProcessorTest - Coordinates[x:7.0000,y:10.0000 r:12.2066 theta:0.9601 (55.0080)]
+404  [main] INFO  o.x.robot.testUtils.ProcessorTest - Coordinates[x:8.0000,y:10.0000 r:12.8062 theta:0.8961 (51.3402)]
+404  [main] INFO  o.x.robot.testUtils.ProcessorTest - Coordinates[x:8.0000,y:13.0000 r:15.2643 theta:1.0191 (58.3925)]
+404  [main] INFO  o.x.robot.testUtils.ProcessorTest - Coordinates[x:8.0000,y:16.0000 r:17.8885 theta:1.1071 (63.4349)]
+405  [main] INFO  o.x.robot.testUtils.ProcessorTest - Coordinates[x:9.0000,y:10.0000 r:13.4536 theta:0.8380 (48.0128)]
+405  [main] INFO  o.x.robot.testUtils.ProcessorTest - Coordinates[x:10.0000,y:10.0000 r:14.1421 theta:0.7854 (45.0000)]
+405  [main] INFO  o.x.robot.testUtils.ProcessorTest - Coordinates[x:10.0000,y:14.0000 r:17.2047 theta:0.9505 (54.4623)]
+405  [main] INFO  o.x.robot.testUtils.ProcessorTest - Coordinates[x:10.0000,y:16.0000 r:18.8680 theta:1.0122 (57.9946)]
+405  [main] INFO  o.x.robot.testUtils.ProcessorTest - Coordinates[x:11.0000,y:10.0000 r:14.8661 theta:0.7378 (42.2737)]
+406  [main] INFO  o.x.robot.testUtils.ProcessorTest - Coordinates[x:11.0000,y:14.0000 r:17.8045 theta:0.9048 (51.8428)]
+406  [main] INFO  o.x.robot.testUtils.ProcessorTest - Coordinates[x:11.0000,y:15.0000 r:18.6011 theta:0.9380 (53.7462)]
+406  [main] INFO  o.x.robot.testUtils.ProcessorTest - Coordinates[x:11.0000,y:17.0000 r:20.2485 theta:0.9965 (57.0948)]
+406  [main] INFO  o.x.robot.testUtils.ProcessorTest - Coordinates[x:12.0000,y:9.0000 r:15.0000 theta:0.6435 (36.8699)]
+407  [main] INFO  o.x.robot.testUtils.ProcessorTest - Coordinates[x:12.0000,y:10.0000 r:15.6205 theta:0.6947 (39.8056)]
+407  [main] INFO  o.x.robot.testUtils.ProcessorTest - Coordinates[x:12.0000,y:13.0000 r:17.6918 theta:0.8254 (47.2906)]
+407  [main] INFO  o.x.robot.testUtils.ProcessorTest - Coordinates[x:12.0000,y:14.0000 r:18.4391 theta:0.8622 (49.3987)]
+407  [main] INFO  o.x.robot.testUtils.ProcessorTest - Coordinates[x:12.0000,y:16.0000 r:20.0000 theta:0.9273 (53.1301)]
+407  [main] INFO  o.x.robot.testUtils.ProcessorTest - Coordinates[x:13.0000,y:10.0000 r:16.4012 theta:0.6557 (37.5686)]
+408  [main] INFO  o.x.robot.testUtils.ProcessorTest - Coordinates[x:13.0000,y:16.0000 r:20.6155 theta:0.8885 (50.9061)]
+408  [main] INFO  o.x.robot.testUtils.ProcessorTest - Coordinates[x:13.0000,y:17.0000 r:21.4009 theta:0.9179 (52.5946)]
+408  [main] INFO  o.x.robot.testUtils.ProcessorTest - Coordinates[x:14.0000,y:9.0000 r:16.6433 theta:0.5713 (32.7352)]
+408  [main] INFO  o.x.robot.testUtils.ProcessorTest - Coordinates[x:14.0000,y:11.0000 r:17.8045 theta:0.6660 (38.1572)]
+409  [main] INFO  o.x.robot.testUtils.ProcessorTest - Coordinates[x:14.0000,y:12.0000 r:18.4391 theta:0.7086 (40.6013)]
+409  [main] INFO  o.x.robot.testUtils.ProcessorTest - Coordinates[x:14.0000,y:13.0000 r:19.1050 theta:0.7484 (42.8789)]
+409  [main] INFO  o.x.robot.testUtils.ProcessorTest - Coordinates[x:14.0000,y:14.0000 r:19.7990 theta:0.7854 (45.0000)]
+409  [main] INFO  o.x.robot.testUtils.ProcessorTest - Coordinates[x:14.0000,y:15.0000 r:20.5183 theta:0.8199 (46.9749)]
+409  [main] INFO  o.x.robot.testUtils.ProcessorTest - Coordinates[x:14.0000,y:16.0000 r:21.2603 theta:0.8520 (48.8141)]

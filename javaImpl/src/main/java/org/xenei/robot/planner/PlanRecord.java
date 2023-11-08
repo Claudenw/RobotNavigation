@@ -14,6 +14,11 @@ public class PlanRecord {
         return x == 0 ? Coordinates.RangeCompr.compare(one.position, two.position) : x;
     };
 
+    /**
+     * 
+     * @param position Coordinates of the record.
+     * @param cost distance to target.
+     */
     public PlanRecord(Coordinates position, double cost) {
         this.position = position;
         this.cost = cost;

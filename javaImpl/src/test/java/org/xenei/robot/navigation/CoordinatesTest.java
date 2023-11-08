@@ -3,6 +3,12 @@ package org.xenei.robot.navigation;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.xenei.robot.testUtils.DoubleUtils.DELTA;
+import static org.xenei.robot.testUtils.DoubleUtils.RADIANS_135;
+import static org.xenei.robot.testUtils.DoubleUtils.RADIANS_225;
+import static org.xenei.robot.testUtils.DoubleUtils.RADIANS_270;
+import static org.xenei.robot.testUtils.DoubleUtils.RADIANS_315;
+import static org.xenei.robot.testUtils.DoubleUtils.RADIANS_45;
+import static org.xenei.robot.testUtils.DoubleUtils.RADIANS_90;
 import static org.xenei.robot.testUtils.DoubleUtils.SQRT2;
 
 import java.util.ArrayList;
@@ -19,13 +25,6 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 public class CoordinatesTest {
 
-    private static double radian45 = Math.PI / 4;
-    private static double radian90 = 2 * radian45;
-    private static double radian135 = 3 * radian45;
-    private static double radian225 = -radian135;
-    private static double radian270 = -radian90;
-    private static double radian315 = -radian45;
-
     private static final int INPUT = 0;
     private static final int DEG = 1;
     private static final int RAD = 2;
@@ -36,27 +35,28 @@ public class CoordinatesTest {
     private static double[][] arguments() {
         double range45 = SQRT2 / 2;
         return new double[][] {
-                // @format:off
-                // input deg rad range X Y number
-                { 0, 0, 0.0, 1.0, 1.0, 0.0 }, // 1
-                { 45, 45, radian45, 1.0, range45, range45 }, // 2
-                { 90, 90, radian90, 1.0, 0.0, 1.0 }, // 3
-                { 135, 135, radian135, 1.0, -range45, range45 }, // 4
-                { 180, 180, Math.PI, 1.0, -1.0, 0.0 }, // 5
-                { 225, -135, radian225, 1.0, -range45, -range45 }, // 6
-                { 270, -90, radian270, 1.0, 0.0, -1.0 }, // 7
-                { 315, -45, radian315, 1.0, range45, -range45 }, // 8
-                { 360, 0, 0, 1.0, 1.0, 0.0 }, // 9
+                // @formatter:off
+                //  input   deg     rad             range   X           Y          number
+                {   0,      0,      0.0,            1.0,    1.0,        0.0 },      // 1
+                {   45,     45,     RADIANS_45,     1.0,    range45,    range45 },  // 2
+                {   90,     90,     RADIANS_90,     1.0,    0.0,        1.0 },      // 3
+                {   135,    135,    RADIANS_135,    1.0,    -range45,   range45 },  // 4
+                {   180,    180,    Math.PI,        1.0,   -1.0,        0.0 },      // 5
+                {   225,    -135,   RADIANS_225,    1.0,    -range45,   -range45 }, // 6
+                {   270,    -90,    RADIANS_270,    1.0,    0.0,        -1.0 },     // 7
+                {   315,    -45,    RADIANS_315,    1.0,    range45,    -range45 }, // 8
+                {   360,    0,      0.0,            1.0,    1.0,        0.0 },      // 9
 
-                { -360, 0, 0.0, 1.0, 1.0, 0.0 }, // 10
-                { -315, 45, radian45, 1.0, range45, range45 }, // 11
-                { -270, 90, radian90, 1.0, 0.0, 1.0 }, // 12
-                { -225, 135, radian135, 1.0, -range45, range45 }, // 13
-                { -180, -180, -Math.PI, 1.0, -1.0, 0.0 }, // 14
-                { -135, -135, radian225, 1.0, -range45, -range45 }, // 15
-                { -90, -90, radian270, 1.0, 0.0, -1.0 }, // 16
-                { -45, -45, radian315, 1.0, range45, -range45 }, // 17
-                { 0, 0, 0, 1.0, 1.0, 0.0 } // 18
+                {   -360,   0,      0.0,            1.0,    1.0,        0.0 },      // 10
+                {   -315,   45,     RADIANS_45,     1.0,    range45,    range45 },  // 11
+                {   -270,   90,     RADIANS_90,     1.0,    0.0,        1.0 },      // 12
+                {   -225,   135,    RADIANS_135,    1.0,    -range45,   range45 },  // 13
+                {   -180,   -180,   -Math.PI,       1.0,    -1.0,       0.0 },      // 14
+                {   -135,   -135,   RADIANS_225,    1.0,    -range45,   -range45 }, // 15
+                {   -90,    -90,    RADIANS_270,    1.0,    0.0,        -1.0 },     // 16
+                {   -45,    -45,    RADIANS_315,    1.0,    range45,    -range45 }, // 17
+                {   0,      0,      0.0,            1.0,    1.0,        0.0 }       // 18
+                // @formatter:on
         };
     }
 
@@ -181,12 +181,17 @@ public class CoordinatesTest {
         }
 
         double[][] sets = {
-                // @format:off
-                // x1 y1 x2 y2 r theta
-                { 0, 0, -4, 0, 4, -180 }, { 0, 0, 3, 0, 3, 0 }, { 0, 0, -4, 4, Math.sqrt(32), 135 },
-                { 0, 0, 0, 4, 4, 90 }, { 0, 0, 3, 4, Math.sqrt(25), 45 }, { 0, 0, -4, -3, Math.sqrt(25), -135 },
-                { 0, 0, 0, -3, 3, -90 }, { 0, 0, 3, -3, Math.sqrt(18), -45 } };
-        // @format:on
+                // @formatter:off
+                // x1   y1  x2  y2  r               theta
+                { 0,    0,  -4, 0,  4,              -180 }, 
+                { 0,    0,  3,  0,  3,              0 }, 
+                { 0,    0,  -4, 4,  Math.sqrt(32),  135 },
+                { 0,    0,  0,  4,  4,              90 }, 
+                { 0,    0,  3,  4,  Math.sqrt(25),  45 }, 
+                { 0,    0,  -4, -3, Math.sqrt(25),  -135 },
+                { 0,    0,  0,  -3, 3,              -90 }, 
+                { 0,    0,  3,  -3, Math.sqrt(18),  -45 } };
+        // @formatter:on
 
         Consumer<double[]> addToList = ary -> {
             Coordinates a = Coordinates.fromXY(ary[0], ary[1]);
@@ -296,13 +301,11 @@ public class CoordinatesTest {
     }
 
     private static Stream<Arguments> triCoordinates() {
-        return Stream.of(
-                Arguments.of(Coordinates.fromXY(-2, 3), Coordinates.fromXY(6, 1), Coordinates.fromXY(4, 4)),
-                Arguments.of(Coordinates.fromRadians(0.7853981633974483, 2), Coordinates.fromRadians(0, 2.8284271247461903), 
+        return Stream.of(Arguments.of(Coordinates.fromXY(-2, 3), Coordinates.fromXY(6, 1), Coordinates.fromXY(4, 4)),
+                Arguments.of(Coordinates.fromRadians(0.7853981633974483, 2),
+                        Coordinates.fromRadians(0, 2.8284271247461903),
                         Coordinates.fromRadians(0.3217505543966422, 4.47213595499958)),
-                Arguments.of(Coordinates.fromXY(0,0), Coordinates.fromDegrees(45, 1), 
-                        Coordinates.fromDegrees(45, 1))
-                );
+                Arguments.of(Coordinates.fromXY(0, 0), Coordinates.fromDegrees(45, 1), Coordinates.fromDegrees(45, 1)));
     }
 
 }

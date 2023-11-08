@@ -9,6 +9,7 @@ public class Coordinates {
     private final double range;
     private final double x;
     private final double y;
+    private final boolean quantized;
 
     public static Comparator<Coordinates> XYCompr = (one, two) -> {
         int x = Double.compare(one.x, two.x);
@@ -47,6 +48,7 @@ public class Coordinates {
         this.range = other.range;
         this.x = other.x;
         this.y = other.y;
+        this.quantized = other.quantized;
     }
 
     // bitmasking negative number check
@@ -68,14 +70,17 @@ public class Coordinates {
         this.range = range;
         this.x = x;
         this.y = y;
+        this.quantized = this.x == Math.round(this.x) && this.y == Math.round(this.y);
+    }
+    
+    public boolean isQuantized() {
+        return this.quantized;
     }
 
     public double angleTo(Coordinates other) {
-        // angle to
         Coordinates c = this.minus(other);
-        // angle will be pointing the wrong way. So reverse it.
-        double angle = normalize(c.getThetaRadians() + Math.PI);
-        return angle;
+        // vector will be pointing the wrong way. So reverse it.
+        return normalize(c.getThetaRadians() + Math.PI);
     }
 
     public double distanceTo(Coordinates other) {
@@ -84,7 +89,10 @@ public class Coordinates {
         return Math.sqrt(newX * newX + newY * newY);
     }
 
-    private Coordinates quantized() {
+    public Coordinates quantize() {
+        if (quantized) {
+            return this;
+        }
         long qX = Math.round(this.x);
         long qY = Math.round(this.y);
         if (x == qX && y == qY) {
@@ -97,7 +105,7 @@ public class Coordinates {
     public int hashCode() {
         Integer result = hashCode;
         if (result == null) {
-            result = hashCode = Double.hashCode(quantized().range);
+            result = hashCode = Double.hashCode(quantize().range);
         }
         return result.intValue();
     }
@@ -105,8 +113,8 @@ public class Coordinates {
     @Override
     public boolean equals(Object other) {
         if (other instanceof Coordinates) {
-            Coordinates c = ((Coordinates) other).quantized();
-            Coordinates q = this.quantized();
+            Coordinates c = ((Coordinates) other).quantize();
+            Coordinates q = this.quantize();
             return q.hashCode() == c.hashCode() && q.x == c.x && q.y == c.y;
         }
         return false;

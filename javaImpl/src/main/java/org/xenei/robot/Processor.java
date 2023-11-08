@@ -1,5 +1,7 @@
 package org.xenei.robot;
 
+import java.util.Optional;
+
 import org.xenei.robot.navigation.Coordinates;
 import org.xenei.robot.navigation.Position;
 import org.xenei.robot.planner.Planner;
@@ -25,10 +27,16 @@ public class Processor implements Runnable {
         this.running = false;
     }
 
-    public Position step() {
-        Coordinates nextLoc = planner.step(mover.position());
-        Coordinates move = mover.position().minus(nextLoc);
-        return mover.move(move);
+    public Optional<Position> step() {
+        Optional<Coordinates> nextLoc = planner.step(mover.position());
+        if (nextLoc.isEmpty()) {
+            return Optional.empty();
+        }
+        Optional<Position> result = Optional.of(mover.move(nextLoc.get().minus(mover.position().coordinates())));
+        if (result.isPresent()) {
+            planner.updatePath(result.get().coordinates().quantize());
+        }
+        return result;
     }
 
     @Override

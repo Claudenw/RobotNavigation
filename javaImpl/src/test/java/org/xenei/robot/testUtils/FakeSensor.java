@@ -1,7 +1,5 @@
 package org.xenei.robot.testUtils;
 
-import java.util.Optional;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xenei.robot.navigation.Coordinates;
@@ -28,7 +26,7 @@ public class FakeSensor implements Sensor {
         Coordinates[] result = new Coordinates[blocksize];
 
         for (int i = 0; i < blocksize; i++) {
-            result[i] = look(position, position.getHeadingRadians() + (radians * i));
+            result[i] = look(position.coordinates(), position.getHeadingRadians() + (radians * i)).minus(position.coordinates());
             if (LOG.isDebugEnabled()) {
                 LOG.debug("Reading {}: {}", i, result[i]);
             }
@@ -37,9 +35,9 @@ public class FakeSensor implements Sensor {
     }
 
     private Coordinates look(Coordinates position, double heading) {
-        System.out.println( "Scanning heading: "+Math.toDegrees(heading));
-        Optional<Coordinates> result = map.look(position, heading, 350);
-        return result.orElse(Coordinates.fromRadians(heading, Double.POSITIVE_INFINITY));
+        System.out.println("Scanning heading: " + Math.toDegrees(heading));
+        return map.look(position, heading, 350)
+                .orElseGet(() -> Coordinates.fromRadians(heading, Double.POSITIVE_INFINITY));
     }
 
 }

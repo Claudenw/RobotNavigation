@@ -1,8 +1,9 @@
 package org.xenei.robot.navigation;
 
-public class Position extends Coordinates {
+public class Position {
 
     private double heading;
+    private final Coordinates coordinates;
 
     public Position() {
         this(0.0, 0.0);
@@ -13,7 +14,7 @@ public class Position extends Coordinates {
     }
 
     public Position(Coordinates coord, double heading) {
-        super(coord);
+        this.coordinates = coord;
         this.heading = heading;
     }
 
@@ -22,8 +23,17 @@ public class Position extends Coordinates {
     }
 
     public Position(double x, double y, double heading) {
-        super(Math.atan(y/x), Math.sqrt(x * x + y * y), x, y);
+        this.coordinates = Coordinates.fromXY(x, y);
         this.heading = heading;
+    }
+
+    public Position quantize() {
+        return coordinates.isQuantized() ? this :
+            new Position( coordinates.quantize(), heading );
+    }
+    
+    public Coordinates coordinates() {
+        return coordinates;
     }
 
     public double getHeadingRadians() {
@@ -38,16 +48,17 @@ public class Position extends Coordinates {
         this.heading = radians;
     }
 
+   
     public Position nextPosition(Coordinates cmd) {
         if (cmd.getRange() == 0) {
-            return new Position(this.getX(), this.getY(), cmd.getThetaRadians());
+            return new Position(this.coordinates.getX(), this.coordinates.getY(), cmd.getThetaRadians());
         }
-        Coordinates nextCoord = this.plus(cmd);
+        Coordinates nextCoord = this.coordinates.plus(cmd);
         return new Position(nextCoord, cmd.getThetaRadians());
     }
 
     @Override
     public String toString() {
-        return String.format("Position[ %s heading:%.4f ]", super.toString(), Math.toDegrees(heading));
+        return String.format("Position[ %s heading:%.4f ]", coordinates.toString(), Math.toDegrees(heading));
     }
 }

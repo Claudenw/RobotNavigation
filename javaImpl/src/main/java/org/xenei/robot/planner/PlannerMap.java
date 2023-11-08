@@ -39,17 +39,18 @@ public class PlannerMap {
     }
 
     public boolean add(PlanRecord record) {
-        if (!complete.contains(record.position())) {
-            complete.add(record.position());
+        complete.add(record.position());
+        if (points.add(record)) {
+            LOG.debug("Added: {}", record);
+            return true;
         }
-        if (LOG.isDebugEnabled()) {
-            LOG.debug("Adding: {}", record);
-        }
-        return points.add(record);
+        return false;
     }
     
     public void remove(Coordinates coord) {
-        points.remove( new PlanRecord( coord, 0.0 ));
+        if (points.remove( new PlanRecord( coord, 0.0 ))) {
+            LOG.debug("Removed: {}", coord);
+        }
     }
 
     public Optional<PlanRecord> getBest(Coordinates position) {
@@ -87,13 +88,15 @@ public class PlannerMap {
         return rec.cost() + position.distanceTo(rec.position());
     }
     
-    public PlanRecord getPlanRecord(Coordinates position) {
+    public PlanRecord getOrAddPlanRecord(Coordinates position, Coordinates target) {
         for (PlanRecord p : points) {
             if (p.position().equals(position)) {
                 return p;
             }
         }
-        return null;
+        PlanRecord rec = new PlanRecord(position, position.distanceTo(target));
+        points.add(rec);
+        return rec;
     }
     
     public Collection<Coordinates> getPlanRecords() {
