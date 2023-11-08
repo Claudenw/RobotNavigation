@@ -37,7 +37,8 @@ public class FakeSensor implements Sensor {
     }
 
     private Coordinates look(Coordinates position, double heading) {
-        Optional<Coordinates> result = map.look( position, heading, 350);
+        System.out.println( "Scanning heading: "+Math.toDegrees(heading));
+        Optional<Coordinates> result = map.look(position, heading, 350);
         return result.orElse(Coordinates.fromRadians(heading, Double.POSITIVE_INFINITY));
     }
 
