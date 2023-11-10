@@ -2,6 +2,7 @@ package org.xenei.robot.planner;
 
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -26,41 +27,75 @@ public class Planner {
     private final Stack<PlanRecord> path;
 
     public Planner(Sensor sensor) {
+        this(sensor, null);
+    }
+
+    /**
+     * Constructor for testing and internal use.  DO NOT USE
+     * @param sensor
+     */
+    Planner(Sensor sensor, Coordinates target) {
         this.sensor = sensor;
         this.map = new PlannerMap();
         this.lock = new ReentrantLock();
         this.sensed = new TreeSet<>(Coordinates.XYCompr);
         this.path = new Stack<>();
+        this.target = target;
     }
 
     /**
-     * call the sensors and add the results to the map.
+     * Call the sensors and add the results to the map.
      * 
      * @param position our current position.
      */
-    private void sense(Position position) {
+    void sense(Position position) {
         Position qPosition = position.quantize();
-        Set<Coordinates> sensedSet = Arrays.stream(sensor.sense(position)).filter(c -> c.getRange() > 1.0)
-                .map(c -> c.quantize().plus(qPosition.coordinates())).filter(sensed::add).filter(c -> {
+        // get the sensor readings and add arcs to the map
+        //@formatter:off
+        Arrays.stream(sensor.sense(position))
+                // filter out any range < 1.0
+                .filter(c -> c.getRange() > 1.0)
+                // create absolute coordinates
+                .map(c -> {
+                    LOG.debug( "Checking "+c.toString());
+                    Coordinates result = position.coordinates().plus(c).quantize();
+                    return result;
+                    })
+                // add the coordinates to the sensed list.
+                .filter( sensed::add )
+                // if the coordinate is in the map remove it.
+                .filter(c -> {
                     LOG.debug("Sensed {}", c);
                     map.remove(c);
                     return true;
-                }).collect(Collectors.toSet());
-        for (Coordinates absolute : sensedSet) {
-            Optional<Coordinates> free = not(absolute, qPosition.coordinates());
-            if (free.isPresent()) {
-                LOG.debug("Mapped {}", free.get());
-                map.add(new PlanRecord(free.get(), free.get().distanceTo(target)));
-            }
-        }
+                })
+                // adjust to a free location
+                .map(c -> not(c, qPosition.coordinates()))
+                // filter out non entries
+                .filter(c -> c.isPresent())
+                // add to Map
+               .forEach( o -> {
+                   Coordinates c = o.get();
+                   Coordinates qP = qPosition.coordinates();
+                   LOG.debug("Mapped {}", c);
+                   map.add( c, c.distanceTo(target));
+                   map.path( c, qP );
+               });
+        //@formatter::on
     }
 
-    private Optional<Coordinates> not(Coordinates pos, Coordinates position) {
-        Coordinates direct0 = pos.minus(position);
+    /**
+     * Finds an open position closer to the position from the badCell
+     * @param badCell the position not be be in.
+     * @param position The location to be closer to.
+     * @return Either an open cell or an empty optional.
+     */
+    private Optional<Coordinates> not(Coordinates badCell, Coordinates position) {
+        Coordinates direct0 = badCell.minus(position);
         Coordinates direct = Coordinates.fromRadians(direct0.getThetaRadians(), direct0.getRange() - 1);
         Coordinates qCandidate = position.plus(direct).quantize();
         if (sensed.contains(qCandidate)) {
-            Coordinates adjustment = qCandidate.minus(pos);
+            Coordinates adjustment = qCandidate.minus(badCell);
             int xAdj = 0;
             int yAdj = 0;
             if (adjustment.getX() == 0) {
@@ -89,51 +124,68 @@ public class Planner {
         return Optional.of(qCandidate);
     }
 
-    public Collection<Coordinates> getPlanRecords() {
+    public Collection<PlanRecord> getPlanRecords() {
         return map.getPlanRecords();
     }
 
-    public List<Coordinates> getPath() {
-        return path.stream().map(PlanRecord::position).collect(Collectors.toList());
+    public List<PlanRecord> getPath() {
+        return Collections.unmodifiableList(path);
     }
 
-    public void updatePath(Coordinates position) {
-        double distance = path.peek().position().distanceTo(position);
-        path.stream().forEach(p -> p.setMaskingCost(p.cost() + distance));
-        path.push(map.getOrAddPlanRecord(position, target));
+    public void updatePath(Coordinates coord) {
+        Coordinates qC = coord.quantize();
+        PlanRecord pr = new PlanRecord(qC, qC.distanceTo(target));
+        map.add(pr.coordinates(), pr.cost());
+        if (!path.isEmpty()) {
+            map.path(path.peek().coordinates(), qC);
+        }
+        path.push(pr);
     }
 
-    public Optional<Coordinates> step(Position position) {
-        Position qPosition = position.quantize();
+    /**
+     * Plans a step.  Returns the best location to move to basd on the current position.
+     * @param currentPosition 
+     * @return Coordinates of the best location.
+     */
+    public Optional<Coordinates> step(Position currentPosition) {
+        Position qPosition = currentPosition.quantize();
         lock.lock();
         try {
-            // map.remove(position);
-            sense(position);
-            return map.getBest(qPosition.coordinates()).map(PlanRecord::position);
+            sense(currentPosition);
+            return map.getBest(qPosition.coordinates()).map(PlanRecord::coordinates);
         } finally {
             lock.unlock();
         }
     }
 
+    /**
+     * Set the target for the planner.  
+     * Setting the target causes the current plan path to be cleared and a new plan 
+     * started.
+     * @param target The coordinates to head toward.
+     * @param position the current position.
+     */
     public void setTarget(Coordinates target, Position position) {
         lock.lock();
         path.clear();
         try {
-            this.target = target;
+            map.reset(target.quantize());;
             position = position.quantize();
-            if (map.isEmpty()) {
-                sense(position);
-            } else {
-                map.update(target);
-            }
-            PlanRecord planRecord = map.getOrAddPlanRecord(position.coordinates(), target);
+            sense(position);
+            path.push(map.add(position.coordinates(), position.coordinates().distanceTo(target)));
+            PlanRecord planRecord = new PlanRecord(position.coordinates(), position.coordinates().distanceTo(target));
             path.push(planRecord);
         } finally {
             lock.unlock();
         }
     }
 
+    /**
+     * Get the set of sensed records.  This is the set of all coordinates that
+     * have been detected as having an obstacle.
+     * @return the set of detected obstacles.
+     */
     public Set<Coordinates> getSensed() {
-        return sensed;
+        return Collections.unmodifiableSet(sensed);
     }
 }

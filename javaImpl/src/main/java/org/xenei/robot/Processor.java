@@ -27,6 +27,10 @@ public class Processor implements Runnable {
         this.running = false;
     }
 
+    /**
+     * Calculates the next step and moves to it.
+     * @return The location after the movement. or empty if there is no move to take.
+     */
     public Optional<Position> step() {
         Optional<Coordinates> nextLoc = planner.step(mover.position());
         if (nextLoc.isEmpty()) {

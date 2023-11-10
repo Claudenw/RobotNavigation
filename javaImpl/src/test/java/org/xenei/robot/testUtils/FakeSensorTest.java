@@ -42,5 +42,9 @@ public class FakeSensorTest {
             System.out.println(c);
 
         assertArrayEquals(expected, actual.toArray());
+        
+        postition = new Position(Coordinates.fromXY(12, 15), Math.PI);
+        actual = Arrays.stream(new FakeSensor(map).sense(postition)).collect(Collectors.toSet());
+        actual.forEach( z -> System.out.println(z));
     }
 }

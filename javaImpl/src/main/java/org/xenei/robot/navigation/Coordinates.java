@@ -2,8 +2,9 @@ package org.xenei.robot.navigation;
 
 import java.util.Comparator;
 
-public class Coordinates {
+import org.apache.jena.rdf.model.Resource;
 
+public class Coordinates {
     private Integer hashCode = null;
     private final double theta;
     private final double range;
@@ -27,6 +28,9 @@ public class Coordinates {
     };
 
     public static final double normalize(double angle) {
+        if (Double.isNaN(angle)) {
+            return 0.0;
+        }
         // should this account for NaN?
         return Math.atan2(Math.sin(angle), Math.cos(angle));
     }
@@ -56,7 +60,7 @@ public class Coordinates {
         return (Double.doubleToLongBits(d) & 0x8000000000000000L) != 0;
     }
 
-    protected Coordinates(double theta, double range, double x, double y) {
+    private Coordinates(double theta, double range, double x, double y) {
         double t = normalize(theta);
         boolean yNeg = isNeg(y);
         boolean tNeg = isNeg(t);

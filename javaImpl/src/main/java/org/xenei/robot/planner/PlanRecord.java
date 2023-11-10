@@ -5,13 +5,13 @@ import java.util.Comparator;
 import org.xenei.robot.navigation.Coordinates;
 
 public class PlanRecord {
-    private Coordinates position;
+    private Coordinates coordinates;
     private double cost;
     private double maskingCost;
 
     public static Comparator<PlanRecord> CostCompr = (one, two) -> {
         int x = Double.compare(one.cost, two.cost);
-        return x == 0 ? Coordinates.RangeCompr.compare(one.position, two.position) : x;
+        return x == 0 ? Coordinates.RangeCompr.compare(one.coordinates, two.coordinates) : x;
     };
 
     /**
@@ -20,20 +20,20 @@ public class PlanRecord {
      * @param cost distance to target.
      */
     public PlanRecord(Coordinates position, double cost) {
-        this.position = position;
+        this.coordinates = position;
         this.cost = cost;
         this.maskingCost = Double.NaN;
     }
 
     @Override
     public int hashCode() {
-        return position.hashCode();
+        return coordinates.hashCode();
     }
 
     @Override
     public boolean equals(Object pr) {
         if (pr instanceof PlanRecord) {
-            return position.equals(((PlanRecord) pr).position);
+            return coordinates.equals(((PlanRecord) pr).coordinates);
         }
         return false;
     }
@@ -54,8 +54,8 @@ public class PlanRecord {
         return Double.isNaN(maskingCost) ? cost : maskingCost;
     }
 
-    public Coordinates position() {
-        return position;
+    public Coordinates coordinates() {
+        return coordinates;
     }
 
     public void setImpossible() {
@@ -64,6 +64,6 @@ public class PlanRecord {
 
     @Override
     public String toString() {
-        return String.format("PlanRecord[%s, cost:%.4f]", position, cost());
+        return String.format("PlanRecord[%s, cost:%.4f]", coordinates, cost());
     }
 }

@@ -48,7 +48,11 @@ public class Position {
         this.heading = radians;
     }
 
-   
+    /**
+     * Calculates the next position.
+     * @param cmd The relative coordinates to move to.
+     * @return the new Position with a heading the same as the cmd.
+     */
     public Position nextPosition(Coordinates cmd) {
         if (cmd.getRange() == 0) {
             return new Position(this.coordinates.getX(), this.coordinates.getY(), cmd.getThetaRadians());

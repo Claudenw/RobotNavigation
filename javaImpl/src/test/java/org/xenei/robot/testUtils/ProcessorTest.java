@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 import org.xenei.robot.Processor;
 import org.xenei.robot.navigation.Coordinates;
 import org.xenei.robot.navigation.Position;
+import org.xenei.robot.planner.PlanRecord;
 import org.xenei.robot.utils.CoordinateMap;
 import org.xenei.robot.utils.CoordinateMapBuilder;
 import org.xenei.robot.utils.Mover;
@@ -38,14 +39,15 @@ public class ProcessorTest {
         processor.getPlanner().getPath().forEach(c -> LOG.info(c.toString()));
         LOG.info("Sensed");
         processor.getPlanner().getSensed().forEach(c -> LOG.info(c.toString()));
-
     }
 
     private static void displayMap(CoordinateMap initialMap, Position p) {
         CoordinateMap map = new CoordinateMapBuilder(initialMap.scale()).merge(initialMap).build();
         map.enable(processor.getPlanner().getSensed(), '@');
-        map.enable(processor.getPlanner().getPlanRecords(), '*');
-        map.enable(processor.getPlanner().getPath(), '=');
+        processor.getPlanner().getPlanRecords().stream().map(PlanRecord::coordinates)
+        .forEach( c -> map.enable(c, '*'));
+        processor.getPlanner().getPath().stream().map( PlanRecord::coordinates )
+        .forEach( c -> map.enable(c, '='));
         map.enable(p.coordinates(), '+');
         LOG.debug("\n{}", map.toString());
         LOG.debug(p.toString());
