@@ -4,15 +4,10 @@ import java.util.Comparator;
 
 import org.xenei.robot.navigation.Coordinates;
 
-public class PlanRecord {
+public class PlanRecord implements Comparable<PlanRecord> {
     private Coordinates coordinates;
     private double cost;
     private double maskingCost;
-
-    public static Comparator<PlanRecord> CostCompr = (one, two) -> {
-        int x = Double.compare(one.cost, two.cost);
-        return x == 0 ? Coordinates.RangeCompr.compare(one.coordinates, two.coordinates) : x;
-    };
 
     /**
      * 
@@ -65,5 +60,11 @@ public class PlanRecord {
     @Override
     public String toString() {
         return String.format("PlanRecord[%s, cost:%.4f]", coordinates, cost());
+    }
+
+    @Override
+    public int compareTo(PlanRecord other) {
+            int x = Double.compare(cost, other.cost);
+            return x == 0 ? Coordinates.XYCompr.compare(coordinates, other.coordinates) : x;
     }
 }

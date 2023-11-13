@@ -9,6 +9,7 @@ public class DoubleUtils {
     public static final double RADIANS_45 = Math.PI / 4;
     public static final double RADIANS_90 = 2 * RADIANS_45;
     public static final double RADIANS_135 = 3 * RADIANS_45;
+    public static final double RADIANS_180 = Math.PI;
     public static final double RADIANS_225 = -RADIANS_135;
     public static final double RADIANS_270 = -RADIANS_90;
     public static final double RADIANS_315 = -RADIANS_45;

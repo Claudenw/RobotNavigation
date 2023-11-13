@@ -9,7 +9,6 @@ import java.util.Set;
 import java.util.Stack;
 import java.util.TreeSet;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,13 +24,16 @@ public class Planner {
     private final ReentrantLock lock;
     private final Set<Coordinates> sensed;
     private final Stack<PlanRecord> path;
+    // experimentall ascertained in PositionTest.collisiontTest.
+    private final static double POINT_RADIUS = 0.57;
 
     public Planner(Sensor sensor) {
         this(sensor, null);
     }
 
     /**
-     * Constructor for testing and internal use.  DO NOT USE
+     * Constructor for testing and internal use. DO NOT USE
+     * 
      * @param sensor
      */
     Planner(Sensor sensor, Coordinates target) {
@@ -48,40 +50,47 @@ public class Planner {
      * 
      * @param position our current position.
      */
-    void sense(Position position) {
+    boolean sense(Position position) {
         Position qPosition = position.quantize();
+        boolean[] collisionFlag = { false };
+        LOG.trace("Sense position: {}", qPosition);
         // get the sensor readings and add arcs to the map
         //@formatter:off
-        Arrays.stream(sensor.sense(position))
+        Arrays.stream(sensor.sense(qPosition))
                 // filter out any range < 1.0
                 .filter(c -> c.getRange() > 1.0)
                 // create absolute coordinates
                 .map(c -> {
-                    LOG.debug( "Checking "+c.toString());
+                    LOG.trace( "Checking {}", c);
                     Coordinates result = position.coordinates().plus(c).quantize();
-                    return result;
+                    LOG.trace("Sensed {}", result);
+                    collisionFlag[0] |= registerObstacle(position, result);
+                    return not(result, qPosition.coordinates());
                     })
-                // add the coordinates to the sensed list.
-                .filter( sensed::add )
-                // if the coordinate is in the map remove it.
-                .filter(c -> {
-                    LOG.debug("Sensed {}", c);
-                    map.remove(c);
-                    return true;
-                })
-                // adjust to a free location
-                .map(c -> not(c, qPosition.coordinates()))
                 // filter out non entries
-                .filter(c -> c.isPresent())
+                .filter(c -> c.isPresent() && !c.get().equals(qPosition.coordinates()))
                 // add to Map
                .forEach( o -> {
                    Coordinates c = o.get();
                    Coordinates qP = qPosition.coordinates();
-                   LOG.debug("Mapped {}", c);
+                   LOG.trace("Mapped {}", c);
                    map.add( c, c.distanceTo(target));
-                   map.path( c, qP );
+                   map.path( qP, c );
                });
         //@formatter::on
+        return collisionFlag[0];
+    }
+    
+
+    
+    private boolean registerObstacle(Position position, Coordinates obstacle) {
+        sensed.add(obstacle);
+        map.remove(obstacle);
+        boolean result = position.checkCollision(obstacle, POINT_RADIUS, sensor.maxRange());
+        if (result) {
+            LOG.info("Collision detected at {}", obstacle);
+        }
+        return result;
     }
 
     /**
@@ -152,7 +161,11 @@ public class Planner {
         lock.lock();
         try {
             sense(currentPosition);
-            return map.getBest(qPosition.coordinates()).map(PlanRecord::coordinates);
+            Optional<PlanRecord> selected = map.getBest(qPosition.coordinates());
+            if (selected.isPresent()) {
+                map.updateTargetWeight(qPosition.coordinates(), selected.get().coordinates(), selected.get().cost());
+            }
+            return selected.map(PlanRecord::coordinates);
         } finally {
             lock.unlock();
         }
@@ -171,6 +184,7 @@ public class Planner {
         try {
             map.reset(target.quantize());;
             position = position.quantize();
+            this.target = target;
             sense(position);
             path.push(map.add(position.coordinates(), position.coordinates().distanceTo(target)));
             PlanRecord planRecord = new PlanRecord(position.coordinates(), position.coordinates().distanceTo(target));
@@ -188,4 +202,13 @@ public class Planner {
     public Set<Coordinates> getSensed() {
         return Collections.unmodifiableSet(sensed);
     }
+    
+    /**
+     * For testing only
+     * @return
+     */
+    public PlannerMap getMap() {
+         return map;
+    }
+   
 }

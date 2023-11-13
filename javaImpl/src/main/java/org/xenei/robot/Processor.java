@@ -36,6 +36,7 @@ public class Processor implements Runnable {
         if (nextLoc.isEmpty()) {
             return Optional.empty();
         }
+        
         Optional<Position> result = Optional.of(mover.move(nextLoc.get().minus(mover.position().coordinates())));
         if (result.isPresent()) {
             planner.updatePath(result.get().coordinates().quantize());

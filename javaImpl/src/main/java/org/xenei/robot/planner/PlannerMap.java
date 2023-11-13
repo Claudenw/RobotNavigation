@@ -1,29 +1,22 @@
 package org.xenei.robot.planner;
 
+import java.io.ByteArrayOutputStream;
 import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
-import java.util.function.Function;
-import java.util.function.Predicate;
-import java.util.stream.Collectors;
 
-import org.apache.commons.lang3.tuple.Pair;
 import org.apache.jena.arq.querybuilder.ExprFactory;
 import org.apache.jena.arq.querybuilder.Order;
 import org.apache.jena.arq.querybuilder.SelectBuilder;
 import org.apache.jena.arq.querybuilder.UpdateBuilder;
 import org.apache.jena.atlas.logging.Log;
+import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Node;
-import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.query.ARQ;
+import org.apache.jena.query.Dataset;
 import org.apache.jena.query.DatasetFactory;
-import org.apache.jena.query.QueryExecException;
 import org.apache.jena.query.QueryExecution;
 import org.apache.jena.query.QueryExecutionFactory;
 import org.apache.jena.query.QuerySolution;
@@ -35,53 +28,48 @@ import org.apache.jena.rdf.model.Property;
 import org.apache.jena.rdf.model.Resource;
 import org.apache.jena.rdf.model.ResourceFactory;
 import org.apache.jena.rdf.model.Statement;
+import org.apache.jena.riot.Lang;
 import org.apache.jena.sparql.core.Var;
 import org.apache.jena.sparql.engine.ExecutionContext;
 import org.apache.jena.sparql.engine.QueryIterator;
 import org.apache.jena.sparql.engine.binding.Binding;
-import org.apache.jena.sparql.expr.NodeValue;
-import org.apache.jena.sparql.expr.nodevalue.NodeFunctions;
-import org.apache.jena.sparql.function.FunctionBase2;
-import org.apache.jena.sparql.function.FunctionRegistry;
-import org.apache.jena.sparql.pfunction.PFuncAssignToSubject;
 import org.apache.jena.sparql.pfunction.PropFuncArg;
 import org.apache.jena.sparql.pfunction.PropFuncArgType;
-import org.apache.jena.sparql.pfunction.PropertyFunction;
 import org.apache.jena.sparql.pfunction.PropertyFunctionEval;
-import org.apache.jena.sparql.pfunction.PropertyFunctionFactory;
 import org.apache.jena.sparql.pfunction.PropertyFunctionRegistry;
 import org.apache.jena.sparql.util.IterLib;
+import org.apache.jena.update.Update;
 import org.apache.jena.update.UpdateExecutionFactory;
 import org.apache.jena.vocabulary.RDF;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xenei.robot.navigation.Coordinates;
-import org.xenei.robot.utils.CoordinateGraph;
-
 
 public class PlannerMap {
     private static final Logger LOG = LoggerFactory.getLogger(PlannerMap.class);
     private Model points;
+    private Dataset data;
     private Model complete;
-    
+
     private static class Namespace {
         public static final String URI = "urn:org.xenei.robot:";
-        public static final Resource Coord = ResourceFactory.createResource(URI+"Coord");
-        public static final Property x = ResourceFactory.createProperty(URI+"x");
-        public static final Property y = ResourceFactory.createProperty(URI+"y");
-        public static final Property path =  ResourceFactory.createProperty(URI+"path");
-        public static final Property targetRange = ResourceFactory.createProperty(URI+"targetRange");
-        public static final Property distF = ResourceFactory.createProperty(URI+"fn:dist");
-        
+        public static final Resource Coord = ResourceFactory.createResource(URI + "Coord");
+        public static final Property x = ResourceFactory.createProperty(URI + "x");
+        public static final Property y = ResourceFactory.createProperty(URI + "y");
+        public static final Property path = ResourceFactory.createProperty(URI + "path");
+        public static final Property weight = ResourceFactory.createProperty(URI + "weight");
+        public static final Property distF = ResourceFactory.createProperty(URI + "fn:dist");
+
         static {
-        final PropertyFunctionRegistry reg = PropertyFunctionRegistry.chooseRegistry(ARQ.getContext());
-        reg.put(URI+"fn#dist", Dist.class);
-        PropertyFunctionRegistry.set(ARQ.getContext(), reg);
+            final PropertyFunctionRegistry reg = PropertyFunctionRegistry.chooseRegistry(ARQ.getContext());
+            reg.put(distF.getURI(), Dist.class);
+            PropertyFunctionRegistry.set(ARQ.getContext(), reg);
         }
     }
-    
+
     PlannerMap() {
         points = ModelFactory.createDefaultModel();
+        data  = DatasetFactory.create(points);
         complete = ModelFactory.createDefaultModel();
     }
 
@@ -89,27 +77,34 @@ public class PlannerMap {
         return points.isEmpty();
     }
 
+    private Update updatePoints(Update update) {
+        UpdateExecutionFactory.create(update, data).execute();
+        return update;
+    }
+    
     private Resource asRDF(Coordinates a) {
         Coordinates qA = a.quantize();
         Model result = ModelFactory.createDefaultModel();
         String uri = String.format("uri:org.xenei.robot.coord/%s/%s", qA.getX(), qA.getY());
         Resource r = result.createResource(uri, Namespace.Coord);
-        r.addLiteral( Namespace.x, qA.getX());
-        r.addLiteral( Namespace.y, qA.getX());
+        r.addLiteral(Namespace.x, qA.getX());
+        r.addLiteral(Namespace.y, qA.getY());
         return r;
     }
-    
+
     public PlanRecord add(Coordinates coordinates, double targetRange) {
         Resource qA = asRDF(coordinates);
         complete.add(qA.getModel());
-        qA.addLiteral( Namespace.targetRange, targetRange);
-        points.removeAll( qA, Namespace.targetRange, null);
+        qA.addLiteral(Namespace.weight, targetRange);
+        points.removeAll(qA, Namespace.weight, null);
         points.add(qA.getModel());
-        return new PlanRecord( coordinates, targetRange);
+        LOG.debug( "Added {}", coordinates );
+        return new PlanRecord(coordinates, targetRange);
     }
-    
+
     /**
      * Add the plan record to the map
+     * 
      * @param record the plan record to add
      * @return true if the record updated the map, false otherwise.
      */
@@ -118,39 +113,69 @@ public class PlannerMap {
         Resource rB = asRDF(b);
 
         Statement stmt = complete.createStatement(rA, Namespace.path, rB);
-        if (!points.contains(stmt))
-        {
+        if (!points.contains(stmt)) {
             points.add(rA.getModel());
             points.add(rB.getModel());
             points.add(stmt);
+            points.add(rB, Namespace.path, rA);
             complete.add(rA.getModel());
             complete.add(rB.getModel());
             complete.add(stmt);
-            LOG.debug("Added {}", stmt);
+            LOG.debug("Path {}", stmt);
             return true;
         }
         return false;
     }
+
+    private static String shortString(Coordinates c) {
+        return String.format("%.1f/%.1f", c.getX(), c.getY());
+    }
     
     /**
+     * Updates the toUpdate record to be the cost+distance(updateFom, toUpdate)
+     * @param toUpdate the node to update
+     * @param updateFrom the node forcing the update
+     * @param cost the cost from the updating node to the target.
+     */
+    public void updateTargetWeight(Coordinates toUpdate, Coordinates updateFrom, double cost) {
+        LOG.debug("{} is updatating {} weight to {}", shortString(updateFrom), shortString(toUpdate), cost);
+        LOG.debug( "BEFORE \n{}", costModel());
+        Resource updt = asRDF(toUpdate);
+        Resource updtFrm = asRDF(updateFrom);
+        Var weight = Var.alloc("weight");
+        Var dist = Var.alloc("dist");
+        ExprFactory exprF = new ExprFactory();
+        updatePoints( new UpdateBuilder().addDelete(updt, Namespace.weight, dist)
+                .addWhere(updt, Namespace.weight, dist ).build());
+        updatePoints(new UpdateBuilder().addInsert(updt, Namespace.weight, weight)
+                .addWhere(dist, Namespace.distF, List.of(updt, updtFrm))
+                .addBind(exprF.add(cost, dist), weight)
+                .build());
+        LOG.debug( "AFTER \n{}", costModel());
+    }
+
+    /**
      * Remove the position from the map.
+     * 
      * @param coord the coordinated to remove from the map.
      */
     public void remove(Coordinates coord) {
         Resource r = asRDF(coord);
         if (points.contains(r, RDF.type, Namespace.Coord)) {
-            points.removeAll( r, null, null );
+            points.removeAll(r, null, null);
             points.removeAll(null, null, r);
             LOG.debug("Removed: {}", coord);
         }
-        complete.removeAll( r, null, null );
+        complete.removeAll(r, null, null);
         complete.removeAll(null, null, r);
     }
 
     /**
      * Calculate the best next position based on the map and current coordinates.
+     * 
      * @param currentCoords the current coordinates
-     * @return Optional containing either either the PlanRecord for the next position, or empty if none found.
+     * @return Optional containing either either the PlanRecord for the next
+     * position, or empty if none found.
      */
     public Optional<PlanRecord> getBest(Coordinates currentCoords) {
         if (points.isEmpty()) {
@@ -162,150 +187,230 @@ public class PlannerMap {
         Var y = Var.alloc("y");
         Var cost = Var.alloc("cost");
         Var dist = Var.alloc("dist");
-        Var delta = Var.alloc("delta");
         Var other = Var.alloc("other");
+        Var weight = Var.alloc("weight");
         ExprFactory exprF = new ExprFactory();
-        SelectBuilder sb = new SelectBuilder()
-                .addVar(x).addVar(y).addBind( exprF.add(dist, delta), cost)
-                .addWhere(current, Namespace.path, other)
-                .addWhere(delta, Namespace.distF, exprF.asList( current, other ))
-                .addWhere(other, Namespace.x, x)
-                .addWhere(other, Namespace.y, y)
-                .addWhere(other, Namespace.targetRange, dist)
-                .addOrderBy(cost, Order.ASCENDING)
-                .setLimit(1);
-
         
-        SortedSet<PlanRecord> candidates = new TreeSet<PlanRecord>();
+        SelectBuilder sb = new SelectBuilder().addVar(x).addVar(y).addVar(cost)
+                .addVar(dist).addVar(weight)
+                .addWhere(current, Namespace.path, other)
+                .addWhere(other, Namespace.x, x).addWhere(other, Namespace.y, y)
+                .addWhere(other, Namespace.weight, weight)
+                .addWhere(dist, Namespace.distF, List.of(current, other))
+                .addBind(exprF.add( dist, weight), cost)
+                .addOrderBy(cost, Order.ASCENDING).addFilter(exprF.ne(other, current));
+
+        if (!LOG.isDebugEnabled()) {
+            sb.setLimit(1);
+        }
 
         try (QueryExecution qexec = QueryExecutionFactory.create(sb.build(), points)) {
-          ResultSet results = qexec.execSelect() ;
-          if (results.hasNext())
-          {
-            QuerySolution soln = results.nextSolution() ;
-            Literal lX = soln.getLiteral(x.getName()) ;
-            Literal lY = soln.getLiteral(y.getName()) ; 
-            Literal lD = soln.getLiteral(cost.getName()) ;
-            PlanRecord rec = new PlanRecord(Coordinates.fromXY(lX.getDouble(), lY.getDouble()), lD.getDouble());
-            LOG.debug("getBest() -> {}", rec );
-            return Optional.of(rec);
-          }
+            ResultSet results = qexec.execSelect();
+            if (results.hasNext()) {
+                QuerySolution soln = results.nextSolution();
+                Literal lX = soln.getLiteral(x.getName());
+                Literal lY = soln.getLiteral(y.getName());
+                Literal lD = soln.getLiteral(cost.getName());
+                if (LOG.isDebugEnabled()) {
+                    LOG.debug("getBest: {}/{} cost:{} = {}  + {}", soln.getLiteral(x.getName()).getDouble(),
+                            soln.getLiteral(y.getName()).getDouble(), 
+                            soln.getLiteral(cost.getName()).getDouble(),
+                            soln.getLiteral(dist.getName()).getDouble(), soln.getLiteral(weight.getName()).getDouble());
+                    while (results.hasNext()) {
+                        soln = results.nextSolution();
+                        LOG.debug("getBest: {}/{} cost:{} = {}  + {}", soln.getLiteral(x.getName()).getDouble(),
+                                soln.getLiteral(y.getName()).getDouble(), 
+                                soln.getLiteral(cost.getName()).getDouble(),
+                                soln.getLiteral(dist.getName()).getDouble(), soln.getLiteral(weight.getName()).getDouble());
+                    }
+                }
+                PlanRecord rec = new PlanRecord(Coordinates.fromXY(lX.getDouble(), lY.getDouble()), lD.getDouble());
+                LOG.debug("getBest() -> {}", rec);
+                return Optional.of(rec);
+            }
         }
         LOG.debug("No Selected map points");
         return Optional.empty();
     }
-    
+
+    /**
+     * Reset the target position. Builds a new map from all known points.
+     * 
+     * @param target the New target.
+     */
     public void reset(Coordinates target) {
+        LOG.debug("reset: {}", target);
+        // create a new map from all the known points
         points = ModelFactory.createDefaultModel();
+        data = DatasetFactory.create(points);
         points.add(complete);
+        // Add the target to the map.
         Resource targetResource = asRDF(target);
         points.add(targetResource.getModel());
-        ExprFactory exprF = new ExprFactory();
-        Var dist = Var.alloc("dist");
+        // set all the ranges.
+        Var weight = Var.alloc("weight");
         Var other = Var.alloc("other");
-        UpdateBuilder ub = new UpdateBuilder() 
-            .addInsert( other, Namespace.targetRange, dist )
-            .addWhere( other, RDF.type, Namespace.Coord)
-            .addWhere( dist, Namespace.distF, exprF.asList(other,targetResource));
-        UpdateExecutionFactory.create(ub.build(), DatasetFactory.create(points)).execute();
+        updatePoints(new UpdateBuilder().addInsert(other, Namespace.weight, weight)
+                .addWhere(other, RDF.type, Namespace.Coord)
+                .addWhere(weight, Namespace.distF, List.of(other, targetResource)).build());
     }
-    
+
     public Collection<PlanRecord> getPlanRecords() {
         Var x = Var.alloc("x");
         Var y = Var.alloc("y");
-        Var dist = Var.alloc("dist");
+        Var weight = Var.alloc("weight");
         Var other = Var.alloc("other");
-        SelectBuilder sb = new SelectBuilder()
-                .addVar(x).addVar(y).addVar(dist)
-                .addWhere(other, RDF.type, Namespace.Coord)
-                .addWhere(other, Namespace.x, x)
-                .addWhere(other, Namespace.y, y)
-                .addWhere(other, Namespace.targetRange, dist);
+        SelectBuilder sb = new SelectBuilder().addVar(x).addVar(y).addVar(weight)
+                .addWhere(other, RDF.type, Namespace.Coord).addWhere(other, Namespace.x, x)
+                .addWhere(other, Namespace.y, y).addWhere(other, Namespace.weight, weight);
 
-        
         SortedSet<PlanRecord> candidates = new TreeSet<PlanRecord>();
         try (QueryExecution qexec = QueryExecutionFactory.create(sb.build(), points)) {
-          ResultSet results = qexec.execSelect() ;
-          for ( ; results.hasNext() ; )
-          {
-            QuerySolution soln = results.nextSolution() ;
-            Literal lX = soln.getLiteral(x.getName()) ;
-            Literal lY = soln.getLiteral(y.getName()) ; 
-            Literal lD = soln.getLiteral(dist.getName()) ;
-            PlanRecord pr = new PlanRecord(Coordinates.fromXY(lX.getDouble(), lY.getDouble()), lD.getDouble());
-            candidates.add(pr);
-          }
+            ResultSet results = qexec.execSelect();
+            for (; results.hasNext();) {
+                QuerySolution soln = results.nextSolution();
+                Literal lX = soln.getLiteral(x.getName());
+                Literal lY = soln.getLiteral(y.getName());
+                Literal lD = soln.getLiteral(weight.getName());
+                PlanRecord pr = new PlanRecord(Coordinates.fromXY(lX.getDouble(), lY.getDouble()), lD.getDouble());
+                candidates.add(pr);
+            }
         }
         return candidates;
     }
-    
-    public class Dist extends PropertyFunctionEval
-    {
-        public Dist(PropFuncArgType subjArgType, PropFuncArgType objFuncArgType) {
-            super(subjArgType, objFuncArgType);
-        }
-        
-//        @Override
-//        public Node calc(Node node) {
-//            // TODO Auto-generated method stub
-//            return null;
-//        }
 
-        private double getValue(Node a, Node p) {
-            return (Double) a.getGraph().find( a, p, Node.ANY).next().getObject().getLiteralValue();
+    public static class Dist extends PropertyFunctionEval {
+        public Dist() {
+            super(PropFuncArgType.PF_ARG_SINGLE, PropFuncArgType.PF_ARG_LIST);
         }
-        
-        
+
+        private double getValue(Graph g, Node a, Node p) {
+            return (Double) g.find(a, p, Node.ANY).next().getObject().getLiteralValue();
+        }
+
         @Override
         public QueryIterator execEvaluated(Binding binding, PropFuncArg argSubject, Node predicate,
                 PropFuncArg argObject, ExecutionContext execCxt) {
-         // Subject bound to something other a literal. 
-            if ( !argSubject.isNode() || argSubject.getArg().isURI() || argSubject.getArg().isBlank() ) {
-                Log.warn(this, "Invalid subject type") ;
-                return IterLib.noResults(execCxt) ;
+            // Subject bound to something other a literal.
+            if (!argSubject.isNode() || argSubject.getArg().isURI() || argSubject.getArg().isBlank()) {
+                Log.warn(this, "Invalid subject type");
+                return IterLib.noResults(execCxt);
             }
-            
+
             if (!argObject.isList()) {
                 Log.warn(this, "Invalid object type");
-                return IterLib.noResults(execCxt) ;
+                return IterLib.noResults(execCxt);
             }
-            
+
             List<Node> args = argObject.getArgList();
-            if (args.size()!= 2) {
-                Log.warn(this, "Expected 2 arguments") ;
-                return IterLib.noResults(execCxt) ;
+            if (args.size() != 2) {
+                Log.warn(this, "Expected 2 arguments");
+                return IterLib.noResults(execCxt);
             }
-            
 
             if (!args.get(0).isURI()) {
-                Log.warn(this, "Object argument 0 must be URI") ;
-                return IterLib.noResults(execCxt) ;
+                Log.warn(this, "Object argument 0 must be URI");
+                return IterLib.noResults(execCxt);
             }
             if (!args.get(1).isURI()) {
-                Log.warn(this, "Object argument 1 must be URI") ;
-                return IterLib.noResults(execCxt) ;
+                Log.warn(this, "Object argument 1 must be URI");
+                return IterLib.noResults(execCxt);
             }
-            
 
-            //Graph graph = execCxt.getActiveGraph();
-        
+            Graph graph = execCxt.getActiveGraph();
 
-            double deltaX = getValue(args.get(0), Namespace.x.asNode()) - getValue(args.get(1), Namespace.x.asNode());
-            double deltaY = getValue(args.get(0), Namespace.y.asNode()) - getValue(args.get(1), Namespace.y.asNode());
-            double value = Math.sqrt( (deltaX*deltaX) + (deltaY*deltaY));
+            double deltaX = getValue(graph, args.get(0), Namespace.x.asNode())
+                    - getValue(graph, args.get(1), Namespace.x.asNode());
+            double deltaY = getValue(graph, args.get(0), Namespace.y.asNode())
+                    - getValue(graph, args.get(1), Namespace.y.asNode());
+            double value = Math.sqrt((deltaX * deltaX) + (deltaY * deltaY));
             Node nValue = ResourceFactory.createTypedLiteral(value).asNode();
 
             Node subject = argSubject.getArg();
-            if ( Var.isVar(subject) ) {
+            if (Var.isVar(subject)) {
                 return IterLib.oneResult(binding, Var.alloc(subject), nValue, execCxt);
             }
-        
+
             // Subject bound : check it.
-            if ( subject.equals(nValue) )
-                return IterLib.result(binding, execCxt) ;
-            return IterLib.noResults(execCxt) ;
-            
-            
+            if (subject.equals(nValue))
+                return IterLib.result(binding, execCxt);
+            return IterLib.noResults(execCxt);
+
         }
+    }
+
+    public Model getModel() {
+        return points;
+    }
+
+    public String dotModel() {
+        Var x1 = Var.alloc("x1");
+        Var y1 = Var.alloc("y1");
+        Var x2 = Var.alloc("x2");
+        Var y2 = Var.alloc("y2");
+        Var dist = Var.alloc("dist");
+        Var node1 = Var.alloc("node1");
+        Var node2 = Var.alloc("node2");
+        SelectBuilder sb = new SelectBuilder().addVar(x1).addVar(y1).addVar(x2).addVar(y2).addVar(dist)
+                .addWhere(node1, RDF.type, Namespace.Coord).addWhere(node1, Namespace.x, x1)
+                .addWhere(node1, Namespace.y, y1).addWhere(node1, Namespace.path, node2)
+                .addWhere(node2, Namespace.x, x2).addWhere(node2, Namespace.y, y2)
+                .addWhere(dist, Namespace.distF, List.of(node1, node2)).addFilter(new ExprFactory().gt(dist, 0));
+
+        StringBuilder result = new StringBuilder();
+        try (QueryExecution qexec = QueryExecutionFactory.create(sb.build(), points)) {
+            ResultSet results = qexec.execSelect();
+            for (; results.hasNext();) {
+                QuerySolution soln = results.nextSolution();
+                result.append(String.format("\"%.0f-%.0f\" -> \"%.0f-%.0f\" [weight=%s]\n",
+                        soln.getLiteral(x1.getName()).getDouble(), soln.getLiteral(y1.getName()).getDouble(),
+                        soln.getLiteral(x2.getName()).getDouble(), soln.getLiteral(y2.getName()).getDouble(),
+                        1/soln.getLiteral(dist.getName()).getDouble()));
+            }
+        }
+        return result.toString();
+    }
+    
+    public String costModel() {
+        Var x1 = Var.alloc("x1");
+        Var y1 = Var.alloc("y1");
+        Var x2 = Var.alloc("x2");
+        Var y2 = Var.alloc("y2");
+        Var dist = Var.alloc("dist");
+        Var weight = Var.alloc("weight");
+        Var cost = Var.alloc("cost");
+        Var node1 = Var.alloc("node1");
+        Var node2 = Var.alloc("node2");
+        ExprFactory exprF = new ExprFactory();
+        SelectBuilder sb = new SelectBuilder().addVar(x1).addVar(y1).addVar(x2).addVar(y2).addVar(cost)
+                .addVar(dist).addVar(weight)
+                .addWhere(node1, RDF.type, Namespace.Coord).addWhere(node1, Namespace.x, x1)
+                .addWhere(node1, Namespace.y, y1).addWhere(node1, Namespace.path, node2)
+                .addWhere(node2, Namespace.x, x2).addWhere(node2, Namespace.y, y2)
+                .addWhere(node2, Namespace.weight, weight)
+                .addWhere(dist, Namespace.distF, List.of(node1, node2))
+                .addBind(exprF.add( dist, weight), cost)
+                .addFilter(exprF.gt(dist, 0));
+
+        StringBuilder result = new StringBuilder();
+        try (QueryExecution qexec = QueryExecutionFactory.create(sb.build(), points)) {
+            ResultSet results = qexec.execSelect();
+            for (; results.hasNext();) {
+                QuerySolution soln = results.nextSolution();
+                result.append(String.format("\"%.0f-%.0f\" -> \"%.0f-%.0f\" cost=%s dist=%s weight=%s\n",
+                        soln.getLiteral(x1.getName()).getDouble(), soln.getLiteral(y1.getName()).getDouble(),
+                        soln.getLiteral(x2.getName()).getDouble(), soln.getLiteral(y2.getName()).getDouble(),
+                        soln.getLiteral(cost.getName()).getDouble(),
+                        soln.getLiteral(dist.getName()).getDouble(),
+                        soln.getLiteral(weight.getName()).getDouble()));
+            }
+        }
+        return result.toString();
+    }
+    
+    public String dumpModel() {
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        points.write(bos, Lang.TURTLE.getName());
+        return bos.toString();
     }
 }

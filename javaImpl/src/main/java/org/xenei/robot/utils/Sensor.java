@@ -12,4 +12,6 @@ public interface Sensor {
      * @return an array of Coordinates of obstacles relative to the position.
      */
     Coordinates[] sense(Position position);
+    
+    double maxRange();
 }

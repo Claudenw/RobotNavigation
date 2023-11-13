@@ -1,7 +1,11 @@
 package org.xenei.robot.navigation;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.xenei.robot.testUtils.DoubleUtils.DELTA;
 import static org.xenei.robot.testUtils.DoubleUtils.RADIANS_135;
 import static org.xenei.robot.testUtils.DoubleUtils.RADIANS_225;
@@ -247,24 +251,26 @@ public class CoordinatesTest {
 
         List<Coordinates> lst = Arrays.asList(data);
         for (int i = 0; i < 3; i++) {
+            final int idx = i;
             lst = lst.stream().map(c -> Coordinates.fromDegrees(c.getThetaDegrees(), c.getRange() + 0.1))
                     .collect(Collectors.toList());
             for (Coordinates c : lst) {
-                assertEquals("fails at " + i, origin, c);
-                assertEquals("fails at " + i + " " + c, origin.hashCode(), c.hashCode());
+                assertEquals(origin, c, ()->"fails at " + idx);
+                assertEquals(origin.hashCode(), c.hashCode(), ()->"fails at " + idx + " " + c);
             }
         }
         lst = lst.stream().map(c -> Coordinates.fromDegrees(c.getThetaDegrees(), c.getRange() + 0.1))
                 .collect(Collectors.toList());
         for (int i = 0; i < lst.size(); i++) {
+            final int idx = i;
             Coordinates c = lst.get(i);
             // negatvie coordinates of .5 distance are in.
             // positive coordinates of .5 distance are out.
             if (i == 0 || i == 2 || i == 8) {
                 assertNotEquals(origin, c);
             } else {
-                assertEquals("fails at " + i, origin, c);
-                assertEquals("fails at " + i + " " + c, origin.hashCode(), c.hashCode());
+                assertEquals(origin, c, ()->"fails at " + idx);
+                assertEquals(origin.hashCode(), c.hashCode(), ()->"fails at " + idx + " " + c);
             }
         }
         lst = lst.stream().map(c -> Coordinates.fromDegrees(c.getThetaDegrees(), c.getRange() + 0.1))
@@ -272,14 +278,15 @@ public class CoordinatesTest {
 
         for (int j = 0; j < 2; j++) {
             for (int i = 0; i < lst.size(); i++) {
+                final int idx = i;
                 Coordinates c = lst.get(i);
                 // negative coordinates of .5 distance are in.
                 // positive coordinates of .5 distance are out.
                 if (i % 2 == 0) {
                     assertNotEquals(origin, c);
                 } else {
-                    assertEquals("fails at " + i, origin, c);
-                    assertEquals("fails at " + i + " " + c, origin.hashCode(), c.hashCode());
+                    assertEquals(origin, c, ()->"fails at " + idx);
+                    assertEquals(origin.hashCode(), c.hashCode(), ()->"fails at " + idx + " " + c);
                 }
             }
 
@@ -308,4 +315,49 @@ public class CoordinatesTest {
                 Arguments.of(Coordinates.fromXY(0, 0), Coordinates.fromDegrees(45, 1), Coordinates.fromDegrees(45, 1)));
     }
 
+    @ParameterizedTest
+    @MethodSource("overlapCoordinates")
+    public void overlapTest(boolean state, Coordinates a, Coordinates b, double range) {
+        if (state) {
+            assertTrue( a.overlap(b, range), () -> "Should not overlap "+b);
+        } else {
+            assertFalse( a.overlap(b, range), () -> "Should overlap "+b);
+        }
+    }
+    
+    private static final int X1=0;
+    private static final int Y1=1;
+    private static final int X2=2;
+    private static final int Y2=3;
+    private static final int R=4;
+    private static Stream<Arguments> overlapCoordinates() {
+        double[][] trueSet = {
+                {0, 0, -.5, 0, 1}, {0, 0, 0, 0, 1}, {0, 0, .5, 0, 1},
+                {0, 0, 0, -.5, 1}, {0, 0, 0, .5, 1}};
+        double[][] falseSet = {{0, 0, -1.5, 0, 1}, {0, 0, 1.5, 0, 1},
+                {0, 0, 0, -1.5, 1}, {0, 0, 0, 1.5, 1}};
+        
+        List<Arguments> args = new ArrayList<>();
+        for (int x = -1; x<2;x++) {
+            for (int y = -1; y<2; y++){
+                for (double[] pattern : trueSet)
+                {
+                    args.add( Arguments.of( true, 
+                            Coordinates.fromXY(pattern[X1]+x, pattern[Y1]+y),
+                            Coordinates.fromXY(pattern[X2]+x, pattern[Y2]+y),
+                            pattern[R]));
+                  
+                }
+                for (double[] pattern : falseSet)
+                {
+                    args.add( Arguments.of( false, 
+                            Coordinates.fromXY(pattern[X1]+x, pattern[Y1]+y),
+                            Coordinates.fromXY(pattern[X2]+x, pattern[Y2]+y),
+                            pattern[R]));
+                  
+                }
+            }
+        }
+        return args.stream();
+    }
 }

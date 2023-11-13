@@ -1,7 +1,9 @@
 package org.xenei.robot.testUtils;
 
+import java.io.ByteArrayOutputStream;
 import java.util.Optional;
 
+import org.apache.jena.riot.Lang;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xenei.robot.Processor;
@@ -39,6 +41,10 @@ public class ProcessorTest {
         processor.getPlanner().getPath().forEach(c -> LOG.info(c.toString()));
         LOG.info("Sensed");
         processor.getPlanner().getSensed().forEach(c -> LOG.info(c.toString()));
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        processor.getPlanner().getMap().getModel().write(bos, Lang.TURTLE.getName());
+        LOG.debug( "\n"+bos.toString());
+        LOG.debug( "\n{}", processor.getPlanner().getMap().dotModel());
     }
 
     private static void displayMap(CoordinateMap initialMap, Position p) {

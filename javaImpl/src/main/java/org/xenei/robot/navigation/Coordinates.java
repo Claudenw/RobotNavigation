@@ -2,7 +2,9 @@ package org.xenei.robot.navigation;
 
 import java.util.Comparator;
 
+import org.apache.commons.math3.util.Precision;
 import org.apache.jena.rdf.model.Resource;
+import org.xenei.robot.utils.DoubleUtils;
 
 public class Coordinates {
     private Integer hashCode = null;
@@ -55,15 +57,10 @@ public class Coordinates {
         this.quantized = other.quantized;
     }
 
-    // bitmasking negative number check
-    private static boolean isNeg(double d) {
-        return (Double.doubleToLongBits(d) & 0x8000000000000000L) != 0;
-    }
-
     private Coordinates(double theta, double range, double x, double y) {
         double t = normalize(theta);
-        boolean yNeg = isNeg(y);
-        boolean tNeg = isNeg(t);
+        boolean yNeg = DoubleUtils.isNeg(y);
+        boolean tNeg = DoubleUtils.isNeg(t);
 
         if (yNeg && !tNeg) {
             t -= Math.PI;
@@ -160,5 +157,10 @@ public class Coordinates {
         double x = this.x - other.x;
         double y = this.y - other.y;
         return Coordinates.fromXY(x, y);
+    }
+    
+    public final boolean overlap(Coordinates other, double range) {
+        double distance = distanceTo(other);
+        return Precision.equals(distance, 0, range+Precision.EPSILON);
     }
 }
