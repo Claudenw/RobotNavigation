@@ -1,7 +1,5 @@
 package org.xenei.robot.planner;
 
-import java.util.Comparator;
-
 import org.xenei.robot.navigation.Coordinates;
 
 public class PlanRecord implements Comparable<PlanRecord> {
@@ -32,11 +30,11 @@ public class PlanRecord implements Comparable<PlanRecord> {
         }
         return false;
     }
-    
+
     public void setMaskingCost(double value) {
         maskingCost = value;
     }
-    
+
     public void clearMaskingCost() {
         maskingCost = Double.NaN;
     }
@@ -64,7 +62,7 @@ public class PlanRecord implements Comparable<PlanRecord> {
 
     @Override
     public int compareTo(PlanRecord other) {
-            int x = Double.compare(cost, other.cost);
-            return x == 0 ? Coordinates.XYCompr.compare(coordinates, other.coordinates) : x;
+        int x = Double.compare(cost, other.cost);
+        return x == 0 ? Coordinates.XYCompr.compare(coordinates, other.coordinates) : x;
     }
 }

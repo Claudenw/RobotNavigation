@@ -27,7 +27,7 @@ public class ProcessorTest {
         FakeSensor sensor = new FakeSensor(MapLibrary.map1('#'));
         processor = new Processor(sensor, mover);
         Coordinates target = Coordinates.fromXY(0, 0);
-        processor.gotoTarget(target);
+        processor.setTarget(target);
         Optional<Position> p = Optional.of(mover.position());
         for (int i = 0; i < 5; i++) {
             // while (p.isPresent()) {
@@ -44,7 +44,9 @@ public class ProcessorTest {
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
         processor.getPlanner().getMap().getModel().write(bos, Lang.TURTLE.getName());
         LOG.debug( "\n"+bos.toString());
-        LOG.debug( "\n{}", processor.getPlanner().getMap().dotModel());
+        StringBuilder sb = new StringBuilder();
+        processor.getPlanner().getMap().costModel().forEach( l -> sb.append( l.toString()).append("\n"));
+        LOG.debug( "\n{}", sb.toString());
     }
 
     private static void displayMap(CoordinateMap initialMap, Position p) {
@@ -55,8 +57,8 @@ public class ProcessorTest {
         processor.getPlanner().getPath().stream().map( PlanRecord::coordinates )
         .forEach( c -> map.enable(c, '='));
         map.enable(p.coordinates(), '+');
-        LOG.debug("\n{}", map.toString());
-        LOG.debug(p.toString());
+        LOG.info("\n{}", map.toString());
+        LOG.info(p.toString());
     }
 
 }

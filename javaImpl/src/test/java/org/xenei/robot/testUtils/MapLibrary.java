@@ -55,6 +55,16 @@ public class MapLibrary {
         return b.build();
     }
 
+    public static CoordinateMap map2(char c) {
+        CoordinateMapBuilder b = new CoordinateMapBuilder(1);
+
+        b.border( -5, -5, 9, 9, c );
+        
+        b.setX(-1, -3, 1, c);
+
+        return b.build();
+    }
+
     public static void main(String[] args) {
         System.out.println(map1('#'));
     }

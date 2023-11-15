@@ -1,103 +1,99 @@
 package org.xenei.robot.planner;
 
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
-import static org.xenei.robot.testUtils.DoubleUtils.DELTA;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 import java.util.Optional;
-import java.util.stream.Stream;
+import java.util.Set;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
 import org.xenei.robot.navigation.Coordinates;
+import org.xenei.robot.navigation.Point;
 import org.xenei.robot.navigation.Position;
 import org.xenei.robot.testUtils.FakeSensor;
 import org.xenei.robot.testUtils.MapLibrary;
 import org.xenei.robot.utils.CoordinateMap;
 
 public class PlannerTest {
-    
-    private CoordinateMap map = MapLibrary.map1('#');
-    private FakeSensor sensor = new FakeSensor(map);
-    
+
     private Planner underTest;
 
-
     @Test
-    public void SenseTest() {
-        Coordinates origin = Coordinates.fromXY(0,0);
-        for (int x=0;x<=13;x++) {
-            for (int y=0;y<=15;y++) {
-                Coordinates c = Coordinates.fromXY(x, y);
-                if (!map.isEnabled(c)) {
-                    underTest = new Planner( sensor, origin);
-                    underTest.sense(new Position(c, 0));
-                    for( Coordinates c2 : underTest.getSensed()) {
-                        assertTrue( "error with: "+c.toString(), map.isEnabled(c2));
-                    }
-                }
-            }
+    public void senseTest() {
+       
+        CoordinateMap map = MapLibrary.map2('#');
+        FakeSensor sensor = new FakeSensor(map);
+        Coordinates finalCoord = Coordinates.fromXY(-1, 1);
+        Coordinates startCoord = Coordinates.fromXY(-1, -3);
+        Position position = new Position(startCoord);
+        underTest = new Planner(sensor, finalCoord);
+        Set<Coordinates> result = underTest.sense(position);
+        for (Point pos : PlannerMapTest.expected) {
+            Coordinates c = Coordinates.fromXY(pos);
+            assertTrue(result.contains(c), () -> String.format("Missing coord %s", c));
+            Optional<PlanRecord> pr = underTest.getMap().getPlanRecord(c);
+            assertTrue(pr.isPresent(), () -> "Plan record " + c + " is missing.");
+        }
+        assertEquals(finalCoord, underTest.getTarget());
+        System.out.println( underTest.getMap().dumpModel());
+        for (Point pos : PlannerMapTest.obstacles) {
+            Coordinates c = Coordinates.fromXY(pos);
+            assertTrue(underTest.getMap().isObstacle(c), () -> String.format("Missing obstacle %s", c));
         }
     }
 
     @Test
     public void setTargetTest() {
-        Coordinates origin = Coordinates.fromXY(0,0);
+        CoordinateMap map = MapLibrary.map1('#');
+        FakeSensor sensor = new FakeSensor(map);
+        Coordinates origin = Coordinates.fromXY(0, 0);
         Position position = new Position(origin, 0);
-        for (int x=0;x<=13;x++) {
-            for (int y=0;y<=15;y++) {
+        for (int x = 0; x <= 13; x++) {
+            for (int y = 0; y <= 15; y++) {
                 Coordinates c = Coordinates.fromXY(x, y);
                 if (!map.isEnabled(c)) {
-                    underTest = new Planner( sensor, origin);
+                    underTest = new Planner(sensor, origin);
                     underTest.setTarget(c, position);
                     verifyState();
-                    assertEquals( position.coordinates(), underTest.getPath().get(0).coordinates());
+                    assertEquals(position.coordinates(), underTest.getPath().get(0).coordinates());
                 }
             }
         }
     }
-    
+
     private CoordinateMap verifyState() {
-        for( Coordinates c : underTest.getSensed()) {
-            assertTrue( c+" should have been sensed.", map.isEnabled(c));
+        CoordinateMap map = MapLibrary.map1('#');
+        FakeSensor sensor = new FakeSensor(map);
+        for (Coordinates c : underTest.getSensed()) {
+            assertTrue(map.isEnabled(c), () -> c + " should have been sensed.");
         }
         CoordinateMap sensedMap = new CoordinateMap(map.scale());
         sensedMap.enable(underTest.getSensed(), 'x');
-        
+
         for (PlanRecord pr : underTest.getPlanRecords()) {
-            assertFalse( "Plan record "+pr+" should not have been sensed", sensedMap.isEnabled(pr.coordinates()));
+            assertFalse(sensedMap.isEnabled(pr.coordinates()),
+                    () -> "Plan record " + pr + " should not have been sensed");
         }
-        
+
         for (PlanRecord pr : underTest.getPath()) {
-            assertFalse( "Path record "+pr+" should not have been enabled", sensedMap.isEnabled(pr.coordinates()));
+            assertFalse(sensedMap.isEnabled(pr.coordinates()),
+                    () -> "Path record " + pr + " should not have been enabled");
         }
         return sensedMap;
     }
-    
+
     @Test
-    public void stepTest() {        
-        for (int x=0;x<=13;x++) {
-            for (int y=0;y<=15;y++) {
-                Coordinates target = (x == 0 && y==0) ? Coordinates.fromXY(13, 15) : 
-                    Coordinates.fromXY(0, 0);
-                Position position = new Position( Coordinates.fromXY(x, y), 0);
-                if (!map.isEnabled(position.coordinates())) {
-                    underTest = new Planner(sensor, target);
-                    Optional<Coordinates> result = underTest.step(position);
-                    CoordinateMap sensedMap = verifyState();
-                    assertTrue(result.isPresent());
-                    assertFalse(sensedMap.isEnabled(result.get()));
-                }
-            }
-        }
+    public void stepTest() {
+        CoordinateMap map = MapLibrary.map2('#');
+        FakeSensor sensor = new FakeSensor(map);
+        Coordinates finalCoord = Coordinates.fromXY(-1, 1);
+        Coordinates startCoord = Coordinates.fromXY(-1, -3);
+        Position position = new Position(startCoord);
+        System.out.println(map);
+        underTest = new Planner(sensor);
+        underTest.setTarget(finalCoord, position);
+        boolean cont = underTest.step(position);
+        assertTrue(cont);
     }
 }

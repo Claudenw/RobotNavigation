@@ -3,20 +3,18 @@ package org.xenei.robot.navigation;
 import java.util.Comparator;
 
 import org.apache.commons.math3.util.Precision;
-import org.apache.jena.rdf.model.Resource;
 import org.xenei.robot.utils.DoubleUtils;
 
 public class Coordinates {
     private Integer hashCode = null;
     private final double theta;
     private final double range;
-    private final double x;
-    private final double y;
+    private final Point point;
     private final boolean quantized;
 
     public static Comparator<Coordinates> XYCompr = (one, two) -> {
-        int x = Double.compare(one.x, two.x);
-        return x == 0 ? Double.compare(one.y, two.y) : x;
+        int x = Double.compare(one.point.x, two.point.x);
+        return x == 0 ? Double.compare(one.point.y, two.point.y) : x;
     };
 
     public static Comparator<Coordinates> ThetaCompr = (one, two) -> {
@@ -49,11 +47,14 @@ public class Coordinates {
         return new Coordinates(Math.atan(y / x), Math.sqrt(x * x + y * y), x, y);
     }
 
+    public static final Coordinates fromXY(Point p) {
+        return fromXY(p.x, p.y);
+    }
+    
     protected Coordinates(Coordinates other) {
         this.theta = other.theta;
         this.range = other.range;
-        this.x = other.x;
-        this.y = other.y;
+        this.point = other.point;
         this.quantized = other.quantized;
     }
 
@@ -69,11 +70,10 @@ public class Coordinates {
         }
         this.theta = t;
         this.range = range;
-        this.x = x;
-        this.y = y;
-        this.quantized = this.x == Math.round(this.x) && this.y == Math.round(this.y);
+        this.point = new Point(x,y);
+        this.quantized = this.point.x == Math.round(this.point.x) && this.point.y == Math.round(this.point.y);
     }
-    
+
     public boolean isQuantized() {
         return this.quantized;
     }
@@ -85,8 +85,8 @@ public class Coordinates {
     }
 
     public double distanceTo(Coordinates other) {
-        double newX = this.x - other.x;
-        double newY = this.y - other.y;
+        double newX = this.point.x - other.point.x;
+        double newY = this.point.y - other.point.y;
         return Math.sqrt(newX * newX + newY * newY);
     }
 
@@ -94,9 +94,9 @@ public class Coordinates {
         if (quantized) {
             return this;
         }
-        long qX = Math.round(this.x);
-        long qY = Math.round(this.y);
-        if (x == qX && y == qY) {
+        long qX = Math.round(point.x);
+        long qY = Math.round(point.y);
+        if (point.x == qX && point.y == qY) {
             return this;
         }
         return Coordinates.fromXY(qX, qY);
@@ -116,7 +116,7 @@ public class Coordinates {
         if (other instanceof Coordinates) {
             Coordinates c = ((Coordinates) other).quantize();
             Coordinates q = this.quantize();
-            return q.hashCode() == c.hashCode() && q.x == c.x && q.y == c.y;
+            return q.hashCode() == c.hashCode() && q.point.equals(c.point);
         }
         return false;
     }
@@ -133,34 +133,34 @@ public class Coordinates {
         return range;
     }
 
+    public Point getPoint() {
+        return point;
+    }
+    
     public double getX() {
-        return x;
+        return point.x;
     }
 
     public double getY() {
-        return y;
+        return point.y;
     }
 
     @Override
     public String toString() {
-        return String.format("Coordinates[x:%.4f,y:%.4f r:%.4f theta:%.4f (%.4f)]", x, y, range, theta,
+        return String.format("Coordinates[ %s r:%.4f theta:%.4f (%.4f)]", point.toString(4), range, theta,
                 getThetaDegrees());
     }
 
     public final Coordinates plus(Coordinates other) {
-        double x = this.x + other.x;
-        double y = this.y + other.y;
-        return Coordinates.fromXY(x, y);
+        return Coordinates.fromXY(this.point.plus(other.point));
     }
 
     public final Coordinates minus(Coordinates other) {
-        double x = this.x - other.x;
-        double y = this.y - other.y;
-        return Coordinates.fromXY(x, y);
+        return Coordinates.fromXY(this.point.minus(other.point));
     }
-    
+
     public final boolean overlap(Coordinates other, double range) {
         double distance = distanceTo(other);
-        return Precision.equals(distance, 0, range+Precision.EPSILON);
+        return Precision.equals(distance, 0, range + Precision.EPSILON);
     }
 }
