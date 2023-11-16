@@ -10,6 +10,7 @@ public final class Point {
         this.y = y;
         this.hashCode = Double.hashCode(Math.sqrt(x * 2 + y * 2));
     }
+    
 
     @Override
     public String toString() {

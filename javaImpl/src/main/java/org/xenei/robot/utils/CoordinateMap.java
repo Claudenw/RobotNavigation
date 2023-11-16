@@ -6,6 +6,8 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 
 import org.xenei.robot.navigation.Coordinates;
+import org.xenei.robot.navigation.Point;
+import org.xenei.robot.planner.PlannerMap;
 
 public class CoordinateMap {
     SortedSet<Coord> points;
@@ -55,6 +57,12 @@ public class CoordinateMap {
     public String toString() {
         return stringBuilder().toString();
 
+    }
+    
+    public void populate(PlannerMap map) {
+        for (Coord c : points) {
+            map.setObstacle(c.asPoint());
+        }
     }
 
     /**
@@ -132,6 +140,10 @@ public class CoordinateMap {
         public int compareTo(Coord other) {
             int result = -1 * Integer.compare(y, other.y);
             return result == 0 ? Integer.compare(x, other.x) : result;
+        }
+        
+        public Point asPoint() {
+            return new Point(x,y);
         }
     }
 }

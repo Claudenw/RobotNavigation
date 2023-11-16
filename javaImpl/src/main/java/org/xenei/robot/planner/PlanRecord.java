@@ -5,7 +5,10 @@ import org.xenei.robot.navigation.Coordinates;
 public class PlanRecord implements Comparable<PlanRecord> {
     private Coordinates coordinates;
     private double cost;
-    private double maskingCost;
+    
+    public PlanRecord(Coordinates position, Coordinates target) {
+        this(position,  position.distanceTo(target));
+    }
 
     /**
      * 
@@ -15,7 +18,6 @@ public class PlanRecord implements Comparable<PlanRecord> {
     public PlanRecord(Coordinates position, double cost) {
         this.coordinates = position;
         this.cost = cost;
-        this.maskingCost = Double.NaN;
     }
 
     @Override
@@ -31,28 +33,16 @@ public class PlanRecord implements Comparable<PlanRecord> {
         return false;
     }
 
-    public void setMaskingCost(double value) {
-        maskingCost = value;
-    }
-
-    public void clearMaskingCost() {
-        maskingCost = Double.NaN;
-    }
-
     /**
      * 
      * @return distance to target
      */
     public double cost() {
-        return Double.isNaN(maskingCost) ? cost : maskingCost;
+        return cost;
     }
 
     public Coordinates coordinates() {
         return coordinates;
-    }
-
-    public void setImpossible() {
-        cost = Double.POSITIVE_INFINITY;
     }
 
     @Override

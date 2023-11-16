@@ -6,6 +6,7 @@ import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.rdf.model.Property;
 import org.apache.jena.rdf.model.Resource;
 import org.apache.jena.rdf.model.ResourceFactory;
+import org.apache.jena.sparql.core.Var;
 import org.apache.jena.sparql.pfunction.PropertyFunctionRegistry;
 import org.xenei.robot.navigation.Coordinates;
 import org.xenei.robot.navigation.Point;
@@ -20,8 +21,13 @@ public class Namespace {
     public static final Property x = ResourceFactory.createProperty(URI + "x");
     public static final Property y = ResourceFactory.createProperty(URI + "y");
     public static final Property path = ResourceFactory.createProperty(URI + "path");
-    public static final Property weight = ResourceFactory.createProperty(URI + "weight");
+    public static final Property distance = ResourceFactory.createProperty(URI + "distance");
+    public static final Property adjustment =  ResourceFactory.createProperty(URI + "adjustment");
     public static final Property distF = ResourceFactory.createProperty(URI + "fn:dist");
+    
+    public static final Var s = Var.alloc("s");
+    public static final Var p = Var.alloc("p");
+    public static final Var o = Var.alloc("o");
 
     private static final String POINT_URI_FMT = URI+"point:%.0f:%.0f";
     static {
@@ -29,6 +35,7 @@ public class Namespace {
         reg.put(distF.getURI(), Dist.class);
         PropertyFunctionRegistry.set(ARQ.getContext(), reg);
     }
+    
     
     public static Resource urlOf(Point p) {
         return ResourceFactory.createResource( String.format(POINT_URI_FMT, p.x, p.y) );

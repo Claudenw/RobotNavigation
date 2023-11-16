@@ -9,6 +9,8 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
+import java.util.function.Consumer;
+import java.util.function.Function;
 
 import org.apache.jena.arq.querybuilder.AbstractQueryBuilder;
 import org.apache.jena.arq.querybuilder.AskBuilder;
@@ -26,12 +28,13 @@ import org.apache.jena.query.ResultSet;
 import org.apache.jena.rdf.model.Literal;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
+import org.apache.jena.rdf.model.Property;
 import org.apache.jena.rdf.model.Resource;
 import org.apache.jena.rdf.model.ResourceFactory;
 import org.apache.jena.rdf.model.Statement;
 import org.apache.jena.riot.Lang;
 import org.apache.jena.sparql.core.Var;
-import org.apache.jena.sparql.path.Path;
+import org.apache.jena.sparql.expr.Expr;
 import org.apache.jena.update.UpdateExecutionFactory;
 import org.apache.jena.update.UpdateRequest;
 import org.apache.jena.vocabulary.RDF;
@@ -71,9 +74,9 @@ public class PlannerMap {
 
     public PlanRecord add(Coordinates coordinates, double targetRange) {
         Resource qA = Namespace.asRDF(coordinates, Namespace.Coord);
-        data.getNamedModel(Namespace.PlanningModel).removeAll(qA, Namespace.weight, null);
+        data.getNamedModel(Namespace.PlanningModel).removeAll(qA, Namespace.distance, null);
         UpdateBuilder ub = new UpdateBuilder().addInsert(Namespace.BaseModel, qA.getModel())
-                .addInsert(Namespace.PlanningModel, qA, Namespace.weight, targetRange);
+                .addInsert(Namespace.PlanningModel, qA, Namespace.distance, targetRange);
         doUpdate(ub);
 
         LOG.debug("Added {}", coordinates);
@@ -81,11 +84,23 @@ public class PlannerMap {
     }
 
     public void setObstacle(Coordinates coordinates) {
-        Resource r = Namespace.asRDF(coordinates, Namespace.Obst);
-        UpdateRequest req = new UpdateRequest(new UpdateBuilder().addDelete(Namespace.BaseModel, r, null, null)
-                .addDelete(Namespace.BaseModel, null, Namespace.path, r)
-                .addDelete(Namespace.PlanningModel, r, Namespace.weight, null).build());
-        req.add(new UpdateBuilder().addInsert(Namespace.BaseModel, r.getModel()).build());
+        setObstacle(coordinates.getPoint());
+    }
+
+    public void setObstacle(Point point) {
+        Resource r = Namespace.asRDF(point, Namespace.Obst);
+        UpdateRequest req = new UpdateRequest(
+                new UpdateBuilder().addDelete(Namespace.BaseModel, r, Namespace.p, Namespace.o)
+                        .addWhere(r, Namespace.p, Namespace.o).build())
+                                .add(new UpdateBuilder().addDelete(Namespace.BaseModel, Namespace.s, Namespace.path, r)
+                                        .addWhere(Namespace.s, Namespace.path, r).build())
+                                .add(new UpdateBuilder()
+                                        .addDelete(Namespace.PlanningModel, Namespace.s, Namespace.path, r)
+                                        .addWhere(Namespace.s, Namespace.path, r).build())
+                                .add(new UpdateBuilder()
+                                        .addDelete(Namespace.PlanningModel, r, Namespace.distance, Namespace.o)
+                                        .addWhere(r, Namespace.distance, Namespace.o).build())
+                                .add(new UpdateBuilder().addInsert(Namespace.BaseModel, r.getModel()).build());
         doUpdate(req);
     }
 
@@ -124,14 +139,14 @@ public class PlannerMap {
     public Optional<PlanRecord> getPlanRecord(Coordinates coordinates) {
         coordinates = coordinates.quantize();
         Resource qA = Namespace.urlOf(coordinates);
-        Var weight = Var.alloc("weight");
-        SelectBuilder sb = new SelectBuilder().addVar(weight).addWhere(qA, Namespace.weight, weight).addWhere(qA,
+        Var distance = Var.alloc("distance");
+        SelectBuilder sb = new SelectBuilder().addVar(distance).addWhere(qA, Namespace.distance, distance).addWhere(qA,
                 RDF.type, Namespace.Coord);
         try (QueryExecution qexec = doQuery(sb)) {
             ResultSet results = qexec.execSelect();
             if (results.hasNext()) {
                 return Optional
-                        .of(new PlanRecord(coordinates, results.next().getLiteral(weight.getName()).getDouble()));
+                        .of(new PlanRecord(coordinates, results.next().getLiteral(distance.getName()).getDouble()));
             }
             return Optional.empty();
         }
@@ -144,17 +159,27 @@ public class PlannerMap {
      * @return true if the record updated the map, false otherwise.
      */
     public boolean path(Coordinates a, Coordinates b) {
+        return path(Namespace.PlanningModel, a, b);
+    }
+
+    /**
+     * Add the plan record to the map
+     * 
+     * @param record the plan record to add
+     * @return true if the record updated the map, false otherwise.
+     */
+    public boolean path(Resource model, Coordinates a, Coordinates b) {
         Resource rA = Namespace.asRDF(a, Namespace.Coord);
         Resource rB = Namespace.asRDF(b, Namespace.Coord);
 
         Statement stmt = ResourceFactory.createStatement(rA, Namespace.path, rB);
 
-        if (!data.getNamedModel(Namespace.BaseModel).contains(stmt)) {
-            UpdateBuilder ub = new UpdateBuilder().addInsert(Namespace.BaseModel, rA.getModel())
-                    .addInsert(Namespace.BaseModel, rB.getModel())
-                    .addInsert(Namespace.BaseModel, rA, Namespace.path, rB)
-                    .addInsert(Namespace.BaseModel, rB, Namespace.path, rA);
-
+        if (!data.getNamedModel(model).contains(stmt)) {
+            UpdateBuilder ub = new UpdateBuilder().addInsert(model, rA, Namespace.path, rB).addInsert(model, rB,
+                    Namespace.path, rA);
+            if (model.equals(Namespace.BaseModel)) {
+                ub.addInsert(Namespace.BaseModel, rB.getModel()).addInsert(Namespace.BaseModel, rA.getModel());
+            }
             doUpdate(ub);
             LOG.debug("Path {}", stmt);
             return true;
@@ -163,37 +188,75 @@ public class PlannerMap {
     }
 
     public void cutPath(Coordinates a, Coordinates b) {
+        cutPath(Namespace.PlanningModel, a, b);
+    }
+
+    public void cutPath(Resource model, Coordinates a, Coordinates b) {
         Resource rA = Namespace.urlOf(a);
         Resource rB = Namespace.urlOf(b);
 
-        doUpdate(new UpdateBuilder().addDelete(Namespace.BaseModel, rA, Namespace.path, rB)
-                .addDelete(Namespace.BaseModel, rB, Namespace.path, rA));
+        doUpdate(new UpdateBuilder().addDelete(model, rA, Namespace.path, rB).addDelete(model, rB, Namespace.path, rA));
     }
 
     public boolean hasPath(Coordinates a, Coordinates b) {
         PathFactory pathF = new PathFactory();
-        AskBuilder sb = new AskBuilder().addGraph(Namespace.BaseModel, Namespace.urlOf(a),
-                pathF.oneOrMore(Namespace.path), Namespace.urlOf(b));
+        AskBuilder sb = new AskBuilder().addWhere(Namespace.urlOf(a), pathF.oneOrMore(Namespace.path),
+                Namespace.urlOf(b));
 
-        try (QueryExecution exec = QueryExecutionFactory.create(sb.build(), data)) {
+        System.out.println(dumpModel());
+        try (QueryExecution exec = QueryExecutionFactory.create(sb.build(), data.getUnionModel())) {
             return exec.execAsk();
         }
     }
 
     /**
-     * Updates the toUpdate record to be the cost+distance(updateFom, toUpdate)
+     * Select all the obstacles that will collide.
      * 
-     * @param toUpdate the node to update
-     * @param updateFrom the node forcing the update
-     * @param cost the cost from the updating node to the target.
+     * @param obstacle
+     * @param position
+     * @param target
+     * @param maxDist
+     * @return
      */
-    public void updateTargetWeight(Coordinates toUpdate, double cost) {
-        LOG.debug("updatating {} weight to {}", toUpdate.getPoint().toString(1), cost);
-        Resource updt = Namespace.urlOf(toUpdate);
-        UpdateRequest req = new UpdateRequest(
-                new UpdateBuilder().addDelete(Namespace.PlanningModel, updt, Namespace.weight, null).build());
-        req.add(new UpdateBuilder().addInsert(Namespace.PlanningModel, updt, Namespace.weight, cost).build());
-        doUpdate(req);
+    private boolean clearViewFunc(Coordinates obstacle, Coordinates position, Coordinates target, double maxDist) {
+        double dist = target.distanceTo(obstacle);
+        boolean td = target.distanceTo(obstacle) < maxDist;
+        // boolean pd = position.coordinates().distanceTo(obstacle) < maxDist +
+        // CLEAR_VIEW_PADDING;
+        // boolean pc = position.checkCollision(obstacle, Planner.POINT_RADIUS,
+        // maxDist);
+        if (td) {
+            // in range to check
+            return position.checkCollision(obstacle, Coordinates.POINT_RADIUS, maxDist);
+        }
+        return false;
+    }
+
+    public boolean clearView(Coordinates position, Coordinates target) {
+        double maxDist = position.distanceTo(target);
+        /*Predicate<Coordinates> clearViewFunc = (o) -> 
+        target.distanceTo(o) < maxDist && 
+        position.coordinates().distanceTo(o) < maxDist + CLEAR_VIEW_PADDING &&
+        position.checkCollision(o, Planner.POINT_RADIUS, maxDist);
+        */
+        return getObstacles().stream().filter(o -> clearViewFunc(o, position, target, maxDist)).findFirst().isEmpty();
+    }
+
+    /**
+     * Updates the property of the coordinates record in the model to have the
+     * specified value.
+     * 
+     * 
+     * @param model The model to update.
+     * @param c the node to update
+     * @param p the property to update
+     * @param value the value to set the property to.
+     */
+    public void update(Resource model, Coordinates c, Property p, Object value) {
+        LOG.debug("updatating {} {} {} to {}", model.getLocalName(), c.getPoint().toString(1), p.getLocalName(), value);
+        Resource updt = Namespace.urlOf(c);
+        data.getNamedModel(model).removeAll(updt, p, null);
+        doUpdate(new UpdateBuilder().addInsert(model, updt, p, value));
     }
 
     /**
@@ -208,51 +271,82 @@ public class PlannerMap {
             LOG.debug("No map points");
             return Optional.empty();
         }
+        Function<Literal, Double> nullIsZero = (l) -> l == null ? 0.0 : l.getDouble();
         Resource current = Namespace.urlOf(currentCoords);
         Var x = Var.alloc("x");
         Var y = Var.alloc("y");
         Var cost = Var.alloc("cost");
+        // distance from other to target
         Var dist = Var.alloc("dist");
+        // additional adjustment from other to target
+        Var adjustment = Var.alloc("adjustment");
+        // distance curent to other
+        Var codist = Var.alloc("codist");
         Var other = Var.alloc("other");
-        Var weight = Var.alloc("weight");
         ExprFactory exprF = new ExprFactory();
 
-        SelectBuilder sb = new SelectBuilder().addVar(x).addVar(y).addVar(cost).addVar(dist).addVar(weight)
-                .addWhere(current, Namespace.path, other).addWhere(other, Namespace.x, x)
-                .addWhere(other, Namespace.y, y).addWhere(other, Namespace.weight, weight)
-                .addWhere(dist, Namespace.distF, List.of(current, other)).addBind(exprF.add(dist, weight), cost)
+        Expr distCalc = exprF.cond(exprF.bound(adjustment), exprF.add(dist, adjustment), exprF.asExpr(dist));
+        SelectBuilder sb = new SelectBuilder().addVar(x).addVar(y).addVar(cost).addVar(dist).addVar(adjustment)
+                .addVar(codist).addWhere(current, Namespace.path, other).addWhere(other, Namespace.x, x)
+                .addWhere(other, Namespace.y, y).addWhere(other, Namespace.distance, dist)
+                .addOptional(other, Namespace.adjustment, adjustment)
+                .addWhere(codist, Namespace.distF, List.of(current, other)).addBind(exprF.add(distCalc, codist), cost)
                 .addOrderBy(cost, Order.ASCENDING).addFilter(exprF.ne(other, current));
 
-        if (!LOG.isDebugEnabled()) {
-            sb.setLimit(1);
-        }
+//        if (!LOG.isDebugEnabled()) {
+//            sb.setLimit(1);
+//        }
 
+        Optional<PlanRecord> result = Optional.empty();
         try (QueryExecution qexec = doQuery(sb)) {
             ResultSet results = qexec.execSelect();
-            if (results.hasNext()) {
+            Consumer<QuerySolution> log = (sln) -> LOG.debug("getBest({}): {}/{} cost:{} = {}  + {} + {}",
+                    currentCoords, sln.getLiteral(x.getName()).getDouble(), sln.getLiteral(y.getName()).getDouble(),
+                    sln.getLiteral(cost.getName()).getDouble(), sln.getLiteral(dist.getName()).getDouble(),
+                    sln.getLiteral(codist.getName()).getDouble(),
+                    nullIsZero.apply(sln.getLiteral(adjustment.getName())));
+
+            while (results.hasNext()) {
                 QuerySolution soln = results.nextSolution();
                 Literal lX = soln.getLiteral(x.getName());
                 Literal lY = soln.getLiteral(y.getName());
                 Literal lD = soln.getLiteral(cost.getName());
                 if (LOG.isDebugEnabled()) {
-                    LOG.debug("getBest: {}/{} cost:{} = {}  + {}", soln.getLiteral(x.getName()).getDouble(),
-                            soln.getLiteral(y.getName()).getDouble(), soln.getLiteral(cost.getName()).getDouble(),
-                            soln.getLiteral(dist.getName()).getDouble(), soln.getLiteral(weight.getName()).getDouble());
-                    while (results.hasNext()) {
-                        soln = results.nextSolution();
-                        LOG.debug("getBest: {}/{} cost:{} = {}  + {}", soln.getLiteral(x.getName()).getDouble(),
-                                soln.getLiteral(y.getName()).getDouble(), soln.getLiteral(cost.getName()).getDouble(),
-                                soln.getLiteral(dist.getName()).getDouble(),
-                                soln.getLiteral(weight.getName()).getDouble());
+                    log.accept(soln);
+                }
+                if (result.isEmpty()) {
+                    Coordinates candidate = Coordinates.fromXY(lX.getDouble(), lY.getDouble());
+                    if (clearView(currentCoords, candidate)) {
+                        PlanRecord rec = new PlanRecord(candidate, lD.getDouble());
+                        LOG.debug("getBest() -> {}", rec);
+                        result = Optional.of(rec);
+                        if (!LOG.isDebugEnabled()) {
+                            return result;
+                        }
                     }
                 }
-                PlanRecord rec = new PlanRecord(Coordinates.fromXY(lX.getDouble(), lY.getDouble()), lD.getDouble());
-                LOG.debug("getBest() -> {}", rec);
-                return Optional.of(rec);
             }
         }
-        LOG.debug("No Selected map points");
-        return Optional.empty();
+        if (result.isEmpty()) {
+            LOG.debug("No Selected map points");
+        }
+        return result;
+    }
+
+    /**
+     * Update the planning model with new distances based on the new target
+     * 
+     * @param target the new target.
+     */
+    public void recalculate(Coordinates target) {
+        LOG.debug("recalculate: {}", target);
+        Resource targetResource = Namespace.urlOf(target);
+        Var distance = Var.alloc("distance");
+        Var other = Var.alloc("other");
+        data.getNamedModel(Namespace.PlanningModel).removeAll(null, Namespace.distance, null);
+        doUpdate(new UpdateBuilder().addInsert(Namespace.PlanningModel, other, Namespace.distance, distance)
+                .addGraph(Namespace.BaseModel, new WhereBuilder().addWhere(other, RDF.type, Namespace.Coord)
+                        .addWhere(distance, Namespace.distF, List.of(other, targetResource))));
     }
 
     /**
@@ -265,27 +359,31 @@ public class PlannerMap {
         // create a new map from all the known points
         // Add the target to the map.
         Resource targetResource = Namespace.asRDF(target, Namespace.Coord);
-        Var weight = Var.alloc("weight");
+        Var distance = Var.alloc("distance");
         Var other = Var.alloc("other");
+        data.getNamedModel(Namespace.PlanningModel).removeAll();
         UpdateRequest req = new UpdateRequest(
-                new UpdateBuilder().addDelete(Namespace.PlanningModel, null, null, null).build());
-        req.add(new UpdateBuilder().addInsert(Namespace.BaseModel, targetResource.getModel()).build());
-
-        req.add(new UpdateBuilder().addInsert(Namespace.PlanningModel, other, Namespace.weight, weight)
-                .addGraph(Namespace.BaseModel, new WhereBuilder().addWhere(other, RDF.type, Namespace.Coord)
-                        .addWhere(weight, Namespace.distF, List.of(other, targetResource)))
-                .build());
+                new UpdateBuilder().addInsert(Namespace.BaseModel, targetResource.getModel()).build())
+                        .add(new UpdateBuilder().addInsert(Namespace.PlanningModel, other, Namespace.distance, distance)
+                                .addGraph(Namespace.BaseModel,
+                                        new WhereBuilder().addWhere(other, RDF.type, Namespace.Coord).addWhere(distance,
+                                                Namespace.distF, List.of(other, targetResource)))
+                                .build());
         doUpdate(req);
     }
 
     public Collection<PlanRecord> getPlanRecords() {
         Var x = Var.alloc("x");
         Var y = Var.alloc("y");
-        Var weight = Var.alloc("weight");
+        Var distance = Var.alloc("distance");
         Var other = Var.alloc("other");
-        SelectBuilder sb = new SelectBuilder().addVar(x).addVar(y).addVar(weight)
-                .addWhere(other, RDF.type, Namespace.Coord).addWhere(other, Namespace.x, x)
-                .addWhere(other, Namespace.y, y).addWhere(other, Namespace.weight, weight);
+        Var cost = Var.alloc("cost");
+        Var adjustment = Var.alloc("adjustment");
+        ExprFactory exprF = new ExprFactory();
+        SelectBuilder sb = new SelectBuilder().addVar(x).addVar(y).addVar(distance).addWhere(other, Namespace.x, x)
+                .addWhere(other, Namespace.y, y).addWhere(other, Namespace.distance, distance)
+                .addOptional(other, Namespace.adjustment, adjustment).addBind(exprF.add(distance, adjustment), cost)
+                .addOrderBy(cost, Order.ASCENDING);
 
         SortedSet<PlanRecord> candidates = new TreeSet<PlanRecord>();
         try (QueryExecution qexec = doQuery(sb)) {
@@ -294,7 +392,7 @@ public class PlannerMap {
                 QuerySolution soln = results.nextSolution();
                 Literal lX = soln.getLiteral(x.getName());
                 Literal lY = soln.getLiteral(y.getName());
-                Literal lD = soln.getLiteral(weight.getName());
+                Literal lD = soln.getLiteral(distance.getName());
                 PlanRecord pr = new PlanRecord(Coordinates.fromXY(lX.getDouble(), lY.getDouble()), lD.getDouble());
                 candidates.add(pr);
             }
@@ -311,17 +409,17 @@ public class PlannerMap {
         Var y1 = Var.alloc("y1");
         Var x2 = Var.alloc("x2");
         Var y2 = Var.alloc("y2");
-        Var dist = Var.alloc("dist");
-        Var weight = Var.alloc("weight");
+        Var cost = Var.alloc("cost");
+        Var distance = Var.alloc("distance");
         Var node1 = Var.alloc("node1");
         Var node2 = Var.alloc("node2");
         ExprFactory exprF = new ExprFactory();
-        SelectBuilder sb = new SelectBuilder().addVar(x1).addVar(y1).addVar(x2).addVar(y2).addVar(weight)
+        SelectBuilder sb = new SelectBuilder().addVar(x1).addVar(y1).addVar(x2).addVar(y2).addVar(distance)
                 .addWhere(node1, RDF.type, Namespace.Coord).addWhere(node1, Namespace.x, x1)
                 .addWhere(node1, Namespace.y, y1).addWhere(node1, Namespace.path, node2)
                 .addWhere(node2, Namespace.x, x2).addWhere(node2, Namespace.y, y2)
-                .addWhere(node2, Namespace.weight, weight).addWhere(dist, Namespace.distF, List.of(node1, node2))
-                .addFilter(exprF.gt(dist, 0));
+                .addWhere(node2, Namespace.distance, distance).addWhere(cost, Namespace.distF, List.of(node1, node2))
+                .addFilter(exprF.gt(cost, 0));
 
         List<CostModelEntry> result = new ArrayList<>();
         try (QueryExecution qexec = doQuery(sb)) {
@@ -331,7 +429,7 @@ public class PlannerMap {
                 result.add(new CostModelEntry(
                         new Point(soln.getLiteral(x1.getName()).getDouble(), soln.getLiteral(y1.getName()).getDouble()),
                         new Point(soln.getLiteral(x2.getName()).getDouble(), soln.getLiteral(y2.getName()).getDouble()),
-                        soln.getLiteral(weight.getName()).getDouble()));
+                        soln.getLiteral(distance.getName()).getDouble()));
             }
         }
         return result;

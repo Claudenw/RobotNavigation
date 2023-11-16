@@ -1,6 +1,7 @@
 package org.xenei.robot.planner.rdf;
 
 import org.apache.jena.arq.querybuilder.Converters;
+import org.apache.jena.graph.FrontsNode;
 import org.apache.jena.graph.Node;
 import org.apache.jena.shared.PrefixMapping;
 import org.apache.jena.sparql.path.P_Alt;
@@ -50,6 +51,9 @@ public class PathFactory {
         }
         if (o instanceof Node) {
             return new P_Link((Node) o);
+        }
+        if (o instanceof FrontsNode) {
+            return new P_Link(((FrontsNode)o).asNode());
         }
         return makePath(Converters.makeNodeOrPath(o, pMap));
     }

@@ -66,43 +66,7 @@ public class Position {
 
     @Override
     public String toString() {
-        return String.format("Position[ %s heading:%.4f ]", coordinates.toString(), Math.toDegrees(heading));
+        return String.format("Position[ %s heading:%.4f ]", coordinates.getPoint().toString(4), Math.toDegrees(heading));
     }
 
-    /**
-     * Checks if this postion will srike the obstacle within the specified distance.
-     * 
-     * @param obstacle the obstacle to check.
-     * @param radius the size of the obstacle.
-     * @param distance the maximum distance to check.
-     * @return True if the obstacle will be struck fasle otherwise.
-     */
-    public boolean checkCollision(Coordinates obstacle, double radius, double distance) {
-
-        Coordinates m = obstacle.minus(coordinates);
-        double sin = Math.sin(heading);
-        double cos = Math.cos(heading);
-
-        if (distance < m.getRange()) {
-            return false;
-        }
-        if (m.getRange() < radius) {
-            return true;
-        }
-        double d = Math
-                .abs(cos * (coordinates.getY() - obstacle.getY()) - sin * (coordinates.getX() - obstacle.getX()));
-
-        if (d < radius) {
-            // ensure that it is along our heading
-            return rightDirection(cos, m.getX()) && rightDirection(sin, m.getY());
-        }
-        return false;
-    }
-
-    private boolean rightDirection(double trig, double delta) {
-        if (Precision.equals(trig, 0, 2 * Precision.EPSILON)) {
-            return true;
-        }
-        return (trig < 0) ? delta <= 0 : delta >= 0;
-    }
 }

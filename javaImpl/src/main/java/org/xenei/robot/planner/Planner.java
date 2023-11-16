@@ -1,125 +1,136 @@
 package org.xenei.robot.planner;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 import java.util.Stack;
-import java.util.TreeSet;
-import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Stream;
 
 import org.apache.jena.util.iterator.UniqueFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xenei.robot.navigation.Coordinates;
 import org.xenei.robot.navigation.Position;
+import org.xenei.robot.planner.rdf.Namespace;
 import org.xenei.robot.utils.Sensor;
-
 
 public class Planner {
     private static final Logger LOG = LoggerFactory.getLogger(Planner.class);
     private final Stack<Coordinates> target;
     private final Sensor sensor;
     private final PlannerMap map;
-    private final ReentrantLock lock;
-    //private final Set<Coordinates> sensed;
-    private final Stack<PlanRecord> path;
-    // experimentally ascertained in PositionTest.collisiontTest.
-    private final static double POINT_RADIUS = 0.57;
+    private Position currentPosition;
+    private Solution solution;
+    private ObstacleMapper obstacleMapper = new ObstacleMapper();
 
-    public Planner(Sensor sensor) {
-        this(sensor, null);
+    /**
+     * Constructs a planner.
+     * 
+     * @param sensor the sensor to sense environment.
+     * @param startPosition the starting position.
+     */
+    public Planner(Sensor sensor, Position startPosition) {
+        this(sensor, startPosition, null);
     }
 
     /**
-     * Constructor for testing and internal use. DO NOT USE
+     * Constructs a planner.
      * 
-     * @param sensor
+     * @param sensor the sensor to sense environment.
+     * @param startPosition the starting position.
+     * @param target the coordinates of the target to reach.
      */
-    Planner(Sensor sensor, Coordinates target) {
+    public Planner(Sensor sensor, Position startPosition, Coordinates target) {
         this.sensor = sensor;
         this.map = new PlannerMap();
-        this.lock = new ReentrantLock();
-        //this.sensed = new TreeSet<>(Coordinates.XYCompr);
-        this.path = new Stack<>();
         this.target = new Stack<>();
-        this.target.push(target);
+        restart(startPosition);
+        if (target != null) {
+            setTarget(target);
+        }
     }
 
     /**
-     * Call the sensors and add the results to the map.
-     * Updates the paths as necessary.
+     * Sets the current position and resets the solution.
      * 
-     * @param position our current position.
+     * @param position the new current position.
      */
-    Set<Coordinates> sense(Position position) {
-        Position qPosition = position.quantize();
-        boolean[] collisionFlag = { false, false };
-        Set<Coordinates> result = new HashSet<Coordinates>();
-        LOG.trace("Sense position: {}", qPosition);
+    public void changeCurrentPosition(Position position) {
+        this.currentPosition = position.quantize();
+    }
+
+    /**
+     * Sets the current position and resets the solution.
+     * 
+     * @param position the new current position.
+     */
+    public void restart(Position position) {
+        this.currentPosition = position.quantize();
+        map.add(currentPosition.coordinates(),
+                getTarget() == null ? Double.NaN : currentPosition.coordinates().distanceTo(getTarget()));
+        resetSolution();
+    }
+
+    private void resetSolution() {
+        solution = new Solution();
+        if (currentPosition != null) {
+            solution.add(currentPosition.coordinates());
+        }
+    }
+
+    /**
+     * Call the sensors, record obstacles, and return a stream of valid points to
+     * add. Also sets the obstacleMapper if a collision with the current path was
+     * detected.
+     */
+    Stream<Coordinates> sense() {
+        // next target set if collision detected.
+        obstacleMapper.reset();
+        LOG.trace("Sense position: {}", currentPosition);
         // get the sensor readings and add arcs to the map
         //@formatter:off
-        Arrays.stream(sensor.sense(qPosition))
+        return Arrays.stream(sensor.sense(currentPosition))
                 // filter out any range < 1.0
                 .filter(c -> c.getRange() > 1.0)
                 // create absolute coordinates
                 .map(c -> {
                     LOG.trace( "Checking {}", c);
-                    return position.coordinates().plus(c).quantize();
+                    return currentPosition.coordinates().plus(c).quantize();
                 })
                 .filter( new UniqueFilter<Coordinates>() )
-                .map( obstacle -> {
-                    LOG.debug("Sensed {}", obstacle);
-                    collisionFlag[0] = registerObstacle(position, obstacle);
-                    return not(obstacle, qPosition.coordinates());
-                    })
+                .map(obstacleMapper::map)
                 // filter out non entries
-                .filter(c -> c.isPresent() && !c.get().equals(qPosition.coordinates()))
-                // add to Map
-               .forEach( o -> {
-                   Coordinates c = o.get();
-                   map.add( c, c.distanceTo(target.peek()));
-                   if (collisionFlag[0]) {
-                       collisionFlag[1] = true;
-                       LOG.trace("Mapped {}", c);
-                       if (!path.isEmpty()) {
-                           map.path(path.peek().coordinates(), c );
-                           map.cutPath(path.peek().coordinates(), target.peek());
-                       }
-                   }
-                   result.add(c);
-               });
+                .filter(c -> c.isPresent() && !c.get().equals(currentPosition.coordinates()))
+                .map(Optional::get)
+                .filter( new UniqueFilter<Coordinates>() );
         //@formatter::on
-        return collisionFlag[1] || path.isEmpty() ? result : Collections.emptySet();
     }
     
 
-    
-    private boolean registerObstacle(Position position, Coordinates obstacle) {
-        //sensed.add(obstacle);
+    /**
+     * Registers the obstacle on the map and checks if it is on the path we are currently traveling.
+     * @param position the position we are currently at.
+     * @param obstacle the obstacle we may hit.
+     * @return true if the obstacle is on our path.
+     */
+    private boolean registerObstacle(Coordinates obstacle) {
         map.setObstacle(obstacle);
-
-        boolean result = position.checkCollision(obstacle, POINT_RADIUS, sensor.maxRange());
+        boolean result = currentPosition.coordinates().checkCollision(obstacle, Coordinates.POINT_RADIUS, sensor.maxRange());
         if (result) {
-            LOG.info("Future collision detected at {}", obstacle);
+            LOG.info("Future collision from {} detected at {}", currentPosition, obstacle);
         }
         return result;
     }
 
     /**
      * Finds an open position closer to the position from the badCell
-     * @param badCell the position not be be in.
-     * @param position The location to be closer to.
-     * @return Either an open cell or an empty optional.
+     * @param badCell the position of an obstacle or other location not to be in.
+     * @return An optional that contains the nearest open coordinates if any.
      */
-    private Optional<Coordinates> not(Coordinates badCell, Coordinates position) {
-        Coordinates direct0 = badCell.minus(position);
+    private Optional<Coordinates> not(Coordinates badCell) {
+        Coordinates direct0 = badCell.minus(currentPosition.coordinates());
         Coordinates direct = Coordinates.fromRadians(direct0.getThetaRadians(), direct0.getRange() - 1);
-        Coordinates qCandidate = position.plus(direct).quantize();
+        Coordinates qCandidate = currentPosition.coordinates().plus(direct).quantize();
         if (map.isObstacle(qCandidate)) {
             Coordinates adjustment = qCandidate.minus(badCell);
             int xAdj = 0;
@@ -154,68 +165,78 @@ public class Planner {
         return map.getPlanRecords();
     }
 
-    public List<PlanRecord> getPath() {
-        return Collections.unmodifiableList(path);
+    public Solution getSolution() {
+        return solution;
+    }
+    
+    public Position getPosition() {
+        return currentPosition;
     }
 
     /**
-     * Plans a step.  Returns the best location to move to basd on the current position.
+     * Plans a step.  Returns the best location to move to based on the current position.
      * The target position may be updated.
-     * The the best direction is in the target
-     * @param currentPosition 
+     * The best position to head for is in the target.
      * @return true if the target has not been reached. (processing should continue)
      */
-    public boolean step(Position currentPosition) {
-        Position qPosition = currentPosition.quantize();
-        lock.lock();
-        try {
-            if (currentPosition.equals(target.peek())) {
-                target.pop();
-                if (target.isEmpty()) {
-                    return false;
-                }
+    public boolean step() {
+        if (currentPosition.coordinates().equals(target.peek())) {
+            target.pop();
+            if (target.isEmpty()) {
+                solution.add( currentPosition.coordinates());
+                return false;
             }
-            Set<Coordinates> newPoints = sense(currentPosition);
-            if (!newPoints.isEmpty()) {
-                // collision avoided recalculate
-                path.push( new PlanRecord(qPosition.coordinates(), qPosition.coordinates().distanceTo(target.peek())));
-                // add the new points
-                for(Coordinates c : newPoints) {
-                    map.add(c, c.distanceTo(target.peek()));
-                    map.path(qPosition.coordinates(), c);
-                }
-                Optional<PlanRecord> selected = map.getBest(qPosition.coordinates());
-                if (selected.isPresent()) {
-                    map.updateTargetWeight(qPosition.coordinates(), selected.get().cost());
-                    target.push(selected.get().coordinates());
-                }
+            // see if we can get to target directly
+            if (map.clearView(currentPosition.coordinates(), target.peek())) {
+                map.path(target.peek(), currentPosition.coordinates());
             }
-            return true;
-        } finally {
-            lock.unlock();
+            // recalculate the distances
+            map.recalculate(target.peek());
+            // update the planning model make sure we don't revisit where we have been.
+            solution.apply(t -> map.update(Namespace.PlanningModel, t, Namespace.adjustment, Double.POSITIVE_INFINITY));
+            // add the current location to the solution.
+            solution.add(currentPosition.coordinates());
         }
+        
+        sense().forEach(this::recordMapPoint);
+        // collision was detected
+        if (obstacleMapper.nextTarget.isPresent()) {
+            map.cutPath(solution.end(), target.peek());
+            map.path(solution.end(), obstacleMapper.nextTarget.get());
+        }
+
+        Optional<PlanRecord> selected = map.getBest(currentPosition.coordinates());
+        if (selected.isPresent()) {
+            // update the planning model for the current position.
+           // map.update(Namespace.PlanningModel, currentPosition.coordinates(), Namespace.distance, selected.get().cost());
+            // if we are not at the target then make the next position the target.
+            if (!selected.get().coordinates().equals(target.peek())) {
+                target.push(selected.get().coordinates());
+            }
+            // if the heading changes mark the point on the current location
+            if (currentPosition.getHeadingRadians() != currentPosition.coordinates().angleTo(selected.get().coordinates())) {
+                solution.add(currentPosition.coordinates());
+            }
+        }
+        return true;
+    }
+    
+    private void recordMapPoint(Coordinates c) {
+        map.add(c, c.distanceTo(target.peek()));
+        map.path(currentPosition.coordinates(), c);
     }
 
     /**
      * Set the target for the planner.  
-     * Setting the target causes the current plan path to be cleared and a new plan 
-     * started.
+     * Setting the target causes the current plan to be cleared and a new plan started.
      * @param target The coordinates to head toward.
-     * @param position the current position.
      */
-    public void setTarget(Coordinates target, Position position) {
-        LOG.info("Setting target to {} starting from {}", target, position);
-        lock.lock();
-        path.clear();
+    public void setTarget(Coordinates target) {
+        LOG.info("Setting target to {} starting from {}", target, currentPosition);
         this.target.clear();
-        try {
-            map.reset(target.quantize());;
-            position = position.quantize();
-            this.target.push(target);
-            path.push(map.add(position.coordinates(), position.coordinates().distanceTo(target)));
-        } finally {
-            lock.unlock();
-        }
+        this.target.push(target.quantize());
+        map.reset(getTarget());
+        resetSolution();
     }
     
     public Coordinates getTarget() {
@@ -223,20 +244,42 @@ public class Planner {
     }
 
     /**
-     * Get the set of sensed records.  This is the set of all coordinates that
-     * have been detected as having an obstacle.
-     * @return the set of detected obstacles.
-     */
-    public Set<Coordinates> getSensed() {
-        return Collections.unmodifiableSet(map.getObstacles());
-    }
-    
-    /**
      * For testing only
      * @return
      */
     public PlannerMap getMap() {
          return map;
     }
-   
+    
+    private class ObstacleMapper {
+        private Optional<Coordinates> nextTarget = Optional.empty();
+        private double d = 0.0;
+        
+        public Optional<Coordinates> map(Coordinates obstacle) {
+            LOG.debug("Sensed {}", obstacle);
+            boolean collisionDetected = registerObstacle(obstacle);
+            Optional<Coordinates> result = not(obstacle);
+            if (collisionDetected) {
+                if (result.isPresent()) {
+                    if (nextTarget.isEmpty()) {
+                        nextTarget = result;
+                        d = result.get().distanceTo(currentPosition.coordinates());
+                    } else {
+                        double n = result.get().distanceTo(currentPosition.coordinates());
+                        if (n<d) {
+                            d = n;
+                            nextTarget = result;
+                        }
+                    }
+                }
+            }
+            return result;
+        }
+        
+        public void reset() {
+            nextTarget = Optional.empty();
+            d = 0.0;
+        }
+    }
+
 }

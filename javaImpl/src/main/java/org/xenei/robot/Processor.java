@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 import org.xenei.robot.navigation.Coordinates;
 import org.xenei.robot.navigation.Position;
 import org.xenei.robot.planner.Planner;
+import org.xenei.robot.planner.Solution;
 import org.xenei.robot.utils.Mover;
 import org.xenei.robot.utils.Sensor;
 
@@ -18,12 +19,12 @@ public class Processor implements Runnable {
 
     public Processor(Sensor sensor, Mover mover) {
         this.mover = mover;
-        this.planner = new Planner(sensor);
+        this.planner = new Planner(sensor, mover.position());
 
     }
 
     public void setTarget(Coordinates target) {
-        planner.setTarget(target, mover.position());
+        planner.setTarget(target);
     }
 
     public void stop() {
@@ -32,24 +33,26 @@ public class Processor implements Runnable {
 
     /**
      * Calculates the next step and moves to it.
-     * @return The location after the movement. or empty if there is no move to take.
+     * 
+     * @return The location after the movement. or empty if there is no move to
+     * take.
      */
     public Optional<Position> step() {
-        if (planner.step(mover.position()))
-        {
+        if (planner.step()) {
             Coordinates nextLoc = planner.getTarget();
-                if (nextLoc == null) {
-            return Optional.empty();
-        }
-        
-        
-        Optional<Position> result = Optional.of(mover.move(nextLoc.minus(mover.position().coordinates())));
-        LOG.info("next step {}", result);
-        return result;
-        }
-        else {
-            return Optional.empty();
-        }
+            if (nextLoc == null) {
+                return Optional.empty();
+            }
+
+            Optional<Position> result = Optional.of(mover.move(nextLoc.minus(mover.position().coordinates())));
+            LOG.info("next step {}", result);
+            return result;
+        } 
+        return Optional.empty();
+    }
+    
+    public Solution getSolution() {
+        return planner.getSolution();
     }
 
     @Override

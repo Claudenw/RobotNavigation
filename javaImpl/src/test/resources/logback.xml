@@ -16,7 +16,7 @@
     </appender>
     
     <logger name="org.xenei.robot.testUtils" level="INFO" /> 
-	<logger name="org.xenei.robot.planner.PlannerMap" level="INFO" /> 
+	<logger name="org.xenei.robot.planner.PlannerMap" level="DEBUG" /> 
     <root level="debug">
         <appender-ref ref="STDOUT" />
         <appender-ref ref="FILE" /> 

@@ -84,10 +84,10 @@ public class PositionTest {
         double headeingD = Math.toDegrees(heading);
         Coordinates target = Coordinates.fromXY(targX, targY);
         if (state) {
-            assertTrue(pos.checkCollision(target, 0.57, 10),
+            assertTrue(pos.coordinates().checkCollision(target, Coordinates.POINT_RADIUS, 10),
                     () -> String.format("Did not collide with %s/%s", target.getX(), target.getY()));
         } else {
-            assertFalse(pos.checkCollision(target, 0.57, 10),
+            assertFalse(pos.coordinates().checkCollision(target, Coordinates.POINT_RADIUS, 10),
                     () -> String.format("Did collide with %s/%s", target.getX(), target.getY()));
         }
     }

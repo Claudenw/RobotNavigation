@@ -5,6 +5,7 @@ import java.util.List;
 import org.apache.jena.atlas.logging.Log;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Node;
+import org.apache.jena.graph.Triple;
 import org.apache.jena.rdf.model.ResourceFactory;
 import org.apache.jena.sparql.core.Var;
 import org.apache.jena.sparql.engine.ExecutionContext;
@@ -14,19 +15,29 @@ import org.apache.jena.sparql.pfunction.PropFuncArg;
 import org.apache.jena.sparql.pfunction.PropFuncArgType;
 import org.apache.jena.sparql.pfunction.PropertyFunctionEval;
 import org.apache.jena.sparql.util.IterLib;
+import org.apache.jena.util.iterator.ExtendedIterator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class Dist extends PropertyFunctionEval {
+    private static final Logger LOG = LoggerFactory.getLogger(Dist.class);
+
     public Dist() {
         super(PropFuncArgType.PF_ARG_SINGLE, PropFuncArgType.PF_ARG_LIST);
     }
 
     private double getValue(Graph g, Node a, Node p) {
-        return (Double) g.find(a, p, Node.ANY).next().getObject().getLiteralValue();
+        ExtendedIterator<Triple> iter = g.find(a, p, Node.ANY);
+        if (iter.hasNext()) {
+            return (Double) g.find(a, p, Node.ANY).next().getObject().getLiteralValue();
+        }
+        LOG.error(String.format("Node %s does not have a property %s", a, p));
+        return Double.NaN;
     }
 
     @Override
-    public QueryIterator execEvaluated(Binding binding, PropFuncArg argSubject, Node predicate,
-            PropFuncArg argObject, ExecutionContext execCxt) {
+    public QueryIterator execEvaluated(Binding binding, PropFuncArg argSubject, Node predicate, PropFuncArg argObject,
+            ExecutionContext execCxt) {
         // Subject bound to something other a literal.
         if (!argSubject.isNode() || argSubject.getArg().isURI() || argSubject.getArg().isBlank()) {
             Log.warn(this, "Invalid subject type");
