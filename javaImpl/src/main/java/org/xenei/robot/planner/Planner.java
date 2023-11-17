@@ -29,7 +29,7 @@ public class Planner {
      * @param sensor the sensor to sense environment.
      * @param startPosition the starting position.
      */
-    public Planner(Sensor sensor, Position startPosition) {
+    public Planner(Sensor sensor, Coordinates startPosition) {
         this(sensor, startPosition, null);
     }
 
@@ -40,14 +40,14 @@ public class Planner {
      * @param startPosition the starting position.
      * @param target the coordinates of the target to reach.
      */
-    public Planner(Sensor sensor, Position startPosition, Coordinates target) {
+    public Planner(Sensor sensor, Coordinates startPosition, Coordinates target) {
         this.sensor = sensor;
         this.map = new PlannerMap();
         this.target = new Stack<>();
-        restart(startPosition);
         if (target != null) {
             setTarget(target);
         }
+        restart(startPosition);
     }
 
     /**
@@ -56,18 +56,24 @@ public class Planner {
      * @param position the new current position.
      */
     public void changeCurrentPosition(Position position) {
-        this.currentPosition = position.quantize();
+        currentPosition = position.quantize();
+        map.add(position.coordinates(), position.coordinates().distanceTo(target.peek()));
     }
 
     /**
      * Sets the current position and resets the solution.
      * 
-     * @param position the new current position.
+     * @param coords the new current position.
      */
-    public void restart(Position position) {
-        this.currentPosition = position.quantize();
-        map.add(currentPosition.coordinates(),
-                getTarget() == null ? Double.NaN : currentPosition.coordinates().distanceTo(getTarget()));
+    public void restart(Coordinates coords) {
+        double distance = Double.NaN;
+        double angle = 0.0;
+        if (getTarget() != null) {
+            distance = coords.distanceTo(getTarget());
+            angle = coords.angleTo(getTarget());
+        }
+        currentPosition = new Position(coords, angle);
+        map.add(currentPosition.coordinates(), distance);
         resetSolution();
     }
 
@@ -115,7 +121,7 @@ public class Planner {
      */
     private boolean registerObstacle(Coordinates obstacle) {
         map.setObstacle(obstacle);
-        boolean result = currentPosition.coordinates().checkCollision(obstacle, Coordinates.POINT_RADIUS, sensor.maxRange());
+        boolean result = !currentPosition.hasClearView(getTarget(), obstacle);
         if (result) {
             LOG.info("Future collision from {} detected at {}", currentPosition, obstacle);
         }
@@ -188,12 +194,13 @@ public class Planner {
             }
             // see if we can get to target directly
             if (map.clearView(currentPosition.coordinates(), target.peek())) {
-                map.path(target.peek(), currentPosition.coordinates());
+                map.path(currentPosition.coordinates(), target.peek());
+                currentPosition.setHeading(target.peek());
             }
             // recalculate the distances
             map.recalculate(target.peek());
             // update the planning model make sure we don't revisit where we have been.
-            solution.apply(t -> map.update(Namespace.PlanningModel, t, Namespace.adjustment, Double.POSITIVE_INFINITY));
+            solution.stream().forEach(t -> map.update(Namespace.PlanningModel, t, Namespace.adjustment, Double.POSITIVE_INFINITY));
             // add the current location to the solution.
             solution.add(currentPosition.coordinates());
         }
@@ -235,6 +242,9 @@ public class Planner {
         LOG.info("Setting target to {} starting from {}", target, currentPosition);
         this.target.clear();
         this.target.push(target.quantize());
+        if (currentPosition != null) {
+            currentPosition.setHeading(target);
+        }
         map.reset(getTarget());
         resetSolution();
     }
@@ -249,6 +259,17 @@ public class Planner {
      */
     public PlannerMap getMap() {
          return map;
+    }
+    
+    public void recordSolution() {
+        solution.simplify(map);
+        Coordinates[] previous = { null };
+        solution.stream().forEach( c -> { 
+            if (previous[0] != null) {
+                map.path(Namespace.BaseModel, previous[0], c);
+            }
+            previous[0] = c;
+        });
     }
     
     private class ObstacleMapper {

@@ -66,7 +66,12 @@ public class MapLibrary {
     }
 
     public static void main(String[] args) {
+        System.out.println( "MAP 1");
         System.out.println(map1('#'));
+        System.out.println();
+        
+        System.out.println( "MAP 2");
+        System.out.println(map2('#'));
     }
 
 }

@@ -50,6 +50,9 @@ public class Position {
         this.heading = radians;
     }
 
+    public void setHeading(Coordinates heading) {
+        this.heading = coordinates.angleTo(heading);
+    }
     /**
      * Calculates the next position.
      * 
@@ -62,6 +65,63 @@ public class Position {
         }
         Coordinates nextCoord = this.coordinates.plus(cmd);
         return new Position(nextCoord, cmd.getThetaRadians());
+    }
+    
+    /**
+     * Checks if this postion will strike the obstacle within the specified distance.
+     * 
+     * @param obstacle the obstacle to check.
+     * @param radius the size of the obstacle.
+     * @param distance the maximum distance to check.
+     * @return True if the obstacle will be struck fasle otherwise.
+     */
+    public boolean checkCollision(Coordinates obstacle, double radius, double distance) {
+
+        Coordinates m = obstacle.minus(coordinates);
+
+        if (distance < m.getRange()) {
+            return false;
+        }
+        if (m.getRange() < radius) {
+            return true;
+        }
+
+        double sin = Math.sin(heading);
+        double cos = Math.cos(heading);
+        double d = Math
+                .abs(cos * (coordinates.getY() - obstacle.getY()) - sin * (coordinates.getX() - obstacle.getX()));
+
+        if (d < radius) {
+            // ensure that it is along our heading
+            return rightDirection(cos, m.getX()) && rightDirection(sin, m.getY());
+        }
+        return false;
+    }
+    
+    /**
+     * Returns true if the target is not obstructed by the obstacle.
+     * 
+     * @param target
+     * @param obstacle
+     * @param maxDist
+     * @return
+     */
+    public boolean hasClearView(Coordinates target, Coordinates obstacle) {
+        double maxDist = coordinates.distanceTo(target);
+        boolean td = (coordinates.distanceTo(obstacle)-Coordinates.POINT_RADIUS) < (maxDist+Coordinates.POINT_RADIUS);
+        
+        if (td) {
+            // in range to check
+            return !checkCollision(obstacle, Coordinates.POINT_RADIUS, maxDist);
+        }
+        return true;
+    }
+
+    private boolean rightDirection(double trig, double delta) {
+        if (Precision.equals(trig, 0, 2 * Precision.EPSILON)) {
+            return true;
+        }
+        return (trig < 0) ? delta <= 0 : delta >= 0;
     }
 
     @Override

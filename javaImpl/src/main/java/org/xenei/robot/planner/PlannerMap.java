@@ -42,6 +42,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xenei.robot.navigation.Coordinates;
 import org.xenei.robot.navigation.Point;
+import org.xenei.robot.navigation.Position;
 import org.xenei.robot.planner.rdf.Namespace;
 import org.xenei.robot.planner.rdf.PathFactory;
 
@@ -209,37 +210,14 @@ public class PlannerMap {
         }
     }
 
-    /**
-     * Select all the obstacles that will collide.
-     * 
-     * @param obstacle
-     * @param position
-     * @param target
-     * @param maxDist
-     * @return
-     */
-    private boolean clearViewFunc(Coordinates obstacle, Coordinates position, Coordinates target, double maxDist) {
-        double dist = target.distanceTo(obstacle);
-        boolean td = target.distanceTo(obstacle) < maxDist;
-        // boolean pd = position.coordinates().distanceTo(obstacle) < maxDist +
-        // CLEAR_VIEW_PADDING;
-        // boolean pc = position.checkCollision(obstacle, Planner.POINT_RADIUS,
-        // maxDist);
-        if (td) {
-            // in range to check
-            return position.checkCollision(obstacle, Coordinates.POINT_RADIUS, maxDist);
-        }
-        return false;
-    }
-
-    public boolean clearView(Coordinates position, Coordinates target) {
-        double maxDist = position.distanceTo(target);
+    public boolean clearView(Coordinates from, Coordinates target) {
+        Position position = new Position( from, from.angleTo(target) );
         /*Predicate<Coordinates> clearViewFunc = (o) -> 
         target.distanceTo(o) < maxDist && 
         position.coordinates().distanceTo(o) < maxDist + CLEAR_VIEW_PADDING &&
         position.checkCollision(o, Planner.POINT_RADIUS, maxDist);
         */
-        return getObstacles().stream().filter(o -> clearViewFunc(o, position, target, maxDist)).findFirst().isEmpty();
+        return getObstacles().stream().filter(obstacle -> !position.hasClearView(target, obstacle)).findFirst().isEmpty();
     }
 
     /**

@@ -81,18 +81,18 @@ public class PositionTest {
     @MethodSource("collisionParameters")
     public void collisionTest(boolean state, double x, double y, double heading, double targX, double targY) {
         Position pos = new Position(Coordinates.fromXY(x, y), heading);
-        double headeingD = Math.toDegrees(heading);
         Coordinates target = Coordinates.fromXY(targX, targY);
         if (state) {
-            assertTrue(pos.coordinates().checkCollision(target, Coordinates.POINT_RADIUS, 10),
+            assertTrue(pos.checkCollision(target, Coordinates.POINT_RADIUS, 10),
                     () -> String.format("Did not collide with %s/%s", target.getX(), target.getY()));
         } else {
-            assertFalse(pos.coordinates().checkCollision(target, Coordinates.POINT_RADIUS, 10),
+            assertFalse(pos.checkCollision(target, Coordinates.POINT_RADIUS, 10),
                     () -> String.format("Did collide with %s/%s", target.getX(), target.getY()));
         }
     }
 
-    private static void addCollisionArgs(List<Arguments> args, boolean state , double x, double y, double heading, double[] targ) {
+    private static void addCollisionArgs(List<Arguments> args, boolean state, double x, double y, double heading,
+            double[] targ) {
         double[] offsets = { -.4, 0, .4 };
         for (double deltax : offsets) {
             for (double deltay : offsets) {
@@ -122,9 +122,9 @@ public class PositionTest {
                     double[] data = targets.get(targIdx);
                     double heading = data[2];
                     addCollisionArgs(args, true, x, y, heading, targets.get(targIdx));
-                    for (int notTarg=2;notTarg<8;notTarg+=2) {
-                        int idx = (targIdx+notTarg)%8;
-                            addCollisionArgs(args, false, x, y, heading, targets.get(idx));
+                    for (int notTarg = 2; notTarg < 8; notTarg += 2) {
+                        int idx = (targIdx + notTarg) % 8;
+                        addCollisionArgs(args, false, x, y, heading, targets.get(idx));
                     }
 
                 }

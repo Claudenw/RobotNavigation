@@ -2,7 +2,7 @@ package org.xenei.robot.planner;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Consumer;
+import java.util.stream.Stream;
 
 import org.xenei.robot.navigation.Coordinates;
 
@@ -41,8 +41,8 @@ public class Solution {
         return get(0);
     }
 
-    public void apply(Consumer<Coordinates> func) {
-        path.stream().map(s -> s.coord).forEach(func);
+    public Stream<Coordinates> stream() {
+        return path.stream().map(s -> s.coord);
     }
 
     private void recalculateCost(Coordinates target) {

@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -15,43 +14,31 @@ import java.util.Optional;
 import java.util.Set;
 
 import org.apache.jena.arq.querybuilder.AskBuilder;
-import org.apache.jena.arq.querybuilder.Converters;
 import org.apache.jena.arq.querybuilder.ExprFactory;
 import org.apache.jena.arq.querybuilder.SelectBuilder;
 import org.apache.jena.query.QueryExecution;
 import org.apache.jena.query.QueryExecutionFactory;
 import org.apache.jena.query.QuerySolution;
-import org.apache.jena.query.ResultSet;
-import org.apache.jena.rdf.model.Literal;
 import org.apache.jena.rdf.model.Resource;
-import org.apache.jena.sparql.core.Var;
-import org.apache.jena.sparql.function.FunctionFactory;
-import org.apache.jena.sparql.path.Path;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.xenei.robot.navigation.Coordinates;
 import org.xenei.robot.navigation.Point;
 import org.xenei.robot.planner.rdf.Namespace;
-import org.xenei.robot.planner.rdf.PathFactory;
 
 public class PlannerMapTest {
 
     PlannerMap underTest;
 
-    static Point[] expected = { new Point(-4, -1), new Point(-4, -2), new Point(-4, -4), new Point(-3, -4),
-            new Point(-2, -2), new Point(-2, -4), new Point(-1, -2), new Point(-1, -4), new Point(0, -2),
-            new Point(0, -4), new Point(2, -2), new Point(2, -3), new Point(2, -4) };
+    public static final Point[] expected = { new Point(-4, -4), new Point(-4, -3), new Point(-4, -1), new Point(-2, -4),
+            new Point(-2, -2), new Point(-1, -4), new Point(-1, -2), new Point(0, -4), new Point(0, -2),
+            new Point(2, -4), new Point(2, -3), new Point(2, -1) };
 
-    /*static Point[] expected = { new Point(-4.0, -4.0), new Point(-4.0, -2.0), new Point(-4.0, -1.0),
-            new Point(-3.0, -4.0), new Point(-2.0, -4.0), new Point(-2.0, -2.0), new Point(-1.0, -4.0),
-            new Point(-1.0, -2.0), new Point(0.0, -4.0), new Point(0.0, -2.0), new Point(2.0, -4.0),
-            new Point(2.0, -3.0), new Point(2.0, -2.0) };
-    */
-    static Point[] obstacles = { new Point(-2, -1), new Point(-1, -1), new Point(0, -1), new Point(1, -1),
-            new Point(-5, 0), new Point(-5, -2), new Point(-5, -4), new Point(-4, -5), new Point(-2, -5),
-            new Point(-1, -5), new Point(0, -5), new Point(1, -5), new Point(3, -2), new Point(3, -3),
-            new Point(3, -4) };
+    public static final Point[] obstacles = { new Point(-5, -4), new Point(-5, -3), new Point(-5, -1), new Point(-3, -5),
+            new Point(-3, -1), new Point(-2, -5), new Point(-2, -1), new Point(-1, -5), new Point(-1, -1),
+            new Point(0, -5), new Point(0, -1), new Point(1, -5), new Point(1, -1), new Point(3, -4), new Point(3, -3),
+            new Point(3, -1) };
 
     static List<Point[]> paths = new ArrayList<>();
 
@@ -110,7 +97,6 @@ public class PlannerMapTest {
 
     @Test
     public void getBestTest() {
-        underTest.getObstacles().forEach(System.out::println);
         Optional<PlanRecord> pr = underTest.getBest(Coordinates.fromXY(p));
         assertTrue(pr.isPresent());
         assertEquals(new Point(-1, -2), pr.get().coordinates().getPoint());
@@ -207,7 +193,6 @@ public class PlannerMapTest {
 
         underTest.path(b, c);
 
-        System.out.println(underTest.dumpPlanningModel());
         assertTrue(underTest.hasPath(a, b));
         assertTrue(underTest.hasPath(b, c));
         assertTrue(underTest.hasPath(a, c));
@@ -235,7 +220,7 @@ public class PlannerMapTest {
             assertFalse(exec.execAsk());
         }
         underTest.update(Namespace.PlanningModel, c, Namespace.distance, 5);
-        System.out.println(underTest.dumpPlanningModel());
+
         try (QueryExecution exec = QueryExecutionFactory.create(ask.build(), underTest.getModel())) {
             assertTrue(exec.execAsk());
         }
@@ -252,8 +237,6 @@ public class PlannerMapTest {
         }
         PlanRecord before = underTest.getPlanRecord(c).get();
         underTest.update(Namespace.PlanningModel, c, Namespace.distance, before.cost() + 5);
-
-        System.out.println(underTest.dumpPlanningModel());
 
         SelectBuilder sb = new SelectBuilder().addWhere(Namespace.urlOf(c), Namespace.distance, "?x");
         try (QueryExecution qexec = QueryExecutionFactory.create(sb.build(), underTest.getModel())) {
