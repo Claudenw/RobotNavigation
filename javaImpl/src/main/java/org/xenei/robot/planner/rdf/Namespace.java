@@ -14,6 +14,7 @@ import org.xenei.robot.navigation.Position;
 
 public class Namespace {
     public static final String URI = "urn:org.xenei.robot:";
+    public static final Resource UnionModel = ResourceFactory.createResource("urn:x-arq:UnionGraph");
     public static final Resource BaseModel = ResourceFactory.createResource(URI + "model:BaseModel");
     public static final Resource PlanningModel = ResourceFactory.createResource(URI + "model:PlanningModel");
     public static final Resource Coord = ResourceFactory.createResource(URI + "Coord");

@@ -35,6 +35,8 @@ import org.apache.jena.rdf.model.Statement;
 import org.apache.jena.riot.Lang;
 import org.apache.jena.sparql.core.Var;
 import org.apache.jena.sparql.expr.Expr;
+import org.apache.jena.sparql.path.Path;
+import org.apache.jena.sparql.path.PathFactory;
 import org.apache.jena.update.UpdateExecutionFactory;
 import org.apache.jena.update.UpdateRequest;
 import org.apache.jena.vocabulary.RDF;
@@ -44,7 +46,6 @@ import org.xenei.robot.navigation.Coordinates;
 import org.xenei.robot.navigation.Point;
 import org.xenei.robot.navigation.Position;
 import org.xenei.robot.planner.rdf.Namespace;
-import org.xenei.robot.planner.rdf.PathFactory;
 
 public class PlannerMap {
     private static final Logger LOG = LoggerFactory.getLogger(PlannerMap.class);
@@ -200,12 +201,10 @@ public class PlannerMap {
     }
 
     public boolean hasPath(Coordinates a, Coordinates b) {
-        PathFactory pathF = new PathFactory();
-        AskBuilder sb = new AskBuilder().addWhere(Namespace.urlOf(a), pathF.oneOrMore(Namespace.path),
-                Namespace.urlOf(b));
-
-        System.out.println(dumpModel());
-        try (QueryExecution exec = QueryExecutionFactory.create(sb.build(), data.getUnionModel())) {
+        AskBuilder sb = new AskBuilder();
+        Path p = PathFactory.pathOneOrMoreN(PathFactory.pathLink(sb.makeNode(Namespace.path)));
+        sb.addGraph(Namespace.UnionModel, Namespace.urlOf(a), p, Namespace.urlOf(b));
+        try (QueryExecution exec = QueryExecutionFactory.create(sb.build(), data)) {
             return exec.execAsk();
         }
     }
