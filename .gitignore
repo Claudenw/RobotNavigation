@@ -3,3 +3,7 @@
 **/.settings/
 **/target/
 javaImpl/tests.log
+**/.cproject
+**/.sproject
+**/Release/
+
