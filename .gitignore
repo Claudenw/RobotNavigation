@@ -6,4 +6,5 @@ javaImpl/tests.log
 **/.cproject
 **/.sproject
 **/Release/
+**/*.log
 
