@@ -39,7 +39,7 @@ public class CoordinateMap {
             points.tailSet(coord).first().c = coord.c;
         }
     }
-    
+
     public Stream<Point> getObstacles() {
         return points.stream().map(Coord::asPoint);
     }
@@ -60,6 +60,19 @@ public class CoordinateMap {
     public String toString() {
         return stringBuilder().toString();
 
+    }
+
+    /**
+     * For testing.
+     * 
+     * @param from
+     * @param target
+     * @return true if there are no obstructions.
+     */
+    public boolean clearView(Coordinates from, Coordinates target) {
+        Position position = new Position(from, from.angleTo(target));
+        return getObstacles().filter(obstacle -> !position.hasClearView(target, Coordinates.fromXY(obstacle)))
+                .findFirst().isEmpty();
     }
 
     /**
@@ -104,7 +117,7 @@ public class CoordinateMap {
         int cordRange = fitRange(Math.round(maxRange / scale));
 
         for (int i = 0; i < cordRange; i++) {
-            Coordinates pos = position.plus(Coordinates.fromAngle(heading, AngleUnits.RADIANS,  i * scale));
+            Coordinates pos = position.plus(Coordinates.fromAngle(heading, AngleUnits.RADIANS, i * scale));
             if (points.contains(new Coord(pos, ' '))) {
                 return Optional.of(pos);
             }
@@ -138,9 +151,9 @@ public class CoordinateMap {
             int result = -1 * Integer.compare(y, other.y);
             return result == 0 ? Integer.compare(x, other.x) : result;
         }
-        
+
         public Point asPoint() {
-            return new Point(x,y);
+            return new Point(x, y);
         }
     }
 }

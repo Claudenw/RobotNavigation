@@ -1,4 +1,4 @@
-package org.xenei.robot.planner;
+package org.xenei.robot.mapper;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -25,7 +25,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.xenei.robot.common.Coordinates;
 import org.xenei.robot.common.Point;
-import org.xenei.robot.planner.rdf.Namespace;
+import org.xenei.robot.common.Target;
+import org.xenei.robot.mapper.rdf.Namespace;
 
 public class PlannerMapTest {
 
@@ -35,10 +36,10 @@ public class PlannerMapTest {
             new Point(-2, -2), new Point(-1, -4), new Point(-1, -2), new Point(0, -4), new Point(0, -2),
             new Point(2, -4), new Point(2, -3), new Point(2, -1) };
 
-    public static final Point[] obstacles = { new Point(-5, -4), new Point(-5, -3), new Point(-5, -1), new Point(-3, -5),
-            new Point(-3, -1), new Point(-2, -5), new Point(-2, -1), new Point(-1, -5), new Point(-1, -1),
-            new Point(0, -5), new Point(0, -1), new Point(1, -5), new Point(1, -1), new Point(3, -4), new Point(3, -3),
-            new Point(3, -1) };
+    public static final Point[] obstacles = { new Point(-5, -4), new Point(-5, -3), new Point(-5, -1),
+            new Point(-3, -5), new Point(-3, -1), new Point(-2, -5), new Point(-2, -1), new Point(-1, -5),
+            new Point(-1, -1), new Point(0, -5), new Point(0, -1), new Point(1, -5), new Point(1, -1), new Point(3, -4),
+            new Point(3, -3), new Point(3, -1) };
 
     static List<Point[]> paths = new ArrayList<>();
 
@@ -56,9 +57,9 @@ public class PlannerMapTest {
     @BeforeEach
     public void setup() {
         underTest = new PlannerMap();
-        underTest.add(Coordinates.fromXY(p), p.distance(t));
+        underTest.add(new Target(Coordinates.fromXY(p), p.distance(t)));
         for (Point e : expected) {
-            underTest.add(Coordinates.fromXY(e), e.distance(t));
+            underTest.add(new Target(Coordinates.fromXY(e), e.distance(t)));
         }
         for (Point o : obstacles) {
             underTest.setObstacle(Coordinates.fromXY(o));
@@ -97,7 +98,7 @@ public class PlannerMapTest {
 
     @Test
     public void getBestTest() {
-        Optional<PlanRecord> pr = underTest.getBest(Coordinates.fromXY(p));
+        Optional<Target> pr = underTest.getBestTarget(Coordinates.fromXY(p));
         assertTrue(pr.isPresent());
         assertEquals(new Point(-1, -2), pr.get().coordinates().getPoint());
         assertFalse(Double.isNaN(pr.get().cost()));
@@ -115,22 +116,22 @@ public class PlannerMapTest {
     @Test
     public void getPlanRecordTest() {
 
-        Optional<PlanRecord> pr = underTest.getPlanRecord(Coordinates.fromXY(p));
+        Optional<Target> pr = underTest.getTarget(Coordinates.fromXY(p));
         assertTrue(pr.isPresent());
         assertEquals(p, pr.get().coordinates().getPoint());
         assertEquals(p.distance(t), pr.get().cost());
 
-        pr = underTest.getPlanRecord(Coordinates.fromXY(t));
+        pr = underTest.getTarget(Coordinates.fromXY(t));
         assertTrue(pr.isEmpty());
 
         for (Point e : expected) {
-            pr = underTest.getPlanRecord(Coordinates.fromXY(e));
+            pr = underTest.getTarget(Coordinates.fromXY(e));
             assertTrue(pr.isPresent());
             assertEquals(e, pr.get().coordinates().getPoint());
             assertEquals(e.distance(t), pr.get().cost());
         }
         for (Point o : obstacles) {
-            pr = underTest.getPlanRecord(Coordinates.fromXY(o));
+            pr = underTest.getTarget(Coordinates.fromXY(o));
             assertTrue(pr.isEmpty());
         }
     }
@@ -141,10 +142,10 @@ public class PlannerMapTest {
         points.addAll(Arrays.asList(expected));
         points.add(p);
 
-        Collection<PlanRecord> records = underTest.getPlanRecords();
+        Collection<Target> records = underTest.getTargets();
         assertEquals(points.size(), records.size());
 
-        for (PlanRecord pr : records) {
+        for (Target pr : records) {
             assertTrue(points.contains(pr.coordinates().getPoint()), () -> "Unexpected PlanRecord " + pr);
             assertFalse(Double.isNaN(pr.cost()), () -> pr.toString() + " has NaN cost");
         }
@@ -169,7 +170,7 @@ public class PlannerMapTest {
         }
 
         Coordinates c = Coordinates.fromXY(5, 5);
-        underTest.add(c, c.distanceTo(a));
+        underTest.add(new Target(c, c.distanceTo(a)));
         Resource rC = Namespace.asRDF(c, Namespace.Coord);
         ask = new AskBuilder().addWhere(rA, Namespace.path, rC);
         try (QueryExecution exec = QueryExecutionFactory.create(ask.build(), underTest.getModel())) {
@@ -201,13 +202,13 @@ public class PlannerMapTest {
     @Test
     public void resetTest() {
         Coordinates c = Coordinates.fromXY(expected[0]);
-        PlanRecord before = underTest.getPlanRecord(c).get();
+        Target before = underTest.getTarget(c).get();
 
         Coordinates newTarget = Coordinates.fromXY(2, 4);
 
         underTest.reset(newTarget);
 
-        PlanRecord after = underTest.getPlanRecord(c).get();
+        Target after = underTest.getTarget(c).get();
         assertNotEquals(before.cost(), after.cost());
     }
 
@@ -235,7 +236,7 @@ public class PlannerMapTest {
         try (QueryExecution exec = QueryExecutionFactory.create(ask.build(), underTest.getModel())) {
             assertTrue(exec.execAsk());
         }
-        PlanRecord before = underTest.getPlanRecord(c).get();
+        Target before = underTest.getTarget(c).get();
         underTest.update(Namespace.PlanningModel, c, Namespace.distance, before.cost() + 5);
 
         SelectBuilder sb = new SelectBuilder().addWhere(Namespace.urlOf(c), Namespace.distance, "?x");
@@ -245,7 +246,7 @@ public class PlannerMapTest {
             results.forEachRemaining((q) -> count[0]++);
             assertEquals(1, count[0]);
         }
-        PlanRecord after = underTest.getPlanRecord(c).get();
+        Target after = underTest.getTarget(c).get();
         assertEquals(before.cost() + 5, after.cost());
     }
 

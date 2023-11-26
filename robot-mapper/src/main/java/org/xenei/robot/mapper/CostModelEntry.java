@@ -1,4 +1,4 @@
-package org.xenei.robot.planner;
+package org.xenei.robot.mapper;
 
 import org.xenei.robot.common.Point;
 

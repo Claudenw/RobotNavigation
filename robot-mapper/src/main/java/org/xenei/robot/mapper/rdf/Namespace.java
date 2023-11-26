@@ -1,4 +1,4 @@
-package org.xenei.robot.planner.rdf;
+package org.xenei.robot.mapper.rdf;
 
 import org.apache.jena.query.ARQ;
 import org.apache.jena.rdf.model.Model;

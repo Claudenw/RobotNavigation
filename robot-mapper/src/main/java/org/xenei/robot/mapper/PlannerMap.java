@@ -1,4 +1,4 @@
-package org.xenei.robot.planner;
+package org.xenei.robot.mapper;
 
 import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
@@ -43,16 +43,19 @@ import org.apache.jena.vocabulary.RDF;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xenei.robot.common.Coordinates;
+import org.xenei.robot.common.Map;
 import org.xenei.robot.common.Point;
 import org.xenei.robot.common.Position;
-import org.xenei.robot.planner.rdf.Namespace;
+import org.xenei.robot.common.Solution;
+import org.xenei.robot.common.Target;
+import org.xenei.robot.mapper.rdf.Namespace;
 
-public class PlannerMap {
+public class PlannerMap implements Map {
     private static final Logger LOG = LoggerFactory.getLogger(PlannerMap.class);
 
-    private Dataset data;
+    Dataset data;
 
-    PlannerMap() {
+    public PlannerMap() {
         data = DatasetFactory.create();
         data.addNamedModel(Namespace.BaseModel, ModelFactory.createDefaultModel());
         data.addNamedModel(Namespace.PlanningModel, ModelFactory.createDefaultModel());
@@ -70,21 +73,22 @@ public class PlannerMap {
         UpdateExecutionFactory.create(request, data).execute();
     }
 
-    private QueryExecution doQuery(AbstractQueryBuilder<?> qb) {
+    QueryExecution doQuery(AbstractQueryBuilder<?> qb) {
         return QueryExecutionFactory.create(qb.build(), data.getUnionModel());
     }
 
-    public PlanRecord add(Coordinates coordinates, double targetRange) {
-        Resource qA = Namespace.asRDF(coordinates, Namespace.Coord);
+    @Override
+    public void add(Target target) {
+        Resource qA = Namespace.asRDF(target.coordinates(), Namespace.Coord);
         data.getNamedModel(Namespace.PlanningModel).removeAll(qA, Namespace.distance, null);
         UpdateBuilder ub = new UpdateBuilder().addInsert(Namespace.BaseModel, qA.getModel())
-                .addInsert(Namespace.PlanningModel, qA, Namespace.distance, targetRange);
+                .addInsert(Namespace.PlanningModel, qA, Namespace.distance, target.cost());
         doUpdate(ub);
 
-        LOG.debug("Added {}", coordinates);
-        return new PlanRecord(coordinates, targetRange);
+        LOG.debug("Added {}", target);
     }
 
+    @Override
     public void setObstacle(Coordinates coordinates) {
         setObstacle(coordinates.getPoint());
     }
@@ -106,6 +110,7 @@ public class PlannerMap {
         doUpdate(req);
     }
 
+    @Override
     public boolean isObstacle(Coordinates coordinates) {
         AskBuilder ask = new AskBuilder().addWhere(Namespace.urlOf(coordinates), RDF.type, Namespace.Obst);
         try (QueryExecution qexec = doQuery(ask)) {
@@ -113,6 +118,7 @@ public class PlannerMap {
         }
     }
 
+    @Override
     public Set<Coordinates> getObstacles() {
         Var node = Var.alloc("node");
         Var x = Var.alloc("x");
@@ -138,7 +144,7 @@ public class PlannerMap {
      * @param coordinates
      * @return
      */
-    public Optional<PlanRecord> getPlanRecord(Coordinates coordinates) {
+    public Optional<Target> getTarget(Coordinates coordinates) {
         coordinates = coordinates.quantize();
         Resource qA = Namespace.urlOf(coordinates);
         Var distance = Var.alloc("distance");
@@ -147,8 +153,7 @@ public class PlannerMap {
         try (QueryExecution qexec = doQuery(sb)) {
             ResultSet results = qexec.execSelect();
             if (results.hasNext()) {
-                return Optional
-                        .of(new PlanRecord(coordinates, results.next().getLiteral(distance.getName()).getDouble()));
+                return Optional.of(new Target(coordinates, results.next().getLiteral(distance.getName()).getDouble()));
             }
             return Optional.empty();
         }
@@ -160,6 +165,7 @@ public class PlannerMap {
      * @param record the plan record to add
      * @return true if the record updated the map, false otherwise.
      */
+    @Override
     public boolean path(Coordinates a, Coordinates b) {
         return path(Namespace.PlanningModel, a, b);
     }
@@ -189,6 +195,7 @@ public class PlannerMap {
         return false;
     }
 
+    @Override
     public void cutPath(Coordinates a, Coordinates b) {
         cutPath(Namespace.PlanningModel, a, b);
     }
@@ -209,14 +216,11 @@ public class PlannerMap {
         }
     }
 
+    @Override
     public boolean clearView(Coordinates from, Coordinates target) {
-        Position position = new Position( from, from.angleTo(target) );
-        /*Predicate<Coordinates> clearViewFunc = (o) -> 
-        target.distanceTo(o) < maxDist && 
-        position.coordinates().distanceTo(o) < maxDist + CLEAR_VIEW_PADDING &&
-        position.checkCollision(o, Planner.POINT_RADIUS, maxDist);
-        */
-        return getObstacles().stream().filter(obstacle -> !position.hasClearView(target, obstacle)).findFirst().isEmpty();
+        Position position = new Position(from, from.angleTo(target));
+        return getObstacles().stream().filter(obstacle -> !position.hasClearView(target, obstacle)).findFirst()
+                .isEmpty();
     }
 
     /**
@@ -243,7 +247,8 @@ public class PlannerMap {
      * @return Optional containing either either the PlanRecord for the next
      * position, or empty if none found.
      */
-    public Optional<PlanRecord> getBest(Coordinates currentCoords) {
+    @Override
+    public Optional<Target> getBestTarget(Coordinates currentCoords) {
         if (data.isEmpty()) {
             LOG.debug("No map points");
             return Optional.empty();
@@ -274,7 +279,7 @@ public class PlannerMap {
 //            sb.setLimit(1);
 //        }
 
-        Optional<PlanRecord> result = Optional.empty();
+        Optional<Target> result = Optional.empty();
         try (QueryExecution qexec = doQuery(sb)) {
             ResultSet results = qexec.execSelect();
             Consumer<QuerySolution> log = (sln) -> LOG.debug("getBest({}): {}/{} cost:{} = {}  + {} + {}",
@@ -294,7 +299,7 @@ public class PlannerMap {
                 if (result.isEmpty()) {
                     Coordinates candidate = Coordinates.fromXY(lX.getDouble(), lY.getDouble());
                     if (clearView(currentCoords, candidate)) {
-                        PlanRecord rec = new PlanRecord(candidate, lD.getDouble());
+                        Target rec = new Target(candidate, lD.getDouble());
                         LOG.debug("getBest() -> {}", rec);
                         result = Optional.of(rec);
                         if (!LOG.isDebugEnabled()) {
@@ -315,6 +320,7 @@ public class PlannerMap {
      * 
      * @param target the new target.
      */
+    @Override
     public void recalculate(Coordinates target) {
         LOG.debug("recalculate: {}", target);
         Resource targetResource = Namespace.urlOf(target);
@@ -326,11 +332,17 @@ public class PlannerMap {
                         .addWhere(distance, Namespace.distF, List.of(other, targetResource))));
     }
 
+    @Override
+    public void setTemporaryCost(Target target) {
+        update(Namespace.PlanningModel, target.coordinates(), Namespace.adjustment, target.cost());
+    }
+
     /**
      * Reset the target position. Builds a new map from all known points.
      * 
      * @param target the New target.
      */
+    @Override
     public void reset(Coordinates target) {
         LOG.debug("reset: {}", target);
         // create a new map from all the known points
@@ -349,7 +361,8 @@ public class PlannerMap {
         doUpdate(req);
     }
 
-    public Collection<PlanRecord> getPlanRecords() {
+    @Override
+    public Collection<Target> getTargets() {
         Var x = Var.alloc("x");
         Var y = Var.alloc("y");
         Var distance = Var.alloc("distance");
@@ -362,7 +375,7 @@ public class PlannerMap {
                 .addOptional(other, Namespace.adjustment, adjustment).addBind(exprF.add(distance, adjustment), cost)
                 .addOrderBy(cost, Order.ASCENDING);
 
-        SortedSet<PlanRecord> candidates = new TreeSet<PlanRecord>();
+        SortedSet<Target> candidates = new TreeSet<Target>();
         try (QueryExecution qexec = doQuery(sb)) {
             ResultSet results = qexec.execSelect();
             for (; results.hasNext();) {
@@ -370,14 +383,26 @@ public class PlannerMap {
                 Literal lX = soln.getLiteral(x.getName());
                 Literal lY = soln.getLiteral(y.getName());
                 Literal lD = soln.getLiteral(distance.getName());
-                PlanRecord pr = new PlanRecord(Coordinates.fromXY(lX.getDouble(), lY.getDouble()), lD.getDouble());
+                Target pr = new Target(Coordinates.fromXY(lX.getDouble(), lY.getDouble()), lD.getDouble());
                 candidates.add(pr);
             }
         }
         return candidates;
     }
 
-    public Model getModel() {
+    @Override
+    public void recordSolution(Solution solution) {
+        solution.simplify(this::clearView);
+        Coordinates[] previous = { null };
+        solution.stream().forEach(c -> {
+            if (previous[0] != null) {
+                path(Namespace.BaseModel, previous[0], c);
+            }
+            previous[0] = c;
+        });
+    }
+
+    Model getModel() {
         return data.getUnionModel();
     }
 

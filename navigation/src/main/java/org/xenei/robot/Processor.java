@@ -1,44 +1,41 @@
 package org.xenei.robot;
 
 import java.util.Optional;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.stream.Stream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xenei.robot.common.Coordinates;
+import org.xenei.robot.common.Map;
+import org.xenei.robot.common.Mapper;
 import org.xenei.robot.common.Mover;
+import org.xenei.robot.common.Planner;
 import org.xenei.robot.common.Position;
 import org.xenei.robot.common.Sensor;
-import org.xenei.robot.planner.Planner;
+import org.xenei.robot.mapper.MapperImpl;
+import org.xenei.robot.mapper.PlannerMap;
+import org.xenei.robot.planner.PlannerImpl;
 
 public class Processor {
     private final Mover mover;
+    private final Sensor sensor;
     private final Planner planner;
-    private MoveRunner runner = new MoveRunner();
+    private final Mapper mapper;
+    private final Map map;
     private static final Logger LOG = LoggerFactory.getLogger(Processor.class);
-    private final ExecutorService executor = Executors.newSingleThreadExecutor();
-   
+
     private final int MAX_STEPS = 1000;
 
     public Processor(Sensor sensor, Mover mover) {
         this.mover = mover;
-        this.planner = new Planner(sensor, mover.position().coordinates());
+        this.sensor = sensor;
+        this.map = new PlannerMap();
+        this.mapper = new MapperImpl(map);
+        this.planner = new PlannerImpl(map, mover.position().coordinates());
     }
 
     public void setTarget(Coordinates target) {
         planner.setTarget(target);
-    }
-
-    public void stop() {
-        if (runner.isRunning) {
-            runner.isRunning = false;
-        }
-    }
-    
-    public boolean isMoving() {
-        return runner.isRunning;
     }
 
     /**
@@ -64,11 +61,22 @@ public class Processor {
         return Optional.empty();
     }
 
-    public void moveTo(Coordinates coord) {
+    public boolean moveTo(Coordinates coord) {
         setTarget(coord);
-        if (!runner.isRunning) {
-            executor.execute(runner);
+        Optional<Position> p = Optional.of(mover.position());
+        int steps = 0;
+        while (p.isPresent()) {
+            if (steps > MAX_STEPS) {
+                LOG.error("Unable to find path in {} steps", MAX_STEPS);
+                return false;
+            }
+            p = step();
         }
+        return true;
+    }
+    
+    public void recordSolution() {
+        map.recordSolution(planner.getSolution());
     }
 
     public Stream<Coordinates> getSolution() {
@@ -78,28 +86,5 @@ public class Processor {
     public Planner getPlanner() {
         return planner;
     }
-    
-    private class MoveRunner implements Runnable {
-        boolean isRunning = false;
-        @Override
-        public void run() {
-            isRunning = true;
-            try {
-                Optional<Position> p = Optional.of(mover.position());
-                int steps = 0;
-                while (isRunning && p.isPresent()) {
-                    if (steps > MAX_STEPS) {
-                        LOG.error("Unable to find path in {} steps", MAX_STEPS);
-                        return;
-                    }
-                    p = step();
-                }
-                if (isRunning) {
-                    planner.recordSolution();
-                }
-            } finally {
-                isRunning = false;
-            }
-        }
-    }
+
 }

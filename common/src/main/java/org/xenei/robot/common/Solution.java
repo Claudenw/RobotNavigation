@@ -1,16 +1,15 @@
-package org.xenei.robot.planner;
+package org.xenei.robot.common;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.BiPredicate;
 import java.util.stream.Stream;
-
-import org.xenei.robot.common.Coordinates;
 
 public class Solution {
 
     private final List<SolutionRecord> path;
 
-    Solution() {
+    public Solution() {
         path = new ArrayList<>();
     }
 
@@ -59,7 +58,7 @@ public class Solution {
         }
     }
 
-    private void removeUnnecessarySteps(PlannerMap map) {
+    private void removeUnnecessarySteps(BiPredicate<Coordinates,Coordinates> clearCheck) {
         List<SolutionRecord> result = new ArrayList<>();
         result.add(path.get(0));
         int idx = 0;
@@ -70,7 +69,7 @@ public class Solution {
             int nextIdx = limit;
             for (int scan = idx + 1; scan < limit; scan++) {
                 SolutionRecord scanning = path.get(scan);
-                if (map.clearView(current.coord, scanning.coord)) {
+                if (clearCheck.test(current.coord, scanning.coord)) {
                     if (scanning.cost < minCost) {
                         minCost = scanning.cost;
                         nextIdx = scan;
@@ -91,13 +90,13 @@ public class Solution {
     /**
      * Builds the shortest path based on the path stack and the target.
      * 
-     * @param target
+     * @param clearCheck a predicate that returns clear if the path between the two coordinates is clear.
      */
-    public void simplify(PlannerMap map) {
+    public void simplify(BiPredicate<Coordinates,Coordinates> clearCheck) {
         if (path.size() > 2) {
             Coordinates target = end();
             recalculateCost(target);
-            removeUnnecessarySteps(map);
+            removeUnnecessarySteps(clearCheck);
         }
     }
 

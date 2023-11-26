@@ -1,19 +1,20 @@
-package org.xenei.robot.planner;
+package org.xenei.robot.common;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.when;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.BiPredicate;
 import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.xenei.robot.common.Coordinates;
-import org.xenei.robot.common.Point;
+import org.mockito.Mockito;
 import org.xenei.robot.common.testUtils.MapLibrary;
 
 public class SolutionTest {
@@ -54,9 +55,8 @@ public class SolutionTest {
     
     @Test
     public void simplifyTest() {
-        PlannerMap map = new PlannerMap();
-        MapLibrary.map2('#').getObstacles().forEach(map::setObstacle);
-        underTest.simplify(map);
+        CoordinateMap cmap = MapLibrary.map2('#');
+        underTest.simplify(cmap::clearView);
         assertEquals( 3, underTest.stepCount());
         assertEquals( Coordinates.fromXY(-1, 1), underTest.end() );
         assertEquals( Coordinates.fromXY(-1, -3), underTest.start() );

@@ -2,6 +2,7 @@ package org.xenei.robot;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -12,10 +13,10 @@ import org.junit.jupiter.api.Test;
 import org.xenei.robot.common.Coordinates;
 import org.xenei.robot.common.Mover;
 import org.xenei.robot.common.Point;
+import org.xenei.robot.common.SolutionTest;
 import org.xenei.robot.common.testUtils.FakeMover;
 import org.xenei.robot.common.testUtils.FakeSensor;
 import org.xenei.robot.common.testUtils.MapLibrary;
-import org.xenei.robot.planner.SolutionTest;
 
 
 public class ProcessorTest {
@@ -30,22 +31,10 @@ public class ProcessorTest {
         underTest = new Processor(sensor, mover);
     }
 
-    private void waitForStart() {
-        while (!underTest.isMoving()) {
-        }
-    }
-
-    private void waitForStop() {
-        while (underTest.isMoving()) {
-        }
-    }
-
     @Test
     @Disabled( "Rework to use messages?")
     public void moveToTest() {
-        underTest.moveTo(finalCoord);
-       //waitForStart();
-        waitForStop();
+        assertTrue(underTest.moveTo(finalCoord));
         List<Point> solution = underTest.getSolution().map(Coordinates::getPoint).collect(Collectors.toList());
         assertArrayEquals(SolutionTest.expectedSimplification, solution.toArray());
         assertEquals(finalCoord.getPoint(), solution.get(solution.size() - 1));
@@ -56,9 +45,9 @@ public class ProcessorTest {
     public void setTargetWhileMovingTest() {
         Coordinates nextCoord = Coordinates.fromXY(4, 4);
         underTest.moveTo(finalCoord);
-        waitForStart();
+        
         underTest.setTarget(nextCoord);
-        waitForStop();
+
         List<Point> solution = underTest.getSolution().map(Coordinates::getPoint).collect(Collectors.toList());
         assertEquals(nextCoord.getPoint(), solution.get(solution.size() - 1));
     }
