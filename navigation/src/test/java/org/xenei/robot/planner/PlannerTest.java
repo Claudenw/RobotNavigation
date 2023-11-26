@@ -85,7 +85,7 @@ public class PlannerTest {
     }
 
     @Test
-    public void stepTest() {
+    public void stepTestMap2() {
         FakeSensor sensor = new FakeSensor(MapLibrary.map2('#'));
         Map map = new PlannerMap();
         MapperImpl mapper = new MapperImpl(map);
@@ -102,13 +102,44 @@ public class PlannerTest {
             if (maxLoops < stepCount++) {
                 fail("Did not find solution in " + maxLoops + " steps");
             }
-            mapper.processSensorData(underTest, sensor.sense(underTest.getCurrentPosition()));
             double angle = underTest.getCurrentPosition().coordinates().angleTo(underTest.getTarget());
             underTest.changeCurrentPosition(new Position(underTest.getTarget(), angle));
+            mapper.processSensorData(underTest, sensor.sense(underTest.getCurrentPosition()));
         }
         assertEquals(SolutionTest.expectedSolution.length - 1, underTest.getSolution().stepCount());
         assertEquals(startCoord, underTest.getSolution().start());
         assertEquals(finalCoord, underTest.getSolution().end());
+        List<Point> solution = underTest.getSolution().stream().map(Coordinates::getPoint).collect(Collectors.toList());
+        assertArrayEquals(SolutionTest.expectedSolution, solution.toArray());
+    }
+    
+    @Test
+    public void stepTestMap3() {
+        FakeSensor sensor = new FakeSensor(MapLibrary.map3('#'));
+        Map map = new PlannerMap();
+        MapperImpl mapper = new MapperImpl(map);
+
+        Coordinates finalCoord = Coordinates.fromXY(-1, 1);
+        Coordinates startCoord = Coordinates.fromXY(-1, -3);
+
+        underTest = new PlannerImpl(map, startCoord, finalCoord);
+
+        int stepCount = 0;
+        int maxLoops = 100;
+        mapper.processSensorData(underTest, sensor.sense(underTest.getCurrentPosition()));
+        while (underTest.step()) {
+            if (maxLoops < stepCount++) {
+                fail("Did not find solution in " + maxLoops + " steps");
+            }
+            double angle = underTest.getCurrentPosition().coordinates().angleTo(underTest.getTarget());
+            underTest.changeCurrentPosition(new Position(underTest.getTarget(), angle));
+            mapper.processSensorData(underTest, sensor.sense(underTest.getCurrentPosition()));
+        }
+        assertEquals(22, underTest.getSolution().stepCount());
+        assertEquals(startCoord, underTest.getSolution().start());
+        assertEquals(finalCoord, underTest.getSolution().end());
+        underTest.getSolution().simplify(map::clearView);
+        
         List<Point> solution = underTest.getSolution().stream().map(Coordinates::getPoint).collect(Collectors.toList());
         assertArrayEquals(SolutionTest.expectedSolution, solution.toArray());
     }
