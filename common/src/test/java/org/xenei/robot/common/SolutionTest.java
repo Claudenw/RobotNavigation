@@ -14,15 +14,21 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.xenei.robot.common.testUtils.MapLibrary;
 
+import mil.nga.sf.Point;
+
 public class SolutionTest {
 
     private Solution underTest;
 
     public static Point[] expectedSolution = { new Point(-1, -3), new Point(-1, -2), new Point(-2, -2),
             new Point(0, -2), new Point(2, -2), new Point(2, -1), new Point(2, 0), new Point(-1, 1) };
-
+    
     public static Point[] expectedSimplification = { new Point(-1, -3), new Point(2, -2), new Point(2, 0),
             new Point(-1, 1) };
+
+    public static double expectedCost = 11.16227766016838;
+    
+    public static double expectedSimplifiedCost = 8.32455532033676;
 
     @BeforeEach
     public void setup() {
@@ -39,6 +45,7 @@ public class SolutionTest {
         assertEquals(-1, underTest.stepCount());
         List<Coordinates> solution = underTest.stream().collect(Collectors.toList());
         assertTrue(solution.isEmpty());
+        assertEquals(Double.POSITIVE_INFINITY, underTest.cost());
     }
 
     @Test
@@ -47,8 +54,10 @@ public class SolutionTest {
         assertEquals(Coordinates.fromXY(-1, 1), underTest.end());
         assertEquals(Coordinates.fromXY(-1, -3), underTest.start());
         assertEquals(expectedSolution.length - 1, underTest.stepCount());
-        List<Point> solution = underTest.stream().map(Coordinates::getPoint).collect(Collectors.toList());
-        assertArrayEquals(expectedSolution, solution.toArray());
+        List<Coordinates> solution = underTest.stream().collect(Collectors.toList());
+        List<Coordinates> expected = Arrays.stream(expectedSolution).map(Coordinates::fromXY).collect(Collectors.toList());
+        assertEquals(expected, solution);
+        assertEquals(expectedCost, underTest.cost());
     }
 
     @Test
@@ -58,8 +67,10 @@ public class SolutionTest {
         assertEquals(3, underTest.stepCount());
         assertEquals(Coordinates.fromXY(-1, 1), underTest.end());
         assertEquals(Coordinates.fromXY(-1, -3), underTest.start());
-        List<Point> solution = underTest.stream().map(Coordinates::getPoint).collect(Collectors.toList());
-        assertArrayEquals(expectedSimplification, solution.toArray());
+        List<Coordinates> solution = underTest.stream().collect(Collectors.toList());
+        List<Coordinates> expected = Arrays.stream(expectedSimplification).map(Coordinates::fromXY).collect(Collectors.toList());
+        assertEquals(expected, solution);
+        assertEquals(expectedSimplifiedCost, underTest.cost());
     }
 
 }

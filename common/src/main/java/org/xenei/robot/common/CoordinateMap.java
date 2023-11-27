@@ -6,7 +6,7 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.stream.Stream;
 
-//import org.xenei.robot.planner.PlannerMap;
+import mil.nga.sf.Point;
 
 public class CoordinateMap {
     SortedSet<Coord> points;
@@ -26,7 +26,7 @@ public class CoordinateMap {
         return scale;
     }
 
-    public void enable(Coordinates location, char c) {
+    public void enable(Point location, char c) {
         enable(new Coord(location, c));
     }
 
@@ -52,7 +52,7 @@ public class CoordinateMap {
         location.stream().forEach(loc -> disable(loc));
     }
 
-    public boolean isEnabled(Coordinates location) {
+    public boolean isEnabled(Point location) {
         return points.contains(new Coord(location, ' '));
     }
 
@@ -137,7 +137,7 @@ public class CoordinateMap {
             this.c = c;
         }
 
-        public Coord(Coordinates coords, char c) {
+        public Coord(Point coords, char c) {
             this(coords.getX(), coords.getY(), c);
         }
 

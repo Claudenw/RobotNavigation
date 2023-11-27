@@ -12,6 +12,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.BiPredicate;
 
 import org.apache.jena.arq.querybuilder.AskBuilder;
 import org.apache.jena.arq.querybuilder.ExprFactory;
@@ -24,13 +25,15 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.xenei.robot.common.Coordinates;
-import org.xenei.robot.common.Point;
 import org.xenei.robot.common.Target;
+import org.xenei.robot.common.utils.PointUtils;
 import org.xenei.robot.mapper.rdf.Namespace;
 
-public class PlannerMapTest {
+import mil.nga.sf.Point;
 
-    PlannerMap underTest;
+public class MapImplTest {
+
+    MapImpl underTest;
 
     public static final Point[] expected = { new Point(-4, -4), new Point(-4, -3), new Point(-4, -1), new Point(-2, -4),
             new Point(-2, -2), new Point(-1, -4), new Point(-1, -2), new Point(0, -4), new Point(0, -2),
@@ -56,10 +59,10 @@ public class PlannerMapTest {
 
     @BeforeEach
     public void setup() {
-        underTest = new PlannerMap();
-        underTest.add(new Target(Coordinates.fromXY(p), p.distance(t)));
+        underTest = new MapImpl();
+        underTest.add(new Target(Coordinates.fromXY(p), PointUtils.distance(p,t)));
         for (Point e : expected) {
-            underTest.add(new Target(Coordinates.fromXY(e), e.distance(t)));
+            underTest.add(new Target(Coordinates.fromXY(e), PointUtils.distance(e,t)));
         }
         for (Point o : obstacles) {
             underTest.setObstacle(Coordinates.fromXY(o));
@@ -100,7 +103,8 @@ public class PlannerMapTest {
     public void getBestTest() {
         Optional<Target> pr = underTest.getBestTarget(Coordinates.fromXY(p));
         assertTrue(pr.isPresent());
-        assertEquals(new Point(-1, -2), pr.get().coordinates().getPoint());
+        Point p2 = new Point(-1, -2);
+        assertEquals(new Target(p2, PointUtils.distance(p2, t)), pr.get());
         assertFalse(Double.isNaN(pr.get().cost()));
     }
 
@@ -114,12 +118,12 @@ public class PlannerMapTest {
     }
 
     @Test
-    public void getPlanRecordTest() {
+    public void getTargetTest() {
 
         Optional<Target> pr = underTest.getTarget(Coordinates.fromXY(p));
         assertTrue(pr.isPresent());
-        assertEquals(p, pr.get().coordinates().getPoint());
-        assertEquals(p.distance(t), pr.get().cost());
+        assertEquals( 0, PointUtils.XYCompr.compare( p, pr.get()));
+        assertEquals(PointUtils.distance(p, t), pr.get().cost());
 
         pr = underTest.getTarget(Coordinates.fromXY(t));
         assertTrue(pr.isEmpty());
@@ -127,8 +131,8 @@ public class PlannerMapTest {
         for (Point e : expected) {
             pr = underTest.getTarget(Coordinates.fromXY(e));
             assertTrue(pr.isPresent());
-            assertEquals(e, pr.get().coordinates().getPoint());
-            assertEquals(e.distance(t), pr.get().cost());
+            assertEquals( 0, PointUtils.XYCompr.compare( e, pr.get()));
+            assertEquals(PointUtils.distance(e, t), pr.get().cost());
         }
         for (Point o : obstacles) {
             pr = underTest.getTarget(Coordinates.fromXY(o));
@@ -137,23 +141,25 @@ public class PlannerMapTest {
     }
 
     @Test
-    public void getPlanRecordsTest() {
+    public void getTargetsTest() {
         Collection<Point> points = new ArrayList<>();
         points.addAll(Arrays.asList(expected));
         points.add(p);
+        BiPredicate<Collection<Point>, Target> contains = (c,t) -> c.stream().filter( p->PointUtils.XYCompr.compare(p, t) == 0).findFirst().isPresent();
+
 
         Collection<Target> records = underTest.getTargets();
         assertEquals(points.size(), records.size());
 
         for (Target pr : records) {
-            assertTrue(points.contains(pr.coordinates().getPoint()), () -> "Unexpected PlanRecord " + pr);
+            assertTrue(contains.test(points, pr), () -> "Unexpected Target " + pr);
             assertFalse(Double.isNaN(pr.cost()), () -> pr.toString() + " has NaN cost");
         }
     }
 
     @Test
     public void isEmptyTest() {
-        assertTrue(new PlannerMap().isEmpty());
+        assertTrue(new MapImpl().isEmpty());
         assertFalse(underTest.isEmpty());
     }
 

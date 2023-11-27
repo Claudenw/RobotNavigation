@@ -12,13 +12,14 @@ import org.apache.jena.query.ResultSet;
 import org.apache.jena.riot.Lang;
 import org.apache.jena.sparql.core.Var;
 import org.apache.jena.vocabulary.RDF;
-import org.xenei.robot.common.Point;
 import org.xenei.robot.mapper.rdf.Namespace;
+
+import mil.nga.sf.Point;
 
 public class MapReports {
     
 
-    public static List<CostModelEntry> costModel(PlannerMap map) {
+    public static List<CostModelEntry> costModel(MapImpl map) {
         Var x1 = Var.alloc("x1");
         Var y1 = Var.alloc("y1");
         Var x2 = Var.alloc("x2");
@@ -49,19 +50,19 @@ public class MapReports {
         return result;
     }
 
-    public static String dumpModel(PlannerMap map) {
+    public static String dumpModel(MapImpl map) {
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
         map.data.getUnionModel().write(bos, Lang.TURTLE.getName());
         return bos.toString();
     }
 
-    public static String dumpPlanningModel(PlannerMap map) {
+    public static String dumpPlanningModel(MapImpl map) {
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
         map.data.getNamedModel(Namespace.PlanningModel).write(bos, Lang.TURTLE.getName());
         return bos.toString();
     }
 
-    public static String dumpBaseModel(PlannerMap map) {
+    public static String dumpBaseModel(MapImpl map) {
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
         map.data.getNamedModel(Namespace.BaseModel).write(bos, Lang.TURTLE.getName());
         return bos.toString();

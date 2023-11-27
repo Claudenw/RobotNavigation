@@ -9,8 +9,9 @@ import org.apache.jena.rdf.model.ResourceFactory;
 import org.apache.jena.sparql.core.Var;
 import org.apache.jena.sparql.pfunction.PropertyFunctionRegistry;
 import org.xenei.robot.common.Coordinates;
-import org.xenei.robot.common.Point;
 import org.xenei.robot.common.Position;
+
+import mil.nga.sf.Point;
 
 public class Namespace {
     public static final String URI = "urn:org.xenei.robot:";
@@ -39,16 +40,9 @@ public class Namespace {
     
     
     public static Resource urlOf(Point p) {
-        return ResourceFactory.createResource( String.format(POINT_URI_FMT, p.x, p.y) );
+        return ResourceFactory.createResource(String.format(POINT_URI_FMT, p.getX(), p.getY()));
     }
     
-    public static Resource urlOf(Coordinates c) {
-        return urlOf(c.getPoint());
-    }
-    
-    public static Resource urlOf(Position p) {
-        return urlOf(p.coordinates().getPoint());
-    }
 
     public static Resource asRDF(Coordinates a, Resource type) {
         Coordinates qA = a.quantize();
@@ -58,10 +52,6 @@ public class Namespace {
         r.addLiteral(x, qA.getX());
         r.addLiteral(y, qA.getY());
         return r;
-    }
-    
-    public static Resource asRDF(Position p, Resource type) {
-        return asRDF(p.coordinates(), type);
     }
     
     public static Resource asRDF(Point p, Resource type) {

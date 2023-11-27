@@ -5,6 +5,7 @@ import java.util.Collections;
 import java.util.Optional;
 import java.util.Stack;
 
+import org.apache.commons.math3.util.Precision;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xenei.robot.common.AngleUnits;
@@ -14,10 +15,13 @@ import org.xenei.robot.common.Planner;
 import org.xenei.robot.common.Position;
 import org.xenei.robot.common.Solution;
 import org.xenei.robot.common.Target;
+import org.xenei.robot.common.utils.PointUtils;
+
+import mil.nga.sf.Point;
 
 public class PlannerImpl implements Planner {
     private static final Logger LOG = LoggerFactory.getLogger(PlannerImpl.class);
-    private final Stack<Coordinates> target;
+    private final Stack<Point> target;
     private final Map map;
     private Position currentPosition;
     private Solution solution;
@@ -56,7 +60,7 @@ public class PlannerImpl implements Planner {
     @Override
     public void changeCurrentPosition(Position position) {
         currentPosition = position.quantize();
-        map.add(new Target(position.coordinates(), position.coordinates().distanceTo(target.peek())));
+        map.add(new Target(position, position.distanceTo(target.peek())));
     }
 
     /**
@@ -72,14 +76,14 @@ public class PlannerImpl implements Planner {
             angle = coords.angleTo(getTarget());
         }
         currentPosition = new Position(coords, angle);
-        map.add(new Target(currentPosition.coordinates(), distance));
+        map.add(new Target(currentPosition, distance));
         resetSolution();
     }
 
     private void resetSolution() {
         solution = new Solution();
         if (currentPosition != null) {
-            solution.add(currentPosition.coordinates());
+            solution.add(currentPosition);
         }
     }
 
@@ -106,15 +110,15 @@ public class PlannerImpl implements Planner {
      */
     @Override
     public boolean step() {
-        if (currentPosition.coordinates().equals(target.peek())) {
+        if (PointUtils.equivalent(currentPosition, target.peek(), Precision.EPSILON )) {
             target.pop();
             if (target.isEmpty()) {
-                solution.add(currentPosition.coordinates());
+                solution.add(currentPosition);
                 return false;
             }
             // see if we can get to target directly
-            if (map.clearView(currentPosition.coordinates(), target.peek())) {
-                map.path(currentPosition.coordinates(), target.peek());
+            if (map.clearView(currentPosition, target.peek())) {
+                map.path(currentPosition, target.peek());
                 currentPosition.setHeading(target.peek());
             }
             // recalculate the distances
@@ -122,22 +126,22 @@ public class PlannerImpl implements Planner {
             // update the planning model make sure we don't revisit where we have been.
             solution.stream().forEach(t -> map.setTemporaryCost(new Target(t, Double.POSITIVE_INFINITY)));
             // add the current location to the solution.
-            solution.add(currentPosition.coordinates());
+            solution.add(currentPosition);
         }
 
-        Optional<Target> selected = map.getBestTarget(currentPosition.coordinates());
+        Optional<Target> selected = map.getBestTarget(currentPosition);
         if (selected.isPresent()) {
             // update the planning model for the current position.
-            // map.update(Namespace.PlanningModel, currentPosition.coordinates(),
+            // map.update(Namespace.PlanningModel, currentPosition,
             // Namespace.distance, selected.get().cost());
             // if we are not at the target then make the next position the target.
-            if (!selected.get().coordinates().equals(target.peek())) {
-                target.push(selected.get().coordinates());
+            if (!PointUtils.equivalent(selected.get(), target.peek(), Precision.EPSILON )) {
+                target.push(selected.get());
             }
             // if the heading changes mark the point on the current location
-            if (currentPosition.getHeading(AngleUnits.RADIANS) != currentPosition.coordinates()
-                    .angleTo(selected.get().coordinates())) {
-                solution.add(currentPosition.coordinates());
+            if (currentPosition.getHeading(AngleUnits.RADIANS) != currentPosition
+                    .angleTo(selected.get())) {
+                solution.add(currentPosition);
             }
         }
         return true;
@@ -150,10 +154,10 @@ public class PlannerImpl implements Planner {
      * @param target The coordinates to head toward.
      */
     @Override
-    public void setTarget(Coordinates target) {
+    public void setTarget(Point target) {
         LOG.info("Setting target to {} starting from {}", target, currentPosition);
         this.target.clear();
-        this.target.push(target.quantize());
+        this.target.push(target);
         if (currentPosition != null) {
             currentPosition.setHeading(target);
         }
@@ -162,12 +166,12 @@ public class PlannerImpl implements Planner {
     }
 
     @Override
-    public Coordinates getTarget() {
+    public Point getTarget() {
         return target.isEmpty() ? null : target.peek();
     }
 
     @Override
-    public Collection<Coordinates> getTargets() {
+    public Collection<Point> getTargets() {
         return Collections.unmodifiableCollection(target);
     }
 

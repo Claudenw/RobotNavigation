@@ -44,18 +44,20 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xenei.robot.common.Coordinates;
 import org.xenei.robot.common.Map;
-import org.xenei.robot.common.Point;
 import org.xenei.robot.common.Position;
 import org.xenei.robot.common.Solution;
 import org.xenei.robot.common.Target;
+import org.xenei.robot.common.utils.PointUtils;
 import org.xenei.robot.mapper.rdf.Namespace;
 
-public class PlannerMap implements Map {
-    private static final Logger LOG = LoggerFactory.getLogger(PlannerMap.class);
+import mil.nga.sf.Point;
+
+public class MapImpl implements Map {
+    private static final Logger LOG = LoggerFactory.getLogger(MapImpl.class);
 
     Dataset data;
 
-    public PlannerMap() {
+    public MapImpl() {
         data = DatasetFactory.create();
         data.addNamedModel(Namespace.BaseModel, ModelFactory.createDefaultModel());
         data.addNamedModel(Namespace.PlanningModel, ModelFactory.createDefaultModel());
@@ -79,7 +81,7 @@ public class PlannerMap implements Map {
 
     @Override
     public void add(Target target) {
-        Resource qA = Namespace.asRDF(target.coordinates(), Namespace.Coord);
+        Resource qA = Namespace.asRDF(target, Namespace.Coord);
         data.getNamedModel(Namespace.PlanningModel).removeAll(qA, Namespace.distance, null);
         UpdateBuilder ub = new UpdateBuilder().addInsert(Namespace.BaseModel, qA.getModel())
                 .addInsert(Namespace.PlanningModel, qA, Namespace.distance, target.cost());
@@ -89,10 +91,6 @@ public class PlannerMap implements Map {
     }
 
     @Override
-    public void setObstacle(Coordinates coordinates) {
-        setObstacle(coordinates.getPoint());
-    }
-
     public void setObstacle(Point point) {
         Resource r = Namespace.asRDF(point, Namespace.Obst);
         UpdateRequest req = new UpdateRequest(
@@ -111,8 +109,8 @@ public class PlannerMap implements Map {
     }
 
     @Override
-    public boolean isObstacle(Coordinates coordinates) {
-        AskBuilder ask = new AskBuilder().addWhere(Namespace.urlOf(coordinates), RDF.type, Namespace.Obst);
+    public boolean isObstacle(Point point) {
+        AskBuilder ask = new AskBuilder().addWhere(Namespace.urlOf(point), RDF.type, Namespace.Obst);
         try (QueryExecution qexec = doQuery(ask)) {
             return qexec.execAsk();
         }
@@ -166,7 +164,7 @@ public class PlannerMap implements Map {
      * @return true if the record updated the map, false otherwise.
      */
     @Override
-    public boolean path(Coordinates a, Coordinates b) {
+    public boolean path(Point a, Point b) {
         return path(Namespace.PlanningModel, a, b);
     }
 
@@ -176,7 +174,7 @@ public class PlannerMap implements Map {
      * @param record the plan record to add
      * @return true if the record updated the map, false otherwise.
      */
-    public boolean path(Resource model, Coordinates a, Coordinates b) {
+    private boolean path(Resource model, Point a, Point b) {
         Resource rA = Namespace.asRDF(a, Namespace.Coord);
         Resource rB = Namespace.asRDF(b, Namespace.Coord);
 
@@ -196,11 +194,11 @@ public class PlannerMap implements Map {
     }
 
     @Override
-    public void cutPath(Coordinates a, Coordinates b) {
+    public void cutPath(Point a, Point b) {
         cutPath(Namespace.PlanningModel, a, b);
     }
 
-    public void cutPath(Resource model, Coordinates a, Coordinates b) {
+    public void cutPath(Resource model, Point a, Point b) {
         Resource rA = Namespace.urlOf(a);
         Resource rB = Namespace.urlOf(b);
 
@@ -217,8 +215,8 @@ public class PlannerMap implements Map {
     }
 
     @Override
-    public boolean clearView(Coordinates from, Coordinates target) {
-        Position position = new Position(from, from.angleTo(target));
+    public boolean clearView(Point from, Point target) {
+        Position position = new Position(from, PointUtils.angleTo( from, target ));
         return getObstacles().stream().filter(obstacle -> !position.hasClearView(target, obstacle)).findFirst()
                 .isEmpty();
     }
@@ -233,8 +231,8 @@ public class PlannerMap implements Map {
      * @param p the property to update
      * @param value the value to set the property to.
      */
-    public void update(Resource model, Coordinates c, Property p, Object value) {
-        LOG.debug("updatating {} {} {} to {}", model.getLocalName(), c.getPoint().toString(1), p.getLocalName(), value);
+    public void update(Resource model, Point c, Property p, Object value) {
+        LOG.debug("updatating {} {} {} to {}", model.getLocalName(), PointUtils.toString(c,1), p.getLocalName(), value);
         Resource updt = Namespace.urlOf(c);
         data.getNamedModel(model).removeAll(updt, p, null);
         doUpdate(new UpdateBuilder().addInsert(model, updt, p, value));
@@ -248,7 +246,7 @@ public class PlannerMap implements Map {
      * position, or empty if none found.
      */
     @Override
-    public Optional<Target> getBestTarget(Coordinates currentCoords) {
+    public Optional<Target> getBestTarget(Point currentCoords) {
         if (data.isEmpty()) {
             LOG.debug("No map points");
             return Optional.empty();
@@ -321,7 +319,7 @@ public class PlannerMap implements Map {
      * @param target the new target.
      */
     @Override
-    public void recalculate(Coordinates target) {
+    public void recalculate(Point target) {
         LOG.debug("recalculate: {}", target);
         Resource targetResource = Namespace.urlOf(target);
         Var distance = Var.alloc("distance");
@@ -334,7 +332,7 @@ public class PlannerMap implements Map {
 
     @Override
     public void setTemporaryCost(Target target) {
-        update(Namespace.PlanningModel, target.coordinates(), Namespace.adjustment, target.cost());
+        update(Namespace.PlanningModel, target, Namespace.adjustment, target.cost());
     }
 
     /**
@@ -343,7 +341,7 @@ public class PlannerMap implements Map {
      * @param target the New target.
      */
     @Override
-    public void reset(Coordinates target) {
+    public void reset(Point target) {
         LOG.debug("reset: {}", target);
         // create a new map from all the known points
         // Add the target to the map.
@@ -406,52 +404,5 @@ public class PlannerMap implements Map {
         return data.getUnionModel();
     }
 
-    public List<CostModelEntry> costModel() {
-        Var x1 = Var.alloc("x1");
-        Var y1 = Var.alloc("y1");
-        Var x2 = Var.alloc("x2");
-        Var y2 = Var.alloc("y2");
-        Var cost = Var.alloc("cost");
-        Var distance = Var.alloc("distance");
-        Var node1 = Var.alloc("node1");
-        Var node2 = Var.alloc("node2");
-        ExprFactory exprF = new ExprFactory();
-        SelectBuilder sb = new SelectBuilder().addVar(x1).addVar(y1).addVar(x2).addVar(y2).addVar(distance)
-                .addWhere(node1, RDF.type, Namespace.Coord).addWhere(node1, Namespace.x, x1)
-                .addWhere(node1, Namespace.y, y1).addWhere(node1, Namespace.path, node2)
-                .addWhere(node2, Namespace.x, x2).addWhere(node2, Namespace.y, y2)
-                .addWhere(node2, Namespace.distance, distance).addWhere(cost, Namespace.distF, List.of(node1, node2))
-                .addFilter(exprF.gt(cost, 0));
-
-        List<CostModelEntry> result = new ArrayList<>();
-        try (QueryExecution qexec = doQuery(sb)) {
-            ResultSet results = qexec.execSelect();
-            for (; results.hasNext();) {
-                QuerySolution soln = results.nextSolution();
-                result.add(new CostModelEntry(
-                        new Point(soln.getLiteral(x1.getName()).getDouble(), soln.getLiteral(y1.getName()).getDouble()),
-                        new Point(soln.getLiteral(x2.getName()).getDouble(), soln.getLiteral(y2.getName()).getDouble()),
-                        soln.getLiteral(distance.getName()).getDouble()));
-            }
-        }
-        return result;
-    }
-
-    public String dumpModel() {
-        ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        data.getUnionModel().write(bos, Lang.TURTLE.getName());
-        return bos.toString();
-    }
-
-    public String dumpPlanningModel() {
-        ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        data.getNamedModel(Namespace.PlanningModel).write(bos, Lang.TURTLE.getName());
-        return bos.toString();
-    }
-
-    public String dumpBaseModel() {
-        ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        data.getNamedModel(Namespace.BaseModel).write(bos, Lang.TURTLE.getName());
-        return bos.toString();
-    }
+   
 }

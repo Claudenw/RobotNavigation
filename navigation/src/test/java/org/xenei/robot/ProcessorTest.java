@@ -12,11 +12,12 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.xenei.robot.common.Coordinates;
 import org.xenei.robot.common.Mover;
-import org.xenei.robot.common.Point;
 import org.xenei.robot.common.SolutionTest;
 import org.xenei.robot.common.testUtils.FakeMover;
 import org.xenei.robot.common.testUtils.FakeSensor;
 import org.xenei.robot.common.testUtils.MapLibrary;
+
+import mil.nga.sf.Point;
 
 
 public class ProcessorTest {
@@ -35,9 +36,9 @@ public class ProcessorTest {
     @Disabled( "Rework to use messages?")
     public void moveToTest() {
         assertTrue(underTest.moveTo(finalCoord));
-        List<Point> solution = underTest.getSolution().map(Coordinates::getPoint).collect(Collectors.toList());
+        List<Point> solution = underTest.getSolution().collect(Collectors.toList());
         assertArrayEquals(SolutionTest.expectedSimplification, solution.toArray());
-        assertEquals(finalCoord.getPoint(), solution.get(solution.size() - 1));
+        assertTrue(finalCoord.equalsXY(solution.get(solution.size() - 1)));
     }
 
     @Test
@@ -48,8 +49,8 @@ public class ProcessorTest {
         
         underTest.setTarget(nextCoord);
 
-        List<Point> solution = underTest.getSolution().map(Coordinates::getPoint).collect(Collectors.toList());
-        assertEquals(nextCoord.getPoint(), solution.get(solution.size() - 1));
+        List<Point> solution = underTest.getSolution().collect(Collectors.toList());
+        assertTrue(nextCoord.equalsXY(solution.get(solution.size() - 1)));
     }
 
 }

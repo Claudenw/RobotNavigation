@@ -1,6 +1,8 @@
 package org.xenei.robot.mapper;
 
-import org.xenei.robot.common.Point;
+import org.xenei.robot.common.utils.PointUtils;
+
+import mil.nga.sf.Point;
 
 public class CostModelEntry {
     public final Point a;
@@ -18,7 +20,7 @@ public class CostModelEntry {
     }
 
     public double dist() {
-        return a.distance(b);
+        return PointUtils.distance(a, b);
     }
 
     @Override

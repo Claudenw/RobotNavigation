@@ -28,7 +28,7 @@ public class FakeSensor implements Sensor {
         Coordinates[] result = new Coordinates[BLOCKSIZE];
 
         for (int i = 0; i < BLOCKSIZE; i++) {
-            result[i] = look(position.coordinates(), position.getHeading(AngleUnits.RADIANS) + (RADIANS * i)).minus(position.coordinates());
+            result[i] = look(position, position.getHeading(AngleUnits.RADIANS) + (RADIANS * i)).minus(position);
             if (LOG.isDebugEnabled()) {
                 LOG.debug("Reading {}: {}", i, result[i]);
             }

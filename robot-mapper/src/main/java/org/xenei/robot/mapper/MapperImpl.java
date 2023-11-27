@@ -14,6 +14,8 @@ import org.xenei.robot.common.Planner;
 import org.xenei.robot.common.Position;
 import org.xenei.robot.common.Target;
 
+import mil.nga.sf.Point;
+
 public class MapperImpl implements Mapper {
     private static final Logger LOG = LoggerFactory.getLogger(MapperImpl.class);
     private final Map map;
@@ -31,7 +33,7 @@ public class MapperImpl implements Mapper {
     public void processSensorData(Planner planner, Coordinates[] obstacles) {
         // next target set if collision detected.
         Position currentPosition = planner.getCurrentPosition();
-        Coordinates target = planner.getTarget();
+        Point target = planner.getTarget();
         Coordinates solution = planner.getSolution().end();
         ObstacleMapper obstacleMapper = new ObstacleMapper(currentPosition, target);
         LOG.trace("Sense position: {}", currentPosition);
@@ -43,12 +45,12 @@ public class MapperImpl implements Mapper {
                 // create absolute coordinates
                 .map(c -> {
                     LOG.trace( "Checking {}", c);
-                    return currentPosition.coordinates().plus(c).quantize();
+                    return currentPosition.plus(c).quantize();
                 })
                 .filter( new UniqueFilter<Coordinates>() )
                 .map(obstacleMapper::map)
                 // filter out non entries
-                .filter(c -> c.isPresent() && !c.get().equals(currentPosition.coordinates()))
+                .filter(c -> c.isPresent() && !c.get().equals(currentPosition))
                 .map(Optional::get)
                 .filter( new UniqueFilter<Coordinates>() )
                 .forEach(c -> recordMapPoint(currentPosition, new Target( c, c.distanceTo(target))));
@@ -62,7 +64,7 @@ public class MapperImpl implements Mapper {
 
     private void recordMapPoint(Position currentPosition, Target target) {
         map.add(target);
-        map.path(currentPosition.coordinates(), target.coordinates());
+        map.path(currentPosition, target);
     }
 
     /**
@@ -71,9 +73,9 @@ public class MapperImpl implements Mapper {
      * @return An optional that contains the nearest open coordinates if any.
      */
     private Optional<Coordinates> not(Position currentPosition, Coordinates obstacle) {
-        Coordinates direct0 = obstacle.minus(currentPosition.coordinates());
+        Coordinates direct0 = obstacle.minus(currentPosition);
         Coordinates direct = Coordinates.fromAngle(direct0.getTheta(AngleUnits.RADIANS), AngleUnits.RADIANS, direct0.getRange() - 1);
-        Coordinates qCandidate = currentPosition.coordinates().plus(direct).quantize();
+        Coordinates qCandidate = currentPosition.plus(direct).quantize();
         if (map.isObstacle(qCandidate)) {
             Coordinates adjustment = qCandidate.minus(obstacle);
             int xAdj = 0;
@@ -112,7 +114,7 @@ public class MapperImpl implements Mapper {
      * @param obstacle the obstacle we may hit.
      * @return true if the obstacle is on our path.
      */
-    private boolean registerObstacle(Position currentPosition, Coordinates target, Coordinates obstacle) {
+    private boolean registerObstacle(Position currentPosition, Point target, Point obstacle) {
         map.setObstacle(obstacle);
         boolean result = !currentPosition.hasClearView(target, obstacle);
         if (result) {
@@ -121,13 +123,13 @@ public class MapperImpl implements Mapper {
         return result;
     }
     
-    public class ObstacleMapper {
+    class ObstacleMapper {
         private Optional<Coordinates> nextTarget = Optional.empty();
         private double d = 0.0;
         private final Position currentPosition;
-        private final Coordinates target;
+        private final Point target;
         
-        ObstacleMapper(Position currentPosition, Coordinates target) {
+        ObstacleMapper(Position currentPosition, Point target) {
             this.currentPosition = currentPosition;
             this.target = target;
         }
@@ -140,9 +142,9 @@ public class MapperImpl implements Mapper {
                 if (result.isPresent()) {
                     if (nextTarget.isEmpty()) {
                         nextTarget = result;
-                        d = result.get().distanceTo(currentPosition.coordinates());
+                        d = result.get().distanceTo(currentPosition);
                     } else {
-                        double n = result.get().distanceTo(currentPosition.coordinates());
+                        double n = result.get().distanceTo(currentPosition);
                         if (n<d) {
                             d = n;
                             nextTarget = result;

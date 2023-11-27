@@ -12,9 +12,12 @@ import org.xenei.robot.common.Mover;
 import org.xenei.robot.common.Planner;
 import org.xenei.robot.common.Position;
 import org.xenei.robot.common.Sensor;
+import org.xenei.robot.common.utils.PointUtils;
 import org.xenei.robot.mapper.MapperImpl;
-import org.xenei.robot.mapper.PlannerMap;
+import org.xenei.robot.mapper.MapImpl;
 import org.xenei.robot.planner.PlannerImpl;
+
+import mil.nga.sf.Point;
 
 public class Processor {
     private final Mover mover;
@@ -29,9 +32,9 @@ public class Processor {
     public Processor(Sensor sensor, Mover mover) {
         this.mover = mover;
         this.sensor = sensor;
-        this.map = new PlannerMap();
+        this.map = new MapImpl();
         this.mapper = new MapperImpl(map);
-        this.planner = new PlannerImpl(map, mover.position().coordinates());
+        this.planner = new PlannerImpl(map, mover.position());
     }
 
     public void setTarget(Coordinates target) {
@@ -46,12 +49,12 @@ public class Processor {
      */
     private Optional<Position> step() {
         if (planner.step()) {
-            Coordinates nextLoc = planner.getTarget();
+            Point nextLoc = planner.getTarget();
             if (nextLoc == null) {
                 return Optional.empty();
             }
-
-            Optional<Position> result = Optional.of(mover.move(nextLoc.minus(mover.position().coordinates())));
+            Coordinates c = Coordinates.fromXY(nextLoc);
+            Optional<Position> result = Optional.of(mover.move(c.minus(mover.position())));
             LOG.info("next step {}", result);
             if (result.isPresent()) {
                 planner.changeCurrentPosition(result.get());

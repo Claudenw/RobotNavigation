@@ -5,6 +5,8 @@ import java.util.List;
 import java.util.function.BiPredicate;
 import java.util.stream.Stream;
 
+import org.xenei.robot.common.utils.PointUtils;
+
 public class Solution {
 
     private final List<SolutionRecord> path;
@@ -35,6 +37,14 @@ public class Solution {
     public int stepCount() {
         return path.size() - 1;
     }
+    
+    public double cost() {
+        if (isEmpty()) {
+            return Double.POSITIVE_INFINITY;
+        }
+        Coordinates target = end();
+        return recalculateCost(target);
+    }
 
     public Coordinates start() {
         return get(0);
@@ -44,7 +54,7 @@ public class Solution {
         return path.stream().map(s -> s.coord);
     }
 
-    private void recalculateCost(Coordinates target) {
+    private double recalculateCost(Coordinates target) {
         int limit = stepCount();
         SolutionRecord oldPr;
         double accumulator = 0.0;
@@ -56,6 +66,7 @@ public class Solution {
             newPr = new SolutionRecord(oldPr.coord, accumulator);
             path.set(i, newPr);
         }
+        return accumulator;
     }
 
     private void removeUnnecessarySteps(BiPredicate<Coordinates,Coordinates> clearCheck) {
@@ -115,7 +126,7 @@ public class Solution {
 
         @Override
         public String toString() {
-            return String.format("%s c:%.4f", coord.getPoint(), cost);
+            return String.format("%s c:%.4f", coord, cost);
         }
 
         @Override

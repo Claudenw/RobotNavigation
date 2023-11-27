@@ -20,7 +20,7 @@ public class CoordinateMapUtils {
         cmap.enable(map.getObstacles(), '@');
         planner.getTargets().stream().forEach(c -> cmap.enable(c, '*'));
         planner.getSolution().stream().forEach(r -> cmap.enable(r, '='));
-        cmap.enable(p.coordinates(), 'p');
+        cmap.enable(p, 'p');
         cmap.enable(planner.getTarget(), 't');
         LOG.info("\n{}", cmap.toString());
         LOG.info(p.toString());

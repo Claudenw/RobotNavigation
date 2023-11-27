@@ -1,20 +1,19 @@
 package org.xenei.robot.common;
 
-public class Target implements Comparable<Target> {
-    private Coordinates coordinates;
+import org.xenei.robot.common.utils.PointUtils;
+
+import mil.nga.sf.Point;
+
+public class Target extends Point implements Comparable<Target> {
     private double cost;
 
     public Target(Coordinates position, Coordinates target) {
         this(position, position.distanceTo(target));
     }
 
-    public Target(Coordinates coordinates, double cost) {
-        this.coordinates = coordinates;
+    public Target(Point point, double cost) {
+        super(point);
         this.cost = cost;
-    }
-
-    public Coordinates coordinates() {
-        return coordinates;
     }
 
     public double cost() {
@@ -23,12 +22,7 @@ public class Target implements Comparable<Target> {
 
     @Override
     public String toString() {
-        return String.format("Target {%s cost:%.4f}", coordinates, cost);
-    }
-
-    @Override
-    public int hashCode() {
-        return coordinates.hashCode();
+        return String.format("Target {%s cost:%.4f}", PointUtils.toString(this, 1), cost);
     }
 
     @Override
@@ -37,7 +31,7 @@ public class Target implements Comparable<Target> {
             return true;
         }
         if (pr instanceof Target) {
-            return coordinates.equals(((Target) pr).coordinates);
+            return super.equals(pr);
         }
         return false;
     }
@@ -45,6 +39,6 @@ public class Target implements Comparable<Target> {
     @Override
     public int compareTo(Target other) {
         int x = Double.compare(cost, other.cost);
-        return x == 0 ? Coordinates.XYCompr.compare(coordinates, other.coordinates) : x;
+        return x == 0 ? PointUtils.XYCompr.compare(this, other) : x;
     }
 }

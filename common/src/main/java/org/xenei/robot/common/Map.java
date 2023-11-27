@@ -4,6 +4,8 @@ import java.util.Collection;
 import java.util.Optional;
 import java.util.Set;
 
+import mil.nga.sf.Point;
+
 
 public interface Map {
 
@@ -13,22 +15,22 @@ public interface Map {
      * @param dest the coordinates to end it
      * @return true if there are no obstacles between source and dest.
      */
-    boolean clearView(Coordinates source, Coordinates dest);
+    boolean clearView(Point source, Point dest);
     void add(Target target);
     Collection<Target> getTargets();
-    boolean path(Coordinates from, Coordinates to);
-    void recalculate(Coordinates target);
-    Optional<Target> getBestTarget(Coordinates currentCoords);
+    boolean path(Point from, Point to);
+    void recalculate(Point target);
+    Optional<Target> getBestTarget(Point currentCoords);
     void setTemporaryCost(Target target);
     /**
      * Reset the target position. Builds a new map from all known points.
      * 
      * @param target the New target.
      */
-    void reset(Coordinates target);
-    boolean isObstacle(Coordinates coord);
-    void setObstacle(Coordinates obstacle);
+    void reset(Point target);
+    boolean isObstacle(Point coord);
+    void setObstacle(Point obstacle);
     Set<Coordinates> getObstacles();
-    void cutPath(Coordinates a, Coordinates b);
+    void cutPath(Point a, Point b);
     void recordSolution(Solution solution);
 }

@@ -5,14 +5,14 @@
 	<groupId>org.xenei.robot</groupId>
 	<artifactId>common</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-<parent>
-    <relativePath>..</relativePath>
-    <groupId>org.xenei.robot</groupId>
-    <artifactId>DAT</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
-  </parent>
-    <name>robot - common</name>
-	
+	<parent>
+		<relativePath>..</relativePath>
+		<groupId>org.xenei.robot</groupId>
+		<artifactId>DAT</artifactId>
+		<version>0.0.1-SNAPSHOT</version>
+	</parent>
+	<name>robot - common</name>
+
 	<dependencies>
 		<dependency>
 			<groupId>org.junit.jupiter</groupId>
@@ -39,7 +39,7 @@
 			<groupId>ch.qos.logback</groupId>
 			<artifactId>logback-classic</artifactId>
 		</dependency>
-		
+
 		<!-- https://mvnrepository.com/artifact/org.apache.commons/commons-math3 -->
 		<dependency>
 			<groupId>org.apache.commons</groupId>
@@ -51,11 +51,26 @@
 			<groupId>org.apache.commons</groupId>
 			<artifactId>commons-lang3</artifactId>
 		</dependency>
-		      <dependency>
-        <groupId>org.mockito</groupId>
-        <artifactId>mockito-core</artifactId>
-        <scope>test</scope>
-      </dependency>
+
+		<dependency>
+			<groupId>mil.nga</groupId>
+			<artifactId>sf</artifactId>
+			<version>2.2.1</version>
+		</dependency>
+		<dependency>
+			<groupId>mil.nga</groupId>
+			<artifactId>crs</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>mil.nga.sf</groupId>
+			<artifactId>sf-wkt</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.mockito</groupId>
+			<artifactId>mockito-core</artifactId>
+			<scope>test</scope>
+		</dependency>
 	</dependencies>
 	<build>
 		<plugins>
@@ -65,16 +80,16 @@
 				<version>2.22.2</version>
 			</plugin>
 			<plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-jar-plugin</artifactId>
-        <executions>
-          <execution>
-            <goals>
-              <goal>test-jar</goal>
-            </goals>
-          </execution>
-        </executions>
-      </plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-jar-plugin</artifactId>
+				<executions>
+					<execution>
+						<goals>
+							<goal>test-jar</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
 		</plugins>
 	</build>
 </project>

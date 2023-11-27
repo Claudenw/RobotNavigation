@@ -1,23 +1,25 @@
 package org.xenei.robot.common;
 
 import org.apache.commons.math3.util.Precision;
+import org.xenei.robot.common.utils.PointUtils;
 
-public class Position {
+import mil.nga.sf.Point;
+
+public class Position extends Coordinates {
     public static final double DELTA = 0.0000000001;
 
     private double heading;
-    private final Coordinates coordinates;
 
     public Position() {
         this(0.0, 0.0);
     }
 
-    public Position(Coordinates coord) {
-        this(coord, 0.0);
+    public Position(Point point) {
+        this(point, 0.0);
     }
 
-    public Position(Coordinates coord, double heading) {
-        this.coordinates = coord;
+    public Position(Point point, double heading) {
+        super(point);
         this.heading = heading;
     }
 
@@ -26,16 +28,13 @@ public class Position {
     }
 
     public Position(double x, double y, double heading) {
-        this.coordinates = Coordinates.fromXY(x, y);
+        super(x, y);
         this.heading = heading;
     }
 
+    @Override
     public Position quantize() {
-        return coordinates.isQuantized() ? this : new Position(coordinates.quantize(), heading);
-    }
-
-    public Coordinates coordinates() {
-        return coordinates;
+        return isQuantized() ? this : new Position(super.quantize(), heading);
     }
 
     public double getHeading(AngleUnits units) {
@@ -46,9 +45,10 @@ public class Position {
         this.heading = radians;
     }
 
-    public void setHeading(Coordinates heading) {
-        this.heading = coordinates.angleTo(heading);
+    public void setHeading(Point heading) {
+        this.heading = angleTo(heading);
     }
+
     /**
      * Calculates the next position.
      * 
@@ -57,23 +57,23 @@ public class Position {
      */
     public Position nextPosition(Coordinates cmd) {
         if (cmd.getRange() == 0) {
-            return new Position(this.coordinates.getX(), this.coordinates.getY(), cmd.getThetaRadians());
+            return new Position(getX(), getY(), cmd.getTheta(AngleUnits.RADIANS));
         }
-        Coordinates nextCoord = this.coordinates.plus(cmd);
-        return new Position(nextCoord, cmd.getThetaRadians());
+        return new Position(PointUtils.plus(this, cmd), cmd.getTheta(AngleUnits.RADIANS));
     }
-    
+
     /**
-     * Checks if this postion will strike the obstacle within the specified distance.
+     * Checks if this postion will strike the obstacle within the specified
+     * distance.
      * 
      * @param obstacle the obstacle to check.
      * @param radius the size of the obstacle.
      * @param distance the maximum distance to check.
      * @return True if the obstacle will be struck fasle otherwise.
      */
-    public boolean checkCollision(Coordinates obstacle, double radius, double distance) {
+    public boolean checkCollision(Point obstacle, double radius, double distance) {
 
-        Coordinates m = obstacle.minus(coordinates);
+        Coordinates m = Coordinates.fromXY(PointUtils.minus( obstacle, this ));
 
         if (distance < m.getRange()) {
             return false;
@@ -84,8 +84,7 @@ public class Position {
 
         double sin = Math.sin(heading);
         double cos = Math.cos(heading);
-        double d = Math
-                .abs(cos * (coordinates.getY() - obstacle.getY()) - sin * (coordinates.getX() - obstacle.getX()));
+        double d = Math.abs(cos * (getY() - obstacle.getY()) - sin * (getX() - obstacle.getX()));
 
         if (d < radius) {
             // ensure that it is along our heading
@@ -93,7 +92,7 @@ public class Position {
         }
         return false;
     }
-    
+
     /**
      * Returns true if the target is not obstructed by the obstacle.
      * 
@@ -102,10 +101,10 @@ public class Position {
      * @param maxDist
      * @return
      */
-    public boolean hasClearView(Coordinates target, Coordinates obstacle) {
-        double maxDist = coordinates.distanceTo(target);
-        boolean td = (coordinates.distanceTo(obstacle)-Coordinates.POINT_RADIUS) < (maxDist+Coordinates.POINT_RADIUS);
-        
+    public boolean hasClearView(Point target, Point obstacle) {
+        double maxDist = distanceTo(target);
+        boolean td = (distanceTo(obstacle) - Coordinates.POINT_RADIUS) < (maxDist + Coordinates.POINT_RADIUS);
+
         if (td) {
             // in range to check
             return !checkCollision(obstacle, Coordinates.POINT_RADIUS, maxDist);
@@ -122,7 +121,7 @@ public class Position {
 
     @Override
     public String toString() {
-        return String.format("Position[ %s heading:%.4f ]", coordinates.getPoint().toString(4), Math.toDegrees(heading));
+        return String.format("Position[ %s heading:%.4f ]", PointUtils.toString(this, 4), Math.toDegrees(heading));
     }
 
 }

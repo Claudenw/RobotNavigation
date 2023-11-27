@@ -38,14 +38,14 @@ public class PositionTest {
         Coordinates cmd = Coordinates.fromAngle(45, AngleUnits.DEGREES, 2);
         Position nxt = initial.nextPosition(cmd);
         assertEquals(RADIANS_45, nxt.getHeading(AngleUnits.RADIANS), DELTA);
-        assertEquals(SQRT2, nxt.coordinates().getX(), DELTA);
-        assertEquals(SQRT2, nxt.coordinates().getY(), DELTA);
+        assertEquals(SQRT2, nxt.getX(), DELTA);
+        assertEquals(SQRT2, nxt.getY(), DELTA);
 
         cmd = Coordinates.fromXY(2, 0);
         nxt = nxt.nextPosition(cmd);
 
-        assertEquals(SQRT2 + 2, nxt.coordinates().getX(), DELTA);
-        assertEquals(SQRT2, nxt.coordinates().getY(), DELTA);
+        assertEquals(SQRT2 + 2, nxt.getX(), DELTA);
+        assertEquals(SQRT2, nxt.getY(), DELTA);
         assertEquals(0.0, nxt.getHeading(AngleUnits.RADIANS), DELTA);
     }
 
@@ -54,26 +54,26 @@ public class PositionTest {
         Coordinates cmd = Coordinates.fromAngle(45, AngleUnits.DEGREES, 2);
         Position nxt = initial.nextPosition(cmd);
         assertEquals(RADIANS_45, nxt.getHeading(AngleUnits.RADIANS), DELTA);
-        assertEquals(SQRT2, nxt.coordinates().getX(), DELTA);
-        assertEquals(SQRT2, nxt.coordinates().getY(), DELTA);
+        assertEquals(SQRT2, nxt.getX(), DELTA);
+        assertEquals(SQRT2, nxt.getY(), DELTA);
 
         cmd = Coordinates.fromAngle(-45, AngleUnits.DEGREES, 2);
         nxt = nxt.nextPosition(cmd);
         assertEquals(-45, nxt.getHeading(AngleUnits.DEGREES), DELTA);
-        assertEquals(SQRT2 * 2, nxt.coordinates().getX(), DELTA);
-        assertEquals(0.0, nxt.coordinates().getY(), DELTA);
+        assertEquals(SQRT2 * 2, nxt.getX(), DELTA);
+        assertEquals(0.0, nxt.getY(), DELTA);
 
         cmd = Coordinates.fromAngle(-135, AngleUnits.DEGREES, 2);
         nxt = nxt.nextPosition(cmd);
         assertEquals(-135, nxt.getHeading(AngleUnits.DEGREES), DELTA);
-        assertEquals(SQRT2, nxt.coordinates().getX(), DELTA);
-        assertEquals(-SQRT2, nxt.coordinates().getY(), DELTA);
+        assertEquals(SQRT2, nxt.getX(), DELTA);
+        assertEquals(-SQRT2, nxt.getY(), DELTA);
 
         cmd = Coordinates.fromAngle(135, AngleUnits.DEGREES, 2);
         nxt = nxt.nextPosition(cmd);
         assertEquals(135, nxt.getHeading(AngleUnits.DEGREES), DELTA);
-        assertEquals(0, nxt.coordinates().getX(), DELTA);
-        assertEquals(0, nxt.coordinates().getY(), DELTA);
+        assertEquals(0, nxt.getX(), DELTA);
+        assertEquals(0, nxt.getY(), DELTA);
     }
 
     @ParameterizedTest(name = "{index} {1}/{2} {3}")

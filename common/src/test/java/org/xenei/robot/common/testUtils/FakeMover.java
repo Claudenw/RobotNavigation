@@ -7,6 +7,8 @@ import org.xenei.robot.common.Coordinates;
 import org.xenei.robot.common.Mover;
 import org.xenei.robot.common.Position;
 
+import mil.nga.sf.Point;
+
 public class FakeMover implements Mover {
     private static final Logger LOG = LoggerFactory.getLogger(FakeMover.class);
     private Position position;

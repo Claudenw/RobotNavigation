@@ -1,5 +1,6 @@
 package org.xenei.robot.common;
 
+import mil.nga.sf.Point;
 
 public interface Mover {
     /**

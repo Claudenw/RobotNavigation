@@ -2,11 +2,13 @@ package org.xenei.robot.common;
 
 import java.util.Collection;
 
+import mil.nga.sf.Point;
+
 public interface Planner {
     Position getCurrentPosition();
-    Coordinates getTarget(); 
-    Collection<Coordinates> getTargets();
-    void setTarget(Coordinates target);
+    Point getTarget(); 
+    Collection<Point> getTargets();
+    void setTarget(Point target);
     Solution getSolution();
     /**
      * Plans a step.  Returns the best location to move to based on the current position.

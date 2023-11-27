@@ -24,6 +24,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.xenei.robot.common.testUtils.CoordinateUtils;
 
 public class CoordinatesTest {
 
@@ -69,8 +70,8 @@ public class CoordinatesTest {
         assertEquals(range, underTest.getRange(), DELTA);
         assertEquals(x, underTest.getX(), DELTA);
         assertEquals(y, underTest.getY(), DELTA);
-        assertEquals(thetaD, underTest.getThetaDegrees(), DELTA);
-        assertEquals(thetaR, underTest.getThetaRadians(), DELTA);
+        assertEquals(thetaD, underTest.getTheta(AngleUnits.DEGREES), DELTA);
+        assertEquals(thetaR, underTest.getTheta(AngleUnits.RADIANS), DELTA);
     }
 
     private static Stream<Arguments> degreeParameters() {
@@ -86,8 +87,8 @@ public class CoordinatesTest {
         assertEquals(range, underTest.getRange(), DELTA);
         assertEquals(x, underTest.getX(), DELTA);
         assertEquals(y, underTest.getY(), DELTA);
-        assertEquals(thetaD, underTest.getThetaDegrees(), DELTA);
-        assertEquals(thetaR, underTest.getThetaRadians(), DELTA);
+        assertEquals(thetaD, underTest.getTheta(AngleUnits.DEGREES), DELTA);
+        assertEquals(thetaR, underTest.getTheta(AngleUnits.RADIANS), DELTA);
     }
 
     @ParameterizedTest
@@ -102,8 +103,8 @@ public class CoordinatesTest {
         assertEquals(range, underTest.getRange(), DELTA);
         assertEquals(x, underTest.getX(), DELTA);
         assertEquals(y, underTest.getY(), DELTA);
-        assertEquals(thetaD, underTest.getThetaDegrees(), DELTA);
-        assertEquals(thetaR, underTest.getThetaRadians(), DELTA);
+        assertEquals(thetaD, underTest.getTheta(AngleUnits.DEGREES), DELTA);
+        assertEquals(thetaR, underTest.getTheta(AngleUnits.RADIANS), DELTA);
     }
 
     @ParameterizedTest
@@ -243,35 +244,36 @@ public class CoordinatesTest {
         Coordinates origin = Coordinates.fromXY(0, 0);
 
         for (Coordinates c : data) {
-            assertEquals(origin, c);
-            assertEquals(origin.hashCode(), c.hashCode());
+            CoordinateUtils.assertEquivalent(origin, c, 0.1);
+            assertEquals(origin.quantize(), c.quantize());
+            assertEquals(origin.quantize().hashCode(), c.quantize().hashCode());
         }
 
         List<Coordinates> lst = Arrays.asList(data);
         for (int i = 0; i < 3; i++) {
             final int idx = i;
-            lst = lst.stream().map(c -> Coordinates.fromAngle(c.getThetaDegrees(), AngleUnits.DEGREES, c.getRange() + 0.1))
+            lst = lst.stream().map(c -> Coordinates.fromAngle(c.getTheta(AngleUnits.DEGREES), AngleUnits.DEGREES, c.getRange() + 0.1))
                     .collect(Collectors.toList());
             for (Coordinates c : lst) {
-                assertEquals(origin, c, () -> "fails at " + idx);
-                assertEquals(origin.hashCode(), c.hashCode(), () -> "fails at " + idx + " " + c);
+                assertEquals(origin.quantize(), c.quantize(), () -> "fails at " + idx);
+                assertEquals(origin.quantize().hashCode(), c.quantize().hashCode(), () -> "fails at " + idx + " " + c);
             }
         }
-        lst = lst.stream().map(c -> Coordinates.fromAngle(c.getThetaDegrees(), AngleUnits.DEGREES, c.getRange() + 0.1))
+        lst = lst.stream().map(c -> Coordinates.fromAngle(c.getTheta(AngleUnits.DEGREES), AngleUnits.DEGREES, c.getRange() + 0.1))
                 .collect(Collectors.toList());
         for (int i = 0; i < lst.size(); i++) {
             final int idx = i;
             Coordinates c = lst.get(i);
-            // negatvie coordinates of .5 distance are in.
+            // negative coordinates of .5 distance are in.
             // positive coordinates of .5 distance are out.
             if (i == 0 || i == 2 || i == 8) {
-                assertNotEquals(origin, c);
+                assertNotEquals(origin.quantize(), c.quantize());
             } else {
-                assertEquals(origin, c, () -> "fails at " + idx);
-                assertEquals(origin.hashCode(), c.hashCode(), () -> "fails at " + idx + " " + c);
+                assertEquals(origin.quantize(), c.quantize(), () -> "fails at " + idx);
+                assertEquals(origin.quantize().hashCode(), c.quantize().hashCode(), () -> "fails at " + idx + " " + c);
             }
         }
-        lst = lst.stream().map(c -> Coordinates.fromAngle(c.getThetaDegrees(), AngleUnits.DEGREES, c.getRange() + 0.1))
+        lst = lst.stream().map(c -> Coordinates.fromAngle(c.getTheta(AngleUnits.DEGREES), AngleUnits.DEGREES, c.getRange() + 0.1))
                 .collect(Collectors.toList());
 
         for (int j = 0; j < 2; j++) {
@@ -281,28 +283,28 @@ public class CoordinatesTest {
                 // negative coordinates of .5 distance are in.
                 // positive coordinates of .5 distance are out.
                 if (i % 2 == 0) {
-                    assertNotEquals(origin, c);
+                    assertNotEquals(origin.quantize(), c.quantize());
                 } else {
-                    assertEquals(origin, c, () -> "fails at " + idx);
-                    assertEquals(origin.hashCode(), c.hashCode(), () -> "fails at " + idx + " " + c);
+                    assertEquals(origin.quantize(), c.quantize(), () -> "fails at " + idx);
+                    assertEquals(origin.quantize().hashCode(), c.quantize().hashCode(), () -> "fails at " + idx + " " + c);
                 }
             }
 
-            lst = lst.stream().map(c -> Coordinates.fromAngle(c.getThetaDegrees(), AngleUnits.DEGREES, c.getRange() + 0.1))
+            lst = lst.stream().map(c -> Coordinates.fromAngle(c.getTheta(AngleUnits.DEGREES), AngleUnits.DEGREES, c.getRange() + 0.1))
                     .collect(Collectors.toList());
         }
         for (int i = 0; i < lst.size(); i++) {
-            assertNotEquals(origin, lst.get(i));
+            CoordinateUtils.assertNotEquivalent(origin, lst.get(i), 0.0001);
         }
     }
-
+    
     @ParameterizedTest
     @MethodSource("triCoordinates")
     public void plusAndMinusTest(Coordinates a, Coordinates b, Coordinates c) {
-        assertEquals(c, a.plus(b));
-        assertEquals(c, b.plus(a));
-        assertEquals(a, c.minus(b));
-        assertEquals(b, c.minus(a));
+        CoordinateUtils.assertEquivalent(c, a.plus(b), 0.00001);
+        CoordinateUtils.assertEquivalent(c, b.plus(a), 0.00001);
+        CoordinateUtils.assertEquivalent(a, c.minus(b), 0.00001);
+        CoordinateUtils.assertEquivalent(b, c.minus(a), 0.00001);
     }
 
     private static Stream<Arguments> triCoordinates() {
