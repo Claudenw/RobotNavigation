@@ -273,9 +273,6 @@ public class MapImpl implements Map {
                 .addWhere(codist, Namespace.distF, List.of(current, other)).addBind(exprF.add(distCalc, codist), cost)
                 .addOrderBy(cost, Order.ASCENDING).addFilter(exprF.ne(other, current));
 
-//        if (!LOG.isDebugEnabled()) {
-//            sb.setLimit(1);
-//        }
 
         Optional<Target> result = Optional.empty();
         try (QueryExecution qexec = doQuery(sb)) {

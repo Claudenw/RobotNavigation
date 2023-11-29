@@ -1,5 +1,8 @@
 package org.xenei.robot.mapper.rdf;
 
+import java.io.IOException;
+
+import org.apache.jena.atlas.logging.Log;
 import org.apache.jena.query.ARQ;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
@@ -8,10 +11,12 @@ import org.apache.jena.rdf.model.Resource;
 import org.apache.jena.rdf.model.ResourceFactory;
 import org.apache.jena.sparql.core.Var;
 import org.apache.jena.sparql.pfunction.PropertyFunctionRegistry;
+import org.apache.jena.vocabulary.RDF;
 import org.xenei.robot.common.Coordinates;
 import org.xenei.robot.common.Position;
 
 import mil.nga.sf.Point;
+import mil.nga.sf.wkt.GeometryWriter;
 
 public class Namespace {
     public static final String URI = "urn:org.xenei.robot:";
@@ -26,6 +31,9 @@ public class Namespace {
     public static final Property distance = ResourceFactory.createProperty(URI + "distance");
     public static final Property adjustment =  ResourceFactory.createProperty(URI + "adjustment");
     public static final Property distF = ResourceFactory.createProperty(URI + "fn:dist");
+    
+    public static final Resource Point = ResourceFactory.createResource("http://www.opengis.net/ont/sf#Point");
+    public static final Property asWKT = ResourceFactory.createProperty("http://www.opengis.net/ont/geosparql#asWKT");
     
     public static final Var s = Var.alloc("s");
     public static final Var p = Var.alloc("p");
@@ -48,9 +56,16 @@ public class Namespace {
         Coordinates qA = a.quantize();
         Model result = ModelFactory.createDefaultModel();
         String uri = String.format(POINT_URI_FMT, qA.getX(), qA.getY());
-        Resource r = result.createResource(uri, type);
+        Resource r = type == null ? result.createResource(uri) : result.createResource(uri, type);
         r.addLiteral(x, qA.getX());
         r.addLiteral(y, qA.getY());
+        r.addProperty(RDF.type, Point);
+        try {
+            r.addLiteral(asWKT, GeometryWriter.writeGeometry(a.asPoint()));
+        } catch (IOException e) {
+            Log.error(e, a.toString());
+        }
+        
         return r;
     }
     

@@ -9,6 +9,7 @@ import org.apache.jena.arq.querybuilder.SelectBuilder;
 import org.apache.jena.query.QueryExecution;
 import org.apache.jena.query.QuerySolution;
 import org.apache.jena.query.ResultSet;
+import org.apache.jena.rdf.model.Model;
 import org.apache.jena.riot.Lang;
 import org.apache.jena.sparql.core.Var;
 import org.apache.jena.vocabulary.RDF;
@@ -51,20 +52,20 @@ public class MapReports {
     }
 
     public static String dumpModel(MapImpl map) {
-        ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        map.data.getUnionModel().write(bos, Lang.TURTLE.getName());
-        return bos.toString();
+        return dumpModel(map.data.getUnionModel());
     }
 
     public static String dumpPlanningModel(MapImpl map) {
-        ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        map.data.getNamedModel(Namespace.PlanningModel).write(bos, Lang.TURTLE.getName());
-        return bos.toString();
+        return dumpModel(map.data.getNamedModel(Namespace.PlanningModel));
     }
 
     public static String dumpBaseModel(MapImpl map) {
+        return dumpModel( map.data.getNamedModel(Namespace.BaseModel));
+    }
+    
+    public static String dumpModel(Model m) {
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        map.data.getNamedModel(Namespace.BaseModel).write(bos, Lang.TURTLE.getName());
+        m.write(bos, Lang.TURTLE.getName());
         return bos.toString();
     }
 
