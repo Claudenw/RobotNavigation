@@ -14,7 +14,7 @@
 		<logback.version>1.2.3</logback.version>
 		<jena.version>5.0.0-SNAPSHOT</jena.version>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-		    <ver.mockito>5.6.0</ver.mockito>
+		<ver.mockito>5.6.0</ver.mockito>
 	</properties>
 
 	<build>
@@ -104,12 +104,25 @@
 				<version>1.2.2</version>
 			</dependency>
 
-			      <dependency>
-        <groupId>org.mockito</groupId>
-        <artifactId>mockito-core</artifactId>
-        <version>${ver.mockito}</version>
-        <scope>test</scope>
-      </dependency>
+			<dependency>
+				<groupId>org.mockito</groupId>
+				<artifactId>mockito-core</artifactId>
+				<version>${ver.mockito}</version>
+				<scope>test</scope>
+			</dependency>
 		</dependencies>
 	</dependencyManagement>
+	<repositories>
+		<repository>
+			<id>apache.snapshots</id>
+			<name>Apache Development Snapshot Repository</name>
+			<url>https://repository.apache.org/content/repositories/snapshots/</url>
+			<releases>
+				<enabled>false</enabled>
+			</releases>
+			<snapshots>
+				<enabled>true</enabled>
+			</snapshots>
+		</repository>
+	</repositories>
 </project>
