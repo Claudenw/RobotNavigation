@@ -5,10 +5,13 @@ public interface DistanceSensor {
      * Performs a sensor scan and returns all the natural Coordinates of obstacles relative
      * to the position.
      * 
-     * @param position The position we are scanning from.
      * @return an array of Coordinates of obstacles relative to the position.
      */
-    Coordinates[] sense(Position position);
+    Coordinates[] sense();
     
+    /**
+     * The maximum range the sensor can detect.
+     * @return
+     */
     double maxRange();
 }

@@ -1,4 +1,4 @@
-package org.xenei.robot.rpi;
+package org.xenei.robot.rpi.sensors;
 
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
@@ -7,6 +7,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import org.xenei.robot.common.AngleUnits;
 import org.xenei.robot.common.Coordinates;
+import org.xenei.robot.common.TimingUtils;
 
 import com.diozero.api.I2CDevice;
 
@@ -22,7 +23,9 @@ public class MMC3416xPJ {
     public static byte ERROR = (byte) 0xFF;
 
     public enum Axis {
-        X, Y, Z
+        X, Y, Z;
+        
+        public static Axis[] XY = { Axis.X, Axis.Y };
     }
 
     public enum Resolution {
@@ -119,22 +122,6 @@ public class MMC3416xPJ {
         return new Status();
     }
 
-    private static void delay(TimeUnit unit, int ms) {
-        try {
-            unit.sleep(ms);
-        } catch (InterruptedException e) {
-            // log error
-        }
-    }
-
-    private static void delay(int ms) {
-        try {
-            TimeUnit.MILLISECONDS.sleep(ms);
-        } catch (InterruptedException e) {
-            // log error
-        }
-    }
-
     public byte getProductId() {
         byte result = 0;
         if (getStatus().readDone()) {
@@ -144,7 +131,7 @@ public class MMC3416xPJ {
                 result = ERROR;
             }
         }
-        delay(10);
+        TimingUtils.delay(10);
         return result;
     }
 
@@ -262,7 +249,7 @@ public class MMC3416xPJ {
                 device.writeByteData(INTERNAL_CONTROL_0, value);
                 continuous = checkMask(value, CONTINUOUS_MODE);
                 if (!checkMask(value, RESET)) {
-                    delay(100);
+                    TimingUtils.delay(100);
                 }
                 return new Status();
             } finally {
@@ -295,16 +282,9 @@ public class MMC3416xPJ {
 
         Status execute() {
             device.writeByteData(INTERNAL_CONTROL_1, value);
-            delay(100);
+            TimingUtils.delay(100);
             return new Status();
         }
-    }
-
-    private void dumpBuffer(byte[] buff) {
-        for (int i = 0; i < buff.length; i++) {
-            System.out.format(" 0x%X", buff[i]);
-        }
-        System.out.println();
     }
 
     public class Values {
@@ -324,7 +304,7 @@ public class MMC3416xPJ {
 
                 while (!status.measurementDone() && !status.readDone()) {
                     System.out.println("Waiting  for measurement");
-                    delay(100);
+                    TimingUtils.delay(100);
                     status.refresh();
                 }
 
@@ -378,7 +358,7 @@ public class MMC3416xPJ {
         System.out.println(mag);
         System.out.println(status);
 
-        delay(TimeUnit.SECONDS, 1);
+        TimingUtils.delay(TimeUnit.SECONDS, 1);
 
         while (true) {
             Values values = mag.getHeading();
@@ -387,7 +367,7 @@ public class MMC3416xPJ {
             Coordinates d = Coordinates.fromXY(values.getAxisData(Axis.X), values.getAxisData(Axis.Y));
             System.out.format("Heading: value: %s  data: %s\n", c.getTheta(AngleUnits.DEGREES),
                     d.getTheta(AngleUnits.DEGREES));
-            delay(TimeUnit.MILLISECONDS, 250);
+            TimingUtils.delay(TimeUnit.MILLISECONDS, 250);
         }
     }
 }

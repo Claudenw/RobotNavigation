@@ -1,4 +1,4 @@
-package org.xenei.robot.rpi;
+package org.xenei.robot.rpi.sensors;
 
 import org.xenei.robot.common.AngleUnits;
 import org.xenei.robot.common.AngleUtils;

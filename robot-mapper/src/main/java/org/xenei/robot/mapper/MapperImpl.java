@@ -12,6 +12,7 @@ import org.xenei.robot.common.Map;
 import org.xenei.robot.common.Mapper;
 import org.xenei.robot.common.Planner;
 import org.xenei.robot.common.Position;
+import org.xenei.robot.common.Solution;
 import org.xenei.robot.common.Target;
 
 import mil.nga.sf.Point;
@@ -19,9 +20,14 @@ import mil.nga.sf.Point;
 public class MapperImpl implements Mapper {
     private static final Logger LOG = LoggerFactory.getLogger(MapperImpl.class);
     private final Map map;
+    private Planner planner;
 
     public MapperImpl(Map map) {
         this.map = map;
+    }
+    
+    public void registerPlanner(Planner planner) {
+        this.planner = planner;
     }
 
     /**
@@ -30,11 +36,8 @@ public class MapperImpl implements Mapper {
      * detected.
      */
     @Override
-    public void processSensorData(Planner planner, Coordinates[] obstacles) {
+    public void processSensorData(Position currentPosition, Point target, Solution solution, Coordinates[] obstacles) {
         // next target set if collision detected.
-        Position currentPosition = planner.getCurrentPosition();
-        Point target = planner.getTarget();
-        Coordinates solution = planner.getSolution().end();
         ObstacleMapper obstacleMapper = new ObstacleMapper(currentPosition, target);
         LOG.trace("Sense position: {}", currentPosition);
         // get the sensor readings and add arcs to the map
@@ -56,9 +59,9 @@ public class MapperImpl implements Mapper {
                 .forEach(c -> recordMapPoint(currentPosition, new Target( c, c.distanceTo(target))));
         //@formatter::on
        
-        if (obstacleMapper.nextTarget.isPresent()) {
-            map.cutPath(solution, target);
-            map.path(solution, obstacleMapper.nextTarget.get());
+        if (obstacleMapper.nextTarget.isPresent() && !solution.isEmpty()) {
+            map.cutPath(solution.end(), target);
+            map.path(solution.end(), obstacleMapper.nextTarget.get());
         }
     }
 

@@ -17,6 +17,11 @@
       <version>0.0.1-SNAPSHOT</version>
     </dependency>
     <dependency>
+      <groupId>org.xenei.robot</groupId>
+      <artifactId>robot-mapper</artifactId>
+      <version>0.0.1-SNAPSHOT</version>
+    </dependency>
+    <dependency>
 			<groupId>com.diozero</groupId>
 			<artifactId>diozero-core</artifactId>
 			</dependency>
