@@ -99,14 +99,16 @@ public class PlannerTest {
 
         int stepCount = 0;
         int maxLoops = 100;
-        mapper.processSensorData(underTest, sensor.sense(underTest.getCurrentPosition()));
+        sensor.setPosition(underTest.getCurrentPosition());
+        mapper.processSensorData(underTest.getCurrentPosition(), underTest.getTarget(), sensor.sense());
         while (underTest.step()) {
             if (maxLoops < stepCount++) {
                 fail("Did not find solution in " + maxLoops + " steps");
             }
             double angle = underTest.getCurrentPosition().angleTo(underTest.getTarget());
             underTest.changeCurrentPosition(new Position(underTest.getTarget(), angle));
-            mapper.processSensorData(underTest, sensor.sense(underTest.getCurrentPosition()));
+            sensor.setPosition(underTest.getCurrentPosition());
+            mapper.processSensorData(underTest.getCurrentPosition(), underTest.getTarget(), sensor.sense());
         }
         assertEquals(SolutionTest.expectedSolution.length - 1, underTest.getSolution().stepCount());
         assertTrue(startCoord.equalsXY(underTest.getSolution().start()));
@@ -134,14 +136,16 @@ public class PlannerTest {
 
         int stepCount = 0;
         int maxLoops = 100;
-        mapper.processSensorData(underTest, sensor.sense(underTest.getCurrentPosition()));
+        sensor.setPosition(underTest.getCurrentPosition());
+        mapper.processSensorData(underTest.getCurrentPosition(), underTest.getTarget(), sensor.sense());
         while (underTest.step()) {
             if (maxLoops < stepCount++) {
                 fail("Did not find solution in " + maxLoops + " steps");
             }
             double angle = underTest.getCurrentPosition().angleTo(underTest.getTarget());
             underTest.changeCurrentPosition(new Position(underTest.getTarget(), angle));
-            mapper.processSensorData(underTest, sensor.sense(underTest.getCurrentPosition()));
+            sensor.setPosition(underTest.getCurrentPosition());
+            mapper.processSensorData(underTest.getCurrentPosition(), underTest.getTarget(), sensor.sense());
         }
         assertEquals(22, underTest.getSolution().stepCount());
         assertEquals(33.29126786466034, underTest.getSolution().cost());

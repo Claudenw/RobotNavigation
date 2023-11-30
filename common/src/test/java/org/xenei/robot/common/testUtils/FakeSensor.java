@@ -15,6 +15,8 @@ public class FakeSensor implements DistanceSensor {
     private final CoordinateMap map;
     private static final double MAX_RANGE=350;
 
+    private Position position;
+    
     public FakeSensor(CoordinateMap map) {
         this.map = map;
     }
@@ -22,9 +24,13 @@ public class FakeSensor implements DistanceSensor {
     public CoordinateMap map() {
         return map;
     }
+    
+    public void setPosition(Position position) {
+        this.position = position;
+    }
 
     @Override
-    public Coordinates[] sense(Position position) {
+    public Coordinates[] sense() {
         Coordinates[] result = new Coordinates[BLOCKSIZE];
 
         for (int i = 0; i < BLOCKSIZE; i++) {
