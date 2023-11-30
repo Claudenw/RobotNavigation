@@ -15,6 +15,7 @@
 		<jena.version>5.0.0-SNAPSHOT</jena.version>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<ver.mockito>5.6.0</ver.mockito>
+		<diozero.ver>1.3.5</diozero.ver>
 	</properties>
 
 	<build>
@@ -103,7 +104,11 @@
 				<artifactId>sf-wkt</artifactId>
 				<version>1.2.2</version>
 			</dependency>
-
+    <dependency>
+			<groupId>com.diozero</groupId>
+			<artifactId>diozero-core</artifactId>
+			<version>${diozero.ver}</version>
+			</dependency>
 			<dependency>
 				<groupId>org.mockito</groupId>
 				<artifactId>mockito-core</artifactId>

@@ -11,7 +11,7 @@ import org.xenei.robot.common.Mapper;
 import org.xenei.robot.common.Mover;
 import org.xenei.robot.common.Planner;
 import org.xenei.robot.common.Position;
-import org.xenei.robot.common.Sensor;
+import org.xenei.robot.common.DistanceSensor;
 import org.xenei.robot.common.utils.PointUtils;
 import org.xenei.robot.mapper.MapperImpl;
 import org.xenei.robot.mapper.MapImpl;
@@ -21,7 +21,7 @@ import mil.nga.sf.Point;
 
 public class Processor {
     private final Mover mover;
-    private final Sensor sensor;
+    private final DistanceSensor sensor;
     private final Planner planner;
     private final Mapper mapper;
     private final Map map;
@@ -29,7 +29,7 @@ public class Processor {
 
     private final int MAX_STEPS = 1000;
 
-    public Processor(Sensor sensor, Mover mover) {
+    public Processor(DistanceSensor sensor, Mover mover) {
         this.mover = mover;
         this.sensor = sensor;
         this.map = new MapImpl();

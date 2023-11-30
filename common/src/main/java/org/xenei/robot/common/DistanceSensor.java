@@ -1,6 +1,6 @@
 package org.xenei.robot.common;
 
-public interface Sensor {
+public interface DistanceSensor {
     /**
      * Performs a sensor scan and returns all the natural Coordinates of obstacles relative
      * to the position.

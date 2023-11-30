@@ -6,9 +6,9 @@ import org.xenei.robot.common.AngleUnits;
 import org.xenei.robot.common.CoordinateMap;
 import org.xenei.robot.common.Coordinates;
 import org.xenei.robot.common.Position;
-import org.xenei.robot.common.Sensor;
+import org.xenei.robot.common.DistanceSensor;
 
-public class FakeSensor implements Sensor {
+public class FakeSensor implements DistanceSensor {
     private static final Logger LOG = LoggerFactory.getLogger(FakeSensor.class);
     private static final int BLOCKSIZE = 17;
     private static final double RADIANS = Math.toRadians(360.0 / BLOCKSIZE);
