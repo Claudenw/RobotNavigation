@@ -35,9 +35,9 @@ public class PositionTest {
 
     @Test
     public void zigZagTest() {
-        Coordinates cmd = Coordinates.fromAngle(45, AngleUnits.DEGREES, 2);
+        Coordinates cmd = Coordinates.fromAngle(RADIANS_45, 2);
         Position nxt = initial.nextPosition(cmd);
-        assertEquals(RADIANS_45, nxt.getHeading(AngleUnits.RADIANS), DELTA);
+        assertEquals(RADIANS_45, nxt.getHeading(), DELTA);
         assertEquals(SQRT2, nxt.getX(), DELTA);
         assertEquals(SQRT2, nxt.getY(), DELTA);
 
@@ -46,32 +46,32 @@ public class PositionTest {
 
         assertEquals(SQRT2 + 2, nxt.getX(), DELTA);
         assertEquals(SQRT2, nxt.getY(), DELTA);
-        assertEquals(0.0, nxt.getHeading(AngleUnits.RADIANS), DELTA);
+        assertEquals(0.0, nxt.getHeading(), DELTA);
     }
 
     @Test
     public void boxTest() {
-        Coordinates cmd = Coordinates.fromAngle(45, AngleUnits.DEGREES, 2);
+        Coordinates cmd = Coordinates.fromAngle(RADIANS_45, 2);
         Position nxt = initial.nextPosition(cmd);
-        assertEquals(RADIANS_45, nxt.getHeading(AngleUnits.RADIANS), DELTA);
+        assertEquals(RADIANS_45, nxt.getHeading(), DELTA);
         assertEquals(SQRT2, nxt.getX(), DELTA);
         assertEquals(SQRT2, nxt.getY(), DELTA);
 
-        cmd = Coordinates.fromAngle(-45, AngleUnits.DEGREES, 2);
+        cmd = Coordinates.fromAngle(-RADIANS_45, 2);
         nxt = nxt.nextPosition(cmd);
-        assertEquals(-45, nxt.getHeading(AngleUnits.DEGREES), DELTA);
+        assertEquals(-RADIANS_45, nxt.getHeading(), DELTA);
         assertEquals(SQRT2 * 2, nxt.getX(), DELTA);
         assertEquals(0.0, nxt.getY(), DELTA);
 
-        cmd = Coordinates.fromAngle(-135, AngleUnits.DEGREES, 2);
+        cmd = Coordinates.fromAngle(-RADIANS_135, 2);
         nxt = nxt.nextPosition(cmd);
-        assertEquals(-135, nxt.getHeading(AngleUnits.DEGREES), DELTA);
+        assertEquals(-RADIANS_135, nxt.getHeading(), DELTA);
         assertEquals(SQRT2, nxt.getX(), DELTA);
         assertEquals(-SQRT2, nxt.getY(), DELTA);
 
-        cmd = Coordinates.fromAngle(135, AngleUnits.DEGREES, 2);
+        cmd = Coordinates.fromAngle(RADIANS_135, 2);
         nxt = nxt.nextPosition(cmd);
-        assertEquals(135, nxt.getHeading(AngleUnits.DEGREES), DELTA);
+        assertEquals(RADIANS_135, nxt.getHeading(), DELTA);
         assertEquals(0, nxt.getX(), DELTA);
         assertEquals(0, nxt.getY(), DELTA);
     }

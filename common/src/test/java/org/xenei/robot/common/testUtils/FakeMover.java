@@ -2,7 +2,6 @@ package org.xenei.robot.common.testUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.xenei.robot.common.AngleUnits;
 import org.xenei.robot.common.Coordinates;
 import org.xenei.robot.common.Mover;
 import org.xenei.robot.common.Position;
@@ -25,7 +24,7 @@ public class FakeMover implements Mover {
     @Override
     public Position move(Coordinates move) {
         if (move.getRange() > speed) {
-            move = Coordinates.fromAngle(move.getTheta(AngleUnits.RADIANS), AngleUnits.RADIANS, speed);
+            move = Coordinates.fromAngle(move.getTheta(), speed);
         }
         position = position.nextPosition(move);
         if (LOG.isDebugEnabled()) {

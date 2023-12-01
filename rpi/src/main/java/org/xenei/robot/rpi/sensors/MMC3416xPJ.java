@@ -5,9 +5,8 @@ import java.nio.IntBuffer;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
-import org.xenei.robot.common.AngleUnits;
 import org.xenei.robot.common.Coordinates;
-import org.xenei.robot.common.TimingUtils;
+import org.xenei.robot.common.utils.TimingUtils;
 
 import com.diozero.api.I2CDevice;
 
@@ -365,8 +364,7 @@ public class MMC3416xPJ {
             System.out.println(values);
             Coordinates c = Coordinates.fromXY(values.getAxisValue(Axis.X), values.getAxisValue(Axis.Y));
             Coordinates d = Coordinates.fromXY(values.getAxisData(Axis.X), values.getAxisData(Axis.Y));
-            System.out.format("Heading: value: %s  data: %s\n", c.getTheta(AngleUnits.DEGREES),
-                    d.getTheta(AngleUnits.DEGREES));
+            System.out.format("Heading: value: %s  data: %s\n", Math.toDegrees(c.getTheta()));
             TimingUtils.delay(TimeUnit.MILLISECONDS, 250);
         }
     }

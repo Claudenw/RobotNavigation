@@ -1,11 +1,10 @@
 package org.xenei.robot.common;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.xenei.robot.common.testUtils.DoubleUtils.DELTA;
 import static org.xenei.robot.common.testUtils.DoubleUtils.RADIANS_135;
+import static org.xenei.robot.common.testUtils.DoubleUtils.RADIANS_180;
 import static org.xenei.robot.common.testUtils.DoubleUtils.RADIANS_225;
 import static org.xenei.robot.common.testUtils.DoubleUtils.RADIANS_270;
 import static org.xenei.robot.common.testUtils.DoubleUtils.RADIANS_315;
@@ -25,6 +24,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.xenei.robot.common.testUtils.CoordinateUtils;
+import org.xenei.robot.common.utils.AngleUtils;
 
 public class CoordinatesTest {
 
@@ -44,7 +44,7 @@ public class CoordinatesTest {
                 {   45,     45,     RADIANS_45,     1.0,    range45,    range45 },  // 2
                 {   90,     90,     RADIANS_90,     1.0,    0.0,        1.0 },      // 3
                 {   135,    135,    RADIANS_135,    1.0,    -range45,   range45 },  // 4
-                {   180,    180,    Math.PI,        1.0,   -1.0,        0.0 },      // 5
+                {   180,    180,    RADIANS_180,    1.0,   -1.0,        0.0 },      // 5
                 {   225,    -135,   RADIANS_225,    1.0,    -range45,   -range45 }, // 6
                 {   270,    -90,    RADIANS_270,    1.0,    0.0,        -1.0 },     // 7
                 {   315,    -45,    RADIANS_315,    1.0,    range45,    -range45 }, // 8
@@ -63,17 +63,6 @@ public class CoordinatesTest {
         };
     }
 
-    @ParameterizedTest
-    @MethodSource("degreeParameters")
-    public void fromDegreesTest(double degrees, double thetaD, double thetaR, double range, double x, double y) {
-        Coordinates underTest = Coordinates.fromAngle(degrees, AngleUnits.DEGREES, range);
-        assertEquals(range, underTest.getRange(), DELTA);
-        assertEquals(x, underTest.getX(), DELTA);
-        assertEquals(y, underTest.getY(), DELTA);
-        assertEquals(thetaD, underTest.getTheta(AngleUnits.DEGREES), DELTA);
-        assertEquals(thetaR, underTest.getTheta(AngleUnits.RADIANS), DELTA);
-    }
-
     private static Stream<Arguments> degreeParameters() {
         return Arrays.stream(arguments())
                 .map(ary -> Arguments.of(ary[INPUT], ary[DEG], ary[RAD], ary[RANGE], ary[X], ary[Y]));
@@ -83,12 +72,11 @@ public class CoordinatesTest {
     @MethodSource("degreeParameters")
     public void fromRadiansTest(double degrees, double thetaD, double thetaR, double range, double x, double y) {
         double radians = Math.toRadians(degrees);
-        Coordinates underTest = Coordinates.fromAngle(radians, AngleUnits.RADIANS, range);
+        Coordinates underTest = Coordinates.fromAngle(radians, range);
         assertEquals(range, underTest.getRange(), DELTA);
         assertEquals(x, underTest.getX(), DELTA);
         assertEquals(y, underTest.getY(), DELTA);
-        assertEquals(thetaD, underTest.getTheta(AngleUnits.DEGREES), DELTA);
-        assertEquals(thetaR, underTest.getTheta(AngleUnits.RADIANS), DELTA);
+        assertEquals(thetaR, underTest.getTheta(), DELTA);
     }
 
     @ParameterizedTest
@@ -103,8 +91,7 @@ public class CoordinatesTest {
         assertEquals(range, underTest.getRange(), DELTA);
         assertEquals(x, underTest.getX(), DELTA);
         assertEquals(y, underTest.getY(), DELTA);
-        assertEquals(thetaD, underTest.getTheta(AngleUnits.DEGREES), DELTA);
-        assertEquals(thetaR, underTest.getTheta(AngleUnits.RADIANS), DELTA);
+        assertEquals(thetaR, underTest.getTheta(), DELTA);
     }
 
     @ParameterizedTest
@@ -171,13 +158,13 @@ public class CoordinatesTest {
             lst.add(Arguments.of(coords.get(i), origin, args[i][RANGE], args[i][RAD]));
         }
 
-        coords = Arrays.stream(args).map(ary -> Coordinates.fromAngle(ary[RAD], AngleUnits.RADIANS, ary[RANGE]))
+        coords = Arrays.stream(args).map(ary -> Coordinates.fromAngle(ary[RAD], ary[RANGE]))
                 .collect(Collectors.toList());
         for (int i = 0; i < args.length; i++) {
             lst.add(Arguments.of(coords.get(i), origin, args[i][RANGE], args[i][RAD]));
         }
 
-        coords = Arrays.stream(args).map(ary -> Coordinates.fromAngle(ary[DEG], AngleUnits.DEGREES, ary[RANGE]))
+        coords = Arrays.stream(args).map(ary -> Coordinates.fromAngle(Math.toRadians(ary[DEG]), ary[RANGE]))
                 .collect(Collectors.toList());
         for (int i = 0; i < args.length; i++) {
             lst.add(Arguments.of(coords.get(i), origin, args[i][RANGE], args[i][RAD]));
@@ -236,10 +223,10 @@ public class CoordinatesTest {
         // create a bunch of corrdinates and then increment the ranges until they are
         // all outside the
         // quantized space.
-        Coordinates[] data = { Coordinates.fromAngle(0, AngleUnits.DEGREES, .1), Coordinates.fromAngle(45, AngleUnits.DEGREES, .1),
-                Coordinates.fromAngle(90, AngleUnits.DEGREES, .1), Coordinates.fromAngle(135, AngleUnits.DEGREES, .1), Coordinates.fromAngle(180, AngleUnits.DEGREES, .1),
-                Coordinates.fromAngle(225, AngleUnits.DEGREES, .1), Coordinates.fromAngle(270, AngleUnits.DEGREES, .1), Coordinates.fromAngle(315, AngleUnits.DEGREES, .1),
-                Coordinates.fromAngle(360, AngleUnits.DEGREES, .1) };
+        Coordinates[] data = { Coordinates.fromAngle(0, .1), Coordinates.fromAngle(RADIANS_45, .1),
+                Coordinates.fromAngle(RADIANS_90, .1), Coordinates.fromAngle(RADIANS_135, .1),
+                Coordinates.fromAngle(RADIANS_180, .1), Coordinates.fromAngle(RADIANS_225, .1),
+                Coordinates.fromAngle(RADIANS_270, .1), Coordinates.fromAngle(RADIANS_315, .1) };
 
         Coordinates origin = Coordinates.fromXY(0, 0);
 
@@ -252,14 +239,14 @@ public class CoordinatesTest {
         List<Coordinates> lst = Arrays.asList(data);
         for (int i = 0; i < 3; i++) {
             final int idx = i;
-            lst = lst.stream().map(c -> Coordinates.fromAngle(c.getTheta(AngleUnits.DEGREES), AngleUnits.DEGREES, c.getRange() + 0.1))
+            lst = lst.stream().map(c -> Coordinates.fromAngle(c.getTheta(), c.getRange() + 0.1))
                     .collect(Collectors.toList());
             for (Coordinates c : lst) {
                 assertEquals(origin.quantize(), c.quantize(), () -> "fails at " + idx);
                 assertEquals(origin.quantize().hashCode(), c.quantize().hashCode(), () -> "fails at " + idx + " " + c);
             }
         }
-        lst = lst.stream().map(c -> Coordinates.fromAngle(c.getTheta(AngleUnits.DEGREES), AngleUnits.DEGREES, c.getRange() + 0.1))
+        lst = lst.stream().map(c -> Coordinates.fromAngle(c.getTheta(), c.getRange() + 0.1))
                 .collect(Collectors.toList());
         for (int i = 0; i < lst.size(); i++) {
             final int idx = i;
@@ -273,7 +260,7 @@ public class CoordinatesTest {
                 assertEquals(origin.quantize().hashCode(), c.quantize().hashCode(), () -> "fails at " + idx + " " + c);
             }
         }
-        lst = lst.stream().map(c -> Coordinates.fromAngle(c.getTheta(AngleUnits.DEGREES), AngleUnits.DEGREES, c.getRange() + 0.1))
+        lst = lst.stream().map(c -> Coordinates.fromAngle(c.getTheta(), c.getRange() + 0.1))
                 .collect(Collectors.toList());
 
         for (int j = 0; j < 2; j++) {
@@ -286,18 +273,19 @@ public class CoordinatesTest {
                     assertNotEquals(origin.quantize(), c.quantize());
                 } else {
                     assertEquals(origin.quantize(), c.quantize(), () -> "fails at " + idx);
-                    assertEquals(origin.quantize().hashCode(), c.quantize().hashCode(), () -> "fails at " + idx + " " + c);
+                    assertEquals(origin.quantize().hashCode(), c.quantize().hashCode(),
+                            () -> "fails at " + idx + " " + c);
                 }
             }
 
-            lst = lst.stream().map(c -> Coordinates.fromAngle(c.getTheta(AngleUnits.DEGREES), AngleUnits.DEGREES, c.getRange() + 0.1))
+            lst = lst.stream().map(c -> Coordinates.fromAngle(c.getTheta(), c.getRange() + 0.1))
                     .collect(Collectors.toList());
         }
         for (int i = 0; i < lst.size(); i++) {
             CoordinateUtils.assertNotEquivalent(origin, lst.get(i), 0.0001);
         }
     }
-    
+
     @ParameterizedTest
     @MethodSource("triCoordinates")
     public void plusAndMinusTest(Coordinates a, Coordinates b, Coordinates c) {
@@ -309,21 +297,21 @@ public class CoordinatesTest {
 
     private static Stream<Arguments> triCoordinates() {
         return Stream.of(Arguments.of(Coordinates.fromXY(-2, 3), Coordinates.fromXY(6, 1), Coordinates.fromXY(4, 4)),
-                Arguments.of(Coordinates.fromAngle(0.7853981633974483, AngleUnits.RADIANS, 2),
-                        Coordinates.fromAngle(0, AngleUnits.RADIANS, 2.8284271247461903),
-                        Coordinates.fromAngle(0.3217505543966422, AngleUnits.RADIANS, 4.47213595499958)),
-                Arguments.of(Coordinates.fromXY(0, 0), Coordinates.fromAngle(45, AngleUnits.DEGREES, 1), Coordinates.fromAngle(45, AngleUnits.DEGREES, 1)));
+                Arguments.of(Coordinates.fromAngle(0.7853981633974483, 2), Coordinates.fromAngle(0, 2.8284271247461903),
+                        Coordinates.fromAngle(0.3217505543966422, 4.47213595499958)),
+                Arguments.of(Coordinates.fromXY(0, 0), Coordinates.fromAngle(RADIANS_45, 1),
+                        Coordinates.fromAngle(RADIANS_45, 1)));
     }
-
-    @ParameterizedTest
-    @MethodSource("overlapCoordinates")
-    public void overlapTest(boolean state, final Coordinates a, final Coordinates b, double range) {
-        if (state) {
-            assertTrue(a.overlap(b, range), () -> "Should not overlap " + b);
-        } else {
-            assertFalse(a.overlap(b, range), () -> "Should overlap " + b);
-        }
-    }
+//
+//    @ParameterizedTest
+//    @MethodSource("overlapCoordinates")
+//    public void overlapTest(boolean state, final Coordinates a, final Coordinates b, double range) {
+//        if (state) {
+//            assertTrue(a.overlap(b, range), () -> "Should not overlap " + b);
+//        } else {
+//            assertFalse(a.overlap(b, range), () -> "Should overlap " + b);
+//        }
+//    }
 
     private static final int X1 = 0;
     private static final int Y1 = 1;

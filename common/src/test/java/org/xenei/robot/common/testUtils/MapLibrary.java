@@ -1,7 +1,7 @@
 package org.xenei.robot.common.testUtils;
 
-import org.xenei.robot.common.CoordinateMap;
-import org.xenei.robot.common.CoordinateMapBuilder;
+import org.xenei.robot.common.mapping.CoordinateMap;
+import org.xenei.robot.common.mapping.CoordinateMapBuilder;
 
 public class MapLibrary {
 

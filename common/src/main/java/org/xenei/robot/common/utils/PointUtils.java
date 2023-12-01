@@ -3,8 +3,6 @@ package org.xenei.robot.common.utils;
 import java.util.Comparator;
 
 import org.apache.commons.math3.util.Precision;
-import org.xenei.robot.common.AngleUnits;
-import org.xenei.robot.common.AngleUtils;
 import org.xenei.robot.common.Coordinates;
 import org.xenei.robot.common.DoubleUtils;
 
@@ -57,8 +55,16 @@ public class PointUtils {
         return Math.sqrt( dx*dx + dy*dy);
     }
     
-    public static boolean equivalent(Point one, Point other, double delta) {
-        return Precision.equals(one.getX(), other.getX(), delta) &&
-                Precision.equals(one.getY(), other.getY(), delta);
+    /**
+     * Returns true if the two points are at the same location within the delta.
+     * @param one
+     * @param other
+     * @param delta
+     * @return
+     */
+    public static boolean sameAs(Point one, Point other, double delta) {
+        //return Precision.equals(one.getX(), other.getX(), delta) &&
+        //        Precision.equals(one.getY(), other.getY(), delta);
+        return Precision.equals( distance(other, other ), delta);
     }
 }

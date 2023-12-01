@@ -26,7 +26,7 @@ public class CoordinateUtils {
     }
 
     public static void assertEquivalent(Coordinates one, Coordinates two, double delta, Supplier<String> prefix) {
-        assertTrue( PointUtils.equivalent(one, two, delta), () -> String.format("%s Expected %s actual %s delta %s",
+        assertTrue( PointUtils.sameAs(one, two, delta), () -> String.format("%s Expected %s actual %s delta %s",
                prefix.get(), PointUtils.toString(one), PointUtils.toString(two), delta ));
     }
     
@@ -35,7 +35,7 @@ public class CoordinateUtils {
     }
 
     public static void assertNotEquivalent(Coordinates one, Coordinates two, double delta) {
-        assertFalse( PointUtils.equivalent(one, two, delta), () -> String.format("expected %s actual %s delta %s",
+        assertFalse( PointUtils.sameAs(one, two, delta), () -> String.format("expected %s actual %s delta %s",
                 PointUtils.toString(one), PointUtils.toString(two), delta ));
     }
     

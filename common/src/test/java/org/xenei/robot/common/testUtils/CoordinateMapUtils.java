@@ -2,11 +2,11 @@ package org.xenei.robot.common.testUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.xenei.robot.common.CoordinateMap;
-import org.xenei.robot.common.CoordinateMapBuilder;
-import org.xenei.robot.common.Map;
-import org.xenei.robot.common.Planner;
 import org.xenei.robot.common.Position;
+import org.xenei.robot.common.mapping.CoordinateMap;
+import org.xenei.robot.common.mapping.CoordinateMapBuilder;
+import org.xenei.robot.common.mapping.Map;
+import org.xenei.robot.common.planning.Planner;
 
 public class CoordinateMapUtils {
 

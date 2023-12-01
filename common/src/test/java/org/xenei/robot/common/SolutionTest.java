@@ -12,6 +12,8 @@ import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.xenei.robot.common.mapping.CoordinateMap;
+import org.xenei.robot.common.planning.Solution;
 import org.xenei.robot.common.testUtils.MapLibrary;
 
 import mil.nga.sf.Point;
