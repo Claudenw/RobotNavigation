@@ -1,6 +1,7 @@
 package org.xenei.robot.common;
 
-import mil.nga.sf.Point;
+import org.locationtech.jts.geom.Coordinate;
+
 
 public interface Compass {
     /**
@@ -9,7 +10,11 @@ public interface Compass {
      * @param location The location of the device.
      * @return A Position instance that is at the specified location and has the correct heading.
      */
-    default Position getPosition(Point location) {
+    default Position getPosition(Coordinate location) {
+        return new Position(location, heading());
+    }
+    
+    default Position getPosition(FrontsCoordinate location) {
         return new Position(location, heading());
     }
     

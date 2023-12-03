@@ -5,14 +5,14 @@ import java.util.stream.Stream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.xenei.robot.common.Coordinates;
+import org.xenei.robot.common.Location;
 import org.xenei.robot.common.DistanceSensor;
 import org.xenei.robot.common.Mover;
 import org.xenei.robot.common.Position;
 import org.xenei.robot.common.mapping.Map;
 import org.xenei.robot.common.mapping.Mapper;
 import org.xenei.robot.common.planning.Planner;
-import org.xenei.robot.common.utils.PointUtils;
+import org.xenei.robot.common.utils.CoordUtils;
 import org.xenei.robot.mapper.MapperImpl;
 import org.xenei.robot.mapper.MapImpl;
 import org.xenei.robot.planner.PlannerImpl;
@@ -37,7 +37,7 @@ public class Processor {
         this.planner = new PlannerImpl(map, mover.position());
     }
 
-    public void setTarget(Coordinates target) {
+    public void setTarget(Location target) {
         planner.setTarget(target);
     }
 
@@ -53,7 +53,7 @@ public class Processor {
             if (nextLoc == null) {
                 return Optional.empty();
             }
-            Coordinates c = Coordinates.fromXY(nextLoc);
+            Location c = Location.fromXY(nextLoc);
             Optional<Position> result = Optional.of(mover.move(c.minus(mover.position())));
             LOG.info("next step {}", result);
             if (result.isPresent()) {
@@ -64,7 +64,7 @@ public class Processor {
         return Optional.empty();
     }
 
-    public boolean moveTo(Coordinates coord) {
+    public boolean moveTo(Location coord) {
         setTarget(coord);
         Optional<Position> p = Optional.of(mover.position());
         int steps = 0;
@@ -82,7 +82,7 @@ public class Processor {
         map.recordSolution(planner.getSolution());
     }
 
-    public Stream<Coordinates> getSolution() {
+    public Stream<Location> getSolution() {
         return planner.getSolution().stream();
     }
 

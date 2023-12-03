@@ -3,7 +3,7 @@ package org.xenei.robot.rpi;
 import java.util.Set;
 
 import org.xenei.robot.common.Compass;
-import org.xenei.robot.common.Coordinates;
+import org.xenei.robot.common.Location;
 import org.xenei.robot.common.DistanceSensor;
 import org.xenei.robot.common.Position;
 import org.xenei.robot.common.mapping.CoordinateMap;
@@ -52,7 +52,7 @@ public class Robut {
     }
 
     private static void printMap(Robut r) {
-        Set<Coordinates> obstacles = r.map.getObstacles();
+        Set<Location> obstacles = r.map.getObstacles();
         double[] max = { Double.MIN_VALUE, Double.MIN_VALUE };
         double[] min = { Double.MAX_VALUE, Double.MAX_VALUE };
         obstacles.stream().forEach(o -> {

@@ -5,8 +5,9 @@ import java.util.List;
 import java.util.function.BiPredicate;
 import java.util.stream.Stream;
 
-import org.xenei.robot.common.Coordinates;
-import org.xenei.robot.common.utils.PointUtils;
+import org.locationtech.jts.geom.Coordinate;
+import org.xenei.robot.common.Location;
+import org.xenei.robot.common.utils.CoordUtils;
 
 public class Solution {
 
@@ -16,11 +17,11 @@ public class Solution {
         path = new ArrayList<>();
     }
 
-    public Coordinates end() {
+    public Coordinate end() {
         return get(path.size() - 1);
     }
 
-    private Coordinates get(int idx) {
+    private Coordinate get(int idx) {
         return path.size() > 0 ? path.get(idx).coord : null;
     }
 
@@ -28,8 +29,8 @@ public class Solution {
         return path.isEmpty();
     }
 
-    public void add(Coordinates c) {
-        SolutionRecord sr = new SolutionRecord(c);
+    public void add(Location c) {
+        SolutionRecord sr = new SolutionRecord(c.getCoordinate());
         if (!path.contains(sr)) {
             path.add(sr);
         }
@@ -43,19 +44,19 @@ public class Solution {
         if (isEmpty()) {
             return Double.POSITIVE_INFINITY;
         }
-        Coordinates target = end();
+        Coordinate target = end();
         return recalculateCost(target);
     }
 
-    public Coordinates start() {
+    public Coordinate start() {
         return get(0);
     }
 
-    public Stream<Coordinates> stream() {
+    public Stream<Coordinate> stream() {
         return path.stream().map(s -> s.coord);
     }
 
-    private double recalculateCost(Coordinates target) {
+    private double recalculateCost(Coordinate target) {
         int limit = stepCount();
         SolutionRecord oldPr;
         double accumulator = 0.0;
@@ -63,14 +64,14 @@ public class Solution {
         path.set(limit, newPr);
         for (int i = limit - 1; i >= 0; i--) {
             oldPr = path.get(i);
-            accumulator += oldPr.coord.distanceTo(newPr.coord);
+            accumulator += oldPr.coord.distance(newPr.coord);
             newPr = new SolutionRecord(oldPr.coord, accumulator);
             path.set(i, newPr);
         }
         return accumulator;
     }
 
-    private void removeUnnecessarySteps(BiPredicate<Coordinates,Coordinates> clearCheck) {
+    private void removeUnnecessarySteps(BiPredicate<Coordinate,Coordinate> clearCheck) {
         List<SolutionRecord> result = new ArrayList<>();
         result.add(path.get(0));
         int idx = 0;
@@ -104,23 +105,22 @@ public class Solution {
      * 
      * @param clearCheck a predicate that returns clear if the path between the two coordinates is clear.
      */
-    public void simplify(BiPredicate<Coordinates,Coordinates> clearCheck) {
+    public void simplify(BiPredicate<Coordinate,Coordinate> clearCheck) {
         if (path.size() > 2) {
-            Coordinates target = end();
-            recalculateCost(target);
+            recalculateCost(end());
             removeUnnecessarySteps(clearCheck);
         }
     }
 
     private class SolutionRecord {
-        final Coordinates coord;
+        final Coordinate coord;
         final double cost;
 
-        SolutionRecord(Coordinates p) {
+        SolutionRecord(Coordinate p) {
             this(p, 0.0);
         }
 
-        SolutionRecord(Coordinates p, double cost) {
+        SolutionRecord(Coordinate p, double cost) {
             this.coord = p;
             this.cost = cost;
         }

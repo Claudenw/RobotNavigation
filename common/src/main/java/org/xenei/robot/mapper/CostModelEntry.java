@@ -1,15 +1,15 @@
 package org.xenei.robot.mapper;
 
-import org.xenei.robot.common.utils.PointUtils;
+import org.locationtech.jts.geom.Coordinate;
+import org.xenei.robot.common.utils.CoordUtils;
 
-import mil.nga.sf.Point;
 
 public class CostModelEntry {
-    public final Point a;
-    public final Point b;
+    public final Coordinate a;
+    public final Coordinate b;
     public final double weight;
 
-    public CostModelEntry(Point a, Point b, double weight) {
+    public CostModelEntry(Coordinate a, Coordinate b, double weight) {
         this.a = a;
         this.b = b;
         this.weight = weight;
@@ -20,7 +20,7 @@ public class CostModelEntry {
     }
 
     public double dist() {
-        return PointUtils.distance(a, b);
+        return a.distance(b);
     }
 
     @Override

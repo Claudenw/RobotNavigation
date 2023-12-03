@@ -10,13 +10,13 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.Test;
-import org.xenei.robot.common.Coordinates;
+import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Position;
 import org.xenei.robot.common.SolutionTest;
 import org.xenei.robot.common.DistanceSensor;
 import org.xenei.robot.common.mapping.CoordinateMap;
 import org.xenei.robot.common.mapping.Map;
-import org.xenei.robot.common.planning.Target;
+import org.xenei.robot.common.planning.Step;
 import org.xenei.robot.common.testUtils.FakeDistanceSensor;
 import org.xenei.robot.common.testUtils.MapLibrary;
 import org.xenei.robot.mapper.MapImpl;
@@ -33,11 +33,11 @@ public class PlannerTest {
     public void setTargetTest() {
         CoordinateMap cmap = MapLibrary.map2('#');
         Map map = new MapImpl();
-        Coordinates origin = Coordinates.fromXY(0, 0);
+        Location origin = Location.fromXY(0, 0);
         underTest = new PlannerImpl(map, origin);
         for (int x = 0; x <= 13; x++) {
             for (int y = 0; y <= 15; y++) {
-                Coordinates c = Coordinates.fromXY(x, y);
+                Location c = Location.fromXY(x, y);
                 if (!cmap.isEnabled(c)) {
                     underTest.setTarget(c);
                     verifyState(map, cmap);
@@ -48,13 +48,13 @@ public class PlannerTest {
     }
 
     private CoordinateMap verifyState(Map map, CoordinateMap cmap) {
-        for (Coordinates c : map.getObstacles()) {
+        for (Location c : map.getObstacles()) {
             assertTrue(cmap.isEnabled(c), () -> c + " should have been sensed.");
         }
         CoordinateMap sensedMap = new CoordinateMap(cmap.scale());
         sensedMap.enable(map.getObstacles(), 'x');
 
-        for (Target pr : map.getTargets()) {
+        for (Step pr : map.getTargets()) {
             assertFalse(sensedMap.isEnabled(pr), () -> "Plan record " + pr + " should not have been sensed");
         }
 
@@ -69,8 +69,8 @@ public class PlannerTest {
         Map map = new MapImpl();
         MapperImpl mapper = new MapperImpl(map);
 
-        Coordinates finalCoord = Coordinates.fromXY(-1, 1);
-        Coordinates startCoord = Coordinates.fromXY(-1, -3);
+        Location finalCoord = Location.fromXY(-1, 1);
+        Location startCoord = Location.fromXY(-1, -3);
 
         underTest = new PlannerImpl(map, startCoord, finalCoord);
 
@@ -106,8 +106,8 @@ public class PlannerTest {
         Map map = new MapImpl();
         MapperImpl mapper = new MapperImpl(map);
 
-        Coordinates finalCoord = Coordinates.fromXY(-1, 1);
-        Coordinates startCoord = Coordinates.fromXY(-1, -3);
+        Location finalCoord = Location.fromXY(-1, 1);
+        Location startCoord = Location.fromXY(-1, -3);
 
         underTest = new PlannerImpl(map, startCoord, finalCoord);
 

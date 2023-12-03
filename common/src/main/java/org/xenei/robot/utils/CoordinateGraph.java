@@ -5,13 +5,13 @@ import java.util.Optional;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
-import org.xenei.robot.common.Coordinates;
+import org.xenei.robot.common.Location;
 
 public class CoordinateGraph {
     SortedSet<Arc> points;
 
-    public static final Coordinates MAX_COORD = Coordinates.fromXY(Double.POSITIVE_INFINITY, Double.POSITIVE_INFINITY);
-    public static final Coordinates MIN_COORD = Coordinates.fromXY(Double.NEGATIVE_INFINITY, Double.NEGATIVE_INFINITY);
+    public static final Location MAX_COORD = new Location(Double.POSITIVE_INFINITY, Double.POSITIVE_INFINITY);
+    public static final Location MIN_COORD = new Location(Double.NEGATIVE_INFINITY, Double.NEGATIVE_INFINITY);
 
     public CoordinateGraph() {
         this.points = new TreeSet<Arc>();
@@ -22,19 +22,19 @@ public class CoordinateGraph {
         return points.isEmpty();
     }
 
-    public void add(Coordinates locationA, Coordinates locationB, double weight) {
+    public void add(Location locationA, Location locationB, double weight) {
         Arc arc = new Arc(locationA, locationB, weight);
         points.add(arc);
     }
 
-    public SortedSet<Arc> search(Coordinates location) {
+    public SortedSet<Arc> search(Location location) {
         SortedSet<Arc> result = new TreeSet<>();
         points.subSet(new Arc(location, MIN_COORD, 0), new Arc(location, MAX_COORD, 0)).forEach(result::add);
         heads().stream().map(c -> get(c, location)).filter(Optional::isPresent).forEach(o -> result.add(o.get()));
         return result;
     }
 
-    public Optional<Arc> get(Coordinates a, Coordinates b) {
+    public Optional<Arc> get(Location a, Location b) {
         Arc arc = new Arc(a, b, 0);
         SortedSet<Arc> tail = points.tailSet(arc);
         if (tail.first().equals(arc)) {
@@ -43,8 +43,8 @@ public class CoordinateGraph {
         return Optional.empty();
     }
 
-    private SortedSet<Coordinates> heads() {
-        TreeSet<Coordinates> result = new TreeSet<>(Coordinates.XYCompr);
+    private SortedSet<Location> heads() {
+        TreeSet<Location> result = new TreeSet<>(Location.XYCompr);
         SortedSet<Arc> tailSet = points;
         while (!tailSet.isEmpty()) {
             result.add(tailSet.first().locationA);
@@ -58,11 +58,11 @@ public class CoordinateGraph {
         return result;
     }
 
-    public void remove(Coordinates location) {
+    public void remove(Location location) {
         search(location).forEach(points::remove);
     }
 
-    public boolean exists(Coordinates location) {
+    public boolean exists(Location location) {
         return points.tailSet(new Arc(location, MIN_COORD, 0)).first().locationA.equals(location)
                 || heads().stream().map(c -> get(c, location)).filter(Optional::isPresent).findAny().isPresent();
     }
@@ -87,20 +87,18 @@ public class CoordinateGraph {
 
     // a location in the map
     public class Arc implements Comparable<Arc> {
-        Coordinates locationA;
-        Coordinates locationB;
+        Location locationA;
+        Location locationB;
         double weight;
 
-        Arc(Coordinates a, Coordinates b, double weight) {
-            Coordinates qa = a.quantize();
-            Coordinates qb = b.quantize();
-            if (Coordinates.XYCompr.compare(a, b) > 0) {
-                Coordinates tmp = qa;
-                qa = qb;
-                qb = tmp;
+        Arc(Location a, Location b, double weight) {
+            if (Location.XYCompr.compare(a, b) > 0) {
+                Location tmp = a;
+                a = b;
+                b = tmp;
             }
-            this.locationA = qa;
-            this.locationB = qb;
+            this.locationA = a;
+            this.locationB = b;
             this.weight = weight;
         }
 
@@ -111,8 +109,8 @@ public class CoordinateGraph {
 
         @Override
         public int compareTo(Arc other) {
-            int result = Coordinates.XYCompr.compare(this.locationA, other.locationA);
-            return result == 0 ? Coordinates.XYCompr.compare(this.locationB, other.locationB) : result;
+            int result = Location.XYCompr.compare(this.locationA, other.locationA);
+            return result == 0 ? Location.XYCompr.compare(this.locationB, other.locationB) : result;
         }
     }
 }

@@ -1,6 +1,7 @@
 package org.xenei.robot.common.mapping;
 
-import org.xenei.robot.common.Coordinates;
+import org.locationtech.jts.geom.Coordinate;
+import org.xenei.robot.common.Location;
 import org.xenei.robot.common.mapping.CoordinateMap.Coord;
 
 public class CoordinateMapBuilder {
@@ -12,7 +13,7 @@ public class CoordinateMapBuilder {
     }
 
     public CoordinateMapBuilder set(int x, int y, char c) {
-        map.enable(Coordinates.fromXY(x, y), c);
+        map.enable(new Coordinate(x, y), c);
         return this;
     }
 
@@ -31,8 +32,7 @@ public class CoordinateMapBuilder {
     }
 
     public CoordinateMapBuilder clear(int x, int y) {
-        Coordinates c = Coordinates.fromXY(x, y);
-        map.disable(c);
+        map.disable(new Coordinate(x,y));
         return this;
     }
     

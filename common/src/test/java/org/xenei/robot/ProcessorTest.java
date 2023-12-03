@@ -10,7 +10,7 @@ import java.util.stream.Collectors;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
-import org.xenei.robot.common.Coordinates;
+import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Mover;
 import org.xenei.robot.common.SolutionTest;
 import org.xenei.robot.common.testUtils.FakeMover;
@@ -22,8 +22,8 @@ import mil.nga.sf.Point;
 
 public class ProcessorTest {
     private Processor underTest;
-    private static final Coordinates finalCoord = Coordinates.fromXY(-1, 1);
-    private static final Coordinates startCoord = Coordinates.fromXY(-1, -3);
+    private static final Location finalCoord = Location.fromXY(-1, 1);
+    private static final Location startCoord = Location.fromXY(-1, -3);
 
     @BeforeEach
     public void setup() {
@@ -44,7 +44,7 @@ public class ProcessorTest {
     @Test
     @Disabled( "Rework to use messages?")
     public void setTargetWhileMovingTest() {
-        Coordinates nextCoord = Coordinates.fromXY(4, 4);
+        Location nextCoord = Location.fromXY(4, 4);
         underTest.moveTo(finalCoord);
         
         underTest.setTarget(nextCoord);

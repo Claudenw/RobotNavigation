@@ -7,7 +7,7 @@ public interface DistanceSensor {
      * 
      * @return an array of Coordinates of obstacles relative to the position.
      */
-    Coordinates[] sense();
+    Location[] sense();
     
     /**
      * The maximum range the sensor can detect.

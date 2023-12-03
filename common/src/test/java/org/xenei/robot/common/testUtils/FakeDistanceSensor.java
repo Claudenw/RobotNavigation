@@ -2,10 +2,11 @@ package org.xenei.robot.common.testUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.xenei.robot.common.Coordinates;
+import org.xenei.robot.common.Location;
 import org.xenei.robot.common.DistanceSensor;
 import org.xenei.robot.common.Position;
 import org.xenei.robot.common.mapping.CoordinateMap;
+import org.xenei.robot.common.utils.CoordUtils;
 
 public class FakeDistanceSensor implements DistanceSensor {
     private static final Logger LOG = LoggerFactory.getLogger(FakeDistanceSensor.class);
@@ -29,11 +30,11 @@ public class FakeDistanceSensor implements DistanceSensor {
     }
 
     @Override
-    public Coordinates[] sense() {
-        Coordinates[] result = new Coordinates[BLOCKSIZE];
+    public Location[] sense() {
+        Location[] result = new Location[BLOCKSIZE];
 
         for (int i = 0; i < BLOCKSIZE; i++) {
-            result[i] = look(position, position.getHeading() + (RADIANS * i)).minus(position);
+            result[i] = new Location(look(position, position.getHeading() + (RADIANS * i)).minus(position));
             if (LOG.isDebugEnabled()) {
                 LOG.debug("Reading {}: {}", i, result[i]);
             }
@@ -41,11 +42,11 @@ public class FakeDistanceSensor implements DistanceSensor {
         return result;
     }
 
-    private Coordinates look(Coordinates position, double heading) {
+    private Location look(Location position, double heading) {
         if (LOG.isDebugEnabled()) {
             LOG.debug("Scanning heading: {} {}", heading, Math.toDegrees(heading));
         }
-        return map.look(position, heading, 350).orElse(Coordinates.fromAngle(heading, Double.POSITIVE_INFINITY));
+        return map.look(position, heading, 350).orElse(new Location(CoordUtils.fromAngle(heading, Double.POSITIVE_INFINITY)));
     }
 
     @Override

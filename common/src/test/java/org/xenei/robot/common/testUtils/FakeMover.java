@@ -2,7 +2,7 @@ package org.xenei.robot.common.testUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.xenei.robot.common.Coordinates;
+import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Mover;
 import org.xenei.robot.common.Position;
 
@@ -13,7 +13,7 @@ public class FakeMover implements Mover {
     private Position position;
     private int speed;
 
-    public FakeMover(Coordinates initial, int speed) {
+    public FakeMover(Location initial, int speed) {
         this.position = new Position(initial);
         if (LOG.isDebugEnabled()) {
             LOG.debug("Initial position {}", position);
@@ -22,9 +22,9 @@ public class FakeMover implements Mover {
     }
 
     @Override
-    public Position move(Coordinates move) {
-        if (move.getRange() > speed) {
-            move = Coordinates.fromAngle(move.getTheta(), speed);
+    public Position move(Location move) {
+        if (move.range() > speed) {
+            move = Location.fromAngle(move.theta(), speed);
         }
         position = position.nextPosition(move);
         if (LOG.isDebugEnabled()) {

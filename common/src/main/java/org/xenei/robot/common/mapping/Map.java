@@ -4,11 +4,12 @@ import java.util.Collection;
 import java.util.Optional;
 import java.util.Set;
 
-import org.xenei.robot.common.Coordinates;
+import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.geom.Polygon;
+import org.xenei.robot.common.Location;
 import org.xenei.robot.common.planning.Solution;
-import org.xenei.robot.common.planning.Target;
-
-import mil.nga.sf.Point;
+import org.xenei.robot.common.planning.Step;
 
 
 public interface Map {
@@ -19,22 +20,29 @@ public interface Map {
      * @param dest the coordinates to end it
      * @return true if there are no obstacles between source and dest.
      */
-    boolean clearView(Point source, Point dest);
-    void add(Target target);
-    Collection<Target> getTargets();
-    boolean path(Point from, Point to);
-    void recalculate(Point target);
-    Optional<Target> getBestTarget(Point currentCoords);
-    void setTemporaryCost(Target target);
+    boolean clearView(Coordinate source, Coordinate dest);
+    
+    /**
+     * Add the target to the planning
+     * @param target the target to add.
+     */
+    void addTarget(Step target);
+    
+    Collection<Step> getTargets();
+    void addPath(Coordinate... coords);
+    void recalculate(Coordinate target);
+    Optional<Step> getBestTarget(Coordinate currentCoords);
+    void setTemporaryCost(Step target);
     /**
      * Reset the target position. Builds a new map from all known points.
      * 
      * @param target the New target.
      */
-    void reset(Point target);
-    boolean isObstacle(Point coord);
-    void setObstacle(Point obstacle);
-    Set<Coordinates> getObstacles();
-    void cutPath(Point a, Point b);
+    //void reset(Coordinate target);
+    boolean isObstacle(Coordinate coord);
+    void setObstacle(Coordinate obstacle);
+    Set<Geometry> getObstacles();
+    void cutPath(Coordinate a, Coordinate b);
     void recordSolution(Solution solution);
+    double getScale();
 }

@@ -2,7 +2,7 @@ package org.xenei.robot.rpi.sensors;
 
 import java.util.Arrays;
 
-import org.xenei.robot.common.Coordinates;
+import org.xenei.robot.common.Location;
 import org.xenei.robot.common.DistanceSensor;
 import org.xenei.robot.common.utils.TimingUtils;
 
@@ -24,11 +24,11 @@ public class Arduino implements DistanceSensor {
     }
 
     @Override
-    public Coordinates[] sense() {
+    public Location[] sense() {
         byte b = device.readByte();
         int dist = 0xFF & b;
-        Coordinates c = Coordinates.fromAngle(0, dist);
-        return new Coordinates[] { c };
+        Location c = Location.fromAngle(0, dist);
+        return new Location[] { c };
     }
 
     public static void main(String[] args) {
