@@ -1,7 +1,6 @@
 package org.xenei.robot.common.mapping;
 
 import org.locationtech.jts.geom.Coordinate;
-import org.xenei.robot.common.Location;
 import org.xenei.robot.common.mapping.CoordinateMap.Coord;
 
 public class CoordinateMapBuilder {
@@ -32,18 +31,18 @@ public class CoordinateMapBuilder {
     }
 
     public CoordinateMapBuilder clear(int x, int y) {
-        map.disable(new Coordinate(x,y));
+        map.disable(new Coordinate(x, y));
         return this;
     }
-    
+
     public CoordinateMapBuilder border(int x, int y, int xLength, int yLength, char c) {
-        setY(x, y, y+yLength-1, c);
-        setY(x+xLength-1, y, y+yLength-1, c);
-        setX(y, x, x+xLength-1, c);
-        setX(y+yLength-1, x, x+xLength-1, c);
+        setY(x, y, y + yLength - 1, c);
+        setY(x + xLength - 1, y, y + yLength - 1, c);
+        setX(y, x, x + xLength - 1, c);
+        setX(y + yLength - 1, x, x + xLength - 1, c);
         return this;
     }
-    
+
     public CoordinateMapBuilder merge(CoordinateMap other) {
         for (Coord coord : other.points) {
             map.enable(coord);
@@ -55,5 +54,4 @@ public class CoordinateMapBuilder {
         return map;
     }
 
-    
 }

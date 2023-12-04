@@ -13,6 +13,7 @@ import org.apache.jena.query.QueryExecution;
 import org.apache.jena.query.QueryExecutionFactory;
 import org.apache.jena.rdf.model.Literal;
 import org.apache.jena.rdf.model.Model;
+import org.apache.jena.rdf.model.Resource;
 import org.junit.jupiter.api.Test;
 import org.locationtech.jts.geom.Coordinate;
 import org.xenei.robot.mapper.rdf.Namespace;
@@ -63,4 +64,10 @@ public class GraphModFactoryTest {
         }
     }
 
+  @Test
+  public void asRDFTest() {
+      Coordinate p = new Coordinate( -1, 3 );
+      Resource r = GraphModFactory.asRDF(p, null, GraphModFactory.asPoint(p));
+      System.out.println( MapReports.dumpModel( r.getModel() ));
+  }
 }

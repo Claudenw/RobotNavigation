@@ -7,7 +7,6 @@ import java.util.stream.Stream;
 
 import org.locationtech.jts.geom.Coordinate;
 import org.xenei.robot.common.Location;
-import org.xenei.robot.common.utils.CoordUtils;
 
 public class Solution {
 
@@ -39,7 +38,7 @@ public class Solution {
     public int stepCount() {
         return path.size() - 1;
     }
-    
+
     public double cost() {
         if (isEmpty()) {
             return Double.POSITIVE_INFINITY;
@@ -71,7 +70,7 @@ public class Solution {
         return accumulator;
     }
 
-    private void removeUnnecessarySteps(BiPredicate<Coordinate,Coordinate> clearCheck) {
+    private void removeUnnecessarySteps(BiPredicate<Coordinate, Coordinate> clearCheck) {
         List<SolutionRecord> result = new ArrayList<>();
         result.add(path.get(0));
         int idx = 0;
@@ -103,9 +102,10 @@ public class Solution {
     /**
      * Builds the shortest path based on the path stack and the target.
      * 
-     * @param clearCheck a predicate that returns clear if the path between the two coordinates is clear.
+     * @param clearCheck a predicate that returns clear if the path between the two
+     * coordinates is clear.
      */
-    public void simplify(BiPredicate<Coordinate,Coordinate> clearCheck) {
+    public void simplify(BiPredicate<Coordinate, Coordinate> clearCheck) {
         if (path.size() > 2) {
             recalculateCost(end());
             removeUnnecessarySteps(clearCheck);

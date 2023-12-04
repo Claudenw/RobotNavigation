@@ -9,12 +9,12 @@ import org.xenei.robot.mapper.MapReports;
 
 public class NamespaceTest {
     
-    @Test
-    public void x() {
-        GeometryFactory geometryFactory = new GeometryFactory();
-        Coordinate p = new Coordinate( -1, 3 );
-        Resource r = Namespace.asRDF(p, null, geometryFactory.createPoint(p));
-        System.out.println( MapReports.dumpModel( r.getModel() ));
-    }
+//    @Test
+//    public void x() {
+//        GeometryFactory geometryFactory = new GeometryFactory();
+//        Coordinate p = new Coordinate( -1, 3 );
+//        Resource r = Namespace.asRDF(p, null, geometryFactory.createPoint(p));
+//        System.out.println( MapReports.dumpModel( r.getModel() ));
+//    }
 
 }

@@ -5,8 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Mover;
 import org.xenei.robot.common.Position;
-
-import mil.nga.sf.Point;
+import org.xenei.robot.common.utils.CoordUtils;
 
 public class FakeMover implements Mover {
     private static final Logger LOG = LoggerFactory.getLogger(FakeMover.class);
@@ -24,7 +23,7 @@ public class FakeMover implements Mover {
     @Override
     public Position move(Location move) {
         if (move.range() > speed) {
-            move = Location.fromAngle(move.theta(), speed);
+            move = new Location(CoordUtils.fromAngle(move.theta(), speed));
         }
         position = position.nextPosition(move);
         if (LOG.isDebugEnabled()) {

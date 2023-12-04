@@ -13,22 +13,22 @@ public class FakeMoverTest {
 
     private final Double radians = Math.toRadians(45);
     private final double sqrt2 = Math.sqrt(2.0);
-    FakeMover underTest;
+    private FakeMover underTest;
 
     @BeforeEach
     public void setup() {
-        underTest = new FakeMover(Location.fromXY(0, 0), 5);
+        underTest = new FakeMover(new Location(0, 0), 5);
     }
 
     @Test
     public void zigZagTest() {
-        Location move = Location.fromXY(sqrt2, sqrt2).minus(underTest.position());
+        Location move = new Location(sqrt2, sqrt2).minus(underTest.position());
         underTest.move(move);
         assertEquals(radians, underTest.position().getHeading(), DELTA);
         assertEquals(sqrt2, underTest.position().getX(), DELTA);
         assertEquals(sqrt2, underTest.position().getY(), DELTA);
 
-        move = Location.fromXY(sqrt2 + 2, sqrt2).minus(underTest.position());
+        move = new Location(sqrt2 + 2, sqrt2).minus(underTest.position());
         underTest.move(move);
         assertEquals(sqrt2 + 2, underTest.position().getX(), DELTA);
         assertEquals(sqrt2, underTest.position().getY(), DELTA);
@@ -37,25 +37,25 @@ public class FakeMoverTest {
 
     @Test
     public void boxTest() {
-        Location move = Location.fromXY(sqrt2, sqrt2).minus(underTest.position());
+        Location move = new Location(sqrt2, sqrt2).minus(underTest.position());
         underTest.move(move);
         assertEquals(radians, underTest.position().getHeading(), DELTA);
         assertEquals(sqrt2, underTest.position().getX(), DELTA);
         assertEquals(sqrt2, underTest.position().getY(), DELTA);
 
-        move = Location.fromXY(sqrt2 * 2, 0.0).minus(underTest.position());
+        move = new Location(sqrt2 * 2, 0.0).minus(underTest.position());
         underTest.move(move);
         assertEquals(-RADIANS_45, underTest.position().getHeading(), DELTA);
         assertEquals(sqrt2 * 2, underTest.position().getX(), DELTA);
         assertEquals(0.0, underTest.position().getY(), DELTA);
 
-        move = Location.fromXY(sqrt2, -sqrt2).minus(underTest.position());
+        move = new Location(sqrt2, -sqrt2).minus(underTest.position());
         underTest.move(move);
         assertEquals(-RADIANS_135, underTest.position().getHeading(), DELTA);
         assertEquals(sqrt2, underTest.position().getX(), DELTA);
         assertEquals(-sqrt2, underTest.position().getY(), DELTA);
 
-        move = Location.fromXY(0, 0).minus(underTest.position());
+        move = new Location(0, 0).minus(underTest.position());
         underTest.move(move);
         assertEquals(RADIANS_135, underTest.position().getHeading(), DELTA);
         assertEquals(0, underTest.position().getX(), DELTA);

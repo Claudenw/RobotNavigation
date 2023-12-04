@@ -6,10 +6,15 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.Test;
+import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.geom.Point;
+import org.locationtech.jts.geom.Coordinate;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Position;
 import org.xenei.robot.common.SolutionTest;
@@ -23,8 +28,6 @@ import org.xenei.robot.mapper.MapImpl;
 import org.xenei.robot.mapper.MapImplTest;
 import org.xenei.robot.mapper.MapperImpl;
 
-import mil.nga.sf.Point;
-
 public class PlannerTest {
 
     private PlannerImpl underTest;
@@ -32,12 +35,12 @@ public class PlannerTest {
     @Test
     public void setTargetTest() {
         CoordinateMap cmap = MapLibrary.map2('#');
-        Map map = new MapImpl();
-        Location origin = Location.fromXY(0, 0);
+        Map map = new MapImpl(1);
+        Location origin = new Location(0, 0);
         underTest = new PlannerImpl(map, origin);
         for (int x = 0; x <= 13; x++) {
             for (int y = 0; y <= 15; y++) {
-                Location c = Location.fromXY(x, y);
+                Location c = new Location(x, y);
                 if (!cmap.isEnabled(c)) {
                     underTest.setTarget(c);
                     verifyState(map, cmap);
@@ -47,12 +50,18 @@ public class PlannerTest {
         }
     }
 
+    private Function<Geometry,Coordinate> toCoord =  g -> {
+        Point p = g.getCentroid();
+        return new Coordinate(p.getX(), p.getY());
+    };
+    
     private CoordinateMap verifyState(Map map, CoordinateMap cmap) {
-        for (Location c : map.getObstacles()) {
-            assertTrue(cmap.isEnabled(c), () -> c + " should have been sensed.");
+        
+        for (Geometry c : map.getObstacles()) {
+            assertTrue(cmap.isEnabled(toCoord.apply(c)), () -> c + " should have been sensed.");
         }
         CoordinateMap sensedMap = new CoordinateMap(cmap.scale());
-        sensedMap.enable(map.getObstacles(), 'x');
+        sensedMap.enable(map.getObstacles().stream().map( toCoord ).collect(Collectors.toList()), 'x');
 
         for (Step pr : map.getTargets()) {
             assertFalse(sensedMap.isEnabled(pr), () -> "Plan record " + pr + " should not have been sensed");
@@ -66,11 +75,11 @@ public class PlannerTest {
     @Test
     public void stepTestMap2() {
         FakeDistanceSensor sensor = new FakeDistanceSensor(MapLibrary.map2('#'));
-        Map map = new MapImpl();
+        Map map = new MapImpl(1);
         MapperImpl mapper = new MapperImpl(map);
 
-        Location finalCoord = Location.fromXY(-1, 1);
-        Location startCoord = Location.fromXY(-1, -3);
+        Location finalCoord = new Location(-1, 1);
+        Location startCoord = new Location(-1, -3);
 
         underTest = new PlannerImpl(map, startCoord, finalCoord);
 
@@ -78,7 +87,10 @@ public class PlannerTest {
         int maxLoops = 100;
         sensor.setPosition(underTest.getCurrentPosition());
         mapper.processSensorData(underTest.getCurrentPosition(), underTest.getTarget(), sensor.sense());
-       map.getObstacles().forEach( o -> assertTrue(Arrays.asList( MapImplTest.obstacles ).contains(o.asPoint()))); // DEBUG FIXME
+        Collection<Geometry> obsts = map.getObstacles();
+        for (Coordinate c : MapImplTest.obstacles) {
+            MapImplTest.assertCoordinateInObstacles(obsts, c);
+        }
         while (underTest.step()) {
             if (maxLoops < stepCount++) {
                 fail("Did not find solution in " + maxLoops + " steps");
@@ -89,25 +101,25 @@ public class PlannerTest {
             mapper.processSensorData(underTest.getCurrentPosition(), underTest.getTarget(), sensor.sense());
         }
         assertEquals(SolutionTest.expectedSolution.length - 1, underTest.getSolution().stepCount());
-        assertTrue(startCoord.equalsXY(underTest.getSolution().start()));
-        assertTrue(finalCoord.equalsXY(underTest.getSolution().end()));
-        List<Point> solution = underTest.getSolution().stream().collect(Collectors.toList());
+        assertTrue(startCoord.equals2D(underTest.getSolution().start()));
+        assertTrue(finalCoord.equals2D(underTest.getSolution().end()));
+        List<Coordinate> solution = underTest.getSolution().stream().collect(Collectors.toList());
         assertEquals(SolutionTest.expectedSolution.length, solution.size());
         for (int i = 0; i < solution.size(); i++) {
-            assertTrue(SolutionTest.expectedSolution[i].equalsX(solution.get(i)));
+            assertTrue(SolutionTest.expectedSolution[i].equals2D(solution.get(i)));
         }
     }
 
     @Test
     public void stepTestMap3() {
-        Point[] expectedSimpleSolution = { new Point(-1, -3), new Point(-3, -2), new Point(-4, -1), new Point(-4, 0),
-                new Point(-1, 1) };
+        Coordinate[] expectedSimpleSolution = { new Coordinate(-1, -3), new Coordinate(-3, -2), new Coordinate(-4, -1), new Coordinate(-4, 0),
+                new Coordinate(-1, 1) };
         FakeDistanceSensor sensor = new FakeDistanceSensor(MapLibrary.map3('#'));
-        Map map = new MapImpl();
+        Map map = new MapImpl(1);
         MapperImpl mapper = new MapperImpl(map);
 
-        Location finalCoord = Location.fromXY(-1, 1);
-        Location startCoord = Location.fromXY(-1, -3);
+        Location finalCoord = new Location(-1, 1);
+        Location startCoord = new Location(-1, -3);
 
         underTest = new PlannerImpl(map, startCoord, finalCoord);
 
@@ -126,16 +138,16 @@ public class PlannerTest {
         }
         assertEquals(22, underTest.getSolution().stepCount());
         assertEquals(33.29126786466034, underTest.getSolution().cost());
-        assertTrue(startCoord.equalsXY(underTest.getSolution().start()));
-        assertTrue(finalCoord.equalsXY(underTest.getSolution().end()));
+        assertTrue(startCoord.equals2D(underTest.getSolution().start()));
+        assertTrue(finalCoord.equals2D(underTest.getSolution().end()));
         underTest.getSolution().simplify(map::clearView);
         assertEquals(7.812559200041265, underTest.getSolution().cost());
-        assertTrue(startCoord.equalsXY(underTest.getSolution().start()));
-        assertTrue(finalCoord.equalsXY(underTest.getSolution().end()));
-        List<Point> solution = underTest.getSolution().stream().collect(Collectors.toList());
+        assertTrue(startCoord.equals2D(underTest.getSolution().start()));
+        assertTrue(finalCoord.equals2D(underTest.getSolution().end()));
+        List<Coordinate> solution = underTest.getSolution().stream().collect(Collectors.toList());
         assertEquals(expectedSimpleSolution.length, solution.size());
         for (int i = 0; i < solution.size(); i++) {
-            assertTrue(expectedSimpleSolution[i].equalsX(solution.get(i)));
+            assertTrue(expectedSimpleSolution[i].equals2D(solution.get(i)));
         }
     }
 }

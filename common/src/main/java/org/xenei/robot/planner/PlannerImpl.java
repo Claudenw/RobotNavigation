@@ -9,6 +9,7 @@ import org.apache.commons.math3.util.Precision;
 import org.locationtech.jts.geom.Coordinate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.xenei.robot.common.FrontsCoordinate;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Position;
 import org.xenei.robot.common.mapping.Map;
@@ -145,6 +146,9 @@ public class PlannerImpl implements Planner {
         return true;
     }
 
+    public void setTarget(FrontsCoordinate target) {
+        this.setTarget(target.getCoordinate());
+    }
     /**
      * Set the target for the planner. Setting the target causes the current plan to
      * be cleared and a new plan started.

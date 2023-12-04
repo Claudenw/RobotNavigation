@@ -135,7 +135,7 @@ public class GraphModFactory {
         Coordinate[] cell = new Coordinate[6];
         Location l = new Location(coord);
         for (int i = 0; i < 6; i++) {
-            cell[i] = l.plus(CoordUtils.fromAngle(angle, range));
+            cell[i] = l.plus(CoordUtils.fromAngle(angle, range)).getCoordinate();
             angle += radians;
         }
         cell[5] = cell[0];

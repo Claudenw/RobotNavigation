@@ -1,29 +1,22 @@
 package org.xenei.robot.common.mapping;
 
 import java.util.Collection;
-import java.util.List;
 import java.util.Optional;
 import java.util.SortedSet;
 import java.util.TreeSet;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.locationtech.jts.geom.Coordinate;
-import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.LineString;
-import org.locationtech.jts.geom.LinearRing;
-import org.locationtech.jts.geom.GeometryCollection; 
 import org.locationtech.jts.geom.Polygon;
+import org.xenei.robot.common.FrontsCoordinate;
 import org.xenei.robot.common.Location;
-import org.xenei.robot.common.Position;
 import org.xenei.robot.common.utils.CoordUtils;
-
-
 
 public class CoordinateMap {
     GeometryFactory geometryFactory = new GeometryFactory();
-    
+
     SortedSet<Coord> points;
 
     final double scale;
@@ -41,6 +34,10 @@ public class CoordinateMap {
         return scale;
     }
 
+    public void enable(FrontsCoordinate coord, char c) {
+        enable(coord.getCoordinate(), c);
+    }
+    
     public void enable(Coordinate coord, char c) {
         enable(new Coord(coord, c));
     }
@@ -65,6 +62,10 @@ public class CoordinateMap {
         location.stream().forEach(loc -> disable(loc));
     }
 
+    public boolean isEnabled(FrontsCoordinate location) {
+        return points.contains(new Coord(location, ' '));
+    }
+    
     public boolean isEnabled(Coordinate location) {
         return points.contains(new Coord(location, ' '));
     }
@@ -83,9 +84,8 @@ public class CoordinateMap {
      * @return true if there are no obstructions.
      */
     public boolean clearView(Coordinate from, Coordinate target) {
-        LineString path = geometryFactory.createLineString( new Coordinate[] { from, target });
-        return getObstacles().filter(obstacle -> obstacle.isWithinDistance(path, 0.49))
-                .findFirst().isEmpty();
+        LineString path = geometryFactory.createLineString(new Coordinate[] { from, target });
+        return getObstacles().filter(obstacle -> obstacle.isWithinDistance(path, 0.49)).findFirst().isEmpty();
     }
 
     /**
@@ -130,7 +130,7 @@ public class CoordinateMap {
         int cordRange = fitRange(Math.round(maxRange / scale));
 
         for (int i = 0; i < cordRange; i++) {
-            Coordinate pos = position.plus(CoordUtils.fromAngle(heading, i * scale));
+            Location pos = position.plus(CoordUtils.fromAngle(heading, i * scale));
             if (points.contains(new Coord(pos, ' '))) {
                 return Optional.of(new Location(pos));
             }
@@ -149,10 +149,14 @@ public class CoordinateMap {
             this.x = fitRange(Math.round(x / scale));
             this.y = fitRange(Math.round(y / scale));
             this.c = c;
-           polygon = geometryFactory.createPolygon(new Coordinate[]{ new Coordinate( x-.5, y-.5), new Coordinate(x+.5, y-.5), new Coordinate( x+.5, y+.5),
-                    new Coordinate(x-.5, y+.5), new Coordinate( x-.5, y-.5) });
+            polygon = geometryFactory.createPolygon(new Coordinate[] { new Coordinate(x - .5, y - .5),
+                    new Coordinate(x + .5, y - .5), new Coordinate(x + .5, y + .5), new Coordinate(x - .5, y + .5),
+                    new Coordinate(x - .5, y - .5) });
         }
 
+        public Coord(FrontsCoordinate coords, char c) {
+            this(coords.getCoordinate(), c);
+        }
         public Coord(Coordinate coords, char c) {
             this(coords.getX(), coords.getY(), c);
         }
@@ -171,7 +175,7 @@ public class CoordinateMap {
         public Coordinate asCoordinate() {
             return new Coordinate(x, y);
         }
-        
+
         public Polygon getPolygon() {
             return polygon;
         }

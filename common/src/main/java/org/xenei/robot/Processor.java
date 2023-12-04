@@ -3,6 +3,7 @@ package org.xenei.robot;
 import java.util.Optional;
 import java.util.stream.Stream;
 
+import org.locationtech.jts.geom.Coordinate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xenei.robot.common.Location;
@@ -17,8 +18,6 @@ import org.xenei.robot.mapper.MapperImpl;
 import org.xenei.robot.mapper.MapImpl;
 import org.xenei.robot.planner.PlannerImpl;
 
-import mil.nga.sf.Point;
-
 public class Processor {
     private final Mover mover;
     private final DistanceSensor sensor;
@@ -32,7 +31,7 @@ public class Processor {
     public Processor(DistanceSensor sensor, Mover mover) {
         this.mover = mover;
         this.sensor = sensor;
-        this.map = new MapImpl();
+        this.map = new MapImpl(1);
         this.mapper = new MapperImpl(map);
         this.planner = new PlannerImpl(map, mover.position());
     }
@@ -49,11 +48,11 @@ public class Processor {
      */
     private Optional<Position> step() {
         if (planner.step()) {
-            Point nextLoc = planner.getTarget();
+            Coordinate nextLoc = planner.getTarget();
             if (nextLoc == null) {
                 return Optional.empty();
             }
-            Location c = Location.fromXY(nextLoc);
+            Location c = new Location(nextLoc);
             Optional<Position> result = Optional.of(mover.move(c.minus(mover.position())));
             LOG.info("next step {}", result);
             if (result.isPresent()) {
@@ -82,7 +81,7 @@ public class Processor {
         map.recordSolution(planner.getSolution());
     }
 
-    public Stream<Location> getSolution() {
+    public Stream<Coordinate> getSolution() {
         return planner.getSolution().stream();
     }
 

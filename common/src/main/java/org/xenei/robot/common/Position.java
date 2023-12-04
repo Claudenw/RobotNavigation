@@ -1,9 +1,7 @@
 package org.xenei.robot.common;
 
-import org.apache.commons.math3.util.Precision;
 import org.locationtech.jts.geom.Coordinate;
 import org.xenei.robot.common.utils.CoordUtils;
-
 
 /**
  * A combination of Coordinates and a heading. The coordinates are immutable but
@@ -39,7 +37,7 @@ public class Position extends Location {
     public Position(Coordinate point) {
         this(point, 0.0);
     }
-    
+
     /**
      * Constructs a position from a point an a heading.
      * 
@@ -119,7 +117,7 @@ public class Position extends Location {
     public void setHeading(FrontsCoordinate heading) {
         this.heading = headingTo(heading);
     }
-    
+
     /**
      * Calculates the next position.
      * <p>
@@ -140,7 +138,8 @@ public class Position extends Location {
 
     @Override
     public String toString() {
-        return String.format("Position[ %s heading:%.4f ]", CoordUtils.toString(this.getCoordinate(), 4), Math.toDegrees(heading));
+        return String.format("Position[ %s heading:%.4f ]", CoordUtils.toString(this.getCoordinate(), 4),
+                Math.toDegrees(heading));
     }
 
 }

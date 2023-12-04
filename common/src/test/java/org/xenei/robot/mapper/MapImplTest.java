@@ -95,6 +95,17 @@ public class MapImplTest {
         Coordinate p2 = new Coordinate(-1, -2);
         assertEquals(new Step(p2, 4, null), pr.get());
     }
+    
+    public static void assertCoordinateInObstacles(Collection<Geometry> obsts, Coordinate c) {
+        boolean found = false;
+        for (Geometry geom : obsts) {
+            if (geom.contains(GraphModFactory.asPoint(c))) {
+                found = true;
+                break;
+            }
+        }
+        assertTrue(found, () -> "Missing coordinate " + c);
+    }
 
     @Test
     public void getObstaclesTest() {
@@ -102,14 +113,7 @@ public class MapImplTest {
         Set<Geometry> obsts = underTest.getObstacles();
         assertEquals(obstacles.length, obsts.size());
         for (Coordinate o : obstacles) {
-            boolean found = false;
-            for (Geometry geom : obsts) {
-                if (geom.contains(GraphModFactory.asPoint(o))) {
-                    found = true;
-                    break;
-                }
-            }
-            assertTrue(found, () -> "Missing obstacle " + o);
+            assertCoordinateInObstacles(obsts, o);
         }
     }
 

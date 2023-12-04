@@ -7,7 +7,7 @@ import org.xenei.robot.common.AbstractFrontsCoordinate;
 import org.xenei.robot.common.FrontsCoordinate;
 import org.xenei.robot.common.utils.CoordUtils;
 
-public class Step extends AbstractFrontsCoordinate implements Comparable<Step> {
+public class Step extends AbstractFrontsCoordinate<Step> implements Comparable<Step> {
     private final double cost;
     private final Geometry geom;
 
@@ -36,6 +36,12 @@ public class Step extends AbstractFrontsCoordinate implements Comparable<Step> {
         super(point);
         this.cost = cost;
         this.geom = geom == null? new GeometryFactory().createPoint(point) : geom;
+    }
+  
+
+    @Override
+    protected Step fromCoordinate(Coordinate base) {
+        return new Step(base, 0, null);
     }
 
     public double cost() {

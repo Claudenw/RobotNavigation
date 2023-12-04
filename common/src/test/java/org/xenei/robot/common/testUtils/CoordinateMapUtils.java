@@ -1,5 +1,11 @@
 package org.xenei.robot.common.testUtils;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
+import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.geom.Point;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xenei.robot.common.Position;
@@ -15,15 +21,21 @@ public class CoordinateMapUtils {
     private CoordinateMapUtils() {
     }
 
-    public static void logMap(Map map, Planner planner, CoordinateMap initialMap, Position p) {
+    public static void logMap(Map map, Planner planner, CoordinateMap initialMap, Position position) {
         CoordinateMap cmap = new CoordinateMapBuilder(initialMap.scale()).merge(initialMap).build();
-        cmap.enable(map.getObstacles(), '@');
+        List<Coordinate> lst = map.getObstacles().stream().map(g -> {
+            Point p = g.getCentroid();
+            return new Coordinate(p.getX(), p.getY());})
+                .collect(Collectors.toList());
+
+        cmap.enable(lst, '@');
+        
         planner.getTargets().stream().forEach(c -> cmap.enable(c, '*'));
         planner.getSolution().stream().forEach(r -> cmap.enable(r, '='));
-        cmap.enable(p, 'p');
+        cmap.enable(position, 'p');
         cmap.enable(planner.getTarget(), 't');
         LOG.info("\n{}", cmap.toString());
-        LOG.info(p.toString());
+        LOG.info(position.toString());
     }
 
 }

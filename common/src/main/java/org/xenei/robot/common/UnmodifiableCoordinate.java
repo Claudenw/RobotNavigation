@@ -3,12 +3,14 @@ package org.xenei.robot.common;
 import org.locationtech.jts.geom.Coordinate;
 
 public class UnmodifiableCoordinate extends Coordinate {
-    
+
     public static UnmodifiableCoordinate make(Coordinate coordinate) {
-       return  coordinate instanceof UnmodifiableCoordinate ? (UnmodifiableCoordinate) coordinate : new UnmodifiableCoordinate(coordinate);
+        return coordinate instanceof UnmodifiableCoordinate ? (UnmodifiableCoordinate) coordinate
+                : new UnmodifiableCoordinate(coordinate);
     }
+
     private UnmodifiableCoordinate(Coordinate delegate) {
-       super(delegate);
+        super(delegate);
     }
 
     @Override

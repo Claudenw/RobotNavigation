@@ -3,6 +3,7 @@ package org.xenei.robot.common.planning;
 import java.util.Collection;
 
 import org.locationtech.jts.geom.Coordinate;
+import org.xenei.robot.common.FrontsCoordinate;
 import org.xenei.robot.common.Position;
 
 
@@ -11,6 +12,7 @@ public interface Planner {
     Coordinate getTarget(); 
     Collection<Coordinate> getTargets();
     void setTarget(Coordinate target);
+    void setTarget(FrontsCoordinate target);
     Solution getSolution();
     /**
      * Plans a step.  Returns the best location to move to based on the current position.

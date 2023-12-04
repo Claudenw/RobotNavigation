@@ -3,7 +3,7 @@ package org.xenei.robot.common;
 import org.locationtech.jts.geom.Coordinate;
 import org.xenei.robot.common.utils.AngleUtils;
 
-public abstract class AbstractFrontsCoordinate implements FrontsCoordinate {
+public abstract class AbstractFrontsCoordinate<T extends AbstractFrontsCoordinate> implements FrontsCoordinate {
 
     UnmodifiableCoordinate coordinate;
 
@@ -114,25 +114,27 @@ public abstract class AbstractFrontsCoordinate implements FrontsCoordinate {
     final public double distance3D(FrontsCoordinate c) {
         return coordinate.distance3D(c.getCoordinate());
     }
+    
+    abstract protected T fromCoordinate(Coordinate base); 
 
-    public Coordinate minus(Coordinate other) {
-        return new Coordinate( getX() - other.getX(), getY()-other.getY());
+    public T minus(Coordinate other) {
+        return fromCoordinate(new Coordinate( getX() - other.getX(), getY()-other.getY()));
     }
     
-    public Coordinate minus(FrontsCoordinate other) {
-        return new Coordinate( getX() - other.getX(), getY()-other.getY());
+    public T minus(FrontsCoordinate other) {
+        return fromCoordinate(new Coordinate( getX() - other.getX(), getY()-other.getY()));
     }
     
-    public Coordinate plus(Coordinate other) {
-        return new Coordinate( getX()+other.getX(), getY()+other.getY());
+    public T plus(Coordinate other) {
+        return fromCoordinate(new Coordinate( getX()+other.getX(), getY()+other.getY()));
     }
     
-    public Coordinate plus(FrontsCoordinate other) {
-        return new Coordinate( getX()+other.getX(), getY()+other.getY());
+    public T plus(FrontsCoordinate other) {
+        return fromCoordinate(new Coordinate( getX()+other.getX(), getY()+other.getY()));
     }
     
     public double angleTo(Coordinate dest) {
-        Coordinate diff = minus(dest);
+        T diff = minus(dest);
         double theta = AngleUtils.normalize(Math.atan(diff.getY() / diff.getX()));
         boolean yNeg = DoubleUtils.isNeg(diff.getY());
         boolean tNeg = DoubleUtils.isNeg(theta);
