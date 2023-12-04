@@ -117,7 +117,7 @@ public class MapperImpl implements Mapper {
      * @return true if the obstacle is on our path.
      */
     private boolean registerObstacle(Position currentPosition, Coordinate target, Coordinate obstacle) {
-        map.setObstacle(obstacle);
+        map.addObstacle(obstacle);
         boolean result = map.clearView(currentPosition.getCoordinate(), target);
         if (result) {
             LOG.info("Future collision from {} detected at {}", currentPosition, obstacle);

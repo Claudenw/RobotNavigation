@@ -1,14 +1,13 @@
 package org.xenei.robot.mapper;
 
-import java.io.ByteArrayOutputStream;
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
-import java.util.function.Consumer;
 import java.util.function.Function;
 
 import org.apache.jena.arq.querybuilder.AbstractQueryBuilder;
@@ -18,22 +17,14 @@ import org.apache.jena.arq.querybuilder.Order;
 import org.apache.jena.arq.querybuilder.SelectBuilder;
 import org.apache.jena.arq.querybuilder.UpdateBuilder;
 import org.apache.jena.arq.querybuilder.WhereBuilder;
-import org.apache.jena.geosparql.configuration.GeoSPARQLConfig;
-import org.apache.jena.geosparql.geo.topological.GenericPropertyFunction;
-import org.apache.jena.geosparql.geof.topological.GenericFilterFunction;
-import org.apache.jena.geosparql.geof.topological.filter_functions.simple_features.SfCrossesFF;
-import org.apache.jena.geosparql.implementation.DimensionInfo;
-import org.apache.jena.geosparql.implementation.GeometryWrapper;
-import org.apache.jena.geosparql.implementation.datatype.WKTDatatype;
 import org.apache.jena.geosparql.implementation.vocabulary.Geo;
 import org.apache.jena.geosparql.implementation.vocabulary.GeoSPARQL_URI;
 import org.apache.jena.geosparql.implementation.vocabulary.SRS_URI;
 import org.apache.jena.geosparql.spatial.SpatialIndex;
 import org.apache.jena.geosparql.spatial.SpatialIndexException;
-import org.apache.jena.geosparql.spatial.filter_functions.DistanceFF;
-import org.apache.jena.geosparql.spatial.property_functions.GenericSpatialPropertyFunction;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.NodeFactory;
+import org.apache.jena.graph.Triple;
 import org.apache.jena.query.Dataset;
 import org.apache.jena.query.DatasetFactory;
 import org.apache.jena.query.QueryExecution;
@@ -45,29 +36,18 @@ import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.rdf.model.Property;
 import org.apache.jena.rdf.model.Resource;
-import org.apache.jena.rdf.model.ResourceFactory;
-import org.apache.jena.rdf.model.Statement;
-import org.apache.jena.riot.Lang;
 import org.apache.jena.shared.PrefixMapping;
 import org.apache.jena.sparql.core.Var;
 import org.apache.jena.sparql.expr.Expr;
-import org.apache.jena.sparql.path.Path;
-import org.apache.jena.sparql.path.PathFactory;
-import org.apache.jena.sparql.util.Context;
 import org.apache.jena.update.UpdateExecutionFactory;
 import org.apache.jena.update.UpdateRequest;
 import org.apache.jena.vocabulary.RDF;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
-import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.Polygon;
-import org.opengis.geometry.MismatchedDimensionException;
-import org.opengis.referencing.operation.TransformException;
-import org.opengis.util.FactoryException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xenei.robot.common.Location;
-import org.xenei.robot.common.Position;
 import org.xenei.robot.common.mapping.Map;
 import org.xenei.robot.common.planning.Solution;
 import org.xenei.robot.common.planning.Step;
@@ -76,7 +56,7 @@ import org.xenei.robot.mapper.rdf.Namespace;
 
 public class MapImpl implements Map {
     private static final Logger LOG = LoggerFactory.getLogger(MapImpl.class);
-  
+
     private double scale;
 
     public static double M_SCALE = 1.0;
@@ -89,27 +69,28 @@ public class MapImpl implements Map {
         this.scale = scale;
         data = DatasetFactory.create();
         data.getDefaultModel().setNsPrefixes(GeoSPARQL_URI.getPrefixes()).setNsPrefixes(PrefixMapping.Standard);
-        //data.getDefaultModel().add(GraphModFactory.asRDF(new Coordinate(0,0), null, null).getModel());
+        // data.getDefaultModel().add(GraphModFactory.asRDF(new Coordinate(0,0), null,
+        // null).getModel());
         data.addNamedModel(Namespace.BaseModel, defaultModel());
         data.addNamedModel(Namespace.PlanningModel, defaultModel());
         exprF = new ExprFactory(data.getPrefixMapping());
-        
+
         try {
             SpatialIndex.buildSpatialIndex(data, SRS_URI.DEFAULT_WKT_CRS84);
         } catch (SpatialIndexException e) {
             throw new RuntimeException(e);
         }
-        
+
     }
-    
+
+    @Override
     public double getScale() {
         return scale;
     }
 
     private static Model defaultModel() {
         return ModelFactory.createDefaultModel().setNsPrefixes(GeoSPARQL_URI.getPrefixes())
-                .setNsPrefixes(PrefixMapping.Standard)
-                .setNsPrefix("robut", "urn:org.xenei.robot:");
+                .setNsPrefixes(PrefixMapping.Standard).setNsPrefix("robut", "urn:org.xenei.robot:");
     }
 
     public boolean isEmpty() {
@@ -128,10 +109,10 @@ public class MapImpl implements Map {
         return QueryExecutionFactory.create(qb.build(), data);
     }
 
-    
     @Override
     public void addTarget(Step target) {
-        // TODO this should calculate distance to real target and add adjustment for no-clear
+        // TODO this should calculate distance to real target and add adjustment for
+        // no-clear
         // path.
         Resource qA = GraphModFactory.asRDF(target, Namespace.Coord, GraphModFactory.asPoint(target.getCoordinate()));
         data.getNamedModel(Namespace.PlanningModel).removeAll(qA, Namespace.distance, null);
@@ -142,7 +123,7 @@ public class MapImpl implements Map {
     }
 
     @Override
-    public void setObstacle(Coordinate point) {
+    public void addObstacle(Coordinate point) {
         // TODO update adjustments for all points that do not have adjustments but for
         // which this obstacle
         // blocks the target.
@@ -150,16 +131,14 @@ public class MapImpl implements Map {
         Literal obstacleWkt = GraphModFactory.asWKT(obstacle);
         Resource r = GraphModFactory.asRDF(point, Namespace.Obst, obstacle);
         Expr notClause = exprF.not(exprF.exists(new WhereBuilder().addWhere(Namespace.s, RDF.type, Namespace.Obst)));
-        Var items = Var.alloc("item");
         UpdateRequest req = new UpdateRequest()
                 // delete any points in the planning model that are covered by the obstacle
-                .add(
-                        new UpdateBuilder().addPrefixes(data.getPrefixMapping())
+                .add(new UpdateBuilder().addPrefixes(data.getPrefixMapping())
                         .addDelete(Namespace.PlanningModel, Namespace.s, Namespace.p, Namespace.o)
                         .addWhere(Namespace.s, RDF.type, Namespace.Point)
                         .addWhere(Namespace.s, Namespace.p, Namespace.o)
-                        .addFilter(GraphModFactory.checkCollision(exprF, Namespace.s, obstacleWkt))
-                        .addFilter(notClause).build())
+                        .addFilter(GraphModFactory.checkCollision(exprF, Namespace.s, obstacleWkt)).addFilter(notClause)
+                        .build())
                 .add(new UpdateBuilder().addInsert(Namespace.PlanningModel, r.getModel()).build());
         doUpdate(req);
     }
@@ -167,11 +146,10 @@ public class MapImpl implements Map {
     @Override
     public boolean isObstacle(Coordinate point) {
         Literal pointWKT = GraphModFactory.asWKT(point);
-        AskBuilder ask = new AskBuilder()
-                .addGraph(Namespace.UnionModel, new WhereBuilder()
-                .addWhere(Namespace.s, RDF.type, Namespace.Obst)
-                .addWhere(Namespace.s, Geo.AS_WKT_PROP, "?wkt")
-                .addFilter(GraphModFactory.checkCollision(exprF, "?wkt", pointWKT)));
+        AskBuilder ask = new AskBuilder().addGraph(Namespace.UnionModel,
+                new WhereBuilder().addWhere(Namespace.s, RDF.type, Namespace.Obst)
+                        .addWhere(Namespace.s, Geo.AS_WKT_PROP, "?wkt")
+                        .addFilter(GraphModFactory.checkCollision(exprF, "?wkt", pointWKT)));
         try (QueryExecution qexec = doQuery(ask)) {
             return qexec.execAsk();
         }
@@ -181,10 +159,8 @@ public class MapImpl implements Map {
     public Set<Geometry> getObstacles() {
         Var wkt = Var.alloc("wkt");
 
-        SelectBuilder sb = new SelectBuilder().addVar(wkt)
-                .addGraph(Namespace.UnionModel, new WhereBuilder()
-                .addWhere(Namespace.s, RDF.type, Namespace.Obst)
-                .addWhere(Namespace.s, Geo.AS_WKT_PROP, wkt));
+        SelectBuilder sb = new SelectBuilder().addVar(wkt).addGraph(Namespace.UnionModel, new WhereBuilder()
+                .addWhere(Namespace.s, RDF.type, Namespace.Obst).addWhere(Namespace.s, Geo.AS_WKT_PROP, wkt));
 
         Set<Geometry> result = new HashSet<>();
         try (QueryExecution qexec = doQuery(sb)) {
@@ -202,24 +178,22 @@ public class MapImpl implements Map {
      * Gets the Step for the coordinates.
      * 
      * @param location The location to get the Step for
-     * @return the Step for the location. 
+     * @return the Step for the location.
      */
     public Optional<Step> getStep(Location location) {
         Resource a = Namespace.urlOf(location.getCoordinate());
         Var distance = Var.alloc("distance");
         Var wkt = Var.alloc("wkt");
-        SelectBuilder sb = new SelectBuilder().addVar(distance).addVar(wkt)
-                .addGraph(Namespace.PlanningModel, new WhereBuilder()
-                .addWhere(a, Namespace.distance, distance)
-                .addWhere(a, RDF.type, Namespace.Coord)
-                .addWhere(a, Geo.AS_WKT_PROP, wkt));
+        SelectBuilder sb = new SelectBuilder().addVar(distance).addVar(wkt).addGraph(Namespace.PlanningModel,
+                new WhereBuilder().addWhere(a, Namespace.distance, distance).addWhere(a, RDF.type, Namespace.Coord)
+                        .addWhere(a, Geo.AS_WKT_PROP, wkt));
         try (QueryExecution qexec = doQuery(sb)) {
             ResultSet results = qexec.execSelect();
             if (results.hasNext()) {
                 QuerySolution soln = results.next();
                 Geometry geom = GraphModFactory.fromWkt(soln.getLiteral(wkt.getName()));
-                return Optional.of(new Step(location.getCoordinate(),
-                        soln.getLiteral(distance.getName()).getDouble(), geom));
+                return Optional
+                        .of(new Step(location.getCoordinate(), soln.getLiteral(distance.getName()).getDouble(), geom));
             }
             return Optional.empty();
         }
@@ -264,11 +238,10 @@ public class MapImpl implements Map {
     public boolean hasPath(Location a, Location b) {
         Literal aWkt = GraphModFactory.asWKT(GraphModFactory.asPolygon(a, scale));
         Literal bWkt = GraphModFactory.asWKT(GraphModFactory.asPolygon(b, scale));
- 
+
         WhereBuilder wb = new WhereBuilder().addWhere(Namespace.s, RDF.type, Namespace.Path)
                 .addWhere(Namespace.s, Geo.AS_WKT_PROP, Namespace.o)
-                .addFilter(exprF.and(
-                        GraphModFactory.checkCollision(exprF, Namespace.o, aWkt),
+                .addFilter(exprF.and(GraphModFactory.checkCollision(exprF, Namespace.o, aWkt),
                         GraphModFactory.checkCollision(exprF, Namespace.o, bWkt)));
         AskBuilder ab = new AskBuilder().addGraph(Namespace.UnionModel, wb);
         try (QueryExecution exec = doQuery(ab)) {
@@ -278,9 +251,11 @@ public class MapImpl implements Map {
 
     @Override
     public boolean clearView(Coordinate from, Coordinate target) {
-        LineString path = GraphModFactory.geometryFactory.createLineString(new Coordinate[] { from, target });
-        AskBuilder ask = new AskBuilder().addWhere(Namespace.s, RDF.type, Namespace.Obst);
-        GraphModFactory.addNearby(ask, Namespace.s, path, scale / 2);
+        Literal pathWkt = GraphModFactory.asWKTString(from, target);
+        Var wkt = Var.alloc("wkt");
+        AskBuilder ask = new AskBuilder().from(Namespace.UnionModel.getURI())
+                .addWhere(Namespace.s, RDF.type, Namespace.Obst).addWhere(Namespace.s, Geo.AS_WKT_PROP, wkt)
+                .addFilter(GraphModFactory.checkCollision(exprF, pathWkt, wkt));
         try (QueryExecution qexec = doQuery(ask)) {
             return !qexec.execAsk();
         }
@@ -301,8 +276,8 @@ public class MapImpl implements Map {
                 value);
         Resource updt = Namespace.urlOf(c);
         doUpdate(new UpdateRequest()
-                .add(new UpdateBuilder().addDelete(model, updt, p, Namespace.o).addGraph(model, new WhereBuilder()
-                        .addWhere(updt, p, Namespace.o)).build())
+                .add(new UpdateBuilder().addDelete(model, updt, p, Namespace.o)
+                        .addGraph(model, new WhereBuilder().addWhere(updt, p, Namespace.o)).build())
                 .add(new UpdateBuilder().addInsert(model, updt, p, value).build()));
     }
 
@@ -319,55 +294,37 @@ public class MapImpl implements Map {
             LOG.debug("No map points");
             return Optional.empty();
         }
-        Function<Literal, Double> nullIsZero = (l) -> l == null ? 0.0 : l.getDouble();
         Resource current = Namespace.urlOf(currentCoords);
-        //Polygon current = asPolygon(currentCoords, scale/2);
-        Var wkt = Var.alloc("wkt");;
+        Literal wkt = GraphModFactory.asWKT(currentCoords);
         // cost of trip.
         Var cost = Var.alloc("cost");
-        
+
         // distance current to other
         Var dist = Var.alloc("dist");
-        
+
         Var other = Var.alloc("other");
         // wkt of other
         Var otherWkt = Var.alloc("otherWkt");
-     // distance from other to target
+        // distance from other to target
         Var otherDist = Var.alloc("otherDist");
-     // additional adjustment from other to target
+        // additional adjustment from other to target
         Var adjustment = Var.alloc("adjustment");
 
-
         Expr distCalc = exprF.cond(exprF.bound(adjustment), exprF.add(otherDist, adjustment), exprF.asExpr(otherDist));
-        
-        SelectBuilder sb = new SelectBuilder().addVar(cost).addVar(otherWkt)
-                .addWhere(current, Geo.AS_WKT_PROP, wkt)
-                .addWhere(other, Namespace.distance, otherDist)
-                .addWhere(other, Geo.AS_WKT_PROP, otherWkt)
-                .addOptional(other, Namespace.adjustment, adjustment)
-                .addBind(GraphModFactory.calcDistance(exprF, otherWkt, wkt), dist)
-                .addBind(exprF.add(distCalc, dist), cost)
-                .addOrderBy(cost, Order.ASCENDING).addFilter(exprF.ne(other, current));
 
+        SelectBuilder sb = new SelectBuilder().addVar(cost).addVar(otherWkt).from(Namespace.UnionModel.getURI())
+                .addWhere(other, Namespace.distance, otherDist).addWhere(other, Geo.AS_WKT_PROP, otherWkt)
+                .addFilter(exprF.ne(other, current)).addOptional(other, Namespace.adjustment, adjustment)
+                .addBind(GraphModFactory.calcDistance(exprF, otherWkt, wkt), dist)
+                .addBind(exprF.add(distCalc, dist), cost).addOrderBy(cost, Order.ASCENDING);
 
         try (QueryExecution qexec = doQuery(sb)) {
             ResultSet results = qexec.execSelect();
-//            Consumer<QuerySolution> log = (sln) -> LOG.debug("getBest({}): {}/{} cost:{} = {}  + {} + {}",
-//                    currentCoords, sln.getLiteral(x.getName()).getDouble(), sln.getLiteral(y.getName()).getDouble(),
-//                    sln.getLiteral(cost.getName()).getDouble(), sln.getLiteral(dist.getName()).getDouble(),
-//                    sln.getLiteral(codist.getName()).getDouble(),
-//                    nullIsZero.apply(sln.getLiteral(adjustment.getName())));
 
             while (results.hasNext()) {
                 QuerySolution soln = results.nextSolution();
-//                Literal lX = soln.getLiteral(x.getName());
-//                Literal lY = soln.getLiteral(y.getName());
-//                Literal lD = soln.getLiteral(cost.getName());
-//                if (LOG.isDebugEnabled()) {
-//                    log.accept(soln);
-//                }
-                    Geometry geom = GraphModFactory.fromWkt(soln.getLiteral(otherWkt.getName()));
-                    for (Coordinate candidate : geom.getCoordinates()) {
+                Geometry geom = GraphModFactory.fromWkt(soln.getLiteral(otherWkt.getName()));
+                for (Coordinate candidate : geom.getCoordinates()) {
                     if (clearView(currentCoords, candidate)) {
                         Step rec = new Step(candidate, soln.getLiteral(cost.getName()).getDouble(), geom);
                         LOG.debug("getBest() -> {}", rec);
@@ -391,37 +348,43 @@ public class MapImpl implements Map {
         Var distance = Var.alloc("distance");
         Var wkt = Var.alloc("wkt");
         Literal targ = GraphModFactory.asWKT(target);
-        String padding = NodeFactory.createLiteralByValue(scale / 2).toString();
         // remove all the distance and adjustments and then calculate the distance to
         // the new target
         UpdateRequest req = new UpdateRequest()
                 .add(new UpdateBuilder()
                         .addDelete(Namespace.PlanningModel, Namespace.s, Namespace.distance, Namespace.o)
-                        .addGraph(Namespace.PlanningModel, new WhereBuilder()
-                                .addWhere(Namespace.s, Namespace.distance, Namespace.o)).build())
+                        .addGraph(Namespace.PlanningModel,
+                                new WhereBuilder().addWhere(Namespace.s, Namespace.distance, Namespace.o))
+                        .build())
                 .add(new UpdateBuilder()
                         .addDelete(Namespace.PlanningModel, Namespace.s, Namespace.adjustment, Namespace.o)
-                        .addGraph(Namespace.PlanningModel, new WhereBuilder().addWhere(Namespace.s, Namespace.adjustment, Namespace.o)).build())
+                        .addGraph(Namespace.PlanningModel,
+                                new WhereBuilder().addWhere(Namespace.s, Namespace.adjustment, Namespace.o))
+                        .build())
                 .add(new UpdateBuilder().addInsert(Namespace.PlanningModel, Namespace.s, Namespace.distance, distance)
-                        .addGraph(Namespace.UnionModel, new WhereBuilder()
-                                .addWhere(Namespace.s, RDF.type, Namespace.Coord)
-                                .addWhere(Namespace.s, Geo.AS_WKT_PROP, wkt)
-                                .addBind(GraphModFactory.calcDistance(exprF, targ, wkt), distance)).build())
+                        .addGraph(Namespace.UnionModel,
+                                new WhereBuilder().addWhere(Namespace.s, RDF.type, Namespace.Coord)
+                                        .addWhere(Namespace.s, Geo.AS_WKT_PROP, wkt)
+                                        .addBind(GraphModFactory.calcDistance(exprF, targ, wkt), distance))
+                        .build())
                 .add(new UpdateBuilder().addInsert(Namespace.PlanningModel, Namespace.s, Namespace.distance, distance)
-                        .addGraph(Namespace.UnionModel, new WhereBuilder()
-                                .addWhere(Namespace.s, RDF.type, Namespace.Path)
-                                .addWhere(Namespace.s, Geo.AS_WKT_PROP, wkt)
-                                .addBind(GraphModFactory.calcDistance(exprF, targ, wkt), distance)).build());
+                        .addGraph(Namespace.UnionModel,
+                                new WhereBuilder().addWhere(Namespace.s, RDF.type, Namespace.Path)
+                                        .addWhere(Namespace.s, Geo.AS_WKT_PROP, wkt)
+                                        .addBind(GraphModFactory.calcDistance(exprF, targ, wkt), distance))
+                        .build());
         doUpdate(req);
-       
+
         // check each item that has a distance and see if there is a path to the target,
         // if not then add the distance
         // to the adjustment.
         req = new UpdateRequest();
         Var candidate = Var.alloc("candidate");
-        SelectBuilder sb = new SelectBuilder().from(Namespace.PlanningModel.getURI()).addVar(distance).addVar(candidate).addVar(wkt)
-                .addWhere(candidate, Geo.AS_WKT_PROP, wkt)
+        SelectBuilder sb = new SelectBuilder().from(Namespace.PlanningModel.getURI()).addVar(distance).addVar(candidate)
+                .addVar(wkt).addWhere(candidate, Geo.AS_WKT_PROP, wkt)
                 .addWhere(candidate, Namespace.distance, distance);
+
+        List<Triple> insertRow = new ArrayList<>();
         try (QueryExecution qexec = doQuery(sb)) {
             ResultSet results = qexec.execSelect();
             while (results.hasNext()) {
@@ -436,15 +399,14 @@ public class MapImpl implements Map {
                     }
                 }
                 if (!clearView) {
-                    req.add(new UpdateBuilder().addInsert(Namespace.PlanningModel, soln.getResource(candidate.getName()), Namespace.adjustment,
-                            soln.getLiteral(candidate.getName())).build());
+                    insertRow.add(Triple.create(soln.getResource(candidate.getName()).asNode(),
+                            Namespace.adjustment.asNode(), soln.getLiteral(distance.getName()).asNode()));
                 }
             }
         }
-        doUpdate(req);
-        System.out.println( MapReports.dumpModel(this,Namespace.PlanningModel));
-        System.out.println(MapReports.dumpQuery(this, new SelectBuilder().addGraph(Namespace.PlanningModel, new WhereBuilder()
-                                .addWhere(Namespace.s, Namespace.adjustment, "?adj"))));
+        if (!insertRow.isEmpty()) {
+            doUpdate(new UpdateBuilder().addInsert(Namespace.PlanningModel, insertRow));
+        }
     }
 
     @Override
@@ -478,21 +440,18 @@ public class MapImpl implements Map {
 
     @Override
     public Collection<Step> getTargets() {
-               
+
         Var distance = Var.alloc("distance");
         Var adjustment = Var.alloc("adjustment");
         Var wkt = Var.alloc("wkt");
         Var cost = Var.alloc("cost");
 
         Expr costCalc = exprF.cond(exprF.bound(adjustment), exprF.add(distance, adjustment), exprF.asExpr(distance));
-        
-        SelectBuilder sb = new SelectBuilder().addVar(cost).addVar(wkt)
-                .addGraph(Namespace.PlanningModel, new WhereBuilder()
-                .addWhere(Namespace.s, Namespace.distance, distance)
-                .addWhere(Namespace.s, RDF.type, Namespace.Coord)
-                .addWhere(Namespace.s, Geo.AS_WKT_PROP, wkt)
-                .addOptional(Namespace.s, Namespace.adjustment, adjustment)
-                .addBind(costCalc, cost))
+
+        SelectBuilder sb = new SelectBuilder().addVar(cost).addVar(wkt).addGraph(Namespace.PlanningModel,
+                new WhereBuilder().addWhere(Namespace.s, Namespace.distance, distance)
+                        .addWhere(Namespace.s, RDF.type, Namespace.Coord).addWhere(Namespace.s, Geo.AS_WKT_PROP, wkt)
+                        .addOptional(Namespace.s, Namespace.adjustment, adjustment).addBind(costCalc, cost))
                 .addOrderBy(cost, Order.ASCENDING);
 
         SortedSet<Step> candidates = new TreeSet<Step>();
@@ -522,7 +481,7 @@ public class MapImpl implements Map {
     Model getModel() {
         return data.getUnionModel();
     }
-    
+
 //    public class DistancePF extends GenericPropertyFunction {
 //
 //        public DistancePF() {
