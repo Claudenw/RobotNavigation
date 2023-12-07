@@ -362,8 +362,8 @@ public class MMC3416xPJ {
         while (true) {
             Values values = mag.getHeading();
             System.out.println(values);
-            Location c = Location.fromXY(values.getAxisValue(Axis.X), values.getAxisValue(Axis.Y));
-            Location d = Location.fromXY(values.getAxisData(Axis.X), values.getAxisData(Axis.Y));
+            Location c = new Location(values.getAxisValue(Axis.X), values.getAxisValue(Axis.Y));
+            Location d = new Location(values.getAxisData(Axis.X), values.getAxisData(Axis.Y));
             System.out.format("Heading: value: %s  data: %s\n", Math.toDegrees(c.theta()));
             TimingUtils.delay(TimeUnit.MILLISECONDS, 250);
         }

@@ -2,6 +2,7 @@ package org.xenei.robot.common;
 
 import org.locationtech.jts.geom.Coordinate;
 import org.xenei.robot.common.utils.CoordUtils;
+import org.xenei.robot.common.utils.GeometryUtils;
 
 /**
  * A combination of Coordinates and a heading. The coordinates are immutable but
@@ -140,6 +141,16 @@ public class Position extends Location {
     public String toString() {
         return String.format("Position[ %s heading:%.4f ]", CoordUtils.toString(this.getCoordinate(), 4),
                 Math.toDegrees(heading));
+    }
+    
+    public boolean checkCollistion(FrontsCoordinate fc, double err) {
+        return checkCollistion(fc.getCoordinate(), err);
+    }
+
+    public boolean checkCollistion(Coordinate c, double err) {
+        double d = distance(c);
+        Coordinate l = CoordUtils.fromAngle( heading, d);
+        return GeometryUtils.asPath( this.coordinate, l ).intersects( GeometryUtils.asPolygon(c, err));
     }
 
 }

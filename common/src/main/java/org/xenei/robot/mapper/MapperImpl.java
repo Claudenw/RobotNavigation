@@ -1,7 +1,9 @@
 package org.xenei.robot.mapper;
 
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Optional;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import org.apache.jena.util.iterator.UniqueFilter;
 import org.locationtech.jts.geom.Coordinate;
@@ -20,7 +22,7 @@ public class MapperImpl implements Mapper {
     private static final Logger LOG = LoggerFactory.getLogger(MapperImpl.class);
     private final Map map;
     private Planner planner;
-
+    
     public MapperImpl(Map map) {
         this.map = map;
     }
@@ -29,31 +31,28 @@ public class MapperImpl implements Mapper {
         this.planner = planner;
     }
 
-    /**
-     * Call the sensors, record obstacles, and return a stream of valid points to
-     * add. Also sets the obstacleMapper if a collision with the current path was
-     * detected.
-     */
     @Override
-    public void processSensorData(Position currentPosition, Coordinate target, Solution solution, Location[] obstacles) {
+    public Optional<Location> processSensorData(Position currentPosition, Coordinate target, Solution solution, Location[] obstacles) {
         // next target set if collision detected.
         ObstacleMapper obstacleMapper = new ObstacleMapper(currentPosition, target);
         LOG.trace("Sense position: {}", currentPosition);
+        double halfScale = map.getScale()/2;
         // get the sensor readings and add arcs to the map
         //@formatter:off
         Arrays.stream(obstacles)
                 // filter out any range < 1.0
-                .filter(c -> c.range() > 1.0)
+                .filter(c -> c.range() > map.getScale())
                 // create absolute coordinates
                 .map(c -> {
                     LOG.trace( "Checking {}", c);
-                    return new Location( CoordUtils.fromAngle( currentPosition.theta()+
-                            c.theta(), c.range()));
+                    //return new Location( CoordUtils.fromAngle( currentPosition.theta()+
+                            //c.theta(), c.range()));
+                    return currentPosition.plus(c);
                 })
                 .filter( new UniqueFilter<Location>() )
                 .map(obstacleMapper::map)
                 // filter out non entries
-                .filter(c -> c.isPresent() && !c.get().equals(currentPosition))
+                .filter(c -> c.isPresent() && !c.get().near(currentPosition, .5))
                 .map(Optional::get)
                 .filter( new UniqueFilter<Location>() )
                 .forEach(c -> recordMapPoint(currentPosition, new Step( c.getCoordinate(), c.distance(target), null)));
@@ -62,7 +61,15 @@ public class MapperImpl implements Mapper {
         if (obstacleMapper.nextTarget.isPresent() && !solution.isEmpty()) {
             map.cutPath(solution.end(), target);
             map.addPath(solution.end(), obstacleMapper.nextTarget.get().getCoordinate());
+            
+            if (currentPosition.distance(obstacleMapper.nextTarget.get()) >= currentPosition.distance(target)) {
+                obstacleMapper.nextTarget = Optional.empty();
+            } else if (currentPosition.equals2D(target, halfScale)) {
+                obstacleMapper.nextTarget = Optional.empty();
+            }
         }
+
+        return obstacleMapper.nextTarget;
     }
 
     private void recordMapPoint(Position currentPosition, Step target) {
@@ -76,33 +83,15 @@ public class MapperImpl implements Mapper {
      * @return An optional that contains the nearest open coordinates if any.
      */
     private Optional<Location> not(Position currentPosition, Location obstacle) {
-        Location direct = new Location(obstacle.minus(currentPosition));
-        Location candidate = new Location( CoordUtils.fromAngle(direct.theta(), direct.range() - 1));
+        double d = currentPosition.distance(obstacle) - map.getScale();
+        double theta = currentPosition.angleTo(obstacle);
+        Coordinate difference = CoordUtils.fromAngle(theta,d);
+        Location candidate = currentPosition.plus(difference);
         if (map.isObstacle(candidate.getCoordinate())) {
-            Location adjustment = new Location(candidate.minus(obstacle));
-            int xAdj = 0;
-            int yAdj = 0;
-            if (adjustment.getX() == 0) {
-                double signum = Math.signum(direct.getX());
-                if (signum < 0) {
-                    xAdj = 1;
-                } else if (signum > 0) {
-                    xAdj = -1;
-                }
-            }
-            if (adjustment.getY() == 0) {
-                double signum = Math.signum(direct.getY());
-                if (signum < 0) {
-                    yAdj = 1;
-                } else if (signum > 0) {
-                    yAdj = -1;
-                }
-            }
-            if (xAdj != 0 || yAdj != 0) {
-                candidate = new Location(candidate.getX() + xAdj, candidate.getY() + yAdj);
-                if (map.isObstacle(candidate.getCoordinate())) {
-                    return Optional.empty();
-                }
+            difference = CoordUtils.fromAngle(theta,d-map.getScale());
+            candidate = currentPosition.plus(difference);;
+            if (map.isObstacle(candidate.getCoordinate())) {
+                return Optional.empty();
             }
         }
         return Optional.of(candidate);
@@ -118,9 +107,9 @@ public class MapperImpl implements Mapper {
      */
     private boolean registerObstacle(Position currentPosition, Coordinate target, Coordinate obstacle) {
         map.addObstacle(obstacle);
-        boolean result = map.clearView(currentPosition.getCoordinate(), target);
+        boolean result = currentPosition.checkCollistion(obstacle, map.getScale());
         if (result) {
-            LOG.info("Future collision from {} detected at {}", currentPosition, obstacle);
+            LOG.info("Possible collision from {} detected at {}", currentPosition, obstacle);
         }
         return result;
     }

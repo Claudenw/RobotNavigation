@@ -71,7 +71,7 @@ public class MapLibrary {
         b.border( -5, -5, 9, 9, c );
         
         b.setX(-1, -3, 1, c);
-        b.setY(0, 0, 2, c);
+        b.setY(-2, 0, 2, c);
 
         return b.build();
     }

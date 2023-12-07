@@ -23,21 +23,15 @@ import org.apache.jena.sparql.expr.Expr;
 import org.apache.jena.vocabulary.RDF;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
-import org.locationtech.jts.geom.GeometryFactory;
-import org.locationtech.jts.geom.Point;
-import org.locationtech.jts.geom.Polygon;
 import org.xenei.robot.common.FrontsCoordinate;
-import org.xenei.robot.common.Location;
-import org.xenei.robot.common.utils.CoordUtils;
+import org.xenei.robot.common.utils.GeometryUtils;
 import org.xenei.robot.mapper.rdf.Namespace;
 
-public class GraphModFactory {
+public class GraphGeomFactory {
     private static Resource INTERSECTS = ResourceFactory.createResource(Geof.SF_INTERSECTS);
     private static Resource DISTANCE = ResourceFactory.createProperty(Geof.DISTANCE_NAME);
     private static Resource METERS = ResourceFactory.createResource(Unit_URI.METRE_URL);
     private static Resource DEGREES = ResourceFactory.createResource(Unit_URI.DEGREE_URL);
-
-    static GeometryFactory geometryFactory = new GeometryFactory();
 
     static Geometry fromWkt(Literal wkt) {
         GeometryWrapper wrapper = WKTDatatype.INSTANCE.parse(wkt.getLexicalForm());
@@ -49,15 +43,15 @@ public class GraphModFactory {
     }
 
     static Literal asWKT(Coordinate point) {
-        return asWKT(geometryFactory.createPoint(point));
+        return asWKT(GeometryUtils.asPoint(point));
     }
 
     static Literal asWKTString(Coordinate... points) {
-        return asWKT(geometryFactory.createLineString(points));
+        return asWKT(GeometryUtils.asPath(points));
     }
 
     static Literal asWKTPolygon(Coordinate[] points) {
-        return asWKT(geometryFactory.createPolygon(points));
+        return asWKT(GeometryUtils.asPolygon(points));
     }
 
     static UpdateBuilder addPath(Resource model, Coordinate... points) {
@@ -68,22 +62,6 @@ public class GraphModFactory {
         return new UpdateBuilder().addInsert(model, tn, RDF.type, Namespace.Path).addInsert(model, tn, Geo.AS_WKT_PROP,
                 path);
     }
-
-//        UpdateBuilder breakPath(Resource model, Coordinate point) {
-//            Resource p = Namespace.urlOf(point);
-//            Var wkt = Var.alloc("wkt");
-//            WhereBuilder wb = findPath(Namespace.o, asPolygon(point, 1));
-//            wb.addWhere(Namespace.o, Geo.AS_WKT_PROP, wkt);
-//            SelectBuilder sb = new SelectBuilder().addGraph(model, wb).addVar(Namespace.o).addVar(wkt);
-//            try (QueryExecution qexec = QueryExecutionFactory.create(sb.build(), data.getUnionModel())) {
-//                ResultSet rs = qexec.execSelect();
-//                while (rs.hasNext()) {
-//                    /// parse the WKT and find the line segment that contains point.
-//                    // remove point from that line segment.
-//                }
-//            }
-//            return new UpdateBuilder();
-//        }
 
     static WhereBuilder findPath(Node o, Geometry point) {
         return addNearby(new WhereBuilder(), o, point, 1).addWhere(o, RDF.type, Namespace.Path);
@@ -108,50 +86,19 @@ public class GraphModFactory {
 
     public static Resource asRDF(Coordinate a, Resource type, Geometry geom) {
         if (geom == null) {
-            geom = asPoint(a);
+            geom = GeometryUtils.asPoint(a);
         }
         Model result = ModelFactory.createDefaultModel();
         Resource r = type == null ? result.createResource(Namespace.urlStr(a))
                 : result.createResource(Namespace.urlStr(a), type);
         r.addLiteral(Namespace.x, a.getX());
         r.addLiteral(Namespace.y, a.getY());
-        // r.addProperty(RDF.type, Namespace.Point);
-        // r.addProperty(RDF.type, Geo.GEOMETRY_RES);
-        // try {
         r.addLiteral(Geo.AS_WKT_PROP, asWKT(geom));
-//            } catch (Exception e) {
-//                Log.error(e, a.toString());
-//            }
         return r;
     }
 
     static Resource asRDF(FrontsCoordinate p, Resource type, org.locationtech.jts.geom.Geometry geom) {
         return asRDF(p.getCoordinate(), type, geom);
-    }
-
-    static Polygon asPolygon(Coordinate coord, double range) {
-        double angle = 0.0;
-        double radians = Math.toRadians(60);
-        Coordinate[] cell = new Coordinate[6];
-        Location l = new Location(coord);
-        for (int i = 0; i < 6; i++) {
-            cell[i] = l.plus(CoordUtils.fromAngle(angle, range)).getCoordinate();
-            angle += radians;
-        }
-        cell[5] = cell[0];
-        return geometryFactory.createPolygon(cell);
-    }
-
-    static Polygon asPolygon(FrontsCoordinate coord, double range) {
-        return asPolygon(coord.getCoordinate(), range);
-    }
-
-    public static Point asPoint(Coordinate c) {
-        return geometryFactory.createPoint(c);
-    }
-
-    static Point asPoint(FrontsCoordinate c) {
-        return asPoint(c.getCoordinate());
     }
 
 }

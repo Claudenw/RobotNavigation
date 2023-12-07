@@ -16,10 +16,6 @@
 			<artifactId>robut-common</artifactId>
 		</dependency>
 		<dependency>
-			<groupId>org.xenei.robot</groupId>
-			<artifactId>robut-mapper</artifactId>
-		</dependency>
-		<dependency>
 			<groupId>com.diozero</groupId>
 			<artifactId>diozero-core</artifactId>
 		</dependency>

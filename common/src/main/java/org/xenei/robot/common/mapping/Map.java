@@ -55,4 +55,6 @@ public interface Map {
     void recordSolution(Solution solution);
 
     double getScale();
+    
+    double getResolution();
 }

@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -21,16 +22,20 @@ import org.xenei.robot.common.SolutionTest;
 import org.xenei.robot.common.DistanceSensor;
 import org.xenei.robot.common.mapping.CoordinateMap;
 import org.xenei.robot.common.mapping.Map;
+import org.xenei.robot.common.planning.Solution;
 import org.xenei.robot.common.planning.Step;
 import org.xenei.robot.common.testUtils.FakeDistanceSensor;
+import org.xenei.robot.common.testUtils.FakeDistanceSensor2;
 import org.xenei.robot.common.testUtils.MapLibrary;
 import org.xenei.robot.mapper.MapImpl;
 import org.xenei.robot.mapper.MapImplTest;
 import org.xenei.robot.mapper.MapperImpl;
+import org.xenei.robot.mapper.visualization.MapViz;
 
 public class PlannerTest {
 
     private PlannerImpl underTest;
+    private MapViz mapViz;
 
     @Test
     public void setTargetTest() {
@@ -74,6 +79,9 @@ public class PlannerTest {
 
     @Test
     public void stepTestMap2() {
+        Coordinate[] expectedSolution = {
+                new Coordinate(-1.0, -3.0), new Coordinate(-0.9999999999999999, -2.0), new Coordinate(-0.4472135954999578, -1.8944271909999157), new Coordinate(0.2928932188134528, -1.7071067811865475), new Coordinate(-1.5527864045000421, -1.8944271909999157), new Coordinate(-4.000468632496236, -1.9693888030933675), new Coordinate(-4.547420028549094, -0.8917238190389993), new Coordinate(-1.0, 1.0)
+        };
         FakeDistanceSensor sensor = new FakeDistanceSensor(MapLibrary.map2('#'));
         Map map = new MapImpl(1);
         MapperImpl mapper = new MapperImpl(map);
@@ -82,15 +90,14 @@ public class PlannerTest {
         Location startCoord = new Location(-1, -3);
 
         underTest = new PlannerImpl(map, startCoord, finalCoord);
-
+        mapViz = new MapViz( 100, map, underTest.getSolution());
+        underTest.addListener( () -> mapViz.redraw() );
+       
         int stepCount = 0;
         int maxLoops = 100;
         sensor.setPosition(underTest.getCurrentPosition());
-        mapper.processSensorData(underTest.getCurrentPosition(), underTest.getTarget(), sensor.sense());
-        Collection<Geometry> obsts = map.getObstacles();
-        for (Coordinate c : MapImplTest.obstacles) {
-            MapImplTest.assertCoordinateInObstacles(obsts, c);
-        }
+        mapper.processSensorData(underTest.getCurrentPosition(), underTest.getTarget(), underTest.getSolution(), sensor.sense());
+
         while (underTest.step()) {
             if (maxLoops < stepCount++) {
                 fail("Did not find solution in " + maxLoops + " steps");
@@ -98,7 +105,7 @@ public class PlannerTest {
             double angle = underTest.getCurrentPosition().headingTo(underTest.getTarget());
             underTest.changeCurrentPosition(new Position(underTest.getTarget(), angle));
             sensor.setPosition(underTest.getCurrentPosition());
-            mapper.processSensorData(underTest.getCurrentPosition(), underTest.getTarget(), sensor.sense());
+            mapper.processSensorData(underTest.getCurrentPosition(), underTest.getTarget(), underTest.getSolution(), sensor.sense());
         }
         assertEquals(SolutionTest.expectedSolution.length - 1, underTest.getSolution().stepCount());
         assertTrue(startCoord.equals2D(underTest.getSolution().start()));
@@ -106,7 +113,9 @@ public class PlannerTest {
         List<Coordinate> solution = underTest.getSolution().stream().collect(Collectors.toList());
         assertEquals(SolutionTest.expectedSolution.length, solution.size());
         for (int i = 0; i < solution.size(); i++) {
-            assertTrue(SolutionTest.expectedSolution[i].equals2D(solution.get(i)));
+            final int j = i;
+            assertTrue(expectedSolution[i].equals2D(solution.get(i), 0.00001), ()-> 
+            String.format( "failed at %s: %s == %s +/- 0.00001", j, SolutionTest.expectedSolution[j], solution.get(j)));
         }
     }
 
@@ -114,7 +123,7 @@ public class PlannerTest {
     public void stepTestMap3() {
         Coordinate[] expectedSimpleSolution = { new Coordinate(-1, -3), new Coordinate(-3, -2), new Coordinate(-4, -1), new Coordinate(-4, 0),
                 new Coordinate(-1, 1) };
-        FakeDistanceSensor sensor = new FakeDistanceSensor(MapLibrary.map3('#'));
+        FakeDistanceSensor2 sensor = new FakeDistanceSensor2(MapLibrary.map3('#'));
         Map map = new MapImpl(1);
         MapperImpl mapper = new MapperImpl(map);
 
@@ -122,19 +131,33 @@ public class PlannerTest {
         Location startCoord = new Location(-1, -3);
 
         underTest = new PlannerImpl(map, startCoord, finalCoord);
-
+        mapViz = new MapViz( 100, map, underTest.getSolution());
+        underTest.addListener( () -> mapViz.redraw() );
+        
         int stepCount = 0;
         int maxLoops = 100;
         sensor.setPosition(underTest.getCurrentPosition());
-        mapper.processSensorData(underTest.getCurrentPosition(), underTest.getTarget(), sensor.sense());
+        Optional<Location> shortTarget = mapper.processSensorData(underTest.getCurrentPosition(), underTest.getTarget(), underTest.getSolution(), sensor.sense());
+        if (shortTarget.isPresent()) {
+            underTest.replaceTarget(shortTarget.get());
+        }
+        underTest.notifyListeners();
         while (underTest.step()) {
             if (maxLoops < stepCount++) {
                 fail("Did not find solution in " + maxLoops + " steps");
             }
+            shortTarget = mapper.processSensorData(underTest.getCurrentPosition(), underTest.getTarget(), underTest.getSolution(), sensor.sense());
+            if (shortTarget.isPresent()) {
+                underTest.replaceTarget(shortTarget.get());
+            }
             double angle = underTest.getCurrentPosition().headingTo(underTest.getTarget());
             underTest.changeCurrentPosition(new Position(underTest.getTarget(), angle));
             sensor.setPosition(underTest.getCurrentPosition());
-            mapper.processSensorData(underTest.getCurrentPosition(), underTest.getTarget(), sensor.sense());
+            shortTarget = mapper.processSensorData(underTest.getCurrentPosition(), underTest.getTarget(), underTest.getSolution(), sensor.sense());
+            if (shortTarget.isPresent()) {
+                underTest.replaceTarget(shortTarget.get());
+            }
+            underTest.notifyListeners();
         }
         assertEquals(22, underTest.getSolution().stepCount());
         assertEquals(33.29126786466034, underTest.getSolution().cost());

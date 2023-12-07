@@ -4,25 +4,23 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Optional;
 import java.util.Stack;
+import java.util.concurrent.CopyOnWriteArrayList;
 
-import org.apache.commons.math3.util.Precision;
 import org.locationtech.jts.geom.Coordinate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.xenei.robot.common.FrontsCoordinate;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Position;
 import org.xenei.robot.common.mapping.Map;
 import org.xenei.robot.common.planning.Planner;
 import org.xenei.robot.common.planning.Solution;
 import org.xenei.robot.common.planning.Step;
-import org.xenei.robot.common.utils.CoordUtils;
-
 
 public class PlannerImpl implements Planner {
     private static final Logger LOG = LoggerFactory.getLogger(PlannerImpl.class);
     private final Stack<Coordinate> target;
     private final Map map;
+    private final Collection<Planner.Listener> listeners;
     private Position currentPosition;
     private Solution solution;
 
@@ -45,11 +43,22 @@ public class PlannerImpl implements Planner {
      */
     public PlannerImpl(Map map, Location startPosition, Location target) {
         this.map = map;
+        this.listeners = new CopyOnWriteArrayList<>();
         this.target = new Stack<>();
         if (target != null) {
             setTarget(target.getCoordinate());
         }
         restart(startPosition);
+    }
+
+    @Override
+    public void addListener(Planner.Listener listener) {
+        this.listeners.add(listener);
+    }
+
+    public void notifyListeners() {
+        Collection<Planner.Listener> l = this.listeners;
+        l.forEach(Planner.Listener::update);
     }
 
     /**
@@ -60,6 +69,7 @@ public class PlannerImpl implements Planner {
     @Override
     public void changeCurrentPosition(Position position) {
         currentPosition = position;
+        solution.add(position);
         map.addTarget(new Step(position.getCoordinate(), position.distance(target.peek()), null));
     }
 
@@ -101,36 +111,34 @@ public class PlannerImpl implements Planner {
         return currentPosition;
     }
 
-    /**
-     * Plans a step. Returns the best location to move to based on the current
-     * position. The target position may be updated. The best position to head for
-     * is in the target.
-     * 
-     * @return true if the target has not been reached. (processing should continue)
-     */
     @Override
     public boolean step() {
         if (currentPosition.equals2D(getTarget(), map.getScale())) {
+            LOG.debug("Reached intermediate target");
             target.pop();
             if (target.isEmpty()) {
+                LOG.debug("Reached final target");
                 solution.add(currentPosition);
                 return false;
             }
             // see if we can get to target directly
             if (map.clearView(currentPosition.getCoordinate(), target.peek())) {
+                LOG.debug("Can see final target");
                 map.addPath(currentPosition.getCoordinate(), target.peek());
                 currentPosition.setHeading(target.peek());
+                return true;
             }
             // recalculate the distances
             map.recalculate(target.peek());
             // update the planning model make sure we don't revisit where we have been.
             solution.stream().forEach(t -> map.setTemporaryCost(new Step(t, Double.POSITIVE_INFINITY, null)));
-            // add the current location to the solution.
-            solution.add(currentPosition);
         }
 
         Optional<Step> selected = map.getBestTarget(currentPosition.getCoordinate());
         if (selected.isPresent()) {
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("Selected target: " + selected.get());
+            }
             // update the planning model for the current position.
             // map.update(Namespace.PlanningModel, currentPosition,
             // Namespace.distance, selected.get().cost());
@@ -146,15 +154,6 @@ public class PlannerImpl implements Planner {
         return true;
     }
 
-    public void setTarget(FrontsCoordinate target) {
-        this.setTarget(target.getCoordinate());
-    }
-    /**
-     * Set the target for the planner. Setting the target causes the current plan to
-     * be cleared and a new plan started.
-     * 
-     * @param target The coordinates to head toward.
-     */
     @Override
     public void setTarget(Coordinate target) {
         LOG.info("Setting target to {} starting from {}", target, currentPosition);
@@ -165,6 +164,20 @@ public class PlannerImpl implements Planner {
         }
         map.recalculate(target);
         resetSolution();
+    }
+
+    @Override
+    public void replaceTarget(Coordinate target) {
+        if (this.target.size() != 1) {
+        LOG.info("Replacing target to {} with {}", getTarget(), target);
+        this.target.pop();
+        } else {
+            LOG.info("Adding target to {} to {}", target, getTarget());
+        }
+        this.target.push(target);
+        if (currentPosition != null) {
+            currentPosition.setHeading(target);
+        }
     }
 
     @Override

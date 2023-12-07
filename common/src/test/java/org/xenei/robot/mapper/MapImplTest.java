@@ -26,14 +26,16 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.geom.Point;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.planning.Step;
 import org.xenei.robot.common.utils.CoordUtils;
+import org.xenei.robot.common.utils.GeometryUtils;
 import org.xenei.robot.mapper.rdf.Namespace;
 
 public class MapImplTest {
 
-    MapImpl underTest;
+    private MapImpl underTest;
 
     public static final Coordinate[] expected = { new Coordinate(-4, -4), new Coordinate(-4, -3),
             new Coordinate(-4, -1), new Coordinate(-2, -4), new Coordinate(-2, -2), new Coordinate(-1, -4),
@@ -96,10 +98,17 @@ public class MapImplTest {
         assertEquals(new Step(p2, 4, null), pr.get());
     }
     
-    public static void assertCoordinateInObstacles(Collection<Geometry> obsts, Coordinate c) {
+    /**
+     * Checks that at least oneof the geometries (obsts) contains the coordinate.
+     * @param obsts the list of geometries.
+     * @param c he coorindate to contain.
+     */
+    public static void assertCoordinateInObstacles(Collection<? extends Geometry> obsts, Coordinate c) {
         boolean found = false;
+        Point p = GeometryUtils.asPoint(c);
         for (Geometry geom : obsts) {
-            if (geom.contains(GraphModFactory.asPoint(c))) {
+            
+            if (geom.contains(p)) {
                 found = true;
                 break;
             }
@@ -202,7 +211,6 @@ public class MapImplTest {
         Location newTarget = new Location(-2, 2);
 
         underTest.recalculate(newTarget.getCoordinate());
-        System.out.println(MapReports.dumpModel(underTest, Namespace.PlanningModel));
         Step after = underTest.getStep(c).get();
         assertNotEquals(before.cost(), after.cost());
     }
@@ -214,38 +222,31 @@ public class MapImplTest {
 
         // check not there, update then verify that it is.
         AskBuilder ask = new AskBuilder().from(Namespace.UnionModel.getURI()).addWhere(r, Namespace.distance, null);
-        try (QueryExecution exec = QueryExecutionFactory.create(ask.build(), underTest.data)) {
-            assertFalse(exec.execAsk());
-        }
+        assertFalse(underTest.ask(ask));
+  
         underTest.update(Namespace.PlanningModel, c.getCoordinate(), Namespace.distance, 5);
 
-        try (QueryExecution exec = QueryExecutionFactory.create(ask.build(), underTest.data)) {
-            assertTrue(exec.execAsk());
-        }
+        assertTrue(underTest.ask(ask));
 
         ExprFactory exprF = new ExprFactory();
 
         ask = new AskBuilder().from(Namespace.UnionModel.getURI()).addWhere(r, Namespace.distance, "?o")
                 .addFilter(exprF.eq("?o", 5.0));
-        try (QueryExecution exec = QueryExecutionFactory.create(ask.build(), underTest.data)) {
-            assertTrue(exec.execAsk());
-        }
+        assertTrue(underTest.ask(ask));
+
 
         c = new Location(expected[0]);
-        try (QueryExecution exec = QueryExecutionFactory.create(ask.build(), underTest.data)) {
-            assertTrue(exec.execAsk());
-        }
+        assertTrue(underTest.ask(ask));
+
         Step before = underTest.getStep(c).get();
         underTest.update(Namespace.PlanningModel, c.getCoordinate(), Namespace.distance, before.cost() + 5);
 
         SelectBuilder sb = new SelectBuilder().from(Namespace.UnionModel.getURI()).addWhere(Namespace.urlOf(c),
                 Namespace.distance, "?x");
-        try (QueryExecution qexec = QueryExecutionFactory.create(sb.build(), underTest.data)) {
-            int count[] = { 0 };
-            Iterator<QuerySolution> results = qexec.execSelect();
-            results.forEachRemaining((q) -> count[0]++);
-            assertEquals(1, count[0]);
-        }
+        int count[] = { 0 };
+        underTest.exec(sb, (q) -> count[0]++);
+        assertEquals(1, count[0]);
+        
         Step after = underTest.getStep(c).get();
         assertEquals(before.cost() + 5, after.cost());
     }

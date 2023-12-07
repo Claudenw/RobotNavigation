@@ -16,9 +16,10 @@ import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.Resource;
 import org.junit.jupiter.api.Test;
 import org.locationtech.jts.geom.Coordinate;
+import org.xenei.robot.common.utils.GeometryUtils;
 import org.xenei.robot.mapper.rdf.Namespace;
 
-public class GraphModFactoryTest {
+public class GraphGeomFactoryTest {
 
     private Dataset createDataset(Model m) {
         Dataset ds = DatasetFactory.create(m);
@@ -33,13 +34,13 @@ public class GraphModFactoryTest {
     @Test
     public void checkCollisionTest() {
         Coordinate c = new Coordinate(1, 1);
-        Model m = GraphModFactory.asRDF(c, null, GraphModFactory.asPolygon(c, 1)).getModel();
+        Model m = GraphGeomFactory.asRDF(c, null, GeometryUtils.asPolygon(c, 1)).getModel();
         Dataset ds = createDataset(m);
-        Literal testWkt = GraphModFactory.asWKT(c);
+        Literal testWkt = GraphGeomFactory.asWKT(c);
 
         ExprFactory exprF = new ExprFactory(m);
         AskBuilder ask = new AskBuilder().addWhere(Namespace.s, Geo.AS_WKT_PROP, "?wkt")
-                .addFilter(GraphModFactory.checkCollision(exprF, "?wkt", testWkt));
+                .addFilter(GraphGeomFactory.checkCollision(exprF, "?wkt", testWkt));
         try (QueryExecution qexec = QueryExecutionFactory.create(ask.build(), ds)) {
             assertTrue(qexec.execAsk());
         }
@@ -50,14 +51,14 @@ public class GraphModFactoryTest {
         Coordinate c = new Coordinate(1, 1);
         Coordinate b = new Coordinate(1, 5);
 
-        Model m = GraphModFactory.asRDF(c, null, GraphModFactory.asPoint(c)).getModel();
-        m.add(GraphModFactory.asRDF(b, null, GraphModFactory.asPoint(b)).getModel());
+        Model m = GraphGeomFactory.asRDF(c, null, GeometryUtils.asPoint(c)).getModel();
+        m.add(GraphGeomFactory.asRDF(b, null, GeometryUtils.asPoint(b)).getModel());
         Dataset ds = createDataset(m);
-        Literal testWkt = GraphModFactory.asWKT(c);
+        Literal testWkt = GraphGeomFactory.asWKT(c);
 
         ExprFactory exprF = new ExprFactory(m);
         AskBuilder ask = new AskBuilder().addWhere(Namespace.s, Geo.AS_WKT_PROP, "?wkt")
-                .addBind(GraphModFactory.calcDistance(exprF, "?wkt", testWkt), "?cost").addFilter(exprF.eq("?cost", 4));
+                .addBind(GraphGeomFactory.calcDistance(exprF, "?wkt", testWkt), "?cost").addFilter(exprF.eq("?cost", 4));
 
         try (QueryExecution qexec = QueryExecutionFactory.create(ask.build(), ds)) {
             assertTrue(qexec.execAsk());
@@ -67,7 +68,7 @@ public class GraphModFactoryTest {
   @Test
   public void asRDFTest() {
       Coordinate p = new Coordinate( -1, 3 );
-      Resource r = GraphModFactory.asRDF(p, null, GraphModFactory.asPoint(p));
+      Resource r = GraphGeomFactory.asRDF(p, null, GeometryUtils.asPoint(p));
       System.out.println( MapReports.dumpModel( r.getModel() ));
   }
 }

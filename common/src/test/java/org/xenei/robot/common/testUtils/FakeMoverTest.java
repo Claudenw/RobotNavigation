@@ -1,8 +1,8 @@
 package org.xenei.robot.common.testUtils;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.xenei.robot.common.testUtils.DoubleUtils.RADIANS_135;
-import static org.xenei.robot.common.testUtils.DoubleUtils.RADIANS_45;
+import static org.xenei.robot.common.utils.AngleUtils.RADIANS_135;
+import static org.xenei.robot.common.utils.AngleUtils.RADIANS_45;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

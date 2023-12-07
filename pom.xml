@@ -47,10 +47,10 @@
 	</build>
 
 	<modules>
-		
+
 		<module>rpi</module>
 		<module>common</module>
-		
+
 	</modules>
 	<dependencyManagement>
 		<dependencies>
@@ -105,12 +105,12 @@
 				<version>3.13.0</version>
 			</dependency>
 
-<dependency>
-			<groupId>org.locationtech.jts</groupId>
-			<artifactId>jts-core</artifactId>
-			<version>1.18.0</version>
-		</dependency>
-		
+			<dependency>
+				<groupId>org.locationtech.jts</groupId>
+				<artifactId>jts-core</artifactId>
+				<version>1.18.0</version>
+			</dependency>
+
 			<dependency>
 				<groupId>mil.nga.sf</groupId>
 				<artifactId>sf-wkt</artifactId>
@@ -141,9 +141,9 @@
 				<scope>test</scope>
 			</dependency>
 			<dependency>
-			  <groupId>org.apache.jena</groupId>
-			  <artifactId>jena-arq</artifactId>
-			  <version>${jena.version}</version>
+				<groupId>org.apache.jena</groupId>
+				<artifactId>jena-arq</artifactId>
+				<version>${jena.version}</version>
 			</dependency>
 		</dependencies>
 	</dependencyManagement>

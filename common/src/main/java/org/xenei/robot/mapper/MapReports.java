@@ -3,6 +3,7 @@ package org.xenei.robot.mapper;
 import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 
 import org.apache.jena.arq.querybuilder.ExprFactory;
 import org.apache.jena.arq.querybuilder.SelectBuilder;
@@ -54,27 +55,38 @@ public class MapReports {
 //    }
 
     public static String dumpModel(MapImpl map) {
-        return dumpModel(map.data.getUnionModel());
+        return dumpModel(map, Namespace.UnionModel);
     }
 
     public static String dumpModel(MapImpl map, Resource model) {
-        return dumpModel(map.data.getNamedModel(model));
+        Dumper d = new Dumper();
+        map.dump(model, d);
+        return d.toString();
     }
     
-    public static String dumpModel(Model m) {
-        ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        m.write(bos, Lang.TURTLE.getName());
-        return bos.toString();
+    public static String dumpModel(Model model) {
+        Dumper d = new Dumper();
+        d.accept(model);
+        return d.toString();
     }
     
     public static String dumpQuery(MapImpl map, SelectBuilder sb) {
         StringBuilder builder = new StringBuilder();
-        try (QueryExecution qexec = map.doQuery(sb)) {
-            ResultSet results = qexec.execSelect();
-            while (results.hasNext()) {
-                builder.append( results.next().toString()).append("\n");
-            }
-        }
+        map.exec(sb, (s) -> builder.append( s.toString()).append("\n"));
         return builder.toString();
+    }
+    
+    private static class Dumper implements Consumer<Model> {
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+
+        @Override
+        public void accept(Model t) {
+            t.write(bos, Lang.TURTLE.getName());
+        }
+
+        @Override
+        public String toString() {
+         return bos.toString();
+        }
     }
 }

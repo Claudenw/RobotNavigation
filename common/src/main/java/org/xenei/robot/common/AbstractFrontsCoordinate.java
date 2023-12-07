@@ -2,6 +2,7 @@ package org.xenei.robot.common;
 
 import org.locationtech.jts.geom.Coordinate;
 import org.xenei.robot.common.utils.AngleUtils;
+import org.xenei.robot.common.utils.DoubleUtils;
 
 public abstract class AbstractFrontsCoordinate<T extends AbstractFrontsCoordinate> implements FrontsCoordinate {
 
@@ -131,6 +132,10 @@ public abstract class AbstractFrontsCoordinate<T extends AbstractFrontsCoordinat
     
     public T plus(FrontsCoordinate other) {
         return fromCoordinate(new Coordinate( getX()+other.getX(), getY()+other.getY()));
+    }
+    
+    public double angleTo(FrontsCoordinate other) {
+        return angleTo(other.getCoordinate());
     }
     
     public double angleTo(Coordinate dest) {

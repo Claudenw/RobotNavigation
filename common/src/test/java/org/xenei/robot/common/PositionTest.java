@@ -3,15 +3,15 @@ package org.xenei.robot.common;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.xenei.robot.common.testUtils.DoubleUtils.DELTA;
-import static org.xenei.robot.common.testUtils.DoubleUtils.RADIANS_135;
-import static org.xenei.robot.common.testUtils.DoubleUtils.RADIANS_180;
-import static org.xenei.robot.common.testUtils.DoubleUtils.RADIANS_225;
-import static org.xenei.robot.common.testUtils.DoubleUtils.RADIANS_270;
-import static org.xenei.robot.common.testUtils.DoubleUtils.RADIANS_315;
-import static org.xenei.robot.common.testUtils.DoubleUtils.RADIANS_45;
-import static org.xenei.robot.common.testUtils.DoubleUtils.RADIANS_90;
-import static org.xenei.robot.common.testUtils.DoubleUtils.SQRT2;
+import static org.xenei.robot.common.LocationTest.DELTA;
+import static org.xenei.robot.common.utils.AngleUtils.RADIANS_135;
+import static org.xenei.robot.common.utils.AngleUtils.RADIANS_180;
+import static org.xenei.robot.common.utils.AngleUtils.RADIANS_225;
+import static org.xenei.robot.common.utils.AngleUtils.RADIANS_270;
+import static org.xenei.robot.common.utils.AngleUtils.RADIANS_315;
+import static org.xenei.robot.common.utils.AngleUtils.RADIANS_45;
+import static org.xenei.robot.common.utils.AngleUtils.RADIANS_90;
+import static org.xenei.robot.common.utils.DoubleUtils.SQRT2;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -24,9 +24,10 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.xenei.robot.common.utils.CoordUtils;
+import org.xenei.robot.common.utils.DoubleUtils;
 
 public class PositionTest {
-
+    
     private Position initial;
 
     @BeforeEach

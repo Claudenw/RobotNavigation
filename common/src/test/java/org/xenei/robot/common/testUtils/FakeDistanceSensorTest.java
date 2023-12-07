@@ -30,29 +30,34 @@ public class FakeDistanceSensorTest {
         int y = 15;
         int h = 0;
 
-        Location[] expected = { new Location(1.000000, 0.000000), new Location(0.932472, 0.361242),
-                new Location(0.739009, 0.673696), new Location(0.445738, 0.895163),
-                new Location(0.092268, 0.995734), new Location(-0.273663, 0.961826),
-                new Location(-0.602635, 0.798017), new Location(-0.850217, 0.526432),
-                new Location(-2.948919, 0.551249), new Location(-2.948919, -0.551249),
-                new Location(-0.850217, -0.526432), new Location(-0.602635, -0.798017),
-                new Location(-1.368315, -4.809128), new Location(0.553610, -5.974405),
-                new Location(0.891477, -1.790327), new Location(0.739009, -0.673696),
-                new Location(0.932472, -0.361242) };
+        Location[] expected = { new Location(1, 0), new Location(1, 0), new Location(1, 0),
+                new Location(0, 1), new Location(0, 1), new Location(0, 1), new Location(0, 1),
+                new Location(-1, 1), new Location(-3, 1),
+                new Location(-3, -1), new Location(-1, -1), new Location(-1, -1),
+                new Location(-1, -5), new Location(1, -5),
+                new Location(1, -1), new Location(1, 0), new Location(1, 0) };
 
         Position position = new Position(new Location(x, y), Math.toRadians(h));
         underTest.setPosition(position);
         CoordinateUtils.assertEquivalent(expected, underTest.sense(), 0.000001);
 
-        expected = new Location[] { new Location(-14.000000, 0.000000),
-                new Location(-1.864944, -0.722483), new Location(-0.739009, -0.673696),
-                new Location(-2.674430, -5.370980), new Location(-0.738147, -7.965873),
-                new Location(0.547326, -1.923651), new Location(0.602635, -0.798017),
-                new Location(0.850217, -0.526432), new Location(0.982973, -0.183750),
-                new Location(0.982973, 0.183750), new Location(0.850217, 0.526432),
-                new Location(0.602635, 0.798017), new Location(0.273663, 0.961826),
-                new Location(-0.092268, 0.995734), new Location(-0.445738, 0.895163),
-                new Location(-0.739009, 0.673696), new Location(-1.864944, 0.722483) };
+        expected = new Location[] { new Location(-14, 0),
+                new Location(-1, -1), 
+                new Location(-1, -1),
+                new Location(-1, -1),
+                new Location(-1, -5),
+                new Location(1, -2),
+                new Location(1, -1), 
+                new Location(1, 0), 
+                new Location(1, 0), 
+                new Location(1, 0),
+                new Location(1, 0), 
+                new Location(0, 1), 
+                new Location(0, 1),
+                new Location(0, 1), 
+                new Location(0, 1), 
+                new Location(-1, 1),
+                new Location(-1, 1)};
         position.setHeading(Math.PI);
         underTest.setPosition(position);
         CoordinateUtils.assertEquivalent(expected, underTest.sense(), 0.000001);
@@ -67,17 +72,7 @@ public class FakeDistanceSensorTest {
         underTest.setPosition(position);
         List<Polygon> obstacles = map.getObstacles().collect(Collectors.toList());  
         for (Location l : underTest.sense() ) {
-            boolean found = false;
-            Point p = geometryFactory.createPoint(l.getCoordinate());
-            for (Polygon poly : obstacles) {
-                if (poly.contains(p)) {
-                    found = true;
-                    break;
-                }
-            }
-            if (!found) {
-                fail(String.format( "%s not found", l));
-            }
+            MapImplTest.assertCoordinateInObstacles(obstacles, l.getCoordinate());
         }
     }
     

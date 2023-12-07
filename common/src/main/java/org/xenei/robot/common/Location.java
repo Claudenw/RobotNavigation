@@ -5,6 +5,7 @@ import java.util.Comparator;
 import org.locationtech.jts.geom.Coordinate;
 import org.xenei.robot.common.utils.AngleUtils;
 import org.xenei.robot.common.utils.CoordUtils;
+import org.xenei.robot.common.utils.DoubleUtils;
 
 /**
  * An immutable definition of a set of Coordinates (X, Y) or (theta, r) values.
@@ -113,10 +114,14 @@ public class Location extends AbstractFrontsCoordinate<Location> {
     public double range() {
         return ORIGIN.distance(this);
     }
+    
+    public boolean near(FrontsCoordinate c, double err) {
+        return this.distance(c) <= err;
+    }
 
     @Override
     public String toString() {
-        return String.format("Location[ %s ]", CoordUtils.toString(getCoordinate(), 4));
+        return String.format("Location[ %s r:%.2f]", CoordUtils.toString(getCoordinate(), 4), range());
     }
 
     @Override

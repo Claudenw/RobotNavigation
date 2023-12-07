@@ -4,6 +4,7 @@ import java.util.Arrays;
 
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.DistanceSensor;
+import org.xenei.robot.common.utils.CoordUtils;
 import org.xenei.robot.common.utils.TimingUtils;
 
 import com.diozero.api.I2CDevice;
@@ -27,7 +28,7 @@ public class Arduino implements DistanceSensor {
     public Location[] sense() {
         byte b = device.readByte();
         int dist = 0xFF & b;
-        Location c = Location.fromAngle(0, dist);
+        Location c = new Location( CoordUtils.fromAngle(0, dist));
         return new Location[] { c };
     }
 
