@@ -10,7 +10,6 @@ public class AngleUtils {
     public static final double RADIANS_270 = -RADIANS_90;
     public static final double RADIANS_315 = -RADIANS_45;
     
-    
     private AngleUtils() {}
     
     public static final double normalize(double angle) {

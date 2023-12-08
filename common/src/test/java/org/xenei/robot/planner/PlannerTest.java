@@ -30,6 +30,7 @@ import org.xenei.robot.common.testUtils.MapLibrary;
 import org.xenei.robot.mapper.MapImpl;
 import org.xenei.robot.mapper.MapImplTest;
 import org.xenei.robot.mapper.MapperImpl;
+import org.xenei.robot.mapper.rdf.Namespace;
 import org.xenei.robot.mapper.visualization.MapViz;
 
 public class PlannerTest {
@@ -106,6 +107,7 @@ public class PlannerTest {
             underTest.changeCurrentPosition(new Position(underTest.getTarget(), angle));
             sensor.setPosition(underTest.getCurrentPosition());
             mapper.processSensorData(underTest.getCurrentPosition(), underTest.getTarget(), underTest.getSolution(), sensor.sense());
+            underTest.notifyListeners();
         }
         assertEquals(SolutionTest.expectedSolution.length - 1, underTest.getSolution().stepCount());
         assertTrue(startCoord.equals2D(underTest.getSolution().start()));
@@ -157,6 +159,7 @@ public class PlannerTest {
             if (shortTarget.isPresent()) {
                 underTest.replaceTarget(shortTarget.get());
             }
+            ((MapImpl)map).doClustering(Namespace.Obst, 1.1, 2);
             underTest.notifyListeners();
         }
         assertEquals(22, underTest.getSolution().stepCount());

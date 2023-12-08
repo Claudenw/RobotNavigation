@@ -2,27 +2,23 @@ package org.xenei.robot.mapper.visualization;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
-import java.awt.Component;
-import java.awt.Container;
-import java.awt.Dimension;
 import java.awt.EventQueue;
 import java.awt.Graphics;
-import java.awt.Insets;
-import java.awt.LayoutManager;
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
 import javax.swing.JFrame;
+import javax.swing.WindowConstants;
 
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.geom.LineString;
+import org.locationtech.jts.geom.Point;
+import org.locationtech.jts.geom.Polygon;
 import org.xenei.robot.common.mapping.Map;
-import org.xenei.robot.common.mapping.Mapper;
 import org.xenei.robot.common.planning.Solution;
 import org.xenei.robot.common.planning.Step;
-import org.xenei.robot.common.utils.DoubleUtils;
 import org.xenei.robot.common.utils.GeometryUtils;
 
 public class MapViz {
@@ -39,45 +35,78 @@ public class MapViz {
 
         JFrame frame = new JFrame("Map Visualization");
         frame.setLayout(new BorderLayout());
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
 
         frame.add(panel, BorderLayout.CENTER);
 
         frame.pack();
-        frame.setSize(1000,1000);
+        frame.setSize(1000, 1000);
         frame.setVisible(true);
     }
-    
+
+    public DrawingCommand getPoly(Geometry geom, Color color) {
+        if (geom instanceof Point) {
+            return new DrawingCommand(geom, color, scale) {
+                @Override
+                protected void fillGeom(Graphics g, int[] xler, int[] yler) {
+                    g.fillOval(xler[0]-2, yler[0]-2, 4, 4);
+                }
+            };
+        }
+        if (geom instanceof Polygon) {
+            return new DrawingCommand(geom, color, scale) {
+                @Override
+                protected void fillGeom(Graphics g, int[] xler, int[] yler) {
+                    g.fillPolygon(xler, yler, xler.length);
+                }
+            };
+        }
+
+        if (geom instanceof LineString) {
+            return new DrawingCommand(geom, color, scale) {
+                @Override
+                protected void fillGeom(Graphics g, int[] xler, int[] yler) {
+                    g.drawPolyline(xler, yler, xler.length);
+                }
+            };
+        }
+        
+        return new DrawingCommand(geom, color, scale) {
+            @Override
+            protected void fillGeom(Graphics g, int[] xler, int[] yler) {
+                g.drawString( geom.getClass().getSimpleName(), xler[0], yler[0]);
+            }
+        };
+    }
+
     public void redraw() {
-        List<AbstractDrawingCommand> cmds = new ArrayList<>();
+        List<DrawingCommand> cmds = new ArrayList<>();
         for (Geometry obst : map.getObstacles()) {
-            cmds.add(new Poly(obst, Color.RED));
+            cmds.add(getPoly(obst, Color.RED));
         }
 
         for (Step targ : map.getTargets()) {
-            cmds.add(new Poly(GeometryUtils.asPolygon(targ.getGeometry().getCoordinate(), 0.25), Color.CYAN));
+            cmds.add(getPoly(GeometryUtils.asPolygon(targ.getGeometry().getCoordinate(), 0.25), Color.CYAN));
         }
 
         List<Coordinate> lst = solution.stream().collect(Collectors.toList());
         if (lst.size() > 1) {
-            cmds.add( new Poly(GeometryUtils.asPath(lst.toArray(new Coordinate[lst.size()])),
-                    Color.WHITE));
+            cmds.add(getPoly(GeometryUtils.asPath(lst.toArray(new Coordinate[lst.size()])), Color.WHITE));
         } else {
-            cmds.add( new Poly(GeometryUtils.asPolygon(lst.get(0), 0.25),
-                    Color.WHITE));
+            cmds.add(getPoly(GeometryUtils.asPolygon(lst.get(0), 0.25), Color.WHITE));
         }
-        
+
         rescale(cmds);
-        
-        EventQueue.invokeLater( () -> {
+
+        EventQueue.invokeLater(() -> {
             panel.clear();
             cmds.forEach(panel::addDrawCommand);
-        } );
+        });
     }
-    
-    private void rescale(List<AbstractDrawingCommand> lst) {
+
+    private void rescale(List<DrawingCommand> lst) {
         double max = Integer.MIN_VALUE;
-        for (AbstractDrawingCommand cmd : lst) {
+        for (DrawingCommand cmd : lst) {
             for (int i : cmd.xler) {
                 double ii = Math.abs(i);
                 max = ii < max ? max : ii;
@@ -87,8 +116,8 @@ public class MapViz {
                 max = ii < max ? max : ii;
             }
         }
-        int offset = (int) (2*max / 700);
-        for (AbstractDrawingCommand cmd : lst) {
+        int offset = (int) (2 * max / 700);
+        for (DrawingCommand cmd : lst) {
             for (int i = 0; i < cmd.xler.length; i++) {
                 cmd.xler[i] += max;
                 cmd.xler[i] /= offset;
@@ -96,56 +125,7 @@ public class MapViz {
             for (int i = 0; i < cmd.yler.length; i++) {
                 cmd.yler[i] += max;
                 cmd.yler[i] /= offset;
-            }        
-        }
-    }
-
-    private abstract class AbstractDrawingCommand implements DrawingCommand {
-        private int[] xler;
-        private int[] yler;
-        private Color color;
-        
-        AbstractDrawingCommand(Geometry geom, Color color) {
-            this.color = color;
-            Coordinate[] coords = geom.getCoordinates();
-
-            xler = new int[coords.length];
-            yler = new int[coords.length];
-
-            for (int i = 0; i < coords.length; i++) {
-                xler[i] = (int) Math.round( coords[i].getX()*scale );
-                yler[i] = (int) Math.round( coords[i].getY()*scale );
             }
-        }
-
-        @Override
-        public void doDrawing(Graphics g) {
-            g.setColor(color);
-            fillGeom(g, xler, yler);
-        }
-        
-        abstract protected void fillGeom(Graphics g, int[] xler, int[] yler);
-    }
-    
-    private class Poly extends AbstractDrawingCommand {
-       Poly(Geometry geom, Color color) {
-           super( geom, color );
-        }
-
-        @Override
-        protected void fillGeom(Graphics g, int[] xler, int[] yler) {
-            g.fillPolygon(xler, yler, xler.length);
-        }
-    }
-
-    private class Line extends AbstractDrawingCommand {
-       Line(Geometry geom, Color color) {
-           super( geom, color );
-       }
-
-       @Override
-       protected void fillGeom(Graphics g, int[] xler, int[] yler) {
-            g.drawPolyline(xler, yler, xler.length);
         }
     }
 }

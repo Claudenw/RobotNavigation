@@ -16,7 +16,9 @@ import org.xenei.robot.common.mapping.Mapper;
 import org.xenei.robot.common.planning.Planner;
 import org.xenei.robot.common.planning.Solution;
 import org.xenei.robot.common.planning.Step;
+import org.xenei.robot.common.utils.AngleUtils;
 import org.xenei.robot.common.utils.CoordUtils;
+import org.xenei.robot.mapper.rdf.Namespace;
 
 public class MapperImpl implements Mapper {
     private static final Logger LOG = LoggerFactory.getLogger(MapperImpl.class);
@@ -68,6 +70,9 @@ public class MapperImpl implements Mapper {
                 obstacleMapper.nextTarget = Optional.empty();
             }
         }
+        
+        System.out.println( MapReports.dumpModel((MapImpl) map));
+       // ((MapImpl)map).doCluster(Namespace.Obst, 2.5, 2);
 
         return obstacleMapper.nextTarget;
     }

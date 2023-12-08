@@ -34,6 +34,7 @@ public class Namespace {
     public static final Resource Coord = ResourceFactory.createResource(URI + "Coord");
     public static final Resource Obst = ResourceFactory.createResource(URI + "Obstacle");
     public static final Resource Path = ResourceFactory.createResource(URI + "Path");
+    public static final Resource Cluster = ResourceFactory.createResource(URI + "Cluster");
     
     public static final Property x = ResourceFactory.createProperty(URI + "x");
     public static final Property y = ResourceFactory.createProperty(URI + "y");

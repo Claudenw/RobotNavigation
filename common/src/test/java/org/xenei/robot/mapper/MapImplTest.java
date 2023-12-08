@@ -8,7 +8,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -17,9 +16,6 @@ import java.util.function.BiPredicate;
 import org.apache.jena.arq.querybuilder.AskBuilder;
 import org.apache.jena.arq.querybuilder.ExprFactory;
 import org.apache.jena.arq.querybuilder.SelectBuilder;
-import org.apache.jena.query.QueryExecution;
-import org.apache.jena.query.QueryExecutionFactory;
-import org.apache.jena.query.QuerySolution;
 import org.apache.jena.rdf.model.Resource;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -97,9 +93,10 @@ public class MapImplTest {
         Coordinate p2 = new Coordinate(-1, -2);
         assertEquals(new Step(p2, 4, null), pr.get());
     }
-    
+
     /**
      * Checks that at least oneof the geometries (obsts) contains the coordinate.
+     * 
      * @param obsts the list of geometries.
      * @param c he coorindate to contain.
      */
@@ -107,7 +104,7 @@ public class MapImplTest {
         boolean found = false;
         Point p = GeometryUtils.asPoint(c);
         for (Geometry geom : obsts) {
-            
+
             if (geom.contains(p)) {
                 found = true;
                 break;
@@ -175,7 +172,7 @@ public class MapImplTest {
     public void addPathTest() {
         Location a = new Location(expected[0]);
         Location b = new Location(expected[1]);
-        
+
         assertFalse(underTest.hasPath(a, b), () -> "Should not have path");
 
         Location c = new Location(5, 5);
@@ -223,7 +220,7 @@ public class MapImplTest {
         // check not there, update then verify that it is.
         AskBuilder ask = new AskBuilder().from(Namespace.UnionModel.getURI()).addWhere(r, Namespace.distance, null);
         assertFalse(underTest.ask(ask));
-  
+
         underTest.update(Namespace.PlanningModel, c.getCoordinate(), Namespace.distance, 5);
 
         assertTrue(underTest.ask(ask));
@@ -234,7 +231,6 @@ public class MapImplTest {
                 .addFilter(exprF.eq("?o", 5.0));
         assertTrue(underTest.ask(ask));
 
-
         c = new Location(expected[0]);
         assertTrue(underTest.ask(ask));
 
@@ -244,9 +240,12 @@ public class MapImplTest {
         SelectBuilder sb = new SelectBuilder().from(Namespace.UnionModel.getURI()).addWhere(Namespace.urlOf(c),
                 Namespace.distance, "?x");
         int count[] = { 0 };
-        underTest.exec(sb, (q) -> count[0]++);
+        underTest.exec(sb, (q) -> {
+            count[0]++;
+            return true;
+        });
         assertEquals(1, count[0]);
-        
+
         Step after = underTest.getStep(c).get();
         assertEquals(before.cost() + 5, after.cost());
     }

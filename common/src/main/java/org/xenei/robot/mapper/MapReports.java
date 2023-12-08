@@ -1,27 +1,15 @@
 package org.xenei.robot.mapper;
 
 import java.io.ByteArrayOutputStream;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.function.Consumer;
 
-import org.apache.jena.arq.querybuilder.ExprFactory;
 import org.apache.jena.arq.querybuilder.SelectBuilder;
-import org.apache.jena.arq.querybuilder.UpdateBuilder;
-import org.apache.jena.query.QueryExecution;
-import org.apache.jena.query.QuerySolution;
-import org.apache.jena.query.ResultSet;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.Resource;
 import org.apache.jena.riot.Lang;
-import org.apache.jena.sparql.core.Var;
-import org.apache.jena.vocabulary.RDF;
-import org.locationtech.jts.geom.Coordinate;
-import org.locationtech.jts.geom.Geometry;
 import org.xenei.robot.mapper.rdf.Namespace;
 
 public class MapReports {
-    
 
 //    public static List<CostModelEntry> costModel(MapImpl map) {
 //        Var x1 = Var.alloc("x1");
@@ -63,19 +51,22 @@ public class MapReports {
         map.dump(model, d);
         return d.toString();
     }
-    
+
     public static String dumpModel(Model model) {
         Dumper d = new Dumper();
         d.accept(model);
         return d.toString();
     }
-    
+
     public static String dumpQuery(MapImpl map, SelectBuilder sb) {
         StringBuilder builder = new StringBuilder();
-        map.exec(sb, (s) -> builder.append( s.toString()).append("\n"));
+        map.exec(sb, (s) -> {
+            builder.append(s.toString()).append("\n");
+            return true;
+        });
         return builder.toString();
     }
-    
+
     private static class Dumper implements Consumer<Model> {
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
 
@@ -86,7 +77,7 @@ public class MapReports {
 
         @Override
         public String toString() {
-         return bos.toString();
+            return bos.toString();
         }
     }
 }

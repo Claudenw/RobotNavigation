@@ -2,6 +2,7 @@ package org.xenei.robot.mapper;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import org.apache.jena.arq.querybuilder.ExprFactory;
 import org.apache.jena.arq.querybuilder.UpdateBuilder;
@@ -84,13 +85,20 @@ public class GraphGeomFactory {
         return (T) whereClause.addWhere(s, Namespace.nearbyF, args);
     }
 
+    public static Resource asRDF(Coordinate a) {
+        return asRDF(a, Namespace.Point, GeometryUtils.asPoint(a));
+    }
+    
+    public static Resource asRDF(Coordinate a, Resource type) {
+        return asRDF(a, type, GeometryUtils.asPoint(a));
+    }
+    
     public static Resource asRDF(Coordinate a, Resource type, Geometry geom) {
-        if (geom == null) {
-            geom = GeometryUtils.asPoint(a);
-        }
+        Objects.requireNonNull(a);
+        Objects.requireNonNull(type);
+        Objects.requireNonNull(geom);
         Model result = ModelFactory.createDefaultModel();
-        Resource r = type == null ? result.createResource(Namespace.urlStr(a))
-                : result.createResource(Namespace.urlStr(a), type);
+        Resource r = result.createResource(Namespace.urlStr(a), type);
         r.addLiteral(Namespace.x, a.getX());
         r.addLiteral(Namespace.y, a.getY());
         r.addLiteral(Geo.AS_WKT_PROP, asWKT(geom));
