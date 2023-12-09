@@ -3,6 +3,7 @@ package org.xenei.robot.common.planning;
 import java.util.Collection;
 
 import org.locationtech.jts.geom.Coordinate;
+import org.xenei.robot.common.DistanceSensor;
 import org.xenei.robot.common.FrontsCoordinate;
 import org.xenei.robot.common.Position;
 
@@ -20,6 +21,8 @@ public interface Planner {
      * @return the coordinates of the target.
      */
     Coordinate getTarget();
+    
+    Coordinate getRootTarget();
 
     /**
      * Gets the planning targets. This is a stack of targets where bottom of the
@@ -49,16 +52,16 @@ public interface Planner {
     }
 
     /**
-     * Replaces the current planner target without clearing the current plan.
-     * If the only one target is in the planner stack then this method adds a record.
+     * Replaces the current planner target without clearing the current plan. If the
+     * only one target is in the planner stack then this method adds a record.
      * 
      * @param target The coordinates to head toward.
      */
     void replaceTarget(Coordinate coordinate);
 
     /**
-     * Replaces the current planner target without clearing the current plan.
-     * If the only one target is in the planner stack then this method adds a record.
+     * Replaces the current planner target without clearing the current plan. If the
+     * only one target is in the planner stack then this method adds a record.
      * 
      * @param target The coordinates to head toward.
      */
@@ -78,9 +81,9 @@ public interface Planner {
      * position. The target position may be updated. The best position to head for
      * is in the target.
      * 
-     * @return true if the target has not been reached. (processing should continue)
+     * @return true if the target has changed.
      */
-    boolean step();
+    Diff selectTarget();
 
     /**
      * Change the position to the new position. Causes a recalculation of costs for
@@ -106,4 +109,15 @@ public interface Planner {
         void update();
     }
 
+    interface Diff {
+        default boolean didChange() {
+            return didHeadingChange() || didPositionChange() || didTargetChange();
+        }
+
+        boolean didHeadingChange();
+
+        boolean didPositionChange();
+
+        boolean didTargetChange();
+    }
 }

@@ -2,6 +2,9 @@ package org.xenei.robot.mapper.rdf;
 
 import java.io.IOException;
 
+import org.apache.jena.arq.querybuilder.UpdateBuilder;
+import org.apache.jena.arq.querybuilder.WhereBuilder;
+import org.apache.jena.arq.querybuilder.clauses.WhereClause;
 import org.apache.jena.atlas.logging.Log;
 import org.apache.jena.geosparql.implementation.GeometryWrapper;
 import org.apache.jena.geosparql.implementation.datatype.WKTDatatype;
@@ -41,29 +44,25 @@ public class Namespace {
     public static final Property distance = ResourceFactory.createProperty(URI + "distance");
     public static final Property adjustment =  ResourceFactory.createProperty(URI + "adjustment");
     public static final Property cost = ResourceFactory.createProperty(URI + "cost");
+    public static final Property point = ResourceFactory.createProperty(URI + "point");
 
     
     public static final Resource Point = ResourceFactory.createResource(GeoSPARQL_URI.SF_URI+"Point");
     
     public static final Property nearbyF = ResourceFactory.createProperty(SpatialExtension.NEARBY_PROP );
-    //public static final Property intersectF = Geo.SF_INTERSECTS_PROP;
-   // public static final Property distanceF = ResourceFactory.createProperty(Geof.DISTANCE_NAME);
 
     public static final Var s = Var.alloc("s");
     public static final Var p = Var.alloc("p");
     public static final Var o = Var.alloc("o");
 
-    private static final String POINT_URI_FMT = URI+"point:%.0f:%.0f";
     
-    public static String urlStr(Coordinate p) {
-        return String.format(POINT_URI_FMT, p.getX(), p.getY());
+    public static <T extends WhereClause<?>> T addData(T whereClause, Object r, Coordinate c) {
+       whereClause.addWhere(r, Namespace.x, c.getX());
+       whereClause.addWhere(r, Namespace.y, c.getY());
+       return whereClause;
     }
     
-    public static Resource urlOf(Coordinate p) {
-        return ResourceFactory.createResource(urlStr(p));
-    }
-    
-    public static Resource urlOf(FrontsCoordinate p) {
-        return urlOf(p.getCoordinate());
-    }
+    public static UpdateBuilder addData(UpdateBuilder updateBuilder, Object r, Coordinate c) {
+        return updateBuilder.addWhere(r, Namespace.x, c.getX()).addWhere(r, Namespace.y, c.getY());
+     }
 }

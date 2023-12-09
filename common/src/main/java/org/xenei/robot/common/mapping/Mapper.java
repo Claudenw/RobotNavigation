@@ -20,4 +20,6 @@ public interface Mapper {
      * @return the location of an non-obstacle when heading toward the target. (shortest non collision position)
      */
     Optional<Location> processSensorData(Position currentPosition, Coordinate target, Solution solution, Location[] obstacles);
+    
+    Map getMap();
 }

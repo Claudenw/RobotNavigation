@@ -18,13 +18,14 @@ import org.xenei.robot.common.planning.Solution;
 import org.xenei.robot.common.planning.Step;
 import org.xenei.robot.common.utils.AngleUtils;
 import org.xenei.robot.common.utils.CoordUtils;
+import org.xenei.robot.common.utils.DoubleUtils;
 import org.xenei.robot.mapper.rdf.Namespace;
 
 public class MapperImpl implements Mapper {
     private static final Logger LOG = LoggerFactory.getLogger(MapperImpl.class);
     private final Map map;
     private Planner planner;
-    
+
     public MapperImpl(Map map) {
         this.map = map;
     }
@@ -33,22 +34,24 @@ public class MapperImpl implements Mapper {
         this.planner = planner;
     }
 
+    public Map getMap() {
+        return map;
+    }
+    
     @Override
     public Optional<Location> processSensorData(Position currentPosition, Coordinate target, Solution solution, Location[] obstacles) {
         // next target set if collision detected.
         ObstacleMapper obstacleMapper = new ObstacleMapper(currentPosition, target);
         LOG.trace("Sense position: {}", currentPosition);
-        double halfScale = map.getScale()/2;
-        // get the sensor readings and add arcs to the map
+        double halfScale = map.getScale().getScale()/2;
+        // get the sensor readings and add obstacles to the map
         //@formatter:off
         Arrays.stream(obstacles)
                 // filter out any range < 1.0
-                .filter(c -> c.range() > map.getScale())
+                .filter(c -> !DoubleUtils.inRange(c.range(), map.getScale().getTolerance()))
                 // create absolute coordinates
                 .map(c -> {
                     LOG.trace( "Checking {}", c);
-                    //return new Location( CoordUtils.fromAngle( currentPosition.theta()+
-                            //c.theta(), c.range()));
                     return currentPosition.plus(c);
                 })
                 .filter( new UniqueFilter<Location>() )
@@ -57,7 +60,7 @@ public class MapperImpl implements Mapper {
                 .filter(c -> c.isPresent() && !c.get().near(currentPosition, .5))
                 .map(Optional::get)
                 .filter( new UniqueFilter<Location>() )
-                .forEach(c -> recordMapPoint(currentPosition, new Step( c.getCoordinate(), c.distance(target), null)));
+                .forEach(c -> recordMapPoint(currentPosition, new Step( c.getCoordinate(), c.distance(target))));
         //@formatter::on
        
         if (obstacleMapper.nextTarget.isPresent() && !solution.isEmpty()) {
@@ -71,7 +74,7 @@ public class MapperImpl implements Mapper {
             }
         }
         
-        System.out.println( MapReports.dumpModel((MapImpl) map));
+        //System.out.println( MapReports.dumpModel((MapImpl) map));
        // ((MapImpl)map).doCluster(Namespace.Obst, 2.5, 2);
 
         return obstacleMapper.nextTarget;
@@ -88,12 +91,12 @@ public class MapperImpl implements Mapper {
      * @return An optional that contains the nearest open coordinates if any.
      */
     private Optional<Location> not(Position currentPosition, Location obstacle) {
-        double d = currentPosition.distance(obstacle) - map.getScale();
+        double d = currentPosition.distance(obstacle) - map.getScale().getTolerance();
         double theta = currentPosition.angleTo(obstacle);
         Coordinate difference = CoordUtils.fromAngle(theta,d);
         Location candidate = currentPosition.plus(difference);
         if (map.isObstacle(candidate.getCoordinate())) {
-            difference = CoordUtils.fromAngle(theta,d-map.getScale());
+            difference = CoordUtils.fromAngle(theta,d-map.getScale().getBuffer());
             candidate = currentPosition.plus(difference);;
             if (map.isObstacle(candidate.getCoordinate())) {
                 return Optional.empty();
@@ -101,8 +104,6 @@ public class MapperImpl implements Mapper {
         }
         return Optional.of(candidate);
     }
-
-    
 
     /**
      * Registers the obstacle on the map and checks if it is on the path we are currently traveling.
@@ -112,7 +113,7 @@ public class MapperImpl implements Mapper {
      */
     private boolean registerObstacle(Position currentPosition, Coordinate target, Coordinate obstacle) {
         map.addObstacle(obstacle);
-        boolean result = currentPosition.checkCollistion(obstacle, map.getScale());
+        boolean result = currentPosition.checkCollistion(obstacle, map.getScale().getTolerance());
         if (result) {
             LOG.info("Possible collision from {} detected at {}", currentPosition, obstacle);
         }

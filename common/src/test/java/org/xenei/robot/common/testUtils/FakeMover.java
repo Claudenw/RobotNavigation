@@ -12,7 +12,7 @@ public class FakeMover implements Mover {
     private Position position;
     private int speed;
 
-    public FakeMover(Location initial, int speed) {
+    public FakeMover(Position initial, int speed) {
         this.position = new Position(initial);
         if (LOG.isDebugEnabled()) {
             LOG.debug("Initial position {}", position);

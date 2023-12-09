@@ -8,17 +8,17 @@ import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.common.mapping.CoordinateMap;
 import org.xenei.robot.common.utils.CoordUtils;
 
-public class FakeDistanceSensor2 implements FakeDistanceSensor {
-    private static final Logger LOG = LoggerFactory.getLogger(FakeDistanceSensor2.class);
+public class FakeDistanceSensor1 implements FakeDistanceSensor {
+    private static final Logger LOG = LoggerFactory.getLogger(FakeDistanceSensor.class);
+    private static final int BLOCKSIZE = 17;
+    private static final double RADIANS = Math.toRadians(360.0 / BLOCKSIZE);
     private final CoordinateMap map;
-    private final double angle;
     private static final double MAX_RANGE = 350;
 
     private Position position;
 
-    public FakeDistanceSensor2(CoordinateMap map, double angle) {
+    public FakeDistanceSensor1(CoordinateMap map) {
         this.map = map;
-        this.angle = angle;
     }
 
     public CoordinateMap map() {
@@ -32,12 +32,14 @@ public class FakeDistanceSensor2 implements FakeDistanceSensor {
 
     @Override
     public Location[] sense() {
-        Location[] result = new Location[3];
+        Location[] result = new Location[BLOCKSIZE];
 
-        result[0] = new Location(look(position, position.getHeading() - angle).minus(position));
-        result[1] = new Location(look(position, position.getHeading()).minus(position));
-        result[2] = new Location(look(position, position.getHeading() + angle).minus(position));
-
+        for (int i = 0; i < BLOCKSIZE; i++) {
+            result[i] = new Location(look(position, position.getHeading() + (RADIANS * i)).minus(position));
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("Reading {}: {}", i, result[i]);
+            }
+        }
         return result;
     }
 
@@ -58,5 +60,4 @@ public class FakeDistanceSensor2 implements FakeDistanceSensor {
     public ScaleInfo getScale() {
         return FakeDistanceSensor.SCALE;
     }
-
 }

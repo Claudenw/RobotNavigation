@@ -14,6 +14,8 @@ import org.apache.jena.query.QueryExecutionFactory;
 import org.apache.jena.rdf.model.Literal;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.Resource;
+import org.apache.jena.rdf.model.Statement;
+import org.apache.jena.vocabulary.RDF;
 import org.junit.jupiter.api.Test;
 import org.locationtech.jts.geom.Coordinate;
 import org.xenei.robot.common.utils.GeometryUtils;
@@ -34,13 +36,13 @@ public class GraphGeomFactoryTest {
     @Test
     public void checkCollisionTest() {
         Coordinate c = new Coordinate(1, 1);
-        Model m = GraphGeomFactory.asRDF(c, null, GeometryUtils.asPolygon(c, 1)).getModel();
+        Model m = GraphGeomFactory.asRDF(c, Namespace.Obst, GeometryUtils.asPolygon(c, 1)).getModel();
         Dataset ds = createDataset(m);
         Literal testWkt = GraphGeomFactory.asWKT(c);
 
         ExprFactory exprF = new ExprFactory(m);
         AskBuilder ask = new AskBuilder().addWhere(Namespace.s, Geo.AS_WKT_PROP, "?wkt")
-                .addFilter(GraphGeomFactory.checkCollision(exprF, "?wkt", testWkt));
+                .addFilter(GraphGeomFactory.checkCollision(exprF, "?wkt", testWkt, 0));
         try (QueryExecution qexec = QueryExecutionFactory.create(ask.build(), ds)) {
             assertTrue(qexec.execAsk());
         }
@@ -51,8 +53,8 @@ public class GraphGeomFactoryTest {
         Coordinate c = new Coordinate(1, 1);
         Coordinate b = new Coordinate(1, 5);
 
-        Model m = GraphGeomFactory.asRDF(c, null, GeometryUtils.asPoint(c)).getModel();
-        m.add(GraphGeomFactory.asRDF(b, null, GeometryUtils.asPoint(b)).getModel());
+        Model m = GraphGeomFactory.asRDF(c).getModel();
+        m.add(GraphGeomFactory.asRDF(b).getModel());
         Dataset ds = createDataset(m);
         Literal testWkt = GraphGeomFactory.asWKT(c);
 
@@ -68,7 +70,24 @@ public class GraphGeomFactoryTest {
   @Test
   public void asRDFTest() {
       Coordinate p = new Coordinate( -1, 3 );
-      Resource r = GraphGeomFactory.asRDF(p, null, GeometryUtils.asPoint(p));
-      System.out.println( MapReports.dumpModel( r.getModel() ));
+      Resource r = GraphGeomFactory.asRDF(p);
+    //System.out.println( MapReports.dumpModel( r.getModel() ));
+
+      assertTrue( r.hasLiteral(Namespace.x, -1.0));
+      assertTrue( r.hasLiteral(Namespace.y, 3.0));
+      assertTrue( r.hasProperty(RDF.type, Namespace.Point));
+      assertTrue( r.hasProperty(Geo.AS_WKT_PROP,GraphGeomFactory.asWKT(GeometryUtils.asPoint(p))));
+      
+      r = GraphGeomFactory.asRDF(p, Namespace.Coord);
+      assertTrue( r.hasLiteral(Namespace.x, -1.0));
+      assertTrue( r.hasLiteral(Namespace.y, 3.0));
+      assertTrue( r.hasProperty(RDF.type, Namespace.Coord));
+      assertTrue( r.hasProperty(Geo.AS_WKT_PROP,GraphGeomFactory.asWKT(GeometryUtils.asPoint(p))));
+      
+      r = GraphGeomFactory.asRDF(p, Namespace.Coord, GeometryUtils.asPolygon(p,3));
+      assertTrue( r.hasLiteral(Namespace.x, -1.0));
+      assertTrue( r.hasLiteral(Namespace.y, 3.0));
+      assertTrue( r.hasProperty(RDF.type, Namespace.Coord));
+      assertTrue( r.hasProperty(Geo.AS_WKT_PROP,GraphGeomFactory.asWKT(GeometryUtils.asPolygon(p,3))));
   }
 }

@@ -6,6 +6,7 @@ import java.util.Set;
 
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
+import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.common.planning.Solution;
 import org.xenei.robot.common.planning.Step;
 
@@ -54,7 +55,6 @@ public interface Map {
 
     void recordSolution(Solution solution);
 
-    double getScale();
-    
-    double getResolution();
+    ScaleInfo getScale();
+
 }

@@ -2,6 +2,7 @@ package org.xenei.robot.common;
 
 import org.locationtech.jts.geom.Coordinate;
 import org.xenei.robot.common.utils.CoordUtils;
+import org.xenei.robot.common.utils.DoubleUtils;
 import org.xenei.robot.common.utils.GeometryUtils;
 
 /**
@@ -143,14 +144,14 @@ public class Position extends Location {
                 Math.toDegrees(heading));
     }
     
-    public boolean checkCollistion(FrontsCoordinate fc, double err) {
-        return checkCollistion(fc.getCoordinate(), err);
+    public boolean checkCollistion(FrontsCoordinate fc, double tolerance) {
+        return checkCollistion(fc.getCoordinate(), tolerance);
     }
 
-    public boolean checkCollistion(Coordinate c, double err) {
-        double d = distance(c);
-        Coordinate l = CoordUtils.fromAngle( heading, d);
-        return GeometryUtils.asPath( this.coordinate, l ).intersects( GeometryUtils.asPolygon(c, err));
+    public boolean checkCollistion(Coordinate c, double tolerance) {
+        Coordinate l = CoordUtils.fromAngle( heading, distance(c));
+        double d = GeometryUtils.asPath( this.coordinate, l ).distance( GeometryUtils.asPoint(c));
+        return DoubleUtils.inRange(d, tolerance);
     }
 
 }

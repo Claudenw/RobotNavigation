@@ -79,14 +79,14 @@ public class MapViz {
         };
     }
 
-    public void redraw() {
+    public void redraw(Coordinate target) {
         List<DrawingCommand> cmds = new ArrayList<>();
         for (Geometry obst : map.getObstacles()) {
             cmds.add(getPoly(obst, Color.RED));
         }
 
         for (Step targ : map.getTargets()) {
-            cmds.add(getPoly(GeometryUtils.asPolygon(targ.getGeometry().getCoordinate(), 0.25), Color.CYAN));
+            cmds.add(getPoly(targ.getGeometry(), Color.CYAN));
         }
 
         List<Coordinate> lst = solution.stream().collect(Collectors.toList());
@@ -94,6 +94,10 @@ public class MapViz {
             cmds.add(getPoly(GeometryUtils.asPath(lst.toArray(new Coordinate[lst.size()])), Color.WHITE));
         } else {
             cmds.add(getPoly(GeometryUtils.asPolygon(lst.get(0), 0.25), Color.WHITE));
+        }
+        
+        if (target != null) {
+            cmds.add( getPoly(GeometryUtils.asPolygon(target, 0.1), Color.GREEN));
         }
 
         rescale(cmds);
@@ -116,7 +120,7 @@ public class MapViz {
                 max = ii < max ? max : ii;
             }
         }
-        int offset = (int) (2 * max / 700);
+        int offset = (int) Math.max(2 * max / 700, 1);
         for (DrawingCommand cmd : lst) {
             for (int i = 0; i < cmd.xler.length; i++) {
                 cmd.xler[i] += max;

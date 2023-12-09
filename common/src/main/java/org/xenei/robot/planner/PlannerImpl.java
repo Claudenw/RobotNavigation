@@ -2,6 +2,7 @@ package org.xenei.robot.planner;
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Deque;
 import java.util.Optional;
 import java.util.Stack;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -9,12 +10,14 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import org.locationtech.jts.geom.Coordinate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.xenei.robot.common.DistanceSensor;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Position;
 import org.xenei.robot.common.mapping.Map;
 import org.xenei.robot.common.planning.Planner;
 import org.xenei.robot.common.planning.Solution;
 import org.xenei.robot.common.planning.Step;
+import org.xenei.robot.common.utils.DoubleUtils;
 
 public class PlannerImpl implements Planner {
     private static final Logger LOG = LoggerFactory.getLogger(PlannerImpl.class);
@@ -23,6 +26,7 @@ public class PlannerImpl implements Planner {
     private final Collection<Planner.Listener> listeners;
     private Position currentPosition;
     private Solution solution;
+    private final DiffImpl diff;
 
     /**
      * Constructs a planner.
@@ -45,6 +49,7 @@ public class PlannerImpl implements Planner {
         this.map = map;
         this.listeners = new CopyOnWriteArrayList<>();
         this.target = new Stack<>();
+        this.diff = new DiffImpl();
         if (target != null) {
             setTarget(target.getCoordinate());
         }
@@ -68,11 +73,12 @@ public class PlannerImpl implements Planner {
      */
     @Override
     public void changeCurrentPosition(Position position) {
+        diff.reset();
         currentPosition = position;
         solution.add(position);
-        map.addTarget(new Step(position.getCoordinate(), position.distance(target.peek()), null));
+        map.addTarget(new Step(position.getCoordinate(), position.distance(target.peek())));
     }
-
+    
     /**
      * Sets the current position and resets the solution.
      * 
@@ -86,7 +92,8 @@ public class PlannerImpl implements Planner {
             angle = coords.headingTo(getTarget());
         }
         currentPosition = new Position(coords, angle);
-        map.addTarget(new Step(currentPosition.getCoordinate(), distance, null));
+        diff.reset();
+        map.addTarget(new Step(currentPosition.getCoordinate(), distance));
         resetSolution();
     }
 
@@ -112,48 +119,49 @@ public class PlannerImpl implements Planner {
     }
 
     @Override
-    public boolean step() {
-        if (currentPosition.equals2D(getTarget(), map.getScale())) {
+    public Diff selectTarget() {
+        if (currentPosition.equals2D(getTarget(), map.getScale().getTolerance())) {
             LOG.debug("Reached intermediate target");
             target.pop();
             if (target.isEmpty()) {
                 LOG.debug("Reached final target");
-                solution.add(currentPosition);
-                return false;
             }
-            // see if we can get to target directly
-            if (map.clearView(currentPosition.getCoordinate(), target.peek())) {
-                LOG.debug("Can see final target");
-                map.addPath(currentPosition.getCoordinate(), target.peek());
-                currentPosition.setHeading(target.peek());
-                return true;
-            }
-            // recalculate the distances
-            map.recalculate(target.peek());
-            // update the planning model make sure we don't revisit where we have been.
-            solution.stream().forEach(t -> map.setTemporaryCost(new Step(t, Double.POSITIVE_INFINITY, null)));
-        }
-
-        Optional<Step> selected = map.getBestTarget(currentPosition.getCoordinate());
-        if (selected.isPresent()) {
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("Selected target: " + selected.get());
-            }
-            // update the planning model for the current position.
-            // map.update(Namespace.PlanningModel, currentPosition,
-            // Namespace.distance, selected.get().cost());
-            // if we are not at the target then make the next position the target.
-            if (!selected.get().equals2D(target.peek(), map.getScale())) {
-                target.push(selected.get().getCoordinate());
-            }
-            // if the heading changes mark the point on the current location
-            if (currentPosition.getHeading() != currentPosition.headingTo(selected.get())) {
-                solution.add(currentPosition);
+           
+        } else {
+            Optional<Step> selected = map.getBestTarget(currentPosition.getCoordinate());
+            if (selected.isPresent()) {
+                if (LOG.isDebugEnabled()) {
+                    LOG.debug("Selected target: " + selected.get());
+                }
+                if (!selected.get().equals2D(target.peek(), map.getScale().getTolerance())) {
+                    target.push(selected.get().getCoordinate());
+                }
             }
         }
-        return true;
+        if (diff.didChange()) {
+            solution.add(currentPosition);
+        }
+        return diff;
     }
 
+    
+//    public boolean faceTarget(Coordinate target) {
+//        // see if we can get to target directly
+//        if (map.clearView(currentPosition.getCoordinate(), target)) {
+//            map.addPath(currentPosition.getCoordinate(), target);
+//            currentPosition.setHeading(target);
+//            return true;
+//        }
+//        return false;
+//    }
+    
+    public void recalculateCosts() {
+        // recalculate the distances
+        map.recalculate(target.peek());
+        // update the planning model make sure we don't revisit where we have been.
+        solution.stream().forEach(t -> map.setTemporaryCost(new Step(t, Double.POSITIVE_INFINITY)));
+    }
+    
     @Override
     public void setTarget(Coordinate target) {
         LOG.info("Setting target to {} starting from {}", target, currentPosition);
@@ -169,8 +177,14 @@ public class PlannerImpl implements Planner {
     @Override
     public void replaceTarget(Coordinate target) {
         if (this.target.size() != 1) {
-        LOG.info("Replacing target to {} with {}", getTarget(), target);
-        this.target.pop();
+            LOG.info("Replacing target to {} with {}", getTarget(), target);
+            if (this.target.get(0).equals2D(target, map.getScale().getTolerance()))
+            {
+                this.target.clear();
+                this.target.push(target);
+            } else {
+                this.target.pop();
+            }
         } else {
             LOG.info("Adding target to {} to {}", target, getTarget());
         }
@@ -186,6 +200,11 @@ public class PlannerImpl implements Planner {
     }
 
     @Override
+    public Coordinate getRootTarget() {
+        return target.isEmpty() ? null : target.get(0);
+    }
+    
+    @Override
     public Collection<Coordinate> getTargets() {
         return Collections.unmodifiableCollection(target);
     }
@@ -197,6 +216,28 @@ public class PlannerImpl implements Planner {
      */
     public Map getMap() {
         return map;
+    }
+    
+    private class DiffImpl implements Planner.Diff {
+        private Position lastPosition;
+        private Coordinate target;
+        
+        void reset() {
+            this.lastPosition = currentPosition;
+            this.target = getTarget();
+        }
+        
+        public boolean didHeadingChange() {
+            return ! DoubleUtils.eq(lastPosition.getHeading(), currentPosition.getHeading());          
+        }
+        
+        public boolean didPositionChange() {
+            return ! lastPosition.equals2D(currentPosition, map.getScale().getTolerance());
+        }
+        
+        public boolean didTargetChange() {
+            return getTarget() == null || ! target.equals2D(getTarget(), map.getScale().getTolerance());
+        }
     }
 
 }

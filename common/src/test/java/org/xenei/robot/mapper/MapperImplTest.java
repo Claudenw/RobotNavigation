@@ -11,9 +11,11 @@ import org.junit.jupiter.api.Test;
 import org.locationtech.jts.geom.Geometry;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Position;
+import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.common.mapping.CoordinateMap;
 import org.xenei.robot.common.mapping.Map;
 import org.xenei.robot.common.planning.Solution;
+import org.xenei.robot.common.testUtils.FakeDistanceSensor1;
 import org.xenei.robot.common.testUtils.FakeDistanceSensor;
 import org.xenei.robot.common.testUtils.MapLibrary;
 
@@ -21,10 +23,10 @@ public class MapperImplTest {
 
     @Test
     public void processSensorTest() {
-        Map map = new MapImpl(1);
+        Map map = new MapImpl(ScaleInfo.DEFAULT);
         MapperImpl underTest = new MapperImpl(map);
         CoordinateMap data = MapLibrary.map2('#');
-        FakeDistanceSensor sensor = new FakeDistanceSensor(MapLibrary.map2('#'));
+        FakeDistanceSensor sensor = new FakeDistanceSensor1(MapLibrary.map2('#'));
         List<Geometry> obsts = sensor.map().getObstacles().collect(Collectors.toList());
         Position position = new Position(MapImplTest.p);
         Solution solution = new Solution();

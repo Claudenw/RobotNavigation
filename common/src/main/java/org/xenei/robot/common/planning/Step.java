@@ -1,5 +1,7 @@
 package org.xenei.robot.common.planning;
 
+import java.util.Objects;
+
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.GeometryFactory;
@@ -11,22 +13,40 @@ public class Step extends AbstractFrontsCoordinate<Step> implements Comparable<S
     private final double cost;
     private final Geometry geom;
 
+    public Step(Coordinate position, Coordinate target) {
+        this(position, position.distance(target));
+    }
+    
     public Step(Coordinate position, Coordinate target, Geometry geom) {
         this(position, position.distance(target), geom);
     }
-    
+    public Step(FrontsCoordinate position, Coordinate target) {
+        this(position.getCoordinate(), position.distance(target));
+    }
+
     public Step(FrontsCoordinate position, Coordinate target, Geometry geom) {
         this(position.getCoordinate(), position.distance(target), geom);
     }
 
+    public Step(Coordinate position, FrontsCoordinate target) {
+        this(position, position.distance(target.getCoordinate()));
+    }
+    
     public Step(Coordinate position, FrontsCoordinate target, Geometry geom) {
         this(position, position.distance(target.getCoordinate()), geom);
+    }
+    
+    public Step(FrontsCoordinate position, FrontsCoordinate target) {
+        this(position.getCoordinate(), position.distance(target));
     }
     
     public Step(FrontsCoordinate position, FrontsCoordinate target, Geometry geom) {
         this(position.getCoordinate(), position.distance(target), geom);
     }
 
+    public Step(FrontsCoordinate point, double cost) {
+        this(point.getCoordinate(), cost);
+    }
     
     public Step(FrontsCoordinate point, double cost, Geometry geom) {
         this(point.getCoordinate(), cost, geom);
@@ -34,14 +54,18 @@ public class Step extends AbstractFrontsCoordinate<Step> implements Comparable<S
     
     public Step(Coordinate point, double cost, Geometry geom) {
         super(point);
+        Objects.requireNonNull(geom);
         this.cost = cost;
-        this.geom = geom == null? new GeometryFactory().createPoint(point) : geom;
+        this.geom = geom;
     }
   
+    public Step(Coordinate point, double cost) {
+        this(point, cost, new GeometryFactory().createPoint(point));
+    }
 
     @Override
     protected Step fromCoordinate(Coordinate base) {
-        return new Step(base, 0, null);
+        return new Step(base, 0);
     }
 
     public double cost() {
