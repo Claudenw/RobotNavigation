@@ -9,7 +9,7 @@ import org.xenei.robot.common.AbstractFrontsCoordinate;
 import org.xenei.robot.common.FrontsCoordinate;
 import org.xenei.robot.common.utils.CoordUtils;
 
-public class Step extends AbstractFrontsCoordinate<Step> implements Comparable<Step> {
+public class Step extends AbstractFrontsCoordinate implements Comparable<Step> {
     private final double cost;
     private final Geometry geom;
 

@@ -1,6 +1,7 @@
 package org.xenei.robot.common;
 
 import org.locationtech.jts.geom.Coordinate;
+import org.xenei.robot.common.utils.AngleUtils;
 import org.xenei.robot.common.utils.CoordUtils;
 import org.xenei.robot.common.utils.DoubleUtils;
 import org.xenei.robot.common.utils.GeometryUtils;
@@ -48,7 +49,7 @@ public class Position extends Location {
      */
     public Position(Coordinate point, double heading) {
         super(point);
-        this.heading = heading;
+        this.heading = AngleUtils.normalize(heading);
     }
 
     /**
@@ -58,8 +59,7 @@ public class Position extends Location {
      * @param heading the heading in radians.
      */
     public Position(FrontsCoordinate point, double heading) {
-        super(point);
-        this.heading = heading;
+        this(point.getCoordinate(), heading);
     }
 
     /**
@@ -133,9 +133,13 @@ public class Position extends Location {
      */
     public Position nextPosition(Location relativeCoordinates) {
         if (relativeCoordinates.range() == 0) {
-            return new Position(getX(), getY(), relativeCoordinates.theta());
+            //return new Position(getX(), getY(), relativeCoordinates.theta());
+            return this;
         }
-        return new Position(this.plus(relativeCoordinates), relativeCoordinates.theta());
+        
+        double heading = relativeCoordinates.theta()+this.heading;
+        Coordinate c = CoordUtils.fromAngle(heading, relativeCoordinates.range());
+        return new Position(this.plus(c), heading);
     }
 
     @Override
@@ -143,15 +147,20 @@ public class Position extends Location {
         return String.format("Position[ %s heading:%.4f ]", CoordUtils.toString(this.getCoordinate(), 4),
                 Math.toDegrees(heading));
     }
-    
-    public boolean checkCollistion(FrontsCoordinate fc, double tolerance) {
-        return checkCollistion(fc.getCoordinate(), tolerance);
+
+    public boolean checkCollision(FrontsCoordinate fc, double tolerance) {
+        return checkCollision(fc.getCoordinate(), tolerance);
     }
 
-    public boolean checkCollistion(Coordinate c, double tolerance) {
-        Coordinate l = CoordUtils.fromAngle( heading, distance(c));
-        double d = GeometryUtils.asPath( this.coordinate, l ).distance( GeometryUtils.asPoint(c));
+    public boolean checkCollision(Coordinate c, double tolerance) {
+        Coordinate l = CoordUtils.fromAngle(heading, distance(c));
+        double d = GeometryUtils.asPath(this.coordinate, l).distance(GeometryUtils.asPoint(c));
         return DoubleUtils.inRange(d, tolerance);
+    }
+
+    @Override
+    public Position fromCoordinate(Coordinate c) {
+        return new Position(c, ORIGIN.angleBetween(c));
     }
 
 }

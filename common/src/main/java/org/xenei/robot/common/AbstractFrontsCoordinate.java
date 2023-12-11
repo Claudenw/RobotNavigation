@@ -2,9 +2,10 @@ package org.xenei.robot.common;
 
 import org.locationtech.jts.geom.Coordinate;
 import org.xenei.robot.common.utils.AngleUtils;
+import org.xenei.robot.common.utils.CoordUtils;
 import org.xenei.robot.common.utils.DoubleUtils;
 
-public abstract class AbstractFrontsCoordinate<T extends AbstractFrontsCoordinate> implements FrontsCoordinate {
+public abstract class AbstractFrontsCoordinate implements FrontsCoordinate {
 
     UnmodifiableCoordinate coordinate;
 
@@ -116,40 +117,29 @@ public abstract class AbstractFrontsCoordinate<T extends AbstractFrontsCoordinat
         return coordinate.distance3D(c.getCoordinate());
     }
     
-    abstract protected T fromCoordinate(Coordinate base); 
+    abstract protected <T extends AbstractFrontsCoordinate> T fromCoordinate(Coordinate base); 
 
-    public T minus(Coordinate other) {
+    public <T extends AbstractFrontsCoordinate> T minus(Coordinate other) {
         return fromCoordinate(new Coordinate( getX() - other.getX(), getY()-other.getY()));
     }
     
-    public T minus(FrontsCoordinate other) {
+    public <T extends AbstractFrontsCoordinate> T minus(FrontsCoordinate other) {
         return fromCoordinate(new Coordinate( getX() - other.getX(), getY()-other.getY()));
     }
     
-    public T plus(Coordinate other) {
+    public <T extends AbstractFrontsCoordinate> T plus(Coordinate other) {
         return fromCoordinate(new Coordinate( getX()+other.getX(), getY()+other.getY()));
     }
     
-    public T plus(FrontsCoordinate other) {
+    public <T extends AbstractFrontsCoordinate> T plus(FrontsCoordinate other) {
         return fromCoordinate(new Coordinate( getX()+other.getX(), getY()+other.getY()));
     }
     
-    public double angleTo(FrontsCoordinate other) {
-        return angleTo(other.getCoordinate());
+    public double angleBetween(FrontsCoordinate other) {
+        return angleBetween(other.getCoordinate());
     }
     
-    public double angleTo(Coordinate dest) {
-        T diff = minus(dest);
-        double theta = AngleUtils.normalize(Math.atan(diff.getY() / diff.getX()));
-        boolean yNeg = DoubleUtils.isNeg(diff.getY());
-        boolean tNeg = DoubleUtils.isNeg(theta);
-
-        if (yNeg && !tNeg) {
-            theta -= Math.PI;
-        } else if (!yNeg && tNeg) {
-            theta += Math.PI;
-        }
-        // angle will be pointing the wront way, so reverse it.
-        return AngleUtils.normalize(theta + Math.PI);
+    public double angleBetween(Coordinate dest) {
+        return CoordUtils.angleBetween(this.getCoordinate(), dest);
     }
 }

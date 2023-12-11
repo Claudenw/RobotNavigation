@@ -11,7 +11,7 @@ import org.xenei.robot.common.utils.DoubleUtils;
  * An immutable definition of a set of Coordinates (X, Y) or (theta, r) values.
  * Holds both representations.
  */
-public class Location extends AbstractFrontsCoordinate<Location> {
+public class Location extends AbstractFrontsCoordinate {
     public static final Location ORIGIN = new Location(0, 0);
 
     /**
@@ -64,46 +64,12 @@ public class Location extends AbstractFrontsCoordinate<Location> {
     }
 
     /**
-     * Calculate the heading from this coordinate to the point.
-     * 
-     * @param point the heading to calculate angle to.
-     * @return the heading to the point.
-     */
-    public double headingTo(Coordinate point) {
-        Location c = new Location(this.minus(point));
-        // vector will be pointing the wrong way. So reverse it.
-        return AngleUtils.normalize(c.theta() + Math.PI);
-    }
-
-    /**
-     * Calculate the heading from this coordinate to the point.
-     * 
-     * @param point the heading to calculate angle to.
-     * @return the heading to the point.
-     */
-    public double headingTo(FrontsCoordinate point) {
-        Location diff = this.minus(point);
-        double theta = AngleUtils.normalize(Math.atan(diff.getY() / diff.getX()));
-        boolean yNeg = DoubleUtils.isNeg(diff.getY());
-        boolean tNeg = DoubleUtils.isNeg(theta);
-
-        if (yNeg && !tNeg) {
-            theta -= Math.PI;
-        } else if (!yNeg && tNeg) {
-            theta += Math.PI;
-        }
-        // angle will be pointing the wrong way, so reverse it.
-        return AngleUtils.normalize(theta + Math.PI);
-
-    }
-
-    /**
      * Return the angle in radians from the origin.
      * 
      * @return the angle in radians from the origin to this coordinates.
      */
     public double theta() {
-        return ORIGIN.headingTo(this);
+        return ORIGIN.angleBetween(this);
     }
 
     /**
@@ -115,8 +81,8 @@ public class Location extends AbstractFrontsCoordinate<Location> {
         return ORIGIN.distance(this);
     }
     
-    public boolean near(FrontsCoordinate c, double err) {
-        return this.distance(c) <= err;
+    public boolean near(FrontsCoordinate c, double tolerance) {
+        return this.distance(c) <= tolerance;
     }
 
     @Override

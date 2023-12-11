@@ -2,9 +2,14 @@ package org.xenei.robot.planner;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
@@ -14,31 +19,27 @@ import org.junit.jupiter.api.Test;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.Point;
-import org.xenei.robot.common.DistanceSensor;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mockito;
 import org.xenei.robot.common.Location;
-import org.xenei.robot.common.Mover;
+import org.xenei.robot.common.Position;
 import org.xenei.robot.common.ScaleInfo;
-import org.xenei.robot.common.SolutionTest;
 import org.xenei.robot.common.mapping.CoordinateMap;
 import org.xenei.robot.common.mapping.Map;
-import org.xenei.robot.common.mapping.Mapper;
+import org.xenei.robot.common.planning.Planner;
 import org.xenei.robot.common.planning.Planner.Diff;
+import org.xenei.robot.common.planning.Solution;
 import org.xenei.robot.common.planning.Step;
-import org.xenei.robot.common.testUtils.FakeDistanceSensor;
-import org.xenei.robot.common.testUtils.FakeDistanceSensor1;
-import org.xenei.robot.common.testUtils.FakeDistanceSensor2;
-import org.xenei.robot.common.testUtils.FakeMover;
+import org.xenei.robot.common.testUtils.CoordinateUtils;
 import org.xenei.robot.common.testUtils.MapLibrary;
-import org.xenei.robot.common.utils.AngleUtils;
 import org.xenei.robot.mapper.MapImpl;
-import org.xenei.robot.mapper.MapReports;
-import org.xenei.robot.mapper.MapperImpl;
-import org.xenei.robot.mapper.visualization.MapViz;
 
 public class PlannerTest {
 
-    private PlannerImpl underTest;
-    private MapViz mapViz;
+    private Planner underTest;
+
+    private ArgumentCaptor<Coordinate> coordinateCaptor = ArgumentCaptor.forClass(Coordinate.class);
+    private ArgumentCaptor<Step> stepCaptor = ArgumentCaptor.forClass(Step.class);
 
     @Test
     public void setTargetTest() {
@@ -80,101 +81,241 @@ public class PlannerTest {
         return sensedMap;
     }
 
-    private void processSensor(DistanceSensor sensor, Mapper mapper) {
-        Optional<Location> maybeTarget = mapper.processSensorData(underTest.getCurrentPosition(), underTest.getTarget(),
-                underTest.getSolution(), sensor.sense());
-        if (maybeTarget.isPresent()) {
-            underTest.replaceTarget(maybeTarget.get());
-        }
+    @Test
+    public void changeCurrentPositionTest() {
+        Map map = Mockito.mock(Map.class);
+        when(map.getScale()).thenReturn(ScaleInfo.DEFAULT);
+
+        Location finalCoord = new Location(-1, 1);
+        Location startCoord = new Location(-1, -3);
+        underTest = new PlannerImpl(map, startCoord, finalCoord);
+        Diff diff = underTest.getDiff();
+        assertFalse(diff.didChange());
+        Position p = new Position(1, 1);
+        // since there is ony one target this will add a position to the target stack
+        underTest.changeCurrentPosition(p);
+        assertTrue(diff.didChange());
+        assertTrue(diff.didPositionChange());
+
+        // map.addTarget(new Step(position.getCoordinate(),
+        // position.distance(target.peek())));
+        verify(map, times(2)).addTarget(stepCaptor.capture());
+        List<Step> lst = stepCaptor.getAllValues();
+        assertTrue(startCoord.equals2D(lst.get(0)));
+        assertTrue(p.equals2D(lst.get(1)));
+
+        // verify solution has 2 items
+        Solution solution = underTest.getSolution();
+        List<Coordinate> sol = solution.stream().collect(Collectors.toList());
+        assertEquals(2, sol.size());
+        assertTrue(startCoord.equals2D(sol.get(0)));
+        assertTrue(p.equals2D(lst.get(1)));
     }
 
-    private PlannerImpl doTest(FakeDistanceSensor sensor, Mapper mapper, Location startCoord, Location finalCoord) {
-        underTest = new PlannerImpl(mapper.getMap(), startCoord, finalCoord);
-        mapViz = new MapViz(100, mapper.getMap(), underTest.getSolution());
-        underTest.addListener(() -> mapViz.redraw(underTest.getTarget()));
-        Mover mover = new FakeMover(underTest.getCurrentPosition(), 1);
-        sensor.setPosition(underTest.getCurrentPosition());
-        processSensor(sensor, mapper);
-        
-        int stepCount = 0;
-        int maxLoops = 100;
-        while (underTest.getTarget() != null) {
-            System.out.println(MapReports.dumpModel((MapImpl)mapper.getMap()));
-            Diff diff = underTest.selectTarget();
-            if (diff.didChange()) {
-                sensor.setPosition(underTest.getCurrentPosition());
-                processSensor(sensor, mapper);
-            }
-            // move
-            underTest.changeCurrentPosition(mover.move(new Location(underTest.getTarget())));
-            sensor.setPosition(underTest.getCurrentPosition());
-            processSensor(sensor, mapper);
-            if (mapper.getMap().clearView(underTest.getCurrentPosition().getCoordinate(), underTest.getRootTarget())) {
-                underTest.replaceTarget(underTest.getRootTarget());
-            }
+    @Test
+    public void constructorTest() {
+        Map map = Mockito.mock(Map.class);
+        when(map.getScale()).thenReturn(ScaleInfo.DEFAULT);
 
-            if (maxLoops < stepCount++) {
-                fail("Did not find solution in " + maxLoops + " steps");
-            }
-            underTest.notifyListeners();
-        }
+        Location finalCoord = new Location(-1, 1);
+        Location startCoord = new Location(-1, -3);
+        underTest = new PlannerImpl(map, startCoord, finalCoord);
+        Diff diff = underTest.getDiff();
+        assertFalse(diff.didChange());
+
+        // verify addTarget called
+        verify(map, times(1)).addTarget(stepCaptor.capture());
+        assertTrue(startCoord.equals2D(stepCaptor.getValue()));
+
+        // verify recalculate called
+        verify(map).recalculate(coordinateCaptor.capture());
+        assertTrue(finalCoord.equals2D(coordinateCaptor.getValue()));
+
+        // verify solution has 1 item
+        Solution solution = underTest.getSolution();
+        List<Coordinate> sol = solution.stream().collect(Collectors.toList());
+        assertEquals(1, sol.size());
+        assertTrue(startCoord.equals2D(sol.get(0)));
+    }
+
+    @Test
+    public void targetTest() {
+        Map map = Mockito.mock(Map.class);
+        when(map.getScale()).thenReturn(ScaleInfo.DEFAULT);
+
+        Location finalCoord = new Location(-1, 1);
+        Location startCoord = new Location(-1, -3);
+        Coordinate newTarget = new Coordinate(4, 4);
+        underTest = new PlannerImpl(map, startCoord, finalCoord);
+        // this should make 2 targets
+        underTest.replaceTarget(newTarget);
+        Diff diff = underTest.getDiff();
+        assertTrue(diff.didChange());
+        assertTrue(diff.didTargetChange());
+        assertTrue(newTarget.equals2D(underTest.getTarget()));
+        assertEquals(2, underTest.getTargets().size());
+        assertTrue(finalCoord.equals2D(underTest.getRootTarget()));
+
+        // this should continue with 2 targets
+        newTarget = new Coordinate(5, 5);
+        // this should make 2 targets
+        underTest.replaceTarget(newTarget);
+        assertTrue(newTarget.equals2D(underTest.getTarget()));
+        assertEquals(2, underTest.getTargets().size());
+        assertTrue(finalCoord.equals2D(underTest.getRootTarget()));
+
+        // verify solution has 1 item
+        Solution solution = underTest.getSolution();
+        List<Coordinate> sol = solution.stream().collect(Collectors.toList());
+        assertEquals(1, sol.size());
+        assertTrue(startCoord.equals2D(sol.get(0)));
+    }
+
+    @Test
+    public void listenersTest() {
+        int[] result = { 0 };
+        Map map = Mockito.mock(Map.class);
+
+        Location finalCoord = new Location(-1, 1);
+        Location startCoord = new Location(-1, -3);
+        underTest = new PlannerImpl(map, startCoord, finalCoord);
+        underTest.addListener(() -> result[0]++);
         underTest.notifyListeners();
-        assertTrue(startCoord.equals2D(underTest.getSolution().start()));
-        assertTrue(finalCoord.equals2D(underTest.getSolution().end()));
-        return underTest;
+        assertEquals(1, result[0]);
+        verify(map).recalculate(coordinateCaptor.capture());
+        assertTrue(finalCoord.equals2D(coordinateCaptor.getValue()));
     }
 
     @Test
-    public void stepTestMap2() {
-        Coordinate[] expectedSolution = { new Coordinate(-1.0, -3.0), new Coordinate(-0.9999999999999999, -2.0),
-                new Coordinate(-0.4472135954999578, -1.8944271909999157),
-                new Coordinate(0.2928932188134528, -1.7071067811865475),
-                new Coordinate(-1.5527864045000421, -1.8944271909999157),
-                new Coordinate(-4.000468632496236, -1.9693888030933675),
-                new Coordinate(-4.547420028549094, -0.8917238190389993), new Coordinate(-1.0, 1.0) };
-        FakeDistanceSensor sensor = new FakeDistanceSensor1(MapLibrary.map2('#'));
-        Map map = new MapImpl(ScaleInfo.DEFAULT);
-        MapperImpl mapper = new MapperImpl(map);
+    public void recalculateCostsTest() {
+        Map map = Mockito.mock(Map.class);
 
         Location finalCoord = new Location(-1, 1);
         Location startCoord = new Location(-1, -3);
-        PlannerImpl underTest = doTest(sensor, mapper, startCoord, finalCoord);
+        underTest = new PlannerImpl(map, startCoord, finalCoord);
+        Coordinate newTarget = new Coordinate(4, 4);
+        underTest.replaceTarget(newTarget);
+        underTest.recalculateCosts();
 
-        assertEquals(SolutionTest.expectedSolution.length - 1, underTest.getSolution().stepCount());
-        List<Coordinate> solution = underTest.getSolution().stream().collect(Collectors.toList());
-        assertEquals(SolutionTest.expectedSolution.length, solution.size());
-        for (int i = 0; i < solution.size(); i++) {
-            final int j = i;
-            assertTrue(expectedSolution[i].equals2D(solution.get(i), 0.00001),
-                    () -> String.format("failed at %s: %s == %s +/- 0.00001", j, SolutionTest.expectedSolution[j],
-                            solution.get(j)));
-        }
+        // verify recalculate was called once for each target
+        verify(map, times(2)).recalculate(coordinateCaptor.capture());
+        List<Coordinate> lst = coordinateCaptor.getAllValues();
+        assertTrue(finalCoord.equals2D(lst.get(0)));
+        assertTrue(newTarget.equals2D(lst.get(1)));
+
+        // verify setTemporaryCost was called once
+        verify(map).setTemporaryCost(stepCaptor.capture());
+        Step step = stepCaptor.getValue();
+        assertTrue(startCoord.equals2D(step.getCoordinate()));
+        assertEquals(Double.POSITIVE_INFINITY, step.cost());
+
+        // verify solution has 1 item
+        Solution solution = underTest.getSolution();
+        List<Coordinate> sol = solution.stream().collect(Collectors.toList());
+        assertEquals(1, sol.size());
+        assertTrue(startCoord.equals2D(sol.get(0)));
     }
 
     @Test
-    public void stepTestMap3() {
-        Coordinate[] expectedSimpleSolution = { new Coordinate(-1, -3), new Coordinate(-3, -2), new Coordinate(-4, -1),
-                new Coordinate(-4, 0), new Coordinate(-1, 1) };
-        FakeDistanceSensor2 sensor = new FakeDistanceSensor2(MapLibrary.map3('#'), AngleUtils.RADIANS_45);
-        Map map = new MapImpl(ScaleInfo.DEFAULT);
-        MapperImpl mapper = new MapperImpl(map);
+    public void restartTest() {
+        Map map = Mockito.mock(Map.class);
+        when(map.getScale()).thenReturn(ScaleInfo.DEFAULT);
 
         Location finalCoord = new Location(-1, 1);
         Location startCoord = new Location(-1, -3);
+        Location nextStart = new Location(4, 4);
+        underTest = new PlannerImpl(map, startCoord, finalCoord);
+        underTest.restart(nextStart);
+        Diff diff = underTest.getDiff();
+        assertFalse(diff.didChange());
 
-        PlannerImpl underTest = doTest(sensor, mapper, startCoord, finalCoord);
+        // verify current position changed
+        assertTrue(nextStart.equals2D(underTest.getCurrentPosition()));
 
-        assertEquals(25, underTest.getSolution().stepCount());
-        assertEquals(33.29126786466034, underTest.getSolution().cost());
+        // verify addTarget called
+        verify(map, times(2)).addTarget(stepCaptor.capture());
+        List<Step> steps = stepCaptor.getAllValues();
+        assertTrue(startCoord.equals2D(steps.get(0)));
+        assertTrue(nextStart.equals2D(steps.get(1)));
 
-        underTest.getSolution().simplify(map::clearView);
-        assertEquals(7.812559200041265, underTest.getSolution().cost());
-        assertTrue(startCoord.equals2D(underTest.getSolution().start()));
-        assertTrue(finalCoord.equals2D(underTest.getSolution().end()));
-        List<Coordinate> solution = underTest.getSolution().stream().collect(Collectors.toList());
-        assertEquals(expectedSimpleSolution.length, solution.size());
-        for (int i = 0; i < solution.size(); i++) {
-            assertTrue(expectedSimpleSolution[i].equals2D(solution.get(i)));
-        }
+        // verify solution has 1 item
+        Solution solution = underTest.getSolution();
+        List<Coordinate> sol = solution.stream().collect(Collectors.toList());
+        assertEquals(1, sol.size());
+        assertTrue(nextStart.equals2D(sol.get(0)));
+
     }
+
+    @Test
+    public void getPlanRecordsTest() {
+        Map map = Mockito.mock(Map.class);
+        when(map.getScale()).thenReturn(ScaleInfo.DEFAULT);
+        when(map.getTargets()).thenReturn(Collections.emptyList());
+
+        Location finalCoord = new Location(-1, 1);
+        Location startCoord = new Location(-1, -3);
+        underTest = new PlannerImpl(map, startCoord, finalCoord);
+        underTest.getPlanRecords();
+
+        // verify we got them from the map
+        verify(map).getTargets();
+    }
+
+    @Test
+    public void selectTargetTest() {
+        Location finalCoord = new Location(-1, 1);
+        Location startCoord = new Location(-1, -3);
+        Location stepLocation = new Location(3, 3);
+        Step step = new Step(stepLocation, 5);
+
+        Map map = Mockito.mock(Map.class);
+        when(map.getScale()).thenReturn(ScaleInfo.DEFAULT);
+        when(map.getBestTarget(any())).thenReturn(Optional.of(step)).thenReturn(Optional.empty());
+        underTest = new PlannerImpl(map, startCoord, finalCoord);
+
+        // first target (step)
+        Diff diff = underTest.selectTarget();
+
+        assertTrue(diff.didChange());
+        assertTrue(diff.didTargetChange());
+
+        CoordinateUtils.assertEquivalent(step, underTest.getTarget());
+        Solution solution = underTest.getSolution();
+        CoordinateUtils.assertEquivalent(startCoord, solution.start());
+        CoordinateUtils.assertEquivalent(startCoord, solution.end());
+        assertEquals(0, solution.stepCount());
+
+        // second target (empty)
+        diff.reset();
+        diff = underTest.selectTarget();
+        assertFalse(diff.didChange());
+        CoordinateUtils.assertEquivalent(step, underTest.getTarget());
+        solution = underTest.getSolution();
+        CoordinateUtils.assertEquivalent(startCoord, solution.start());
+        CoordinateUtils.assertEquivalent(startCoord, solution.end());
+        assertEquals(0, solution.stepCount());
+
+        // change the position to current target location.
+        underTest.changeCurrentPosition(new Position(step));
+        diff.reset();
+        diff = underTest.selectTarget();
+        assertTrue(diff.didChange());
+        CoordinateUtils.assertEquivalent(finalCoord, underTest.getTarget());
+        solution = underTest.getSolution();
+        CoordinateUtils.assertEquivalent(startCoord, solution.start());
+        CoordinateUtils.assertEquivalent(stepLocation, solution.end());
+        assertEquals(1, solution.stepCount());
+
+        // chhange the position to the end location
+        underTest.changeCurrentPosition(new Position(finalCoord));
+        diff.reset();
+        diff = underTest.selectTarget();
+        assertTrue(diff.didChange());
+        assertNull(underTest.getTarget());
+        solution = underTest.getSolution();
+        CoordinateUtils.assertEquivalent(startCoord, solution.start());
+        CoordinateUtils.assertEquivalent(finalCoord, solution.end());
+        assertEquals(2, solution.stepCount());
+    }
+
 }

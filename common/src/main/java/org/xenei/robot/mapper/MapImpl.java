@@ -2,7 +2,6 @@ package org.xenei.robot.mapper;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -13,9 +12,6 @@ import java.util.TreeSet;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
-import org.apache.commons.math3.ml.clustering.Cluster;
-import org.apache.commons.math3.ml.clustering.Clusterable;
-import org.apache.commons.math3.ml.clustering.DBSCANClusterer;
 import org.apache.jena.arq.querybuilder.AskBuilder;
 import org.apache.jena.arq.querybuilder.ExprFactory;
 import org.apache.jena.arq.querybuilder.Order;
@@ -49,7 +45,6 @@ import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.xenei.robot.common.HasCoordinate;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.common.mapping.Map;
@@ -58,7 +53,6 @@ import org.xenei.robot.common.planning.Step;
 import org.xenei.robot.common.utils.CoordUtils;
 import org.xenei.robot.common.utils.GeometryUtils;
 import org.xenei.robot.mapper.rdf.Namespace;
-
 
 public class MapImpl implements Map {
     private static final Logger LOG = LoggerFactory.getLogger(MapImpl.class);
@@ -85,16 +79,30 @@ public class MapImpl implements Map {
     }
 
     @Override
+    public void clear(String namedGraph) {
+        try (LockHandler lh = new LockHandler(Lock.WRITE)) {
+            if (namedGraph.equals(Namespace.UnionModel.getURI())) {
+                data.getDefaultModel().removeAll();
+                data.replaceNamedModel(Namespace.BaseModel, defaultModel());
+                data.replaceNamedModel(Namespace.PlanningModel, defaultModel());
+            } else {
+                data.replaceNamedModel(namedGraph, defaultModel());
+            }
+        }
+
+    }
+
+    @Override
     public ScaleInfo getScale() {
         return scale;
     }
-    
-    public static java.util.Map<String,String> getPrefixMapping() {
-        java.util.Map<String,String> map = new HashMap<>();
-        map.putAll(GeoSPARQL_URI.getPrefixes());
-        map.putAll(PrefixMapping.Standard.getNsPrefixMap());
-        map.put("robut", "urn:org.xenei.robot:");
-        return map;
+
+    public static PrefixMapping getPrefixMapping() {
+        PrefixMapping pm = PrefixMapping.Factory.create();
+        pm.setNsPrefixes(GeoSPARQL_URI.getPrefixes());
+        pm.setNsPrefixes(PrefixMapping.Standard.getNsPrefixMap());
+        pm.setNsPrefix("robut", "urn:org.xenei.robot:");
+        return pm;
     }
 
     private static Model defaultModel() {
@@ -119,14 +127,14 @@ public class MapImpl implements Map {
         }
     }
 
-    boolean ask(AskBuilder ask) {
+    public boolean ask(AskBuilder ask) {
         try (LockHandler lh = new LockHandler(Lock.READ);
                 QueryExecution exec = QueryExecutionFactory.create(ask.build(), data)) {
             return exec.execAsk();
         }
     }
 
-    void dump(Resource modelName, Consumer<Model> consumer) {
+    public void dump(Resource modelName, Consumer<Model> consumer) {
         try (LockHandler lh = new LockHandler(Lock.READ)) {
             consumer.accept(data.getNamedModel(modelName));
         }
@@ -381,6 +389,7 @@ public class MapImpl implements Map {
         };
 
         exec(sb, processor);
+
         if (rec[0] == null) {
             LOG.debug("No Selected map points");
             return Optional.empty();
@@ -388,11 +397,6 @@ public class MapImpl implements Map {
         return Optional.of(rec[0]);
     }
 
-    /**
-     * Update the planning model with new distances based on the new target
-     * 
-     * @param target the new target.
-     */
     @Override
     public void recalculate(Coordinate target) {
         LOG.debug("recalculate: {}", target);
@@ -600,6 +604,5 @@ public class MapImpl implements Map {
 //
 //        }
 //    }
-    
-    
+
 }

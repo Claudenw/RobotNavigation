@@ -17,6 +17,7 @@ import org.xenei.robot.common.mapping.Map;
 import org.xenei.robot.common.planning.Planner;
 import org.xenei.robot.common.planning.Solution;
 import org.xenei.robot.common.planning.Step;
+import org.xenei.robot.common.planning.Planner.Diff;
 import org.xenei.robot.common.utils.DoubleUtils;
 
 public class PlannerImpl implements Planner {
@@ -56,6 +57,10 @@ public class PlannerImpl implements Planner {
         restart(startPosition);
     }
 
+    public Diff getDiff() {
+        return diff;
+    }
+
     @Override
     public void addListener(Planner.Listener listener) {
         this.listeners.add(listener);
@@ -80,18 +85,18 @@ public class PlannerImpl implements Planner {
     }
     
     /**
-     * Sets the current position and resets the solution.
+     * Restart from the new location using the current map.
      * 
-     * @param coords the new current position.
+     * @param start the new starting position.
      */
-    public void restart(Location coords) {
+    public void restart(Location start) {
         double distance = Double.NaN;
-        double angle = 0.0;
+        double angle = 0.0; 
         if (getTarget() != null) {
-            distance = coords.distance(getTarget());
-            angle = coords.headingTo(getTarget());
+            distance = start.distance(getTarget());
+            angle = start.headingTo(getTarget());
         }
-        currentPosition = new Position(coords, angle);
+        currentPosition = new Position(start, angle);
         diff.reset();
         map.addTarget(new Step(currentPosition.getCoordinate(), distance));
         resetSolution();
@@ -143,17 +148,6 @@ public class PlannerImpl implements Planner {
         }
         return diff;
     }
-
-    
-//    public boolean faceTarget(Coordinate target) {
-//        // see if we can get to target directly
-//        if (map.clearView(currentPosition.getCoordinate(), target)) {
-//            map.addPath(currentPosition.getCoordinate(), target);
-//            currentPosition.setHeading(target);
-//            return true;
-//        }
-//        return false;
-//    }
     
     public void recalculateCosts() {
         // recalculate the distances
@@ -222,7 +216,7 @@ public class PlannerImpl implements Planner {
         private Position lastPosition;
         private Coordinate target;
         
-        void reset() {
+        public void reset() {
             this.lastPosition = currentPosition;
             this.target = getTarget();
         }

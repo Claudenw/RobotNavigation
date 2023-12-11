@@ -65,6 +65,9 @@ public class CoordUtils {
     
     public static double angleBetween(Coordinate a, Coordinate b) {
         Coordinate diff = subtract(a,b);
+        if (diff.getX() == 0 && diff.getY() == 0) {
+            return 0;
+        }
         double theta = AngleUtils.normalize(Math.atan(diff.getY() / diff.getX()));
         boolean yNeg = DoubleUtils.isNeg(diff.getY());
         boolean tNeg = DoubleUtils.isNeg(theta);
@@ -74,7 +77,7 @@ public class CoordUtils {
         } else if (!yNeg && tNeg) {
             theta += Math.PI;
         }
-        // angle will be pointing the wront way, so reverse it.
+        // angle will be pointing the wrong way, so reverse it.
         return AngleUtils.normalize(theta + Math.PI);
     }
 }

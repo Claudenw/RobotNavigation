@@ -3,8 +3,8 @@ package org.xenei.robot.common.planning;
 import java.util.Collection;
 
 import org.locationtech.jts.geom.Coordinate;
-import org.xenei.robot.common.DistanceSensor;
 import org.xenei.robot.common.FrontsCoordinate;
+import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Position;
 
 public interface Planner {
@@ -21,7 +21,7 @@ public interface Planner {
      * @return the coordinates of the target.
      */
     Coordinate getTarget();
-    
+
     Coordinate getRootTarget();
 
     /**
@@ -102,6 +102,34 @@ public interface Planner {
     void addListener(Listener listener);
 
     /**
+     * Notify listeners to reprocess data.
+     */
+    void notifyListeners();
+    
+    void recalculateCosts();
+    
+    /**
+     * Restart from the new location using the current map.
+     * 
+     * @param start the new starting position.
+     */
+    void restart(Location start);
+    
+    /**
+     * Convenience method to get the steps from the underlying map.
+     * Equivalent to map.getTargets();
+     * @return the collection of targets from the map.
+     * @see Map#getTargets
+     */
+    Collection<Step> getPlanRecords();
+    
+    /**
+     * Gets the Diff associatd with this planner.
+     * @return the Diff associated with this planner.
+     */
+    Diff getDiff();
+    
+    /**
      * A functional interface that defines a listener to update.
      */
     @FunctionalInterface
@@ -110,6 +138,9 @@ public interface Planner {
     }
 
     interface Diff {
+
+        void reset();
+
         default boolean didChange() {
             return didHeadingChange() || didPositionChange() || didTargetChange();
         }

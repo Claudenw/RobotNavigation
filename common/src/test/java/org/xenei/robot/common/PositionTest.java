@@ -23,11 +23,14 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.locationtech.jts.geom.Coordinate;
+import org.xenei.robot.common.testUtils.CoordinateUtils;
+import org.xenei.robot.common.utils.AngleUtils;
 import org.xenei.robot.common.utils.CoordUtils;
 import org.xenei.robot.common.utils.DoubleUtils;
 
 public class PositionTest {
-    
+
     private Position initial;
 
     @BeforeEach
@@ -43,7 +46,7 @@ public class PositionTest {
         assertEquals(SQRT2, nxt.getX(), DELTA);
         assertEquals(SQRT2, nxt.getY(), DELTA);
 
-        cmd = new Location(2, 0);
+        cmd = new Location(CoordUtils.fromAngle(-RADIANS_45, 2));
         nxt = nxt.nextPosition(cmd);
 
         assertEquals(SQRT2 + 2, nxt.getX(), DELTA);
@@ -59,95 +62,123 @@ public class PositionTest {
         assertEquals(SQRT2, nxt.getX(), DELTA);
         assertEquals(SQRT2, nxt.getY(), DELTA);
 
-        cmd = new Location(CoordUtils.fromAngle(-RADIANS_45, 2));
-        nxt = nxt.nextPosition(cmd);
-        assertEquals(-RADIANS_45, nxt.getHeading(), DELTA);
-        assertEquals(SQRT2 * 2, nxt.getX(), DELTA);
-        assertEquals(0.0, nxt.getY(), DELTA);
-
-        cmd = new Location(CoordUtils.fromAngle(-RADIANS_135, 2));
-        nxt = nxt.nextPosition(cmd);
-        assertEquals(-RADIANS_135, nxt.getHeading(), DELTA);
-        assertEquals(SQRT2, nxt.getX(), DELTA);
-        assertEquals(-SQRT2, nxt.getY(), DELTA);
-
-        cmd = new Location(CoordUtils.fromAngle(RADIANS_135, 2));
+        cmd = new Location(CoordUtils.fromAngle(RADIANS_90, 2));
         nxt = nxt.nextPosition(cmd);
         assertEquals(RADIANS_135, nxt.getHeading(), DELTA);
+        assertEquals(0.0, nxt.getX(), DELTA);
+        assertEquals(SQRT2 * 2, nxt.getY(), DELTA);
+
+        nxt = nxt.nextPosition(cmd);
+        assertEquals(RADIANS_225, nxt.getHeading(), DELTA);
+        assertEquals(-SQRT2, nxt.getX(), DELTA);
+        assertEquals(SQRT2, nxt.getY(), DELTA);
+
+        nxt = nxt.nextPosition(cmd);
+        assertEquals(RADIANS_315, nxt.getHeading(), DELTA);
         assertEquals(0, nxt.getX(), DELTA);
         assertEquals(0, nxt.getY(), DELTA);
     }
 
-//    @ParameterizedTest(name = "{index} {1}/{2} {3}")
-//    @MethodSource("collisionParameters")
-//    public void collisionTest(boolean state, double x, double y, double heading, double targX, double targY) {
-//        Position pos = new Position(new Location(x, y), heading);
-//        Location target = new Location(targX, targY);
-//        if (state) {
-//            assertTrue(pos.checkCollision(target, Location.POINT_RADIUS, 10),
-//                    () -> String.format("Did not collide with %s/%s", target.getX(), target.getY()));
-//        } else {
-//            assertFalse(pos.checkCollision(target, Location.POINT_RADIUS, 10),
-//                    () -> String.format("Did collide with %s/%s", target.getX(), target.getY()));
-//        }
-//    }
-
-    private static void addCollisionArgs(List<Arguments> args, boolean state, double x, double y, double heading,
-            double[] targ) {
-        double[] offsets = { -.4, 0, .4 };
-        for (double deltax : offsets) {
-            for (double deltay : offsets) {
-                args.add(Arguments.of(state, x, y, heading, x + targ[0] + deltax, y + targ[1] + deltay));
-            }
+    @ParameterizedTest(name = "{index} {0}")
+    @MethodSource("collisionParameters")
+    public void collisionTest(String name, boolean state, Position pos, Coordinate target) {
+        if (state) {
+            assertTrue(pos.checkCollision(target, ScaleInfo.DEFAULT.getTolerance()),
+                    () -> String.format("Did not collide with %s/%s", target.getX(), target.getY()));
+        } else {
+            assertFalse(pos.checkCollision(target, ScaleInfo.DEFAULT.getTolerance()),
+                    () -> String.format("Did collide with %s/%s", target.getX(), target.getY()));
         }
     }
 
     private static Stream<Arguments> collisionParameters() {
-
-        double[] deg0 = { 1, 0, 0 };
-        double[] deg45 = { 1, 1, RADIANS_45 };
-        double[] deg90 = { 0, 1, RADIANS_90 };
-        double[] deg135 = { -1, 1, RADIANS_135 };
-        double[] deg180 = { -1, 0, RADIANS_180 };
-        double[] deg225 = { -1, -1, RADIANS_225 };
-        double[] deg270 = { 0, -1, RADIANS_270 };
-        double[] deg315 = { 1, -1, RADIANS_315 };
-
-        List<double[]> targets = List.of(deg0, deg45, deg90, deg135, deg180, deg225, deg270, deg315);
+        double[] angles = { 0, RADIANS_45, RADIANS_90, RADIANS_135, RADIANS_180, RADIANS_225, RADIANS_270,
+                RADIANS_315 };
         List<Arguments> args = new ArrayList<>();
-        for (int origx = -1; origx < 2; origx++) {
-            double x = origx;
-            for (int origy = -1; origy < 2; origy++) {
-                double y = origy;
-                for (int targIdx = 0; targIdx < targets.size(); targIdx++) {
-                    double[] data = targets.get(targIdx);
-                    double heading = data[2];
-                    addCollisionArgs(args, true, x, y, heading, targets.get(targIdx));
-                    for (int notTarg = 2; notTarg < 8; notTarg += 2) {
-                        int idx = (targIdx + notTarg) % 8;
-                        addCollisionArgs(args, false, x, y, heading, targets.get(idx));
-                    }
 
-                }
+        for (double angle : angles) {
+            for (double heading : angles) {
+                Coordinate c = CoordUtils.fromAngle(angle, 10);
+                Position p = new Position(0, 0, heading);
+                args.add(Arguments.of(String.format("%s/%s", Math.toDegrees(heading), Math.toDegrees(angle)),
+                        angle == heading, p, c));
             }
         }
         return args.stream();
     }
 
-    @ParameterizedTest
-    @MethodSource("rangeParameters")
-    public void inRangeTest(boolean state, double a, double b, double range) {
-        if (state) {
-            assertTrue(DoubleUtils.inRange(a, b, range));
-        } else {
-            assertFalse(DoubleUtils.inRange(a, b, range));
-        }
+    @ParameterizedTest(name = "{index} {0}")
+    @MethodSource("fromCoordinateParameters")
+    public void fromCoordinateTest(int degrees, Coordinate c, double radians) {
+        Position p = new Position(0, 0, 0);
+        Position t = p.fromCoordinate(c);
+        CoordinateUtils.assertEquivalent(t, c, ScaleInfo.DEFAULT.getResolution());
+        assertEquals(radians, t.getHeading(), ScaleInfo.DEFAULT.getResolution());
     }
 
-    private static Stream<Arguments> rangeParameters() {
-        return Stream.of(Arguments.of(true, 0, 1, 1), Arguments.of(true, 0, .5, 1), Arguments.of(true, -1, -1, 1),
-                Arguments.of(false, -1, 1, 1), Arguments.of(false, .5, 1.1, .5),
-                Arguments.of(true, -1.2246467991473532E-16, 0.0, 0.5), Arguments.of(true, 0.0, Precision.EPSILON, 0.0),
-                Arguments.of(true, 0.0, -Precision.EPSILON, 0.0));
+    private static Stream<Arguments> fromCoordinateParameters() {
+        double[] angles = { 0, RADIANS_45, RADIANS_90, RADIANS_135, RADIANS_180, RADIANS_225, RADIANS_270,
+                RADIANS_315 };
+        List<Arguments> args = new ArrayList<>();
+
+        args.add(Arguments.of(0, new Coordinate(1, 0), 0));
+        args.add(Arguments.of(45, new Coordinate(1, 1), RADIANS_45));
+        args.add(Arguments.of(90, new Coordinate(0, 1), RADIANS_90));
+        args.add(Arguments.of(135, new Coordinate(-1, 1), RADIANS_135));
+        args.add(Arguments.of(180, new Coordinate(-1, 0), RADIANS_180));
+        args.add(Arguments.of(225, new Coordinate(-1, -1), RADIANS_225));
+        args.add(Arguments.of(270, new Coordinate(0, -1), RADIANS_270));
+        args.add(Arguments.of(315, new Coordinate(1, -1), RADIANS_315));
+
+        return args.stream();
     }
+
+    @ParameterizedTest(name = "{index} {0}")
+    @MethodSource("nextPositionParameters")
+    public void nextPositionTest(int degrees, Location l, double radians) {
+        Position p = new Position(0, 0, 0);
+        Position t = p.nextPosition(l);
+        CoordinateUtils.assertEquivalent(l, t, DELTA);
+        assertEquals(radians, t.getHeading(), ScaleInfo.DEFAULT.getResolution());
+    }
+
+    private static Stream<Arguments> nextPositionParameters() {
+        double[] angles = { 0, RADIANS_45, RADIANS_90, RADIANS_135, RADIANS_180, RADIANS_225, RADIANS_270,
+                RADIANS_315 };
+        List<Arguments> args = new ArrayList<>();
+
+        args.add(Arguments.of(0, new Location(1, 0), 0));
+        args.add(Arguments.of(45, new Location(1, 1), RADIANS_45));
+        args.add(Arguments.of(90, new Location(0, 1), RADIANS_90));
+        args.add(Arguments.of(135, new Location(-1, 1), RADIANS_135));
+        args.add(Arguments.of(180, new Location(-1, 0), RADIANS_180));
+        args.add(Arguments.of(225, new Location(-1, -1), RADIANS_225));
+        args.add(Arguments.of(270, new Location(0, -1), RADIANS_270));
+        args.add(Arguments.of(315, new Location(1, -1), RADIANS_315));
+
+        args.add(Arguments.of(0, new Location(Precision.EPSILON, 0), 0));
+        args.add(Arguments.of(45, new Location(Precision.EPSILON, Precision.EPSILON), RADIANS_45));
+        args.add(Arguments.of(90, new Location(0, Precision.EPSILON), RADIANS_90));
+        args.add(Arguments.of(135, new Location(-Precision.EPSILON, Precision.EPSILON), RADIANS_135));
+        args.add(Arguments.of(180, new Location(-Precision.EPSILON, 0), RADIANS_180));
+        args.add(Arguments.of(225, new Location(-Precision.EPSILON, -Precision.EPSILON), RADIANS_225));
+        args.add(Arguments.of(270, new Location(0, -Precision.EPSILON), RADIANS_270));
+        args.add(Arguments.of(315, new Location(Precision.EPSILON, -Precision.EPSILON), RADIANS_315));
+
+        return args.stream();
+    }
+
+    private double calcAngle(double theta, boolean yNeg) {
+
+        boolean tNeg = DoubleUtils.isNeg(theta);
+
+        if (yNeg && !tNeg) {
+            theta -= Math.PI;
+        } else if (!yNeg && tNeg) {
+            theta += Math.PI;
+        }
+        // angle will be pointing the wrong way, so reverse it.
+        return AngleUtils.normalize(theta + Math.PI);
+    }
+
 }

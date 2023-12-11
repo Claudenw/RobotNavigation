@@ -2,12 +2,16 @@ package org.xenei.robot.common.testUtils;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.xenei.robot.common.utils.AngleUtils.RADIANS_135;
+import static org.xenei.robot.common.utils.AngleUtils.RADIANS_225;
+import static org.xenei.robot.common.utils.AngleUtils.RADIANS_315;
 import static org.xenei.robot.common.utils.AngleUtils.RADIANS_45;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Position;
+import org.xenei.robot.common.utils.AngleUtils;
+import org.xenei.robot.common.utils.CoordUtils;
 
 public class FakeMoverTest {
     private static final double DELTA = 0.00000000001;
@@ -23,13 +27,13 @@ public class FakeMoverTest {
 
     @Test
     public void zigZagTest() {
-        Location move = new Location(sqrt2, sqrt2).minus(underTest.position());
+        Location move = new Location(CoordUtils.fromAngle(RADIANS_45, 2));
         underTest.move(move);
-        assertEquals(radians, underTest.position().getHeading(), DELTA);
+        assertEquals(RADIANS_45, underTest.position().getHeading(), DELTA);
         assertEquals(sqrt2, underTest.position().getX(), DELTA);
         assertEquals(sqrt2, underTest.position().getY(), DELTA);
 
-        move = new Location(sqrt2 + 2, sqrt2).minus(underTest.position());
+        move = new Location(CoordUtils.fromAngle(-RADIANS_45, 2));
         underTest.move(move);
         assertEquals(sqrt2 + 2, underTest.position().getX(), DELTA);
         assertEquals(sqrt2, underTest.position().getY(), DELTA);
@@ -38,27 +42,25 @@ public class FakeMoverTest {
 
     @Test
     public void boxTest() {
-        Location move = new Location(sqrt2, sqrt2).minus(underTest.position());
+        Location move = new Location(sqrt2, sqrt2);
         underTest.move(move);
-        assertEquals(radians, underTest.position().getHeading(), DELTA);
+        assertEquals(RADIANS_45, underTest.position().getHeading(), DELTA);
         assertEquals(sqrt2, underTest.position().getX(), DELTA);
         assertEquals(sqrt2, underTest.position().getY(), DELTA);
 
-        move = new Location(sqrt2 * 2, 0.0).minus(underTest.position());
-        underTest.move(move);
-        assertEquals(-RADIANS_45, underTest.position().getHeading(), DELTA);
-        assertEquals(sqrt2 * 2, underTest.position().getX(), DELTA);
-        assertEquals(0.0, underTest.position().getY(), DELTA);
-
-        move = new Location(sqrt2, -sqrt2).minus(underTest.position());
-        underTest.move(move);
-        assertEquals(-RADIANS_135, underTest.position().getHeading(), DELTA);
-        assertEquals(sqrt2, underTest.position().getX(), DELTA);
-        assertEquals(-sqrt2, underTest.position().getY(), DELTA);
-
-        move = new Location(0, 0).minus(underTest.position());
+        move = new Location(CoordUtils.fromAngle(AngleUtils.RADIANS_90, 2));
         underTest.move(move);
         assertEquals(RADIANS_135, underTest.position().getHeading(), DELTA);
+        assertEquals(0.0, underTest.position().getX(), DELTA);
+        assertEquals(sqrt2 * 2, underTest.position().getY(), DELTA);
+
+        underTest.move(move);
+        assertEquals(RADIANS_225, underTest.position().getHeading(), DELTA);
+        assertEquals(-sqrt2, underTest.position().getX(), DELTA);
+        assertEquals(sqrt2, underTest.position().getY(), DELTA);
+
+        underTest.move(move);
+        assertEquals(RADIANS_315, underTest.position().getHeading(), DELTA);
         assertEquals(0, underTest.position().getX(), DELTA);
         assertEquals(0, underTest.position().getY(), DELTA);
     }

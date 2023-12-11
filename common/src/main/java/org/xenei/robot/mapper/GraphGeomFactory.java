@@ -43,7 +43,7 @@ public class GraphGeomFactory {
         return wrapper.getParsingGeometry();
     }
 
-    static Literal asWKT(Geometry geom) {
+    public static Literal asWKT(Geometry geom) {
         return ResourceFactory.createTypedLiteral(geom.toText(), WKTDatatype.INSTANCE);
     }
 

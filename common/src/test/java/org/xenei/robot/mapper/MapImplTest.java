@@ -18,6 +18,7 @@ import org.apache.jena.arq.querybuilder.ExprFactory;
 import org.apache.jena.arq.querybuilder.SelectBuilder;
 import org.apache.jena.arq.querybuilder.WhereBuilder;
 import org.apache.jena.geosparql.implementation.vocabulary.Geo;
+import org.apache.jena.util.iterator.UniqueFilter;
 import org.apache.jena.vocabulary.RDF;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -26,10 +27,14 @@ import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.Point;
 import org.xenei.robot.common.Location;
+import org.xenei.robot.common.Position;
 import org.xenei.robot.common.ScaleInfo;
+import org.xenei.robot.common.planning.Solution;
 import org.xenei.robot.common.planning.Step;
 import org.xenei.robot.common.utils.CoordUtils;
+import org.xenei.robot.common.utils.DoubleUtils;
 import org.xenei.robot.common.utils.GeometryUtils;
+import org.xenei.robot.mapper.MapperImpl.ObstacleMapper;
 import org.xenei.robot.mapper.rdf.Namespace;
 
 public class MapImplTest {
@@ -91,7 +96,7 @@ public class MapImplTest {
     }
 
     @Test
-    public void getBestTest() {
+    public void getBestTargetTest() {
         Optional<Step> pr = underTest.getBestTarget(p);
         assertTrue(pr.isPresent());
         Coordinate p2 = new Coordinate(-1, -2);
@@ -305,6 +310,7 @@ public class MapImplTest {
                         GraphGeomFactory.asWKT(GeometryUtils.asPoint(expected[0])));
         System.out.println(MapReports.dumpModel(underTest));
         assertTrue(underTest.ask(ask));
-
     }
+    
+
 }

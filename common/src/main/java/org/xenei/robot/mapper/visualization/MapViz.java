@@ -6,6 +6,7 @@ import java.awt.EventQueue;
 import java.awt.Graphics;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import javax.swing.JFrame;
@@ -22,12 +23,12 @@ import org.xenei.robot.common.planning.Step;
 import org.xenei.robot.common.utils.GeometryUtils;
 
 public class MapViz {
-    private Solution solution;
+    private Supplier<Solution> solution;
     private Map map;
     private JTSPanel panel;
     private int scale;
 
-    public MapViz(int scale, Map map, Solution solution) {
+    public MapViz(int scale, Map map, Supplier<Solution> solution) {
         this.map = map;
         this.panel = new JTSPanel();
         this.solution = solution;
@@ -89,7 +90,7 @@ public class MapViz {
             cmds.add(getPoly(targ.getGeometry(), Color.CYAN));
         }
 
-        List<Coordinate> lst = solution.stream().collect(Collectors.toList());
+        List<Coordinate> lst = solution.get().stream().collect(Collectors.toList());
         if (lst.size() > 1) {
             cmds.add(getPoly(GeometryUtils.asPath(lst.toArray(new Coordinate[lst.size()])), Color.WHITE));
         } else {

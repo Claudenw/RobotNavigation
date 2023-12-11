@@ -38,26 +38,39 @@ public class MapperImpl implements Mapper {
         return map;
     }
     
+    boolean tooClose(Location c) {
+        return !DoubleUtils.inRange(c.range(), map.getScale().getTolerance());
+    }
+    
+    Position nextPosition(Position currentPosition, Location c) {
+        LOG.trace( "Checking {}", c);
+        return currentPosition.nextPosition(c);
+        //return currentPosition.plus(c);
+    }
+    
+    boolean nonOtherFilter(Position currentPosition, Optional<Location> loc) {
+        return loc.isPresent() && !loc.get().near(currentPosition, map.getScale().getTolerance());
+    }
+    
     @Override
     public Optional<Location> processSensorData(Position currentPosition, Coordinate target, Solution solution, Location[] obstacles) {
         // next target set if collision detected.
         ObstacleMapper obstacleMapper = new ObstacleMapper(currentPosition, target);
         LOG.trace("Sense position: {}", currentPosition);
         double halfScale = map.getScale().getScale()/2;
+
         // get the sensor readings and add obstacles to the map
         //@formatter:off
         Arrays.stream(obstacles)
                 // filter out any range < 1.0
-                .filter(c -> !DoubleUtils.inRange(c.range(), map.getScale().getTolerance()))
+                .filter(this::tooClose)
                 // create absolute coordinates
-                .map(c -> {
-                    LOG.trace( "Checking {}", c);
-                    return currentPosition.plus(c);
-                })
-                .filter( new UniqueFilter<Location>() )
+                .map(c -> nextPosition(currentPosition, c))
+                .filter( new UniqueFilter<Position>() )
                 .map(obstacleMapper::map)
                 // filter out non entries
-                .filter(c -> c.isPresent() && !c.get().near(currentPosition, .5))
+                .filter( Optional::isPresent )
+                //.filter(c -> c.isPresent() && !c.get().near(currentPosition, .5))
                 .map(Optional::get)
                 .filter( new UniqueFilter<Location>() )
                 .forEach(c -> recordMapPoint(currentPosition, new Step( c.getCoordinate(), c.distance(target))));
@@ -90,9 +103,9 @@ public class MapperImpl implements Mapper {
      * @param obstacle the position of an obstacle or other location not to be in.
      * @return An optional that contains the nearest open coordinates if any.
      */
-    private Optional<Location> not(Position currentPosition, Location obstacle) {
+    Optional<Location> not(Position currentPosition, Location obstacle) {
         double d = currentPosition.distance(obstacle) - map.getScale().getTolerance();
-        double theta = currentPosition.angleTo(obstacle);
+        double theta = currentPosition.headingTo(obstacle);
         Coordinate difference = CoordUtils.fromAngle(theta,d);
         Location candidate = currentPosition.plus(difference);
         if (map.isObstacle(candidate.getCoordinate())) {
@@ -102,7 +115,8 @@ public class MapperImpl implements Mapper {
                 return Optional.empty();
             }
         }
-        return Optional.of(candidate);
+        return currentPosition.distance(obstacle) < map.getScale().getTolerance() ?
+                Optional.empty() : Optional.of(candidate);
     }
 
     /**
@@ -113,7 +127,7 @@ public class MapperImpl implements Mapper {
      */
     private boolean registerObstacle(Position currentPosition, Coordinate target, Coordinate obstacle) {
         map.addObstacle(obstacle);
-        boolean result = currentPosition.checkCollistion(obstacle, map.getScale().getTolerance());
+        boolean result = currentPosition.checkCollision(obstacle, map.getScale().getTolerance());
         if (result) {
             LOG.info("Possible collision from {} detected at {}", currentPosition, obstacle);
         }
