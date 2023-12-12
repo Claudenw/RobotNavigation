@@ -91,12 +91,11 @@ public class PlannerImpl implements Planner {
      */
     public void restart(Location start) {
         double distance = Double.NaN;
-        double angle = 0.0; 
+        currentPosition = new Position(start, 0);
         if (getTarget() != null) {
+            currentPosition.setHeading(getTarget());
             distance = start.distance(getTarget());
-            angle = start.headingTo(getTarget());
         }
-        currentPosition = new Position(start, angle);
         diff.reset();
         map.addTarget(new Step(currentPosition.getCoordinate(), distance));
         resetSolution();

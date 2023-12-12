@@ -102,6 +102,13 @@ public class Position extends Location {
         this.heading = heading;
     }
 
+    public double headingTo(Coordinate heading) {
+        return AngleUtils.normalize( Math.atan2( heading.getY()-this.getY(), heading.getX()-this.getX()));
+    }
+    
+    public double headingTo(FrontsCoordinate heading) {
+        return headingTo(heading.getCoordinate());
+    }
     /**
      * Set the heading to a Point.
      * 
@@ -117,7 +124,7 @@ public class Position extends Location {
      * @param heading the point to head towards.
      */
     public void setHeading(FrontsCoordinate heading) {
-        this.heading = headingTo(heading);
+        setHeading(heading.getCoordinate());
     }
 
     /**
@@ -141,6 +148,7 @@ public class Position extends Location {
         Coordinate c = CoordUtils.fromAngle(heading, relativeCoordinates.range());
         return new Position(this.plus(c), heading);
     }
+    
 
     @Override
     public String toString() {

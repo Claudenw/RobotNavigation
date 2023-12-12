@@ -31,11 +31,11 @@ public class LocationTest {
 
     @ParameterizedTest
     @MethodSource("coordPairParameters")
-    public void headingTo(Location a, Location b, double expected, double angle) {
-        assertEquals(AngleUtils.normalize(RADIANS_180 + angle), a.headingTo(b), DELTA);
-        assertEquals(angle, b.headingTo(a), DELTA);
-        assertEquals(0.0, a.headingTo(a), DELTA);
-        assertEquals(0.0, b.headingTo(b), DELTA);
+    public void angleBetweenTest(Location a, Location b, double expected, double angle) {
+        assertEquals(AngleUtils.normalize(RADIANS_180 + angle), a.angleBetween(b), DELTA);
+        assertEquals(angle, b.angleBetween(a), DELTA);
+        assertEquals(0.0, a.angleBetween(a), DELTA);
+        assertEquals(0.0, b.angleBetween(b), DELTA);
     }
 
     private static void processStream(List<Arguments> lst, double[] args) {

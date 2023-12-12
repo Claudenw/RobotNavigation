@@ -3,6 +3,7 @@ package org.xenei.robot.common;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.doubleThat;
 import static org.xenei.robot.common.LocationTest.DELTA;
 import static org.xenei.robot.common.utils.AngleUtils.RADIANS_135;
 import static org.xenei.robot.common.utils.AngleUtils.RADIANS_180;
@@ -181,4 +182,19 @@ public class PositionTest {
         return AngleUtils.normalize(theta + Math.PI);
     }
 
+    @ParameterizedTest(name = "{index} {0}")
+    @MethodSource("headingToParameters")
+    public void headingToTest(Position p, Coordinate c, double expected) {
+        assertEquals( expected, p.headingTo(c), ScaleInfo.DEFAULT.getResolution());
+    }
+    
+    public static Stream<Arguments> headingToParameters() {
+        List<Arguments> lst = new ArrayList<>();
+        lst.add( Arguments.arguments( new Position(-1, -3, 0), new Coordinate(-1,-1), RADIANS_90));
+        lst.add( Arguments.arguments( new Position(-1, -3, RADIANS_90), new Coordinate(-1,-1), RADIANS_90));
+        lst.add( Arguments.arguments( new Position(-1, -3, -RADIANS_90), new Coordinate(-1,-1), RADIANS_90));
+        lst.add( Arguments.arguments( new Position(-1, -3, RADIANS_45), new Coordinate(-1,-1), RADIANS_90));
+        lst.add( Arguments.arguments( new Position(-1, 1, RADIANS_45), new Coordinate(1,3), RADIANS_45));
+        return lst.stream();
+    }
 }

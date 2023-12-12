@@ -38,14 +38,14 @@ public class MapperImpl implements Mapper {
         return map;
     }
     
+    // throw away any locations that are closer than tolerance since we know they are false
     boolean tooClose(Location c) {
         return !DoubleUtils.inRange(c.range(), map.getScale().getTolerance());
     }
     
-    Position nextPosition(Position currentPosition, Location c) {
-        LOG.trace( "Checking {}", c);
-        return currentPosition.nextPosition(c);
-        //return currentPosition.plus(c);
+    Position nextPosition(Position currentPosition, Location relativeCoordinates) {
+        LOG.trace( "Checking {}", relativeCoordinates);
+        return currentPosition.nextPosition(relativeCoordinates);
     }
     
     boolean nonOtherFilter(Position currentPosition, Optional<Location> loc) {
@@ -105,18 +105,24 @@ public class MapperImpl implements Mapper {
      */
     Optional<Location> not(Position currentPosition, Location obstacle) {
         double d = currentPosition.distance(obstacle) - map.getScale().getTolerance();
+        if (d<map.getScale().getTolerance()) {
+            return Optional.empty();
+        }
         double theta = currentPosition.headingTo(obstacle);
-        Coordinate difference = CoordUtils.fromAngle(theta,d);
+        Location difference = new Location(CoordUtils.fromAngle(theta,d));
         Location candidate = currentPosition.plus(difference);
         if (map.isObstacle(candidate.getCoordinate())) {
-            difference = CoordUtils.fromAngle(theta,d-map.getScale().getBuffer());
-            candidate = currentPosition.plus(difference);;
+            d -= map.getScale().getTolerance();
+            if (d<map.getScale().getTolerance()) {
+                return Optional.empty();
+            }
+            difference = new Location(CoordUtils.fromAngle(theta,d));
+            candidate = currentPosition.nextPosition(difference);
             if (map.isObstacle(candidate.getCoordinate())) {
                 return Optional.empty();
             }
         }
-        return currentPosition.distance(obstacle) < map.getScale().getTolerance() ?
-                Optional.empty() : Optional.of(candidate);
+        return Optional.of(candidate);
     }
 
     /**
@@ -149,8 +155,7 @@ public class MapperImpl implements Mapper {
             LOG.debug("Sensed {}", obstacle);
             boolean collisionDetected = registerObstacle(currentPosition, target, obstacle.getCoordinate());
             Optional<Location> result = not(currentPosition, obstacle);
-            if (collisionDetected) {
-                if (result.isPresent()) {
+            if (collisionDetected  && result.isPresent()) {
                     if (nextTarget.isEmpty()) {
                         nextTarget = result;
                         d = result.get().distance(currentPosition);
@@ -161,7 +166,6 @@ public class MapperImpl implements Mapper {
                             nextTarget = result;
                         }
                     }
-                }
             }
             return result;
         }

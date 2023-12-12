@@ -79,7 +79,7 @@ public class MapperImplTest {
     public void processSensorDataTest_TooClose() {
        
         Position currentPosition = new Position(-1,-3, AngleUtils.RADIANS_90);
-        Coordinate target = new Coordinate( -1.0, 1.0 );
+        Coordinate target = new Coordinate( -1, 1 );
         Solution solution = new Solution();
         Map map = Mockito.mock(Map.class);
         when(map.getScale()).thenReturn(ScaleInfo.DEFAULT);
@@ -88,18 +88,17 @@ public class MapperImplTest {
         // an obstacle one unit away is too close so no target generated.
         Location[] obstacles = { new Location(CoordUtils.fromAngle(0,1)) };
         Optional<Location> result = underTest.processSensorData(currentPosition, target, solution, obstacles);
+        assertTrue(result.isEmpty());
         // verify obstacle was added
         verify(map).addObstacle(coordinateCaptor.capture());
-        CoordinateUtils.assertEquivalent(currentPosition.plus(obstacles[0]), coordinateCaptor.getValue());
-        assertTrue(result.isEmpty());
-        
+        CoordinateUtils.assertEquivalent(new Coordinate(-1, -2), coordinateCaptor.getValue(), ScaleInfo.DEFAULT.getResolution());
     }
     
     @Test
     public void processSensorDataTest_IntermediateTarget() {
        
         Position currentPosition = new Position(-1,-3, AngleUtils.RADIANS_90);
-        Coordinate target = new Coordinate( -1.0, 1.0 );
+        Coordinate target = new Coordinate( -1, 1 );
         Solution solution = new Solution();
         Map map = Mockito.mock(Map.class);
         when(map.getScale()).thenReturn(ScaleInfo.DEFAULT);
@@ -107,11 +106,12 @@ public class MapperImplTest {
         
         Location[] obstacles = { new Location(CoordUtils.fromAngle(0,2)) };
         Optional<Location> result = underTest.processSensorData(currentPosition, target, solution, obstacles);
+        assertFalse(result.isEmpty());
         // verify obstacle was added
         verify(map).addObstacle(coordinateCaptor.capture());
-        CoordinateUtils.assertEquivalent(currentPosition.plus(obstacles[0]), coordinateCaptor.getValue());
-        assertFalse(result.isEmpty());
-        
+        CoordinateUtils.assertEquivalent(new Coordinate(-1, -1.5), result.get(), ScaleInfo.DEFAULT.getResolution());
+        CoordinateUtils.assertEquivalent(new Coordinate(-1, -1), coordinateCaptor.getValue(), ScaleInfo.DEFAULT.getResolution());
+
     }
         
         //Location[] obstacles = { new Location(CoordUtils.fromAngle(0,1)) };
