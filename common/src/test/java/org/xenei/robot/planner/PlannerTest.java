@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -39,7 +40,8 @@ public class PlannerTest {
     private Planner underTest;
 
     private ArgumentCaptor<Coordinate> coordinateCaptor = ArgumentCaptor.forClass(Coordinate.class);
-    private ArgumentCaptor<Step> stepCaptor = ArgumentCaptor.forClass(Step.class);
+    //private ArgumentCaptor<Step> stepCaptor = ArgumentCaptor.forClass(Step.class);
+    private ArgumentCaptor<Double> doubleCaptor = ArgumentCaptor.forClass(Double.class);
 
     @Test
     public void setTargetTest() {
@@ -97,10 +99,9 @@ public class PlannerTest {
         assertTrue(diff.didChange());
         assertTrue(diff.didPositionChange());
 
-        // map.addTarget(new Step(position.getCoordinate(),
-        // position.distance(target.peek())));
-        verify(map, times(2)).addTarget(stepCaptor.capture());
-        List<Step> lst = stepCaptor.getAllValues();
+        //map.addTarget(p.getCoordinate(), p.distance(underTest.getTarget()));
+        verify(map, times(2)).addTarget(coordinateCaptor.capture(), doubleCaptor.capture());
+        List<Coordinate> lst = coordinateCaptor.getAllValues();
         assertTrue(startCoord.equals2D(lst.get(0)));
         assertTrue(p.equals2D(lst.get(1)));
 
@@ -124,8 +125,8 @@ public class PlannerTest {
         assertFalse(diff.didChange());
 
         // verify addTarget called
-        verify(map, times(1)).addTarget(stepCaptor.capture());
-        assertTrue(startCoord.equals2D(stepCaptor.getValue()));
+        verify(map, times(1)).addTarget(coordinateCaptor.capture(), doubleCaptor.capture());
+        assertTrue(startCoord.equals2D(coordinateCaptor.getValue()));
 
         // verify recalculate called
         verify(map).recalculate(coordinateCaptor.capture());
@@ -204,10 +205,9 @@ public class PlannerTest {
         assertTrue(newTarget.equals2D(lst.get(1)));
 
         // verify setTemporaryCost was called once
-        verify(map).setTemporaryCost(stepCaptor.capture());
-        Step step = stepCaptor.getValue();
-        assertTrue(startCoord.equals2D(step.getCoordinate()));
-        assertEquals(Double.POSITIVE_INFINITY, step.cost());
+        verify(map).setTemporaryCost(coordinateCaptor.capture(), doubleCaptor.capture());
+        assertTrue(startCoord.equals2D(coordinateCaptor.getValue()));
+        assertEquals(Double.POSITIVE_INFINITY,doubleCaptor.getValue());
 
         // verify solution has 1 item
         Solution solution = underTest.getSolution();
@@ -233,17 +233,16 @@ public class PlannerTest {
         assertTrue(nextStart.equals2D(underTest.getCurrentPosition()));
 
         // verify addTarget called
-        verify(map, times(2)).addTarget(stepCaptor.capture());
-        List<Step> steps = stepCaptor.getAllValues();
-        assertTrue(startCoord.equals2D(steps.get(0)));
-        assertTrue(nextStart.equals2D(steps.get(1)));
+        verify(map, times(2)).addTarget(coordinateCaptor.capture(), doubleCaptor.capture());
+        List<Coordinate> coords = coordinateCaptor.getAllValues();
+        assertTrue(startCoord.equals2D(coords.get(0)));
+        assertTrue(nextStart.equals2D(coords.get(1)));
 
         // verify solution has 1 item
         Solution solution = underTest.getSolution();
         List<Coordinate> sol = solution.stream().collect(Collectors.toList());
         assertEquals(1, sol.size());
         assertTrue(nextStart.equals2D(sol.get(0)));
-
     }
 
     @Test
@@ -266,7 +265,10 @@ public class PlannerTest {
         Location finalCoord = new Location(-1, 1);
         Location startCoord = new Location(-1, -3);
         Location stepLocation = new Location(3, 3);
-        Step step = new Step(stepLocation, 5);
+        Step step = mock(Step.class);
+        when(step.getCoordinate()).thenReturn(stepLocation.getCoordinate());
+        when(step.cost()).thenReturn(Double.valueOf(5));
+
 
         Map map = Mockito.mock(Map.class);
         when(map.getScale()).thenReturn(ScaleInfo.DEFAULT);

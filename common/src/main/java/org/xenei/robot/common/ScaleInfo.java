@@ -1,5 +1,7 @@
 package org.xenei.robot.common;
 
+import org.locationtech.jts.geom.Coordinate;
+
 public class ScaleInfo {
 
     public static double M_SCALE = 1.0;
@@ -30,6 +32,10 @@ public class ScaleInfo {
         return resolution;
     }
     
+    public int decimalPlaces() {
+        return (int) Math.log10( 1/getResolution() );
+    }
+    
     public double getTolerance() {
         return resolution+buffer;
     }
@@ -47,6 +53,13 @@ public class ScaleInfo {
             this.buffer = buffer;
             return this;
         }
+        
+        /**
+         * Resolution of the sale in meters.
+         * (e.g. centimeter resolution would be 0.01);
+         * @param resolution the resolution of this scale.
+         * @return the builder for chaining.
+         */
         public Builder setResolution(double resolution) {
             this.resolution = resolution;
             return this;

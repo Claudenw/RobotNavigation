@@ -47,7 +47,7 @@ public class Namespace {
     public static final Property point = ResourceFactory.createProperty(URI + "point");
 
     
-    public static final Resource Point = ResourceFactory.createResource(GeoSPARQL_URI.SF_URI+"Point");
+    //public static final Resource Point = ResourceFactory.createResource(GeoSPARQL_URI.SF_URI+"Point");
     
     public static final Property nearbyF = ResourceFactory.createProperty(SpatialExtension.NEARBY_PROP );
 
@@ -56,13 +56,14 @@ public class Namespace {
     public static final Var o = Var.alloc("o");
 
     
-    public static <T extends WhereClause<?>> T addData(T whereClause, Object r, Coordinate c) {
-       whereClause.addWhere(r, Namespace.x, c.getX());
-       whereClause.addWhere(r, Namespace.y, c.getY());
-       return whereClause;
-    }
-    
-    public static UpdateBuilder addData(UpdateBuilder updateBuilder, Object r, Coordinate c) {
-        return updateBuilder.addWhere(r, Namespace.x, c.getX()).addWhere(r, Namespace.y, c.getY());
-     }
+//    public static <T extends WhereClause<?>> T addData(T whereClause, Object r, Coordinate c) {
+//       whereClause.addWhere(r, Namespace.x, c.getX());
+//       whereClause.addWhere(r, Namespace.y, c.getY());
+//       whereClause.addWhere(r, Geo.AS_WKT_PROP, asWKT(c))
+//       return whereClause;
+//    }
+//    
+//    public static UpdateBuilder addData(UpdateBuilder updateBuilder, Object r, Coordinate c) {
+//        return updateBuilder.addWhere(r, Namespace.x, c.getX()).addWhere(r, Namespace.y, c.getY());
+//     }
 }

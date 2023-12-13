@@ -53,8 +53,8 @@ public class GraphGeomFactoryTest {
         Coordinate c = new Coordinate(1, 1);
         Coordinate b = new Coordinate(1, 5);
 
-        Model m = GraphGeomFactory.asRDF(c).getModel();
-        m.add(GraphGeomFactory.asRDF(b).getModel());
+        Model m = GraphGeomFactory.asRDF(c, Namespace.Coord).getModel();
+        m.add(GraphGeomFactory.asRDF(b, Namespace.Coord).getModel());
         Dataset ds = createDataset(m);
         Literal testWkt = GraphGeomFactory.asWKT(c);
 
@@ -70,15 +70,8 @@ public class GraphGeomFactoryTest {
   @Test
   public void asRDFTest() {
       Coordinate p = new Coordinate( -1, 3 );
-      Resource r = GraphGeomFactory.asRDF(p);
-    //System.out.println( MapReports.dumpModel( r.getModel() ));
-
-      assertTrue( r.hasLiteral(Namespace.x, -1.0));
-      assertTrue( r.hasLiteral(Namespace.y, 3.0));
-      assertTrue( r.hasProperty(RDF.type, Namespace.Point));
-      assertTrue( r.hasProperty(Geo.AS_WKT_PROP,GraphGeomFactory.asWKT(GeometryUtils.asPoint(p))));
       
-      r = GraphGeomFactory.asRDF(p, Namespace.Coord);
+      Resource r = GraphGeomFactory.asRDF(p, Namespace.Coord);
       assertTrue( r.hasLiteral(Namespace.x, -1.0));
       assertTrue( r.hasLiteral(Namespace.y, 3.0));
       assertTrue( r.hasProperty(RDF.type, Namespace.Coord));

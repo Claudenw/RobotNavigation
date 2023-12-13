@@ -117,7 +117,7 @@ public class ProcessorTest {
         int stepCount = 0;
         int maxLoops = 100;
         while (planner.getTarget() != null) {
-            System.out.println(MapReports.dumpModel((MapImpl) mapper.getMap()));
+            //System.out.println(MapReports.dumpModel((MapImpl) mapper.getMap()));
             Diff diff = planner.selectTarget();
             if (diff.didChange()) {
                 processSensor();

@@ -73,7 +73,7 @@ public class MapperImpl implements Mapper {
                 //.filter(c -> c.isPresent() && !c.get().near(currentPosition, .5))
                 .map(Optional::get)
                 .filter( new UniqueFilter<Location>() )
-                .forEach(c -> recordMapPoint(currentPosition, new Step( c.getCoordinate(), c.distance(target))));
+                .forEach(c -> recordMapPoint(currentPosition, new StepImpl( c.getCoordinate(), c.distance(target))));
         //@formatter::on
        
         if (obstacleMapper.nextTarget.isPresent() && !solution.isEmpty()) {
@@ -94,7 +94,7 @@ public class MapperImpl implements Mapper {
     }
 
     private void recordMapPoint(Position currentPosition, Step target) {
-        map.addTarget(target);
+        map.addTarget(target.getCoordinate(), target.cost());
         map.addPath(currentPosition.getCoordinate(), target.getCoordinate());
     }
 

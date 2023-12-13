@@ -32,9 +32,11 @@ public interface Map {
      * Add the target to the planning
      * 
      * @param target the target to add.
+     * @param distance the distance to the final target
      */
-    void addTarget(Step target);
+    void addTarget(Coordinate target, double distance);
 
+    
     /**
      * Gets the collection of all targets in the planning graph
      * @return the collection of all targets in the planning graph.
@@ -65,7 +67,7 @@ public interface Map {
      * Sets the adjustment value for the point specified by the step.
      * @param target the point to update.
      */
-    void setTemporaryCost(Step target);
+    void setTemporaryCost(Coordinate target, double cost);
 
 
     /**

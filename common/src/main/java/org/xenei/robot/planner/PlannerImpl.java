@@ -81,7 +81,7 @@ public class PlannerImpl implements Planner {
         diff.reset();
         currentPosition = position;
         solution.add(position);
-        map.addTarget(new Step(position.getCoordinate(), position.distance(target.peek())));
+        map.addTarget(position.getCoordinate(), position.distance(target.peek()));
     }
     
     /**
@@ -97,7 +97,7 @@ public class PlannerImpl implements Planner {
             distance = start.distance(getTarget());
         }
         diff.reset();
-        map.addTarget(new Step(currentPosition.getCoordinate(), distance));
+        map.addTarget(currentPosition.getCoordinate(), distance);
         resetSolution();
     }
 
@@ -152,7 +152,7 @@ public class PlannerImpl implements Planner {
         // recalculate the distances
         map.recalculate(target.peek());
         // update the planning model make sure we don't revisit where we have been.
-        solution.stream().forEach(t -> map.setTemporaryCost(new Step(t, Double.POSITIVE_INFINITY)));
+        solution.stream().forEach(t -> map.setTemporaryCost(t, Double.POSITIVE_INFINITY));
     }
     
     @Override

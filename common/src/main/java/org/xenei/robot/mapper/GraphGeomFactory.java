@@ -59,27 +59,7 @@ public class GraphGeomFactory {
         return asWKT(GeometryUtils.asPolygon(points));
     }
 
-    static UpdateBuilder addPath(Resource model, Coordinate... points) {
-        Literal path = asWKTString(points);
-       // Node tn = NodeFactory.createTripleNode(rA.asNode(), Namespace.Path.asNode(), rB.asNode());
-        Resource tn = ResourceFactory.createResource();
-
-        
-        WhereBuilder wb = new WhereBuilder();
-        List<Triple> triples = new ArrayList<>();
-        triples.add( Triple.create(tn.asNode(), RDF.type.asNode(), Namespace.Path.asNode()));
-        triples.add( Triple.create(tn.asNode(), Geo.AS_WKT_PROP.asNode(), path.asNode()));
-  
-        
- 
-        int i=0;
-        for (Coordinate c : points) {
-            Var v = Var.alloc( "c"+i++);
-            triples.add( Triple.create(tn.asNode(), Namespace.point.asNode(), v ));
-            Namespace.addData(wb, v, c);
-        }
-        return new UpdateBuilder().addInsert(model, triples).addGraph(Namespace.PlanningModel, wb);
-    }
+    
 
 //    static WhereBuilder findPath(Node o, Geometry point) {
 //        return addNearby(new WhereBuilder(), o, point, 1).addWhere(o, RDF.type, Namespace.Path);
@@ -107,10 +87,6 @@ public class GraphGeomFactory {
         return exprF.call(NEARBY, geo1, geo2, distance, METERS);
     }
     
-    public static Resource asRDF(Coordinate a) {
-        return asRDF(a, Namespace.Point, GeometryUtils.asPoint(a));
-    }
-    
     public static Resource asRDF(Coordinate a, Resource type) {
         return asRDF(a, type, GeometryUtils.asPoint(a));
     }
@@ -124,8 +100,7 @@ public class GraphGeomFactory {
         Objects.requireNonNull(type);
         Objects.requireNonNull(geom);
         Model result = ModelFactory.createDefaultModel();
-        Resource r = result.createResource();
-        r.addProperty(RDF.type, type);
+        Resource r = result.createResource(type);
         r.addLiteral(Namespace.x, a.getX());
         r.addLiteral(Namespace.y, a.getY());
         r.addLiteral(Geo.AS_WKT_PROP, asWKT(geom));
