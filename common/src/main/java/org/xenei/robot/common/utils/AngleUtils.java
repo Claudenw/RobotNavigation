@@ -16,7 +16,8 @@ public class AngleUtils {
         if (Double.isNaN(angle)) {
             return 0.0;
         }
-        return Math.atan2(Math.sin(angle), Math.cos(angle));
+        double d = Math.atan2(Math.sin(angle), Math.cos(angle));
+        return DoubleUtils.eq(-Math.PI, d) ? Math.PI : d;
     }
    
 }

@@ -38,6 +38,7 @@ import org.xenei.robot.mapper.MapImpl;
 public class PlannerTest {
 
     private Planner underTest;
+    private final double buffer = 0.5;
 
     private ArgumentCaptor<Coordinate> coordinateCaptor = ArgumentCaptor.forClass(Coordinate.class);
     //private ArgumentCaptor<Step> stepCaptor = ArgumentCaptor.forClass(Step.class);
@@ -48,7 +49,7 @@ public class PlannerTest {
         CoordinateMap cmap = MapLibrary.map2('#');
         Map map = new MapImpl(ScaleInfo.DEFAULT);
         Location origin = new Location(0, 0);
-        underTest = new PlannerImpl(map, origin);
+        underTest = new PlannerImpl(map, origin, buffer);
         for (int x = 0; x <= 13; x++) {
             for (int y = 0; y <= 15; y++) {
                 Location c = new Location(x, y);
@@ -90,7 +91,7 @@ public class PlannerTest {
 
         Location finalCoord = new Location(-1, 1);
         Location startCoord = new Location(-1, -3);
-        underTest = new PlannerImpl(map, startCoord, finalCoord);
+        underTest = new PlannerImpl(map, startCoord, buffer, finalCoord);
         Diff diff = underTest.getDiff();
         assertFalse(diff.didChange());
         Position p = new Position(1, 1);
@@ -100,7 +101,7 @@ public class PlannerTest {
         assertTrue(diff.didPositionChange());
 
         //map.addTarget(p.getCoordinate(), p.distance(underTest.getTarget()));
-        verify(map, times(2)).addTarget(coordinateCaptor.capture(), doubleCaptor.capture());
+        verify(map, times(2)).addCoord(coordinateCaptor.capture(), doubleCaptor.capture(), false, false);
         List<Coordinate> lst = coordinateCaptor.getAllValues();
         assertTrue(startCoord.equals2D(lst.get(0)));
         assertTrue(p.equals2D(lst.get(1)));
@@ -120,16 +121,16 @@ public class PlannerTest {
 
         Location finalCoord = new Location(-1, 1);
         Location startCoord = new Location(-1, -3);
-        underTest = new PlannerImpl(map, startCoord, finalCoord);
+        underTest = new PlannerImpl(map, startCoord, buffer, finalCoord);
         Diff diff = underTest.getDiff();
         assertFalse(diff.didChange());
 
         // verify addTarget called
-        verify(map, times(1)).addTarget(coordinateCaptor.capture(), doubleCaptor.capture());
+        verify(map, times(1)).addCoord(coordinateCaptor.capture(), doubleCaptor.capture(), false, false);
         assertTrue(startCoord.equals2D(coordinateCaptor.getValue()));
 
         // verify recalculate called
-        verify(map).recalculate(coordinateCaptor.capture());
+        verify(map).recalculate(coordinateCaptor.capture(), buffer);
         assertTrue(finalCoord.equals2D(coordinateCaptor.getValue()));
 
         // verify solution has 1 item
@@ -147,7 +148,7 @@ public class PlannerTest {
         Location finalCoord = new Location(-1, 1);
         Location startCoord = new Location(-1, -3);
         Coordinate newTarget = new Coordinate(4, 4);
-        underTest = new PlannerImpl(map, startCoord, finalCoord);
+        underTest = new PlannerImpl(map, startCoord, buffer, finalCoord);
         // this should make 2 targets
         underTest.replaceTarget(newTarget);
         Diff diff = underTest.getDiff();
@@ -179,11 +180,11 @@ public class PlannerTest {
 
         Location finalCoord = new Location(-1, 1);
         Location startCoord = new Location(-1, -3);
-        underTest = new PlannerImpl(map, startCoord, finalCoord);
+        underTest = new PlannerImpl(map, startCoord, buffer, finalCoord);
         underTest.addListener(() -> result[0]++);
         underTest.notifyListeners();
         assertEquals(1, result[0]);
-        verify(map).recalculate(coordinateCaptor.capture());
+        verify(map).recalculate(coordinateCaptor.capture(), buffer);
         assertTrue(finalCoord.equals2D(coordinateCaptor.getValue()));
     }
 
@@ -193,13 +194,13 @@ public class PlannerTest {
 
         Location finalCoord = new Location(-1, 1);
         Location startCoord = new Location(-1, -3);
-        underTest = new PlannerImpl(map, startCoord, finalCoord);
+        underTest = new PlannerImpl(map, startCoord, buffer, finalCoord);
         Coordinate newTarget = new Coordinate(4, 4);
         underTest.replaceTarget(newTarget);
         underTest.recalculateCosts();
 
         // verify recalculate was called once for each target
-        verify(map, times(2)).recalculate(coordinateCaptor.capture());
+        verify(map, times(2)).recalculate(coordinateCaptor.capture(), buffer);
         List<Coordinate> lst = coordinateCaptor.getAllValues();
         assertTrue(finalCoord.equals2D(lst.get(0)));
         assertTrue(newTarget.equals2D(lst.get(1)));
@@ -224,7 +225,7 @@ public class PlannerTest {
         Location finalCoord = new Location(-1, 1);
         Location startCoord = new Location(-1, -3);
         Location nextStart = new Location(4, 4);
-        underTest = new PlannerImpl(map, startCoord, finalCoord);
+        underTest = new PlannerImpl(map, startCoord, buffer, finalCoord);
         underTest.restart(nextStart);
         Diff diff = underTest.getDiff();
         assertFalse(diff.didChange());
@@ -233,7 +234,7 @@ public class PlannerTest {
         assertTrue(nextStart.equals2D(underTest.getCurrentPosition()));
 
         // verify addTarget called
-        verify(map, times(2)).addTarget(coordinateCaptor.capture(), doubleCaptor.capture());
+        verify(map, times(2)).addCoord(coordinateCaptor.capture(), doubleCaptor.capture(), false, false);
         List<Coordinate> coords = coordinateCaptor.getAllValues();
         assertTrue(startCoord.equals2D(coords.get(0)));
         assertTrue(nextStart.equals2D(coords.get(1)));
@@ -253,7 +254,7 @@ public class PlannerTest {
 
         Location finalCoord = new Location(-1, 1);
         Location startCoord = new Location(-1, -3);
-        underTest = new PlannerImpl(map, startCoord, finalCoord);
+        underTest = new PlannerImpl(map, startCoord, buffer, finalCoord);
         underTest.getPlanRecords();
 
         // verify we got them from the map
@@ -272,8 +273,8 @@ public class PlannerTest {
 
         Map map = Mockito.mock(Map.class);
         when(map.getScale()).thenReturn(ScaleInfo.DEFAULT);
-        when(map.getBestTarget(any())).thenReturn(Optional.of(step)).thenReturn(Optional.empty());
-        underTest = new PlannerImpl(map, startCoord, finalCoord);
+        when(map.getBestStep(any(), any())).thenReturn(Optional.of(step)).thenReturn(Optional.empty());
+        underTest = new PlannerImpl(map, startCoord, buffer, finalCoord);
 
         // first target (step)
         Diff diff = underTest.selectTarget();

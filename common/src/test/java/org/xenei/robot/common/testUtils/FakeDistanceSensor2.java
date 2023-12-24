@@ -54,9 +54,5 @@ public class FakeDistanceSensor2 implements FakeDistanceSensor {
         return MAX_RANGE;
     }
 
-    @Override
-    public ScaleInfo getScale() {
-        return FakeDistanceSensor.SCALE;
-    }
 
 }

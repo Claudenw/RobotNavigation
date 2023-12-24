@@ -101,7 +101,7 @@ public class Position extends Location {
     public void setHeading(double heading) {
         this.heading = heading;
     }
-
+    
     public double headingTo(Coordinate heading) {
         return AngleUtils.normalize( Math.atan2( heading.getY()-this.getY(), heading.getX()-this.getX()));
     }
@@ -140,14 +140,35 @@ public class Position extends Location {
      */
     public Position nextPosition(Location relativeCoordinates) {
         if (relativeCoordinates.range() == 0) {
-            //return new Position(getX(), getY(), relativeCoordinates.theta());
             return this;
         }
         
-        double heading = relativeCoordinates.theta()+this.heading;
-        Coordinate c = CoordUtils.fromAngle(heading, relativeCoordinates.range());
-        return new Position(this.plus(c), heading);
+        double range = relativeCoordinates.range();
+        double thetar = relativeCoordinates.theta();
+        double thetah = this.heading;
+        double thetap = this.theta();
+       
+        double apime = AngleUtils.normalize(thetah + thetar);
+        //double aprime = this.headingTo(relativeCoordinates);
+        
+        //double heading = AngleUtils.normalize(this.heading+this.headingTo(relativeCoordinates));
+        Position a = this.plus(CoordUtils.fromAngle(apime, range));
+        a.setHeading(apime);
+        return a;
     }
+    
+    public Location relativeLocation(Coordinate absoluteLocation) {
+        double range = distance(absoluteLocation);
+        if (range == 0) {
+            return Location.ORIGIN;
+        }
+        //double x = this.getX() - absoluteLocation.getX();
+        //double y = this.getY() - absoluteLocation.getY();
+        double theta = this.headingTo(absoluteLocation) - this.heading;
+        
+        return new Location(CoordUtils.fromAngle(theta, range));
+    }
+
     
 
     @Override

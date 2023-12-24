@@ -15,9 +15,4 @@ public interface DistanceSensor {
      */
     double maxRange();
     
-    /**
-     * Get the scaling info for this sensor.
-     * @return the ScaleInfo for this sensor.
-     */
-    ScaleInfo getScale();
 }

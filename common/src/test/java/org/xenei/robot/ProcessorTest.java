@@ -1,42 +1,37 @@
 package org.xenei.robot;
 
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
-import java.util.List;
-import java.util.Optional;
-import java.util.function.Function;
-import java.util.stream.Collectors;
+import java.util.Collection;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
+import org.apache.jena.arq.querybuilder.AskBuilder;
+import org.apache.jena.arq.querybuilder.ExprFactory;
+import org.apache.jena.arq.querybuilder.SelectBuilder;
+import org.apache.jena.geosparql.implementation.vocabulary.Geo;
+import org.apache.jena.rdf.model.Literal;
+import org.apache.jena.sparql.core.Var;
+import org.apache.jena.vocabulary.RDF;
 import org.junit.jupiter.api.Test;
-import org.locationtech.jts.geom.Coordinate;
-import org.locationtech.jts.geom.Geometry;
-import org.locationtech.jts.geom.Point;
-import org.xenei.robot.common.DistanceSensor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Mover;
-import org.xenei.robot.common.Position;
 import org.xenei.robot.common.ScaleInfo;
-import org.xenei.robot.common.SolutionTest;
-import org.xenei.robot.common.mapping.CoordinateMap;
 import org.xenei.robot.common.mapping.Map;
 import org.xenei.robot.common.mapping.Mapper;
-import org.xenei.robot.common.planning.Step;
 import org.xenei.robot.common.planning.Planner;
 import org.xenei.robot.common.planning.Planner.Diff;
 import org.xenei.robot.common.planning.Solution;
-import org.xenei.robot.common.testUtils.FakeMover;
+import org.xenei.robot.common.planning.Step;
 import org.xenei.robot.common.testUtils.CoordinateUtils;
 import org.xenei.robot.common.testUtils.FakeDistanceSensor;
 import org.xenei.robot.common.testUtils.FakeDistanceSensor1;
 import org.xenei.robot.common.testUtils.FakeDistanceSensor2;
+import org.xenei.robot.common.testUtils.FakeMover;
 import org.xenei.robot.common.testUtils.MapLibrary;
 import org.xenei.robot.common.utils.AngleUtils;
+import org.xenei.robot.common.utils.DoubleUtils;
+import org.xenei.robot.mapper.GraphGeomFactory;
 import org.xenei.robot.mapper.MapImpl;
 import org.xenei.robot.mapper.MapReports;
 import org.xenei.robot.mapper.MapperImpl;
@@ -44,101 +39,125 @@ import org.xenei.robot.mapper.rdf.Namespace;
 import org.xenei.robot.mapper.visualization.MapViz;
 import org.xenei.robot.planner.PlannerImpl;
 
-
 public class ProcessorTest {
+    private static final Logger LOG = LoggerFactory.getLogger(ProcessorTest.class);
 
     private final MapViz mapViz;
     private final Map map;
     private Planner planner;
     private final Mapper mapper;
     private FakeDistanceSensor sensor;
-    
-    
-//    private Processor underTest;
-//    private static final Location finalCoord = new Location(-1, 1);
-//    private static final Location startCoord = new Location(-1, -3);
-//
-//    @BeforeEach
-//    public void setup() {
-//        Mover mover = new FakeMover(new Position(startCoord), 1);
-//        FakeDistanceSensor sensor = new FakeDistanceSensor1(MapLibrary.map2('#'));
-//        underTest = new Processor(sensor, mover);
-//    }
-//
-//    @Test
-//    @Disabled( "Rework to use messages?")
-//    public void moveToTest() {
-//        assertTrue(underTest.moveTo(finalCoord));
-//        List<Coordinate> solution = underTest.getSolution().collect(Collectors.toList());
-//        assertArrayEquals(SolutionTest.expectedSimplification, solution.toArray());
-//        assertTrue(finalCoord.equals2D(solution.get(solution.size() - 1)));
-//    }
-//
-//    @Test
-//    @Disabled( "Rework to use messages?")
-//    public void setTargetWhileMovingTest() {
-//        Location nextCoord = new Location(4, 4);
-//        underTest.moveTo(finalCoord);
-//        
-//        underTest.setTarget(nextCoord);
-//
-//        List<Coordinate> solution = underTest.getSolution().collect(Collectors.toList());
-//        assertTrue(nextCoord.equals2D(solution.get(solution.size() - 1)));
-//    }
-
+    private final Mover mover;
+    private final double buffer;
 
     ProcessorTest() {
         map = new MapImpl(ScaleInfo.DEFAULT);
         mapViz = new MapViz(100, map, () -> planner.getSolution());
         mapper = new MapperImpl(map);
-        planner = new PlannerImpl(map, new Location(-1, -3 ));
+        mover = new FakeMover(new Location(-1, -3), 1);
+        buffer = 0.25;
+        planner = new PlannerImpl(map, mover.position(), buffer);
         sensor = new FakeDistanceSensor2(MapLibrary.map2('#'), AngleUtils.RADIANS_45);
-        planner.addListener( () -> ((FakeDistanceSensor)sensor).setPosition(planner.getCurrentPosition()));
+        planner.addListener(() -> sensor.setPosition(planner.getCurrentPosition()));
     }
 
-    private void processSensor() {
+    private Collection<Step> processSensor() {
         sensor.setPosition(planner.getCurrentPosition());
-        Optional<Location> maybeTarget = mapper.processSensorData(planner.getCurrentPosition(), planner.getTarget(),
-                planner.getSolution(), sensor.sense());
-        if (maybeTarget.isPresent()) {
-            planner.replaceTarget(maybeTarget.get());
+        return mapper.processSensorData(planner.getCurrentPosition(), buffer, planner.getRootTarget(), sensor.sense());
+    }
+
+    public boolean checkTarget() {
+        if (!mapper.equivalent(planner.getCurrentPosition(), planner.getRootTarget())) {
+            // if we can see the final target go that way.
+            if (mapper.clearView(planner.getCurrentPosition(), planner.getRootTarget(), buffer)) {
+                double newHeading = planner.getCurrentPosition().headingTo(planner.getRootTarget());
+                boolean cont = DoubleUtils.eq(newHeading, planner.getCurrentPosition().getHeading());
+                if (!cont) {
+                    // heading is different so reset the heading, scan, and check again.
+                    mover.setHeading(planner.getCurrentPosition().headingTo(planner.getRootTarget()));
+                    processSensor();
+                    cont = mapper.clearView(planner.getCurrentPosition(), planner.getRootTarget(), buffer);
+                    if (!cont) {
+                        // can't see the position really so reset the heading.
+                        mover.setHeading(planner.getCurrentPosition().getHeading());
+                    }
+                }
+                if (cont) {
+                    // we can really see the final position.
+                    LOG.info("can see {} from {}", planner.getRootTarget(), planner.getCurrentPosition());
+                    Literal pathWkt = GraphGeomFactory.asWKTString(planner.getRootTarget(), 
+                            planner.getCurrentPosition().getCoordinate());
+                    Var wkt = Var.alloc("wkt");
+
+                    ExprFactory exprF = new ExprFactory();
+                    System.out.println(MapReports.dumpQuery((MapImpl) map, new SelectBuilder() //
+                            .from(Namespace.UnionModel.getURI()) //
+                            .addWhere(Namespace.s, RDF.type, Namespace.Obst) //
+                            .addWhere(Namespace.s, Geo.AS_WKT_PROP, wkt)
+                            .addBind(GraphGeomFactory.checkCollision(exprF, pathWkt, wkt, buffer), "?colission")
+                            .addBind(GraphGeomFactory.calcDistance(exprF, pathWkt, wkt), "?dist")
+                            .addBind(exprF.le(GraphGeomFactory.calcDistance(exprF, pathWkt, wkt), buffer), "?le")
+                            ));
+
+                    AskBuilder ask = new AskBuilder().from(Namespace.UnionModel.getURI()) //
+                            .addWhere(Namespace.s, RDF.type, Namespace.Obst) //
+                            .addWhere(Namespace.s, Geo.AS_WKT_PROP, wkt)
+                            .addFilter(GraphGeomFactory.checkCollision(new ExprFactory(), pathWkt, wkt, buffer));
+                    System.out.println( ((MapImpl)map).ask(ask));
+                    System.out.println(MapReports.dumpQuery((MapImpl) map,
+                            new SelectBuilder().from(Namespace.UnionModel.getURI())
+                                    .addWhere(Namespace.s, Namespace.p, Namespace.o)
+                                    .addWhere(Namespace.s, RDF.type, Namespace.Obst)));
+                    planner.replaceTarget(planner.getRootTarget());
+                    planner.notifyListeners();
+                    return true;
+                }
+            }
         }
+        // if we can not see the target replan.
+        return mapper.clearView(planner.getCurrentPosition(), planner.getTarget(), buffer);
     }
 
     private void doTest(Location startCoord, Location finalCoord) {
-        planner = new PlannerImpl(map, startCoord, finalCoord);
-        planner.addListener( () -> sensor.setPosition(planner.getCurrentPosition()));
-        planner.addListener( () -> mapViz.redraw(planner.getTarget()));
-
-        Mover mover = new FakeMover(planner.getCurrentPosition(), 1);
+        planner = new PlannerImpl(map, startCoord, buffer, finalCoord);
+        mover.setHeading(planner.getCurrentPosition().getHeading());
+        planner.addListener(() -> sensor.setPosition(planner.getCurrentPosition()));
+        planner.addListener(() -> mapViz.redraw(planner.getTarget()));
 
         processSensor();
 
         int stepCount = 0;
         int maxLoops = 100;
         while (planner.getTarget() != null) {
-            //System.out.println(MapReports.dumpModel((MapImpl) mapper.getMap()));
             Diff diff = planner.selectTarget();
-            if (diff.didChange()) {
-                processSensor();
+            if (planner.getTarget() != null) {
+                if (diff.didChange()) {
+                    // look where we are heading.
+                    processSensor();
+                    planner.notifyListeners();
+                }
+                // can we still see the target
+                if (checkTarget()) {
+                    // move
+                    Location relativeLoc = planner.getCurrentPosition().relativeLocation(planner.getTarget());
+                    planner.changeCurrentPosition(mover.move(relativeLoc));
+                    processSensor();
+                }
+                if (maxLoops < stepCount++) {
+                    fail("Did not find solution in " + maxLoops + " steps");
+                }
+                planner.notifyListeners();
+                System.out.println( MapReports.dumpDistance((MapImpl)map) );
+                diff.reset();
             }
-            // move
-            planner.changeCurrentPosition(mover.move(new Location(planner.getTarget())));
-            sensor.setPosition(planner.getCurrentPosition());
-            processSensor();
-            if (mapper.getMap().clearView(planner.getCurrentPosition().getCoordinate(), planner.getRootTarget())) {
-                planner.replaceTarget(planner.getRootTarget());
-            }
-
-            if (maxLoops < stepCount++) {
-                fail("Did not find solution in " + maxLoops + " steps");
-            }
-            planner.notifyListeners();
         }
         planner.notifyListeners();
         Solution solution = planner.getSolution();
-        CoordinateUtils.assertEquivalent( startCoord, solution.start(), map.getScale().getTolerance());
-        CoordinateUtils.assertEquivalent( startCoord, solution.start(), map.getScale().getTolerance());
+        CoordinateUtils.assertEquivalent(startCoord, solution.start(), buffer);
+        CoordinateUtils.assertEquivalent(startCoord, solution.start(), buffer);
+        System.out.println( MapReports.dumpDistance((MapImpl)map) );
+        System.out.println("Solution");
+        solution.stream().forEach(System.out::println);
     }
 
     @Test

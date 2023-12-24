@@ -34,10 +34,11 @@ import org.xenei.robot.common.planning.Step;
 import org.xenei.robot.common.utils.CoordUtils;
 import org.xenei.robot.common.utils.DoubleUtils;
 import org.xenei.robot.common.utils.GeometryUtils;
-import org.xenei.robot.mapper.MapperImpl.ObstacleMapper;
 import org.xenei.robot.mapper.rdf.Namespace;
 
 public class MapImplTest {
+    
+    private final double buffer = 0.5;
 
     private MapImpl underTest;
 
@@ -71,11 +72,11 @@ public class MapImplTest {
 
     @BeforeEach
     public void setup() {
-        ScaleInfo scale = new ScaleInfo.Builder().setScale(0.1).build();
+        ScaleInfo scale = new ScaleInfo.Builder().build();
         underTest = new MapImpl(scale);
-        underTest.addTarget(p, p.distance(t));
+        underTest.addCoord(p, p.distance(t), false, true);
         for (Coordinate e : expected) {
-            underTest.addTarget(e, e.distance(t));
+            underTest.addCoord(e, e.distance(t), false, true);
         }
         for (Coordinate o : obstacles) {
             underTest.addObstacle(o);
@@ -97,7 +98,7 @@ public class MapImplTest {
 
     @Test
     public void getBestTargetTest() {
-        Optional<Step> pr = underTest.getBestTarget(p);
+        Optional<Step> pr = underTest.getBestStep(p, buffer);
         assertTrue(pr.isPresent());
         Coordinate p2 = new Coordinate(-1, -2);
         assertEquals(new StepImpl(p2, 4), pr.get());
@@ -184,7 +185,7 @@ public class MapImplTest {
         assertFalse(underTest.hasPath(a, b), () -> "Should not have path");
 
         Location c = new Location(5, 5);
-        underTest.addTarget(c.getCoordinate(), c.distance(a));
+        underTest.addCoord(c.getCoordinate(), c.distance(a), false, false);
 
         underTest.addPath(a.getCoordinate(), c.getCoordinate());
 
@@ -196,7 +197,7 @@ public class MapImplTest {
         Location a = new Location(p);
         Location b = new Location(expected[0]);
         Location c = new Location(t);
-        underTest.addTarget(t, 0);
+        underTest.addCoord(t, 0, false, false);
 
         System.out.println(MapReports.dumpModel(underTest));
         assertTrue(underTest.hasPath(a, b));
@@ -218,7 +219,7 @@ public class MapImplTest {
 
         Location newTarget = new Location(-2, 2);
 
-        underTest.recalculate(newTarget.getCoordinate());
+        underTest.recalculate(newTarget.getCoordinate(), buffer);
         Step after = underTest.getStep(c).get();
         assertNotEquals(before.cost(), after.cost());
     }
@@ -237,7 +238,7 @@ public class MapImplTest {
         underTest.updateCoordinate(Namespace.PlanningModel, Namespace.Coord, c.getCoordinate(), Namespace.distance, 5);
         assertFalse(underTest.ask(ask));
 
-        underTest.addTarget(c.getCoordinate(), 0);
+        underTest.addCoord(c.getCoordinate(), 0, false, false);
         assertFalse(underTest.ask(ask));
         underTest.updateCoordinate(Namespace.PlanningModel, Namespace.Coord, c.getCoordinate(), Namespace.distance, 5);
         System.out.println(MapReports.dumpModel(underTest) );
@@ -275,16 +276,16 @@ public class MapImplTest {
         Coordinate a = new Coordinate(-3, -4);
         Coordinate b = new Coordinate(-3, -2);
 
-        assertFalse(underTest.clearView(a, b));
+        assertFalse(underTest.clearView(a, b, buffer));
         b = new Coordinate(-4, -4);
-        assertTrue(underTest.clearView(a, b));
+        assertTrue(underTest.clearView(a, b, buffer));
     }
 
     @Test
     public void testAddTarget() {
-        ScaleInfo scale = new ScaleInfo.Builder().setScale(0.1).build();
+        ScaleInfo scale = new ScaleInfo.Builder().build();
         underTest = new MapImpl(scale);
-        underTest.addTarget(p, 11);
+        underTest.addCoord(p, 11, false, false);
         System.out.println(MapReports.dumpModel(underTest, Namespace.PlanningModel));
         AskBuilder ask = new AskBuilder().addGraph(Namespace.PlanningModel,
                 new WhereBuilder().addWhere(Namespace.s, Namespace.x, p.x).addWhere(Namespace.s, Namespace.y, p.y)
@@ -295,17 +296,17 @@ public class MapImplTest {
         
         underTest = new MapImpl(scale);
         Coordinate c = new Coordinate(-1+(scale.getResolution()/2)-scale.getResolution()/10, -3-(scale.getResolution()/2));
-        underTest.addTarget(c, 11);
+        underTest.addCoord(c, 11, false, false);
         System.out.println(MapReports.dumpModel(underTest, Namespace.PlanningModel));
         assertTrue(underTest.ask(ask));
     }
 
     @Test
     public void testAddPath() {
-        ScaleInfo scale = new ScaleInfo.Builder().setScale(0.1).build();
+        ScaleInfo scale = new ScaleInfo.Builder().build();
         underTest = new MapImpl(scale);
-        underTest.addTarget(p, p.distance(t));
-        underTest.addTarget(expected[0], expected[0].distance(t));
+        underTest.addCoord(p, p.distance(t), false, false);
+        underTest.addCoord(expected[0], expected[0].distance(t), false, false);
         underTest.addPath(p, expected[0]);
 
         AskBuilder ask = new AskBuilder().addPrefixes(MapImpl.getPrefixMapping()).from(Namespace.PlanningModel.getURI())

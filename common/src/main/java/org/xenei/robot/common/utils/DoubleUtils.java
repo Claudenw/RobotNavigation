@@ -1,5 +1,8 @@
 package org.xenei.robot.common.utils;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+
 import org.apache.commons.math3.util.Precision;
 
 public class DoubleUtils {
@@ -30,4 +33,9 @@ public class DoubleUtils {
     public static boolean eq(double a, double b) {
         return eq(a, b, 0.0);
     }
+    
+    public static double truncate(double value, int decimalPlaces) {
+        return new BigDecimal(String.valueOf(value)).setScale(decimalPlaces, RoundingMode.HALF_UP).doubleValue();
+    }
+    
 }

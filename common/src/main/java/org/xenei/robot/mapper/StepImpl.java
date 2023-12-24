@@ -79,7 +79,7 @@ public class StepImpl extends AbstractFrontsCoordinate implements Step {
 
     @Override
     public String toString() {
-        return String.format("Target {%s cost:%.4f}", CoordUtils.toString(this, 1), cost);
+        return String.format("Target {%s cost:%.4f}", CoordUtils.toString(this, 3), cost);
     }
 
     @Override

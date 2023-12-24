@@ -1,12 +1,22 @@
 package org.xenei.robot.mapper;
 
 import java.io.ByteArrayOutputStream;
+import java.util.Optional;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 
+import org.apache.jena.arq.querybuilder.ExprFactory;
+import org.apache.jena.arq.querybuilder.Order;
 import org.apache.jena.arq.querybuilder.SelectBuilder;
+import org.apache.jena.geosparql.implementation.vocabulary.Geo;
+import org.apache.jena.query.QuerySolution;
+import org.apache.jena.rdf.model.Literal;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.Resource;
 import org.apache.jena.riot.Lang;
+import org.apache.jena.sparql.core.Var;
+import org.apache.jena.sparql.expr.Expr;
+import org.apache.jena.vocabulary.RDF;
 import org.xenei.robot.mapper.rdf.Namespace;
 
 public class MapReports {
@@ -64,6 +74,64 @@ public class MapReports {
             builder.append(s.toString()).append("\n");
             return true;
         });
+        return builder.toString();
+    }
+    
+    public static String dumpDistance(MapImpl map) {
+
+        // cost of trip.
+        Var cost = Var.alloc("cost");
+        // wkt of other
+        Var otherWkt = Var.alloc("otherWkt");
+        // distance from other to target
+        Var otherDist = Var.alloc("otherDist");
+        // additional adjustment from other to target
+        Var adjustment = Var.alloc("adjustment");
+        Var indirect = Var.alloc("indirect");
+        Var indirectFlg = Var.alloc("indirectFlg");
+        Var visited = Var.alloc("visited");
+        Var x = Var.alloc("x");
+        Var y = Var.alloc("y");
+
+        ExprFactory exprF = new ExprFactory(MapImpl.getPrefixMapping());
+
+
+        Expr adjCalc = exprF.cond(exprF.bound(adjustment), exprF.add(otherDist, adjustment), exprF.asExpr(otherDist));
+        Expr indirectCalc = exprF.cond(exprF.bound(indirect), exprF.asExpr(otherDist), exprF.asExpr(0));
+        Expr distCalc = exprF.add( adjCalc, indirectCalc);
+
+        SelectBuilder query = new SelectBuilder().addVar(x).addVar(y).addVar(cost) //
+                .addVar(visited).addVar(otherDist).addVar(adjustment).addVar(indirect) //
+                .from(Namespace.UnionModel.getURI()) //
+                .addWhere(Namespace.s, RDF.type, Namespace.Coord) //
+                .addWhere(Namespace.s, Namespace.x, x)
+                .addWhere(Namespace.s, Namespace.y, y)
+                .addOptional(Namespace.s, Namespace.visited, visited) //
+                //.addFilter( exprF.not(exprF.bound(visited))) //
+                .addWhere(Namespace.s, Namespace.distance, otherDist) //
+                .addWhere(Namespace.s, Geo.AS_WKT_PROP, otherWkt) //
+                .addOptional(Namespace.s, Namespace.adjustment, adjustment) //
+                .addOptional(Namespace.s, Namespace.isIndirect, indirect) //
+                .addBind(distCalc, cost) //
+                .addBind(exprF.cond(exprF.bound(indirect),exprF.asExpr(-1),exprF.asExpr(0)), indirectFlg)
+                .addOrderBy(cost, Order.ASCENDING);
+        
+        StringBuilder builder = new StringBuilder()
+                .append( "'x','y','cost','dist','adj','visited','indirect'\n");
+        Predicate<QuerySolution> p = soln -> {
+                builder.append( String.format( "%s,%s,%s,%s,%s,%s,%s\n", //
+                        soln.getLiteral(x.getName()).getDouble(), //
+                        soln.getLiteral(y.getName()).getDouble(), //
+                        soln.getLiteral(cost.getName()).getDouble(), //
+                        soln.getLiteral(otherDist.getName()).getDouble(), //
+                        soln.contains(adjustment.getName()) ? soln.getLiteral(adjustment.getName()).getDouble() : 0.0, //
+                        soln.contains(visited.getName()), //
+                        soln.contains(indirect.getName()) //
+                        ));
+                return true;
+        };
+        
+        map.exec(query, p);
         return builder.toString();
     }
 

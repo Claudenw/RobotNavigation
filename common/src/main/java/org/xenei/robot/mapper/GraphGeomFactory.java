@@ -51,7 +51,7 @@ public class GraphGeomFactory {
         return asWKT(GeometryUtils.asPoint(point));
     }
 
-    static Literal asWKTString(Coordinate... points) {
+    public static Literal asWKTString(Coordinate... points) {
         return asWKT(GeometryUtils.asLine(points));
     }
 
@@ -59,31 +59,16 @@ public class GraphGeomFactory {
         return asWKT(GeometryUtils.asPolygon(points));
     }
 
-    
-
-//    static WhereBuilder findPath(Node o, Geometry point) {
-//        return addNearby(new WhereBuilder(), o, point, 1).addWhere(o, RDF.type, Namespace.Path);
-//    }
-
-    static Expr checkCollision(ExprFactory expF, Object geo1, Object geo2, double tolerance) {
+    public static Expr checkCollision(ExprFactory expF, Object geo1, Object geo2, double tolerance) {
         return expF.le(calcDistance(expF, geo1, geo2), tolerance);
     }
 
-    static Expr calcDistance(ExprFactory expF, Object geo1, Object geo2) {
+    public static Expr calcDistance(ExprFactory expF, Object geo1, Object geo2) {
         return expF.call(DISTANCE, geo1, geo2, DEGREES);
     }
 
-//    @SuppressWarnings("unchecked")
-//    static <T extends WhereClause<?>> T addNearby(T whereClause, Node s, Geometry geo, double distance) {
-//        List<Object> args = new ArrayList<>();
-//        args.add(asWKT(geo));
-//        args.add(NodeFactory.createLiteralByValue(distance));
-//        args.add(METERS);
-//        return (T) whereClause.addWhere(s, Namespace.nearbyF, args);
-//    }
-
     @SuppressWarnings("unchecked")
-    static Expr isNearby(ExprFactory exprF, Object geo1, Object geo2, double distance) {
+    static Expr isNearby(ExprFactory exprF, Object geo1, Object geo2, Object distance) {
         return exprF.call(NEARBY, geo1, geo2, distance, METERS);
     }
     

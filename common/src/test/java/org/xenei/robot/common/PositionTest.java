@@ -3,7 +3,6 @@ package org.xenei.robot.common;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.doubleThat;
 import static org.xenei.robot.common.LocationTest.DELTA;
 import static org.xenei.robot.common.utils.AngleUtils.RADIANS_135;
 import static org.xenei.robot.common.utils.AngleUtils.RADIANS_180;
@@ -28,11 +27,14 @@ import org.locationtech.jts.geom.Coordinate;
 import org.xenei.robot.common.testUtils.CoordinateUtils;
 import org.xenei.robot.common.utils.AngleUtils;
 import org.xenei.robot.common.utils.CoordUtils;
-import org.xenei.robot.common.utils.DoubleUtils;
 
 public class PositionTest {
 
+    private static double[] angles = { 0, RADIANS_45, RADIANS_90, RADIANS_135, RADIANS_180, RADIANS_225, RADIANS_270,
+            RADIANS_315 };
+
     private Position initial;
+    private double buffer = 0.5;
 
     @BeforeEach
     public void setup() {
@@ -64,6 +66,7 @@ public class PositionTest {
         assertEquals(SQRT2, nxt.getY(), DELTA);
 
         cmd = new Location(CoordUtils.fromAngle(RADIANS_90, 2));
+        double ct = cmd.theta();
         nxt = nxt.nextPosition(cmd);
         assertEquals(RADIANS_135, nxt.getHeading(), DELTA);
         assertEquals(0.0, nxt.getX(), DELTA);
@@ -84,10 +87,10 @@ public class PositionTest {
     @MethodSource("collisionParameters")
     public void collisionTest(String name, boolean state, Position pos, Coordinate target) {
         if (state) {
-            assertTrue(pos.checkCollision(target, ScaleInfo.DEFAULT.getTolerance()),
+            assertTrue(pos.checkCollision(target, buffer),
                     () -> String.format("Did not collide with %s/%s", target.getX(), target.getY()));
         } else {
-            assertFalse(pos.checkCollision(target, ScaleInfo.DEFAULT.getTolerance()),
+            assertFalse(pos.checkCollision(target, buffer),
                     () -> String.format("Did collide with %s/%s", target.getX(), target.getY()));
         }
     }
@@ -118,8 +121,6 @@ public class PositionTest {
     }
 
     private static Stream<Arguments> fromCoordinateParameters() {
-        double[] angles = { 0, RADIANS_45, RADIANS_90, RADIANS_135, RADIANS_180, RADIANS_225, RADIANS_270,
-                RADIANS_315 };
         List<Arguments> args = new ArrayList<>();
 
         args.add(Arguments.of(0, new Coordinate(1, 0), 0));
@@ -144,8 +145,6 @@ public class PositionTest {
     }
 
     private static Stream<Arguments> nextPositionParameters() {
-        double[] angles = { 0, RADIANS_45, RADIANS_90, RADIANS_135, RADIANS_180, RADIANS_225, RADIANS_270,
-                RADIANS_315 };
         List<Arguments> args = new ArrayList<>();
 
         args.add(Arguments.of(0, new Location(1, 0), 0));
@@ -169,32 +168,47 @@ public class PositionTest {
         return args.stream();
     }
 
-    private double calcAngle(double theta, boolean yNeg) {
-
-        boolean tNeg = DoubleUtils.isNeg(theta);
-
-        if (yNeg && !tNeg) {
-            theta -= Math.PI;
-        } else if (!yNeg && tNeg) {
-            theta += Math.PI;
-        }
-        // angle will be pointing the wrong way, so reverse it.
-        return AngleUtils.normalize(theta + Math.PI);
-    }
-
     @ParameterizedTest(name = "{index} {0}")
     @MethodSource("headingToParameters")
     public void headingToTest(Position p, Coordinate c, double expected) {
-        assertEquals( expected, p.headingTo(c), ScaleInfo.DEFAULT.getResolution());
+        assertEquals(expected, p.headingTo(c), ScaleInfo.DEFAULT.getResolution());
     }
-    
+
     public static Stream<Arguments> headingToParameters() {
         List<Arguments> lst = new ArrayList<>();
-        lst.add( Arguments.arguments( new Position(-1, -3, 0), new Coordinate(-1,-1), RADIANS_90));
-        lst.add( Arguments.arguments( new Position(-1, -3, RADIANS_90), new Coordinate(-1,-1), RADIANS_90));
-        lst.add( Arguments.arguments( new Position(-1, -3, -RADIANS_90), new Coordinate(-1,-1), RADIANS_90));
-        lst.add( Arguments.arguments( new Position(-1, -3, RADIANS_45), new Coordinate(-1,-1), RADIANS_90));
-        lst.add( Arguments.arguments( new Position(-1, 1, RADIANS_45), new Coordinate(1,3), RADIANS_45));
+        lst.add(Arguments.arguments(new Position(-1, -3, 0), new Coordinate(-1, -1), RADIANS_90));
+        lst.add(Arguments.arguments(new Position(-1, -3, RADIANS_90), new Coordinate(-1, -1), RADIANS_90));
+        lst.add(Arguments.arguments(new Position(-1, -3, -RADIANS_90), new Coordinate(-1, -1), RADIANS_90));
+        lst.add(Arguments.arguments(new Position(-1, -3, RADIANS_45), new Coordinate(-1, -1), RADIANS_90));
+        lst.add(Arguments.arguments(new Position(-1, 1, RADIANS_45), new Coordinate(1, 3), RADIANS_45));
+        return lst.stream();
+    }
+
+    @ParameterizedTest(name = "{index} {0}")
+    @MethodSource("relativeLocationParameters")
+    public void relativeLocationTest(Position position, Coordinate absolute, double heading) {
+        Location relative = position.relativeLocation(absolute);
+        Position p2 = position.nextPosition(relative);
+        CoordinateUtils.assertEquivalent(absolute, p2, DELTA);
+        assertEquals(AngleUtils.normalize(heading), AngleUtils.normalize(p2.getHeading()), DELTA);
+    }
+
+    private static Arguments makeRelativeLocArguments(Position p, Coordinate c) {
+        double heading = p.equals2D(c, DELTA) ? p.getHeading() : p.headingTo(c);
+        return Arguments.arguments(p, c, heading);
+    }
+
+    public static Stream<Arguments> relativeLocationParameters() {
+        int[] idx = { 100, 50, -50, -100 };
+        List<Arguments> lst = new ArrayList<>();
+        for (double d : angles) {
+            for (int x : idx) {
+                for (int y : idx) {
+                    lst.add(makeRelativeLocArguments(new Position(50, 50, d), new Coordinate(x, y)));
+                }
+            }
+        }
+        lst.add(makeRelativeLocArguments(new Position(-2, -2, RADIANS_180), new Coordinate(-1, 1)));
         return lst.stream();
     }
 }

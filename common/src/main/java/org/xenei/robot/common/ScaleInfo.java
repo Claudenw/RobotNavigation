@@ -1,58 +1,37 @@
 package org.xenei.robot.common;
 
+import org.apache.commons.math3.util.Precision;
 import org.locationtech.jts.geom.Coordinate;
+import org.xenei.robot.common.utils.DoubleUtils;
 
 public class ScaleInfo {
 
-    public static double M_SCALE = 1.0;
-    public static double CM_SCALE = 1.0 / 100;
 
-    private static double DEFAULT_BUFFER = .5;
-    private static double DEFAULT_RESOLUTION = 0.001;
+    private static double DEFAULT_RESOLUTION = 0.5;
     
-    public static ScaleInfo DEFAULT = new ScaleInfo(M_SCALE, DEFAULT_BUFFER, DEFAULT_RESOLUTION);
+    public static ScaleInfo DEFAULT = new ScaleInfo(DEFAULT_RESOLUTION);
+    public static ScaleInfo.Builder builder() { return new Builder(); }
+ 
+
+    private final double resolution ;
+    private final int decimalPlaces;
     
-    private double scale;
-    private double buffer ;
-    private double resolution ;
-    
-    private ScaleInfo(double scale, double buffer, double resolution) {
-        this.scale = scale;
-        this.buffer = buffer;
+    private ScaleInfo(double resolution) {
         this.resolution = resolution;
+        this.decimalPlaces = (int) Math.ceil(Math.log10( 1/resolution ));
     }
-    
-    public double getScale() {
-        return scale;
-    }
-    public double getBuffer() {
-        return buffer;
-    }
+
     public double getResolution() {
         return resolution;
     }
     
     public int decimalPlaces() {
-        return (int) Math.log10( 1/getResolution() );
-    }
-    
-    public double getTolerance() {
-        return resolution+buffer;
+        return decimalPlaces;
     }
     
     public static class Builder {
-        private double scale = CM_SCALE;
-        private double buffer = DEFAULT_BUFFER;
         private double resolution = DEFAULT_RESOLUTION;
         
-        public Builder setScale(double scale) {
-            this.scale = scale;
-            return this;
-        }
-        public Builder setBuffer(double buffer) {
-            this.buffer = buffer;
-            return this;
-        }
         
         /**
          * Resolution of the sale in meters.
@@ -66,8 +45,14 @@ public class ScaleInfo {
         }
         
         public ScaleInfo build() {
-            return new ScaleInfo(this.scale, this.buffer, this.resolution);
+            return new ScaleInfo(this.resolution);
         }
+    }
+    
+    public double scale(double value) {
+        double l =  Math.floor(value / resolution);
+        double x = DoubleUtils.truncate(l*resolution, decimalPlaces());
+        return x;
     }
     
 }

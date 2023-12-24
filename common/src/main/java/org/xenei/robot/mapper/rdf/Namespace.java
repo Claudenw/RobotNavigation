@@ -45,6 +45,8 @@ public class Namespace {
     public static final Property adjustment =  ResourceFactory.createProperty(URI + "adjustment");
     public static final Property cost = ResourceFactory.createProperty(URI + "cost");
     public static final Property point = ResourceFactory.createProperty(URI + "point");
+    public static final Property visited = ResourceFactory.createProperty(URI + "visited");
+    public static final Property isIndirect = ResourceFactory.createProperty(URI + "isIndirect");
 
     
     //public static final Resource Point = ResourceFactory.createResource(GeoSPARQL_URI.SF_URI+"Point");

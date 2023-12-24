@@ -35,7 +35,11 @@ public class FakeDistanceSensor1 implements FakeDistanceSensor {
         Location[] result = new Location[BLOCKSIZE];
 
         for (int i = 0; i < BLOCKSIZE; i++) {
-            result[i] = new Location(look(position, position.getHeading() + (RADIANS * i)).minus(position));
+            Location nxt = look(position, position.getHeading() + (RADIANS * i));
+            System.out.println(nxt);
+            double heading = position.headingTo(nxt)-position.getHeading();
+            double d = position.distance(nxt); 
+            result[i] = new Location(CoordUtils.fromAngle(heading, d));
             if (LOG.isDebugEnabled()) {
                 LOG.debug("Reading {}: {}", i, result[i]);
             }
@@ -54,10 +58,5 @@ public class FakeDistanceSensor1 implements FakeDistanceSensor {
     @Override
     public double maxRange() {
         return MAX_RANGE;
-    }
-
-    @Override
-    public ScaleInfo getScale() {
-        return FakeDistanceSensor.SCALE;
     }
 }
