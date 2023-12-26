@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Position;
+import org.xenei.robot.common.Location;
 import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.common.mapping.CoordinateMap;
 import org.xenei.robot.common.utils.CoordUtils;
@@ -39,7 +40,7 @@ public class FakeDistanceSensor1 implements FakeDistanceSensor {
             System.out.println(nxt);
             double heading = position.headingTo(nxt)-position.getHeading();
             double d = position.distance(nxt); 
-            result[i] = new Location(CoordUtils.fromAngle(heading, d));
+            result[i] = Location.from(CoordUtils.fromAngle(heading, d));
             if (LOG.isDebugEnabled()) {
                 LOG.debug("Reading {}: {}", i, result[i]);
             }
@@ -52,7 +53,7 @@ public class FakeDistanceSensor1 implements FakeDistanceSensor {
             LOG.debug("Scanning heading: {} {}", heading, Math.toDegrees(heading));
         }
         return map.look(position, heading, 350)
-                .orElse(new Location(CoordUtils.fromAngle(heading, Double.POSITIVE_INFINITY)));
+                .orElse(Location.from(CoordUtils.fromAngle(heading, Double.POSITIVE_INFINITY)));
     }
 
     @Override

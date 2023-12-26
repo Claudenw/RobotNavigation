@@ -54,7 +54,7 @@ public class MapperImplTest {
     @Test
     public void processSensorDataTest_TooClose() {
        
-        Position currentPosition = new Position(-1,-3, AngleUtils.RADIANS_90);
+        Position currentPosition = Position.from(-1,-3, AngleUtils.RADIANS_90);
         Coordinate target = new Coordinate( -1, 1 );
         Solution solution = new Solution();
         Map map = Mockito.mock(Map.class);
@@ -62,7 +62,7 @@ public class MapperImplTest {
         Mapper underTest = new MapperImpl(map);
         
         // an obstacle one unit away is too close so no target generated.
-        Location[] obstacles = { new Location(CoordUtils.fromAngle(0,1)) };
+        Location[] obstacles = { Location.from(CoordUtils.fromAngle(0,1)) };
         Collection<Step> result = underTest.processSensorData(currentPosition, buffer, target, obstacles);
         // should not look at result here.
         assertTrue(result.isEmpty());
@@ -74,14 +74,14 @@ public class MapperImplTest {
     @Test
     public void processSensorDataTest_IntermediateTarget() {
        
-        Position currentPosition = new Position(-1,-3, AngleUtils.RADIANS_90);
+        Position currentPosition = Position.from(-1,-3, AngleUtils.RADIANS_90);
         Coordinate target = new Coordinate( -1, 1 );
         Solution solution = new Solution();
         Map map = Mockito.mock(Map.class);
         when(map.getScale()).thenReturn(ScaleInfo.DEFAULT);
         Mapper underTest = new MapperImpl(map);
         
-        Location[] obstacles = { new Location(CoordUtils.fromAngle(0,2)) };
+        Location[] obstacles = { Location.from(CoordUtils.fromAngle(0,2)) };
         Collection<Step> result = underTest.processSensorData(currentPosition, buffer, target, obstacles);
         assertFalse(result.isEmpty());
         // verify obstacle was added

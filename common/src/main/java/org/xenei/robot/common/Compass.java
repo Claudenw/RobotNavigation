@@ -11,11 +11,11 @@ public interface Compass {
      * @return A Position instance that is at the specified location and has the correct heading.
      */
     default Position getPosition(Coordinate location) {
-        return new Position(location, heading());
+        return Position.from(location, heading());
     }
     
     default Position getPosition(FrontsCoordinate location) {
-        return new Position(location, heading());
+        return Position.from(location, heading());
     }
     
     /**

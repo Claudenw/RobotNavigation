@@ -48,11 +48,11 @@ public class PlannerTest {
     public void setTargetTest() {
         CoordinateMap cmap = MapLibrary.map2('#');
         Map map = new MapImpl(ScaleInfo.DEFAULT);
-        Location origin = new Location(0, 0);
+        Location origin = Location.from(0, 0);
         underTest = new PlannerImpl(map, origin, buffer);
         for (int x = 0; x <= 13; x++) {
             for (int y = 0; y <= 15; y++) {
-                Location c = new Location(x, y);
+                Location c = Location.from(x, y);
                 if (!cmap.isEnabled(c)) {
                     underTest.setTarget(c);
                     verifyState(map, cmap);
@@ -89,12 +89,12 @@ public class PlannerTest {
         Map map = Mockito.mock(Map.class);
         when(map.getScale()).thenReturn(ScaleInfo.DEFAULT);
 
-        Location finalCoord = new Location(-1, 1);
-        Location startCoord = new Location(-1, -3);
+        Location finalCoord = Location.from(-1, 1);
+        Location startCoord = Location.from(-1, -3);
         underTest = new PlannerImpl(map, startCoord, buffer, finalCoord);
         Diff diff = underTest.getDiff();
         assertFalse(diff.didChange());
-        Position p = new Position(1, 1);
+        Position p = Position.from(1, 1);
         // since there is ony one target this will add a position to the target stack
         underTest.changeCurrentPosition(p);
         assertTrue(diff.didChange());
@@ -119,8 +119,8 @@ public class PlannerTest {
         Map map = Mockito.mock(Map.class);
         when(map.getScale()).thenReturn(ScaleInfo.DEFAULT);
 
-        Location finalCoord = new Location(-1, 1);
-        Location startCoord = new Location(-1, -3);
+        Location finalCoord = Location.from(-1, 1);
+        Location startCoord = Location.from(-1, -3);
         underTest = new PlannerImpl(map, startCoord, buffer, finalCoord);
         Diff diff = underTest.getDiff();
         assertFalse(diff.didChange());
@@ -145,8 +145,8 @@ public class PlannerTest {
         Map map = Mockito.mock(Map.class);
         when(map.getScale()).thenReturn(ScaleInfo.DEFAULT);
 
-        Location finalCoord = new Location(-1, 1);
-        Location startCoord = new Location(-1, -3);
+        Location finalCoord = Location.from(-1, 1);
+        Location startCoord = Location.from(-1, -3);
         Coordinate newTarget = new Coordinate(4, 4);
         underTest = new PlannerImpl(map, startCoord, buffer, finalCoord);
         // this should make 2 targets
@@ -178,8 +178,8 @@ public class PlannerTest {
         int[] result = { 0 };
         Map map = Mockito.mock(Map.class);
 
-        Location finalCoord = new Location(-1, 1);
-        Location startCoord = new Location(-1, -3);
+        Location finalCoord = Location.from(-1, 1);
+        Location startCoord = Location.from(-1, -3);
         underTest = new PlannerImpl(map, startCoord, buffer, finalCoord);
         underTest.addListener(() -> result[0]++);
         underTest.notifyListeners();
@@ -192,8 +192,8 @@ public class PlannerTest {
     public void recalculateCostsTest() {
         Map map = Mockito.mock(Map.class);
 
-        Location finalCoord = new Location(-1, 1);
-        Location startCoord = new Location(-1, -3);
+        Location finalCoord = Location.from(-1, 1);
+        Location startCoord = Location.from(-1, -3);
         underTest = new PlannerImpl(map, startCoord, buffer, finalCoord);
         Coordinate newTarget = new Coordinate(4, 4);
         underTest.replaceTarget(newTarget);
@@ -222,9 +222,9 @@ public class PlannerTest {
         Map map = Mockito.mock(Map.class);
         when(map.getScale()).thenReturn(ScaleInfo.DEFAULT);
 
-        Location finalCoord = new Location(-1, 1);
-        Location startCoord = new Location(-1, -3);
-        Location nextStart = new Location(4, 4);
+        Location finalCoord = Location.from(-1, 1);
+        Location startCoord = Location.from(-1, -3);
+        Location nextStart = Location.from(4, 4);
         underTest = new PlannerImpl(map, startCoord, buffer, finalCoord);
         underTest.restart(nextStart);
         Diff diff = underTest.getDiff();
@@ -252,8 +252,8 @@ public class PlannerTest {
         when(map.getScale()).thenReturn(ScaleInfo.DEFAULT);
         when(map.getTargets()).thenReturn(Collections.emptyList());
 
-        Location finalCoord = new Location(-1, 1);
-        Location startCoord = new Location(-1, -3);
+        Location finalCoord = Location.from(-1, 1);
+        Location startCoord = Location.from(-1, -3);
         underTest = new PlannerImpl(map, startCoord, buffer, finalCoord);
         underTest.getPlanRecords();
 
@@ -263,9 +263,9 @@ public class PlannerTest {
 
     @Test
     public void selectTargetTest() {
-        Location finalCoord = new Location(-1, 1);
-        Location startCoord = new Location(-1, -3);
-        Location stepLocation = new Location(3, 3);
+        Location finalCoord = Location.from(-1, 1);
+        Location startCoord = Location.from(-1, -3);
+        Location stepLocation = Location.from(3, 3);
         Step step = mock(Step.class);
         when(step.getCoordinate()).thenReturn(stepLocation.getCoordinate());
         when(step.cost()).thenReturn(Double.valueOf(5));
@@ -299,7 +299,7 @@ public class PlannerTest {
         assertEquals(0, solution.stepCount());
 
         // change the position to current target location.
-        underTest.changeCurrentPosition(new Position(step));
+        underTest.changeCurrentPosition(Position.from(step));
         diff.reset();
         diff = underTest.selectTarget();
         assertTrue(diff.didChange());
@@ -310,7 +310,7 @@ public class PlannerTest {
         assertEquals(1, solution.stepCount());
 
         // chhange the position to the end location
-        underTest.changeCurrentPosition(new Position(finalCoord));
+        underTest.changeCurrentPosition(Position.from(finalCoord));
         diff.reset();
         diff = underTest.selectTarget();
         assertTrue(diff.didChange());

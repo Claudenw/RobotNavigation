@@ -46,9 +46,9 @@ public class GeometryUtils {
         double angle = 0.0;
         double radians = Math.PI * 2.0 / edges;
         Coordinate[] cell = new Coordinate[edges + 1];
-        Location l = new Location(coord);
+        Location l = Location.from(coord);
         for (int i = 0; i < edges; i++) {
-            cell[i] = l.plus(CoordUtils.fromAngle(angle, radius)).getCoordinate();
+            cell[i] = l.plus(CoordUtils.fromAngle(angle, radius));
             angle += radians;
         }
         cell[edges] = cell[0];

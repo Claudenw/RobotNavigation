@@ -38,7 +38,7 @@ public class HMC5883L {
     private static final int CONTROLLER = 1;
     private static final int ADDRESS = 0x1E;
     private byte gain;
-    private final I2CDevice device = new I2CDevice(1, ADDRESS);
+    private final I2CDevice device = new I2CDevice(CONTROLLER, ADDRESS);
     private float declination;
 
     public class Scaled {

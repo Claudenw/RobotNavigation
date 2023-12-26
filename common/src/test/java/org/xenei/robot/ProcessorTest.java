@@ -54,7 +54,7 @@ public class ProcessorTest {
         map = new MapImpl(ScaleInfo.DEFAULT);
         mapViz = new MapViz(100, map, () -> planner.getSolution());
         mapper = new MapperImpl(map);
-        mover = new FakeMover(new Location(-1, -3), 1);
+        mover = new FakeMover(Location.from(-1, -3), 1);
         buffer = 0.25;
         planner = new PlannerImpl(map, mover.position(), buffer);
         sensor = new FakeDistanceSensor2(MapLibrary.map2('#'), AngleUtils.RADIANS_45);
@@ -158,56 +158,30 @@ public class ProcessorTest {
         System.out.println( MapReports.dumpDistance((MapImpl)map) );
         System.out.println("Solution");
         solution.stream().forEach(System.out::println);
+        System.out.println( "SUCCESS");
+        solution.simplify( (a,b) -> map.clearView(a, b, buffer));
+        System.out.println("Solution 2");
+        solution.stream().forEach(System.out::println);
+        
     }
 
     @Test
     public void stepTestMap2() {
-//        Coordinate[] expectedSolution = { new Coordinate(-1.0, -3.0), new Coordinate(-0.9999999999999999, -2.0),
-//                new Coordinate(-0.4472135954999578, -1.8944271909999157),
-//                new Coordinate(0.2928932188134528, -1.7071067811865475),
-//                new Coordinate(-1.5527864045000421, -1.8944271909999157),
-//                new Coordinate(-4.000468632496236, -1.9693888030933675),
-//                new Coordinate(-4.547420028549094, -0.8917238190389993), new Coordinate(-1.0, 1.0) };
         sensor = new FakeDistanceSensor1(MapLibrary.map2('#'));
         map.clear(Namespace.UnionModel.getURI());
 
-        Location finalCoord = new Location(-1, 1);
-        Location startCoord = new Location(-1, -3);
+        Location finalCoord = Location.from(-1, 1);
+        Location startCoord = Location.from(-1, -3);
         doTest(startCoord, finalCoord);
-//
-//        assertEquals(SolutionTest.expectedSolution.length - 1, planner.getSolution().stepCount());
-//        List<Coordinate> solution = planner.getSolution().stream().collect(Collectors.toList());
-//        assertEquals(SolutionTest.expectedSolution.length, solution.size());
-//        for (int i = 0; i < solution.size(); i++) {
-//            final int j = i;
-//            assertTrue(expectedSolution[i].equals2D(solution.get(i), 0.00001),
-//                    () -> String.format("failed at %s: %s == %s +/- 0.00001", j, SolutionTest.expectedSolution[j],
-//                            solution.get(j)));
-//        }
     }
 
     @Test
     public void stepTestMap3() {
-//        Coordinate[] expectedSimpleSolution = { new Coordinate(-1, -3), new Coordinate(-3, -2), new Coordinate(-4, -1),
-//                new Coordinate(-4, 0), new Coordinate(-1, 1) };
         sensor = new FakeDistanceSensor2(MapLibrary.map3('#'), AngleUtils.RADIANS_45);
         map.clear(Namespace.UnionModel.getURI());
 
-        Location finalCoord = new Location(-1, 1);
-        Location startCoord = new Location(-1, -3);
+        Location finalCoord = Location.from(-1, 1);
+        Location startCoord = Location.from(-1, -3);
         doTest(startCoord, finalCoord);
-//
-//        assertEquals(25, underTest.getSolution().stepCount());
-//        assertEquals(33.29126786466034, underTest.getSolution().cost());
-//
-//        underTest.getSolution().simplify(map::clearView);
-//        assertEquals(7.812559200041265, underTest.getSolution().cost());
-//        assertTrue(startCoord.equals2D(underTest.getSolution().start()));
-//        assertTrue(finalCoord.equals2D(underTest.getSolution().end()));
-//        List<Coordinate> solution = underTest.getSolution().stream().collect(Collectors.toList());
-//        assertEquals(expectedSimpleSolution.length, solution.size());
-//        for (int i = 0; i < solution.size(); i++) {
-//            assertTrue(expectedSimpleSolution[i].equals2D(solution.get(i)));
-//        }
     }
 }

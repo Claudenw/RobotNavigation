@@ -1,21 +1,28 @@
 package org.xenei.robot.rpi;
 
+import java.util.Collection;
 import java.util.Optional;
 import java.util.Set;
 
 import org.locationtech.jts.geom.Coordinate;
 import org.xenei.robot.common.Compass;
 import org.xenei.robot.common.Location;
+import org.xenei.robot.common.Mover;
 import org.xenei.robot.common.DistanceSensor;
 import org.xenei.robot.common.Position;
+import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.common.mapping.CoordinateMap;
 import org.xenei.robot.common.mapping.Map;
 import org.xenei.robot.common.mapping.Mapper;
 import org.xenei.robot.common.planning.Solution;
+import org.xenei.robot.common.planning.Step;
 import org.xenei.robot.common.utils.TimingUtils;
 import org.xenei.robot.mapper.MapImpl;
 import org.xenei.robot.mapper.MapperImpl;
 import org.xenei.robot.rpi.sensors.Arduino;
+
+import com.diozero.sbc.BoardInfo;
+import com.diozero.sbc.DeviceFactoryHelper;
 
 
 public class Robut {
@@ -24,17 +31,21 @@ public class Robut {
     private Map map;
     private Mapper mapper;
     private Position currentPosition;
+    private double buffer =0.5; 
+    private Coordinate target = new Coordinate(500, 500);
+    private Mover mover;
 
     public Robut(Coordinate origin) {
         compass = new CompassImpl();
         distSensor = new Arduino();
-        map = new MapImpl(1);
+        map = new MapImpl(ScaleInfo.DEFAULT);
         mapper = new MapperImpl(map);
         currentPosition = compass.getPosition(origin);
+        
     }
 
-    public Optional<Location> readSensors(Coordinate target, Solution solution) {
-        return mapper.processSensorData(currentPosition, target, solution, distSensor.sense());
+    public Collection<Step> readSensors(Coordinate target, Solution solution) {
+        return mapper.processSensorData(currentPosition, buffer, target, distSensor.sense());
     }
 
     public void updatePosition() {

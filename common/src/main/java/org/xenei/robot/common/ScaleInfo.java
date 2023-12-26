@@ -6,7 +6,6 @@ import org.xenei.robot.common.utils.DoubleUtils;
 
 public class ScaleInfo {
 
-
     private static double DEFAULT_RESOLUTION = 0.5;
     
     public static ScaleInfo DEFAULT = new ScaleInfo(DEFAULT_RESOLUTION);

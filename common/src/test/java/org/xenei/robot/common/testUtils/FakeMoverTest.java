@@ -22,18 +22,18 @@ public class FakeMoverTest {
 
     @BeforeEach
     public void setup() {
-        underTest = new FakeMover(new Position(0, 0), 5);
+        underTest = new FakeMover(Position.from(0, 0), 5);
     }
 
     @Test
     public void zigZagTest() {
-        Location move = new Location(CoordUtils.fromAngle(RADIANS_45, 2));
+        Location move = Location.from(CoordUtils.fromAngle(RADIANS_45, 2));
         underTest.move(move);
         assertEquals(RADIANS_45, underTest.position().getHeading(), DELTA);
         assertEquals(sqrt2, underTest.position().getX(), DELTA);
         assertEquals(sqrt2, underTest.position().getY(), DELTA);
 
-        move = new Location(CoordUtils.fromAngle(-RADIANS_45, 2));
+        move = Location.from(CoordUtils.fromAngle(-RADIANS_45, 2));
         underTest.move(move);
         assertEquals(sqrt2 + 2, underTest.position().getX(), DELTA);
         assertEquals(sqrt2, underTest.position().getY(), DELTA);
@@ -42,13 +42,13 @@ public class FakeMoverTest {
 
     @Test
     public void boxTest() {
-        Location move = new Location(sqrt2, sqrt2);
+        Location move = Location.from(sqrt2, sqrt2);
         underTest.move(move);
         assertEquals(RADIANS_45, underTest.position().getHeading(), DELTA);
         assertEquals(sqrt2, underTest.position().getX(), DELTA);
         assertEquals(sqrt2, underTest.position().getY(), DELTA);
 
-        move = new Location(CoordUtils.fromAngle(AngleUtils.RADIANS_90, 2));
+        move = Location.from(CoordUtils.fromAngle(AngleUtils.RADIANS_90, 2));
         underTest.move(move);
         assertEquals(RADIANS_135, underTest.position().getHeading(), DELTA);
         assertEquals(0.0, underTest.position().getX(), DELTA);

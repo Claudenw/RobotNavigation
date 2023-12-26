@@ -15,7 +15,6 @@ import org.apache.jena.vocabulary.RDF;
 import org.locationtech.jts.geom.Coordinate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.xenei.robot.common.AbstractFrontsCoordinate;
 import org.xenei.robot.common.FrontsCoordinate;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Position;
@@ -89,7 +88,7 @@ public class MapperImpl implements Mapper {
             // filter out any range < 1.0
              if (!DoubleUtils.inRange(relativeObstacle.range(), buffer)) { 
                  // create absolute coordinates
-                 Location absoluteObstacle = currentPosition.nextPosition(relativeObstacle);
+                 Position absoluteObstacle = currentPosition.nextPosition(relativeObstacle);
                  newObstacles.add( map.addObstacle(absoluteObstacle.getCoordinate()) );
                  Optional<Coordinate> possibleCoord = findCoordinateNear(relativeObstacle);
                  if (possibleCoord.isPresent()) {
@@ -106,14 +105,14 @@ public class MapperImpl implements Mapper {
                 return Optional.empty();
             }
             double theta = relativeObstacle.theta()+currentPosition.getHeading();
-            Location candidate =  currentPosition.plus(CoordUtils.fromAngle(theta, d));
+            Location candidate =  Location.from(currentPosition.plus(CoordUtils.fromAngle(theta, d)));
             Coordinate newCoord = map.adopt(candidate.getCoordinate());
             if (map.isObstacle(newCoord)) {
                 d -= buffer;
                 if (d < buffer) {
                     return Optional.empty();
                 }
-                candidate =  currentPosition.plus(CoordUtils.fromAngle(theta, d));
+                candidate =  Location.from(currentPosition.plus(CoordUtils.fromAngle(theta, d)));
                 newCoord = map.adopt(candidate.getCoordinate());
                 if (map.isObstacle(newCoord)) {
                     return Optional.empty();

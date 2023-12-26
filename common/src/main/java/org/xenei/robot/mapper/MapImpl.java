@@ -54,11 +54,11 @@ import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.Point;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.xenei.robot.common.AbstractFrontsCoordinate;
 import org.xenei.robot.common.FrontsCoordinate;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Mover;
 import org.xenei.robot.common.ScaleInfo;
+import org.xenei.robot.common.UnmodifiableCoordinate;
 import org.xenei.robot.common.mapping.Map;
 import org.xenei.robot.common.planning.Solution;
 import org.xenei.robot.common.planning.Step;
@@ -788,24 +788,21 @@ public class MapImpl implements Map {
 
     }
 
-    private class MapCoordinate extends AbstractFrontsCoordinate {
+    private class MapCoordinate implements FrontsCoordinate {
 
+        UnmodifiableCoordinate coord;
+        
         public MapCoordinate(Coordinate coordinate) {
-            super(adopt(coordinate));
+            coord = UnmodifiableCoordinate.make(adopt(coordinate));
         }
 
-        protected MapCoordinate(AbstractFrontsCoordinate coordinate) {
+        protected MapCoordinate(FrontsCoordinate coordinate) {
             this(coordinate.getCoordinate());
         }
 
         @Override
-        public FrontsCoordinate copy() {
-            return new MapCoordinate(this.getCoordinate());
-        }
-
-        @Override
-        protected <T extends AbstractFrontsCoordinate> T fromCoordinate(Coordinate base) {
-            return (T) new MapCoordinate(base);
+        public UnmodifiableCoordinate getCoordinate() {
+            return coord;
         }
 
     }

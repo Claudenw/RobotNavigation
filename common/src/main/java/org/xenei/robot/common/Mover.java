@@ -1,6 +1,5 @@
 package org.xenei.robot.common;
 
-
 public interface Mover {
     /**
      * Move to the specified location

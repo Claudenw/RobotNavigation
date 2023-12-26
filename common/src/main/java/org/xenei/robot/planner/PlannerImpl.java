@@ -20,6 +20,7 @@ import org.xenei.robot.common.mapping.Mapper;
 import org.xenei.robot.common.planning.Planner;
 import org.xenei.robot.common.planning.Solution;
 import org.xenei.robot.common.planning.Step;
+import org.xenei.robot.common.utils.CoordUtils;
 import org.xenei.robot.common.utils.DoubleUtils;
 import org.xenei.robot.mapper.MapImpl;
 import org.xenei.robot.mapper.MapReports;
@@ -86,16 +87,19 @@ public class PlannerImpl implements Planner {
     /**
      * Sets the current position and resets the solution.
      * 
-     * @param position the new current position.
+     * @param pos the new current position.
      */
     @Override
-    public void changeCurrentPosition(Position position) {
-        currentPosition = position;
-        Step step = map.addCoord(position.getCoordinate(), position.distance(getRootTarget()), true,
+    public void changeCurrentPosition(Position pos) {
+        currentPosition = Position.from(pos, pos.getHeading());
+        Step step = map.addCoord(currentPosition.getCoordinate(), currentPosition.distance(getRootTarget()), true,
                 !map.clearView(currentPosition.getCoordinate(), getRootTarget(), buffer));
         solution.add(step.getCoordinate());
     }
 
+    private Position newPosition(Coordinate start) {
+        return Position.from(start, CoordUtils.calcHeading(start, getTarget()));
+    }
     /**
      * Restart from the new location using the current map.
      * 
@@ -104,12 +108,14 @@ public class PlannerImpl implements Planner {
     @Override
     public void restart(Location start) {
         double distance = Double.NaN;
-        currentPosition = new Position(start, 0);
+        
         boolean isIndirect = false;
         if (getTarget() != null) {
-            currentPosition.setHeading(getTarget());
+            currentPosition= newPosition(start.getCoordinate());
             distance = start.distance(getRootTarget());
             isIndirect = !map.clearView(currentPosition.getCoordinate(), getRootTarget(), buffer);
+        } else {
+            currentPosition = Position.from(start, 0);
         }
         diff.reset();
         map.addCoord(currentPosition.getCoordinate(), distance, true, isIndirect);
@@ -176,7 +182,7 @@ public class PlannerImpl implements Planner {
         this.target.clear();
         this.target.push(target);
         if (currentPosition != null) {
-            currentPosition.setHeading(target);
+            currentPosition= newPosition(currentPosition.getCoordinate());
         }
         map.recalculate(target, buffer);
         resetSolution();
@@ -197,7 +203,7 @@ public class PlannerImpl implements Planner {
         }
         this.target.push(target);
         if (currentPosition != null) {
-            currentPosition.setHeading(target);
+            currentPosition = newPosition(currentPosition.getCoordinate());
         }
     }
 

@@ -27,7 +27,6 @@ import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.Point;
 import org.xenei.robot.common.Location;
-import org.xenei.robot.common.Position;
 import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.common.planning.Solution;
 import org.xenei.robot.common.planning.Step;
@@ -134,22 +133,22 @@ public class MapImplTest {
 
     @Test
     public void getStepTest() {
-        Optional<Step> pr = underTest.getStep(new Location(p));
+        Optional<Step> pr = underTest.getStep(Location.from(p));
         assertTrue(pr.isPresent());
         assertEquals(0, CoordUtils.XYCompr.compare(p, pr.get().getCoordinate()));
         assertEquals(p.distance(t), pr.get().cost());
 
-        pr = underTest.getStep(new Location(t));
+        pr = underTest.getStep(Location.from(t));
         assertTrue(pr.isEmpty());
 
         for (Coordinate e : expected) {
-            pr = underTest.getStep(new Location(e));
+            pr = underTest.getStep(Location.from(e));
             assertTrue(pr.isPresent());
             assertEquals(0, CoordUtils.XYCompr.compare(e, pr.get().getCoordinate()));
             assertEquals(e.distance(t), pr.get().cost());
         }
         for (Coordinate o : obstacles) {
-            pr = underTest.getStep(new Location(o));
+            pr = underTest.getStep(Location.from(o));
             assertTrue(pr.isEmpty());
         }
     }
@@ -179,12 +178,12 @@ public class MapImplTest {
 
     @Test
     public void addPathTest() {
-        Location a = new Location(expected[0]);
-        Location b = new Location(expected[1]);
+        Location a = Location.from(expected[0]);
+        Location b = Location.from(expected[1]);
 
         assertFalse(underTest.hasPath(a, b), () -> "Should not have path");
 
-        Location c = new Location(5, 5);
+        Location c = Location.from(5, 5);
         underTest.addCoord(c.getCoordinate(), c.distance(a), false, false);
 
         underTest.addPath(a.getCoordinate(), c.getCoordinate());
@@ -194,9 +193,9 @@ public class MapImplTest {
 
     @Test
     public void hasPathTest() {
-        Location a = new Location(p);
-        Location b = new Location(expected[0]);
-        Location c = new Location(t);
+        Location a = Location.from(p);
+        Location b = Location.from(expected[0]);
+        Location c = Location.from(t);
         underTest.addCoord(t, 0, false, false);
 
         System.out.println(MapReports.dumpModel(underTest));
@@ -214,10 +213,10 @@ public class MapImplTest {
 
     @Test
     public void recalculateTest() {
-        Location c = new Location(expected[0]);
+        Location c = Location.from(expected[0]);
         Step before = underTest.getStep(c).get();
 
-        Location newTarget = new Location(-2, 2);
+        Location newTarget = Location.from(-2, 2);
 
         underTest.recalculate(newTarget.getCoordinate(), buffer);
         Step after = underTest.getStep(c).get();
@@ -226,7 +225,7 @@ public class MapImplTest {
 
     @Test
     public void updateTest() {
-        Location c = new Location(5, 4);
+        Location c = Location.from(5, 4);
         // Resource r = Namespace.urlOf(c);
 
         // check not there, update then verify that it is.
@@ -250,7 +249,7 @@ public class MapImplTest {
                 .addWhere(Namespace.s, Namespace.distance, Namespace.o).addFilter(exprF.eq(Namespace.o, 5.0));
         assertTrue(underTest.ask(ask));
 
-        c = new Location(expected[0]);
+        c = Location.from(expected[0]);
         assertTrue(underTest.ask(ask));
 
         Step before = underTest.getStep(c).get();

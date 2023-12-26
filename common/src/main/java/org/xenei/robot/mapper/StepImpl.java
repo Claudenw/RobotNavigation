@@ -5,12 +5,13 @@ import java.util.Objects;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.GeometryFactory;
-import org.xenei.robot.common.AbstractFrontsCoordinate;
 import org.xenei.robot.common.FrontsCoordinate;
+import org.xenei.robot.common.UnmodifiableCoordinate;
 import org.xenei.robot.common.planning.Step;
 import org.xenei.robot.common.utils.CoordUtils;
 
-public class StepImpl extends AbstractFrontsCoordinate implements Step {
+public class StepImpl implements Step {
+    private final UnmodifiableCoordinate coord;
     private final double cost;
     private final Geometry geom;
 
@@ -54,7 +55,7 @@ public class StepImpl extends AbstractFrontsCoordinate implements Step {
     }
     
     public StepImpl(Coordinate point, double cost, Geometry geom) {
-        super(point);
+        coord = UnmodifiableCoordinate.make(point);
         Objects.requireNonNull(geom);
         this.cost = cost;
         this.geom = geom;
@@ -64,9 +65,8 @@ public class StepImpl extends AbstractFrontsCoordinate implements Step {
         this(point, cost, new GeometryFactory().createPoint(point));
     }
 
-    @Override
-    protected StepImpl fromCoordinate(Coordinate base) {
-        return new StepImpl(base, 0);
+    public UnmodifiableCoordinate getCoordinate() {
+        return coord;
     }
 
     public double cost() {
@@ -79,7 +79,7 @@ public class StepImpl extends AbstractFrontsCoordinate implements Step {
 
     @Override
     public String toString() {
-        return String.format("Target {%s cost:%.4f}", CoordUtils.toString(this, 3), cost);
+        return String.format("Step {%s cost:%.4f}", CoordUtils.toString(this, 3), cost);
     }
 
     @Override
@@ -101,10 +101,5 @@ public class StepImpl extends AbstractFrontsCoordinate implements Step {
     @Override
     public int compareTo(Step other) {
         return Step.compare.compare(this, other);
-    }
-
-    @Override
-    public Step copy() {
-        return new StepImpl(getCoordinate(), cost, geom);
     }
 }

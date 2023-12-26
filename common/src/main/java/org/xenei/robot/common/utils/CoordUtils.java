@@ -82,4 +82,8 @@ public class CoordUtils {
         // angle will be pointing the wrong way, so reverse it.
         return AngleUtils.normalize(theta + Math.PI);
     }
+    
+    public static double calcHeading(Coordinate from, Coordinate to) {
+        return AngleUtils.normalize( Math.atan2( to.getY() - from.getY(), to.getX()-from.getX()));
+    }
 }

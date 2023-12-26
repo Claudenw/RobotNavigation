@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xenei.robot.common.FrontsCoordinate;
 import org.xenei.robot.common.Location;
+import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Mover;
 import org.xenei.robot.common.Position;
 import org.xenei.robot.common.ScaleInfo;
@@ -15,7 +16,7 @@ public class FakeMover implements Mover {
     private int speed;
 
     public FakeMover(FrontsCoordinate initial, int speed) {
-        this.position = new Position(initial);
+        this.position = Position.from(initial);
         if (LOG.isDebugEnabled()) {
             LOG.debug("Initial position {}", position);
         }
@@ -25,7 +26,7 @@ public class FakeMover implements Mover {
     @Override
     public Position move(Location move) {
         if (move.range() > speed) {
-            move = new Location(CoordUtils.fromAngle(move.theta(), speed));
+            move = Location.from(CoordUtils.fromAngle(move.theta(), speed));
         }
         position = position.nextPosition(move);
         if (LOG.isDebugEnabled()) {
@@ -41,7 +42,7 @@ public class FakeMover implements Mover {
     
     @Override
     public void setHeading(double heading) {
-        position.setHeading(heading);
+        position = Position.from(position,heading);
     }
 
 }

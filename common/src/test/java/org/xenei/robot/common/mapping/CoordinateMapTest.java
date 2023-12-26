@@ -16,8 +16,8 @@ public class CoordinateMapTest {
     @Test
     public void lookTest() {
         underTest = MapLibrary.map2('#');
-        Position l = new Position( -2, -2);
-        Location t = new Location( -1, 1);
+        Position l = Position.from( -2, -2);
+        Location t = Location.from( -1, 1);
         double heading = l.headingTo(t);
         double range = l.distance(t);
         Optional<Location> result = underTest.look(l, heading, range );

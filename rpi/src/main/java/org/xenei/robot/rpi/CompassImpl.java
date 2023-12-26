@@ -11,7 +11,7 @@ public class CompassImpl implements Compass {
     @Override
     public double heading() {
         MMC3416xPJ.Values values = compass.getHeading();
-        Location heading = new Location(values.getAxisValue(Axis.X), values.getAxisValue(Axis.Y));
+        Location heading = Location.from(values.getAxisValue(Axis.X), values.getAxisValue(Axis.Y));
         return heading.theta();
     }
 

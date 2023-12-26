@@ -39,13 +39,13 @@ public class LocationTest {
     }
 
     private static void processStream(List<Arguments> lst, double[] args) {
-        Location l = new Location(args[CoordUtilsTest.X], args[CoordUtilsTest.Y]);
+        Location l = Location.from(args[CoordUtilsTest.X], args[CoordUtilsTest.Y]);
         lst.add(Arguments.of(l, Location.ORIGIN, args[CoordUtilsTest.RANGE], args[CoordUtilsTest.RAD]));
 
-        l = new Location(CoordUtils.fromAngle(args[CoordUtilsTest.RAD], args[CoordUtilsTest.RANGE]));
+        l = Location.from(CoordUtils.fromAngle(args[CoordUtilsTest.RAD], args[CoordUtilsTest.RANGE]));
         lst.add(Arguments.of(l, Location.ORIGIN, args[CoordUtilsTest.RANGE], args[CoordUtilsTest.RAD]));
 
-        l = new Location(CoordUtils.fromAngle(Math.toRadians(args[CoordUtilsTest.DEG]), args[CoordUtilsTest.RANGE]));
+        l = Location.from(CoordUtils.fromAngle(Math.toRadians(args[CoordUtilsTest.DEG]), args[CoordUtilsTest.RANGE]));
         lst.add(Arguments.of(l, Location.ORIGIN, args[CoordUtilsTest.RANGE], args[CoordUtilsTest.RAD]));
 
     }
@@ -69,11 +69,11 @@ public class LocationTest {
     }
 
     private static Stream<Arguments> triCoordinates() {
-        return Stream.of(Arguments.of(new Location(-2, 3), new Location(6, 1), new Location(4, 4)),
-                Arguments.of(new Location(CoordUtils.fromAngle(0.7853981633974483, 2)),
-                        new Location(CoordUtils.fromAngle(0, 2.8284271247461903)),
-                        new Location(CoordUtils.fromAngle(0.3217505543966422, 4.47213595499958))),
-                Arguments.of(new Location(0, 0), new Location(CoordUtils.fromAngle(RADIANS_45, 1)),
-                        new Location(CoordUtils.fromAngle(RADIANS_45, 1))));
+        return Stream.of(Arguments.of(Location.from(-2, 3), Location.from(6, 1), Location.from(4, 4)),
+                Arguments.of(Location.from(CoordUtils.fromAngle(0.7853981633974483, 2)),
+                        Location.from(CoordUtils.fromAngle(0, 2.8284271247461903)),
+                        Location.from(CoordUtils.fromAngle(0.3217505543966422, 4.47213595499958))),
+                Arguments.of(Location.from(0, 0), Location.from(CoordUtils.fromAngle(RADIANS_45, 1)),
+                        Location.from(CoordUtils.fromAngle(RADIANS_45, 1))));
     }
 }

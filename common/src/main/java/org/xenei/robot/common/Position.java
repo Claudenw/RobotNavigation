@@ -6,21 +6,39 @@ import org.xenei.robot.common.utils.CoordUtils;
 import org.xenei.robot.common.utils.DoubleUtils;
 import org.xenei.robot.common.utils.GeometryUtils;
 
-/**
- * A combination of Coordinates and a heading. The coordinates are immutable but
- * the heading may be changed.
- */
-public class Position extends Location {
-    /**
-     * The heading in radians of this position.
-     */
-    private double heading;
+public interface Position extends Location {
+    
+    static Position from(Coordinate c, double head) {
+        return new Position() {
+            double heading = head;
+            UnmodifiableCoordinate coord = UnmodifiableCoordinate.make(c);
+            
+            @Override
+            public UnmodifiableCoordinate getCoordinate() {
+                return coord;
+            }
+
+            @Override
+            public double getHeading() {
+                return heading;
+            }
+
+            @Override
+            public String toString() {
+                return String.format("Position[ %s heading:%.4f ]", CoordUtils.toString(this.getCoordinate(), 4),
+                        Math.toDegrees(getHeading()));
+            }
+        };
+    }
+    
 
     /**
-     * Constructs a position at the origin with ha heading of 0.0
+     * Constructs a position from a point with a heading of 0.0.
+     * 
+     * @param point the point to to center the position on.
      */
-    public Position() {
-        this(0.0, 0.0);
+    static Position from(FrontsCoordinate point) {
+        return from(point.getCoordinate(), 0.0);
     }
 
     /**
@@ -28,17 +46,8 @@ public class Position extends Location {
      * 
      * @param point the point to to center the position on.
      */
-    public Position(FrontsCoordinate point) {
-        this(point.getCoordinate(), 0.0);
-    }
-
-    /**
-     * Constructs a position from a point with a heading of 0.0.
-     * 
-     * @param point the point to to center the position on.
-     */
-    public Position(Coordinate point) {
-        this(point, 0.0);
+    static Position from(Coordinate point) {
+        return from(point, 0.0);
     }
 
     /**
@@ -47,19 +56,8 @@ public class Position extends Location {
      * @param point the point ot center the position on.
      * @param heading the heading in radians.
      */
-    public Position(Coordinate point, double heading) {
-        super(point);
-        this.heading = AngleUtils.normalize(heading);
-    }
-
-    /**
-     * Constructs a position from a point an a heading.
-     * 
-     * @param point the point ot center the position on.
-     * @param heading the heading in radians.
-     */
-    public Position(FrontsCoordinate point, double heading) {
-        this(point.getCoordinate(), heading);
+    static Position from(FrontsCoordinate point, double heading) {
+        return from(point.getCoordinate(), heading);
     }
 
     /**
@@ -68,8 +66,8 @@ public class Position extends Location {
      * @param x the x position.
      * @param y the y position.
      */
-    public Position(double x, double y) {
-        this(x, y, 0.0);
+    static Position from(double x, double y) {
+        return from(new Coordinate(x, y), 0.0);
     }
 
     /**
@@ -79,54 +77,25 @@ public class Position extends Location {
      * @param y the y position.
      * @param heading the heading in radians.
      */
-    public Position(double x, double y, double heading) {
-        super(x, y);
-        this.heading = heading;
+    static Position from(double x, double y, double heading) {
+        return from(new Coordinate(x,y), heading);
     }
-
+    
     /**
      * Gets the heading.
      * 
      * @return the heading in radians
      */
-    public double getHeading() {
-        return heading;
-    }
-
-    /**
-     * Sets the heading
-     * 
-     * @param heading the heading in radians.
-     */
-    public void setHeading(double heading) {
-        this.heading = heading;
+    double getHeading();
+    
+    default double headingTo(Coordinate heading) {
+        return AngleUtils.normalize( Math.atan2( heading.getY() - this.getY(), heading.getX()-this.getX()));
     }
     
-    public double headingTo(Coordinate heading) {
-        return AngleUtils.normalize( Math.atan2( heading.getY()-this.getY(), heading.getX()-this.getX()));
-    }
-    
-    public double headingTo(FrontsCoordinate heading) {
+    default double headingTo(FrontsCoordinate heading) {
         return headingTo(heading.getCoordinate());
     }
-    /**
-     * Set the heading to a Point.
-     * 
-     * @param heading the point to head towards.
-     */
-    public void setHeading(Coordinate heading) {
-        this.heading = headingTo(heading);
-    }
-
-    /**
-     * Set the heading to a Point.
-     * 
-     * @param heading the point to head towards.
-     */
-    public void setHeading(FrontsCoordinate heading) {
-        setHeading(heading.getCoordinate());
-    }
-
+    
     /**
      * Calculates the next position.
      * <p>
@@ -138,58 +107,43 @@ public class Position extends Location {
      * @return the new Position centered on the new position with the proper
      * heading.
      */
-    public Position nextPosition(Location relativeCoordinates) {
+    default Position nextPosition(Location relativeCoordinates) {
         if (relativeCoordinates.range() == 0) {
             return this;
         }
         
         double range = relativeCoordinates.range();
         double thetar = relativeCoordinates.theta();
-        double thetah = this.heading;
-        double thetap = this.theta();
+        double thetah = this.getHeading();
        
         double apime = AngleUtils.normalize(thetah + thetar);
         //double aprime = this.headingTo(relativeCoordinates);
         
         //double heading = AngleUtils.normalize(this.heading+this.headingTo(relativeCoordinates));
-        Position a = this.plus(CoordUtils.fromAngle(apime, range));
-        a.setHeading(apime);
-        return a;
+        Coordinate a = this.plus(CoordUtils.fromAngle(apime, range));
+        return Position.from(a, apime);
     }
     
-    public Location relativeLocation(Coordinate absoluteLocation) {
+    default Location relativeLocation(Coordinate absoluteLocation) {
         double range = distance(absoluteLocation);
         if (range == 0) {
             return Location.ORIGIN;
         }
         //double x = this.getX() - absoluteLocation.getX();
         //double y = this.getY() - absoluteLocation.getY();
-        double theta = this.headingTo(absoluteLocation) - this.heading;
+        double theta = this.headingTo(absoluteLocation) - this.getHeading();
         
-        return new Location(CoordUtils.fromAngle(theta, range));
+        return Location.from(CoordUtils.fromAngle(theta, range));
     }
 
-    
-
-    @Override
-    public String toString() {
-        return String.format("Position[ %s heading:%.4f ]", CoordUtils.toString(this.getCoordinate(), 4),
-                Math.toDegrees(heading));
-    }
-
-    public boolean checkCollision(FrontsCoordinate fc, double tolerance) {
+    default boolean checkCollision(FrontsCoordinate fc, double tolerance) {
         return checkCollision(fc.getCoordinate(), tolerance);
     }
 
-    public boolean checkCollision(Coordinate c, double tolerance) {
-        Coordinate l = CoordUtils.fromAngle(heading, distance(c));
-        double d = GeometryUtils.asPath(this.coordinate, l).distance(GeometryUtils.asPoint(c));
+    default boolean checkCollision(Coordinate c, double tolerance) {
+        Coordinate l = CoordUtils.fromAngle(getHeading(), distance(c));
+        double d = GeometryUtils.asPath(this.getCoordinate(), l).distance(GeometryUtils.asPoint(c));
         return DoubleUtils.inRange(d, tolerance);
-    }
-
-    @Override
-    public Position fromCoordinate(Coordinate c) {
-        return new Position(c, ORIGIN.angleBetween(c));
     }
 
 }

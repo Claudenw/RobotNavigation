@@ -17,6 +17,7 @@ import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
 import org.xenei.robot.common.FrontsCoordinate;
 import org.xenei.robot.common.Location;
+import org.xenei.robot.common.Location;
 import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.common.utils.AngleUtils;
 import org.xenei.robot.common.utils.CoordUtils;
@@ -136,7 +137,7 @@ public class CoordinateMap {
      * @return the natural (not quantized) position of the obstacle.
      */
     public Optional<Location> look(Location position, double heading, double maxRange) {
-        Location pos = position.plus(CoordUtils.fromAngle(heading, maxRange / scale));
+        Location pos = Location.from(position.plus(CoordUtils.fromAngle(heading, maxRange / scale)));
         //Polygon path = GeometryUtils.asPath(position.getCoordinate(), pos.getCoordinate());
         LineString path = GeometryUtils.asLine(position.getCoordinate(), pos.getCoordinate());
         double distance = Double.MAX_VALUE;
@@ -153,7 +154,7 @@ public class CoordinateMap {
             }
         }
         if (found != null) {
-            return Optional.of(new Location(scaleInfo.scale(found.getX()), scaleInfo.scale(found.getY())));
+            return Optional.of(Location.from(scaleInfo.scale(found.getX()), scaleInfo.scale(found.getY())));
         }
        
         return Optional.empty();
@@ -232,7 +233,7 @@ public class CoordinateMap {
         }
         
         public Location asLocation() {
-            return new Location( x, y);
+            return Location.from( x, y);
         }
     }
 }

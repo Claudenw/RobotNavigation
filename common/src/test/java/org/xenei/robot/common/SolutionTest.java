@@ -34,7 +34,7 @@ public class SolutionTest {
     @BeforeEach
     public void setup() {
         underTest = new Solution();
-        Arrays.stream(expectedSolution).forEach(p -> underTest.add(new Location(p)));
+        Arrays.stream(expectedSolution).forEach(p -> underTest.add(Location.from(p)));
     }
 
     @Test

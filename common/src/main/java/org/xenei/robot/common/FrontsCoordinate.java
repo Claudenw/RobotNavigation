@@ -18,44 +18,67 @@ public interface FrontsCoordinate extends HasCoordinate {
     @Override
     UnmodifiableCoordinate getCoordinate();
     
-    double getX();
+    default double getX() {
+        return getCoordinate().getX();
+    }
 
-    double getY();
+    default double getY() {
+        return getCoordinate().getY();
+    }
 
-    double getZ();
-
-    double getM();
-
-    double getOrdinate(int ordinateIndex);
-
-    boolean equals2D(Coordinate other);
+    default boolean equals2D(Coordinate other) {
+        return getCoordinate().equals2D(other);
+    }
     
-    boolean equals2D(FrontsCoordinate other);
+    default boolean equals2D(FrontsCoordinate other) {
+        return equals2D(other.getCoordinate());
+    }
 
-    boolean equals2D(Coordinate c, double tolerance);
+    default boolean equals2D(Coordinate c, double tolerance) {
+        return getCoordinate().equals2D(c, tolerance);
+    }
 
-    boolean equals2D(FrontsCoordinate c, double tolerance);
+    default boolean equals2D(FrontsCoordinate c, double tolerance) {
+        return equals2D(c.getCoordinate(), tolerance);
+    }
 
-    boolean equals3D(Coordinate other) ;
+    default int compareTo(Coordinate o) {
+        return getCoordinate().compareTo(o);
+    }
 
-    boolean equals3D(FrontsCoordinate other) ;
+    default int compareTo(FrontsCoordinate o) {
+        return compareTo(o.getCoordinate());
+    }
 
-    boolean equalInZ(Coordinate c, double tolerance);
+    default double distance(Coordinate c) {
+        return getCoordinate().distance(c);
+    }
 
-    boolean equalInZ(FrontsCoordinate c, double tolerance);
-
-    int compareTo(Coordinate o);
-
-    int compareTo(FrontsCoordinate o);
+    default double distance(FrontsCoordinate c) {
+        return distance(c.getCoordinate());
+    }
     
-    FrontsCoordinate copy();
-
-    double distance(Coordinate c);
-
-    double distance(FrontsCoordinate c);
-
-    double distance3D(FrontsCoordinate c);
+    default double angleBetween(FrontsCoordinate other) {
+        return angleBetween(other.getCoordinate());
+    }
     
-    double distance3D(Coordinate c);
-
+    default double angleBetween(Coordinate dest) {
+        return CoordUtils.angleBetween(this.getCoordinate(), dest);
+    }
+    
+    default Coordinate minus(Coordinate other) {
+        return new Coordinate( getX() - other.getX(), getY()-other.getY());
+    }
+    
+    default Coordinate minus(FrontsCoordinate other) {
+        return new Coordinate( getX() - other.getX(), getY()-other.getY());
+    }
+    
+    default Coordinate plus(Coordinate other) {
+        return new Coordinate( getX()+other.getX(), getY()+other.getY());
+    }
+    
+    default Coordinate plus(FrontsCoordinate other) {
+        return new Coordinate( getX()+other.getX(), getY()+other.getY());
+    }
 }

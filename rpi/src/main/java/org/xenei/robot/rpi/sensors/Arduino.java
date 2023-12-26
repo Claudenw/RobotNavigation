@@ -28,7 +28,7 @@ public class Arduino implements DistanceSensor {
     public Location[] sense() {
         byte b = device.readByte();
         int dist = 0xFF & b;
-        Location c = new Location( CoordUtils.fromAngle(0, dist));
+        Location c = Location.from( CoordUtils.fromAngle(0, dist));
         return new Location[] { c };
     }
 

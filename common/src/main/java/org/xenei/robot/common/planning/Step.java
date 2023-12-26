@@ -6,7 +6,6 @@ import java.util.Objects;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.GeometryFactory;
-import org.xenei.robot.common.AbstractFrontsCoordinate;
 import org.xenei.robot.common.FrontsCoordinate;
 import org.xenei.robot.common.utils.CoordUtils;
 

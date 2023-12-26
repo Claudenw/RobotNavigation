@@ -7,6 +7,7 @@ import org.locationtech.jts.geom.Coordinate;
 import org.xenei.robot.common.FrontsCoordinate;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Position;
+import org.xenei.robot.common.Location;
 import org.xenei.robot.common.planning.Solution;
 import org.xenei.robot.common.planning.Step;
 
