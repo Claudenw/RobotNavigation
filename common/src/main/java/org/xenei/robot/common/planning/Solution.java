@@ -7,7 +7,6 @@ import java.util.stream.Stream;
 
 import org.locationtech.jts.geom.Coordinate;
 import org.xenei.robot.common.FrontsCoordinate;
-import org.xenei.robot.common.Location;
 
 public class Solution {
 
@@ -32,7 +31,7 @@ public class Solution {
     public void add(FrontsCoordinate fc) {
         add(fc.getCoordinate());
     }
-    
+
     public void add(Coordinate c) {
         SolutionRecord sr = new SolutionRecord(c);
         if (!path.contains(sr)) {

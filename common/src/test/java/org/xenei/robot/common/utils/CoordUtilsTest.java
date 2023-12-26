@@ -1,6 +1,5 @@
 package org.xenei.robot.common.utils;
 
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.xenei.robot.common.utils.AngleUtils.RADIANS_135;
 import static org.xenei.robot.common.utils.AngleUtils.RADIANS_180;
@@ -14,17 +13,13 @@ import static org.xenei.robot.common.utils.DoubleUtils.SQRT2;
 import java.util.Arrays;
 import java.util.stream.Stream;
 
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.locationtech.jts.geom.Coordinate;
-import org.xenei.robot.common.Location;
-
 
 public class CoordUtilsTest {
-    public static final double DELTA=0.0000001;
-    
+    public static final double DELTA = 0.0000001;
 
     public static final int INPUT = 0;
     public static final int DEG = 1;
@@ -66,7 +61,6 @@ public class CoordUtilsTest {
                 .map(ary -> Arguments.of(ary[INPUT], ary[DEG], ary[RAD], ary[RANGE], ary[X], ary[Y]));
     }
 
-
 //    @Test
 //    public void angleToTest() {
 //        Location c = new Coordinate(0, -2);
@@ -74,7 +68,7 @@ public class CoordUtilsTest {
 //        double angle2 = CoordUtils.angleTo(c, p);
 //        assertEquals( 0.4636476090008062, angle2);
 //    }
-    
+
     @ParameterizedTest
     @MethodSource("degreeParameters")
     public void fromRadiansTest(double degrees, double thetaD, double thetaR, double range, double x, double y) {

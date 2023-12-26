@@ -1,30 +1,20 @@
 package org.xenei.robot.mapper;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Objects;
 
 import org.apache.jena.arq.querybuilder.ExprFactory;
-import org.apache.jena.arq.querybuilder.UpdateBuilder;
-import org.apache.jena.arq.querybuilder.WhereBuilder;
-import org.apache.jena.arq.querybuilder.clauses.WhereClause;
 import org.apache.jena.geosparql.implementation.GeometryWrapper;
 import org.apache.jena.geosparql.implementation.datatype.WKTDatatype;
 import org.apache.jena.geosparql.implementation.vocabulary.Geo;
 import org.apache.jena.geosparql.implementation.vocabulary.Geof;
 import org.apache.jena.geosparql.implementation.vocabulary.SpatialExtension;
 import org.apache.jena.geosparql.implementation.vocabulary.Unit_URI;
-import org.apache.jena.graph.Node;
-import org.apache.jena.graph.NodeFactory;
-import org.apache.jena.graph.Triple;
 import org.apache.jena.rdf.model.Literal;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.rdf.model.Resource;
 import org.apache.jena.rdf.model.ResourceFactory;
-import org.apache.jena.sparql.core.Var;
 import org.apache.jena.sparql.expr.Expr;
-import org.apache.jena.vocabulary.RDF;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.xenei.robot.common.FrontsCoordinate;
@@ -71,15 +61,15 @@ public class GraphGeomFactory {
     static Expr isNearby(ExprFactory exprF, Object geo1, Object geo2, Object distance) {
         return exprF.call(NEARBY, geo1, geo2, distance, METERS);
     }
-    
+
     public static Resource asRDF(Coordinate a, Resource type) {
         return asRDF(a, type, GeometryUtils.asPoint(a));
     }
-    
+
     public static Resource asRDF(FrontsCoordinate a, Resource type) {
         return asRDF(a.getCoordinate(), type, GeometryUtils.asPoint(a));
     }
-    
+
     public static Resource asRDF(Coordinate a, Resource type, Geometry geom) {
         Objects.requireNonNull(a);
         Objects.requireNonNull(type);

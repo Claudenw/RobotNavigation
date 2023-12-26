@@ -1,17 +1,11 @@
 package org.xenei.robot.mapper;
 
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
-import org.apache.jena.arq.querybuilder.UpdateBuilder;
-import org.apache.jena.sparql.core.Var;
-import org.apache.jena.util.iterator.UniqueFilter;
-import org.apache.jena.vocabulary.RDF;
 import org.locationtech.jts.geom.Coordinate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,8 +17,6 @@ import org.xenei.robot.common.mapping.Mapper;
 import org.xenei.robot.common.planning.Step;
 import org.xenei.robot.common.utils.CoordUtils;
 import org.xenei.robot.common.utils.DoubleUtils;
-import org.xenei.robot.mapper.rdf.Namespace;
-
 
 public class MapperImpl implements Mapper {
     private static final Logger LOG = LoggerFactory.getLogger(MapperImpl.class);
@@ -43,17 +35,17 @@ public class MapperImpl implements Mapper {
             Location[] obstacles) {
 
         LOG.debug("Sense position: {}", currentPosition);
-        
+
         ObstacleMapper mapper = new ObstacleMapper(currentPosition, buffer, target);
         List.of(obstacles).forEach(mapper::doMap);
         map.updateIsIndirect(target, buffer, mapper.newObstacles);
-        
-        System.out.println( "Obstacles");
-        mapper.newObstacles.forEach(c ->System.out.format("%s,%s\n",c.x, c.y));
-        System.out.println( "Coords");
-        mapper.coordSet.stream().forEach( c ->System.out.format("%s,%s,'%s'\n",c.x, c.y, map.clearView(c, target, buffer)));
-        
-        
+
+        System.out.println("Obstacles");
+        mapper.newObstacles.forEach(c -> System.out.format("%s,%s\n", c.x, c.y));
+        System.out.println("Coords");
+        mapper.coordSet.stream()
+                .forEach(c -> System.out.format("%s,%s,'%s'\n", c.x, c.y, map.clearView(c, target, buffer)));
+
         return mapper.coordSet.stream()
                 .map(c -> map.addCoord(c, c.distance(target), false, !map.clearView(c, target, buffer)))
                 .collect(Collectors.toList());
@@ -83,42 +75,41 @@ public class MapperImpl implements Mapper {
             this.newObstacles = new HashSet<>();
             this.coordSet = new HashSet<Coordinate>();
         }
-        
+
         void doMap(Location relativeObstacle) {
             // filter out any range < 1.0
-             if (!DoubleUtils.inRange(relativeObstacle.range(), buffer)) { 
-                 // create absolute coordinates
-                 Position absoluteObstacle = currentPosition.nextPosition(relativeObstacle);
-                 newObstacles.add( map.addObstacle(absoluteObstacle.getCoordinate()) );
-                 Optional<Coordinate> possibleCoord = findCoordinateNear(relativeObstacle);
-                 if (possibleCoord.isPresent()) {
-                     coordSet.add(possibleCoord.get());
-                 }
-             }
+            if (!DoubleUtils.inRange(relativeObstacle.range(), buffer)) {
+                // create absolute coordinates
+                Position absoluteObstacle = currentPosition.nextPosition(relativeObstacle);
+                newObstacles.add(map.addObstacle(absoluteObstacle.getCoordinate()));
+                Optional<Coordinate> possibleCoord = findCoordinateNear(relativeObstacle);
+                if (possibleCoord.isPresent()) {
+                    coordSet.add(possibleCoord.get());
+                }
+            }
         }
 
-
         Optional<Coordinate> findCoordinateNear(Location relativeObstacle) {
-            
+
             double d = relativeObstacle.range() - buffer;
             if (d < buffer) {
                 return Optional.empty();
             }
-            double theta = relativeObstacle.theta()+currentPosition.getHeading();
-            Location candidate =  Location.from(currentPosition.plus(CoordUtils.fromAngle(theta, d)));
+            double theta = relativeObstacle.theta() + currentPosition.getHeading();
+            Location candidate = Location.from(currentPosition.plus(CoordUtils.fromAngle(theta, d)));
             Coordinate newCoord = map.adopt(candidate.getCoordinate());
             if (map.isObstacle(newCoord)) {
                 d -= buffer;
                 if (d < buffer) {
                     return Optional.empty();
                 }
-                candidate =  Location.from(currentPosition.plus(CoordUtils.fromAngle(theta, d)));
+                candidate = Location.from(currentPosition.plus(CoordUtils.fromAngle(theta, d)));
                 newCoord = map.adopt(candidate.getCoordinate());
                 if (map.isObstacle(newCoord)) {
                     return Optional.empty();
                 }
             }
-            return Optional.ofNullable( newCoord.distance(target) < buffer ? null : newCoord);
+            return Optional.ofNullable(newCoord.distance(target) < buffer ? null : newCoord);
         }
     }
 }

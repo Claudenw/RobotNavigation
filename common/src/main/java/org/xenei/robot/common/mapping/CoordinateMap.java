@@ -1,25 +1,18 @@
 package org.xenei.robot.common.mapping;
 
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.List;
 import java.util.Optional;
 import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.stream.Stream;
 
-import org.apache.commons.math3.util.Precision;
 import org.locationtech.jts.geom.Coordinate;
-import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.LineString;
-import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
 import org.xenei.robot.common.FrontsCoordinate;
 import org.xenei.robot.common.Location;
-import org.xenei.robot.common.Location;
 import org.xenei.robot.common.ScaleInfo;
-import org.xenei.robot.common.utils.AngleUtils;
 import org.xenei.robot.common.utils.CoordUtils;
 import org.xenei.robot.common.utils.GeometryUtils;
 
@@ -47,7 +40,7 @@ public class CoordinateMap {
     public void enable(FrontsCoordinate coord, char c) {
         enable(coord.getCoordinate(), c);
     }
-    
+
     public void enable(Coordinate coord, char c) {
         enable(new Coord(coord, c));
     }
@@ -75,7 +68,7 @@ public class CoordinateMap {
     public boolean isEnabled(FrontsCoordinate location) {
         return points.contains(new Coord(location, ' '));
     }
-    
+
     public boolean isEnabled(Coordinate location) {
         return points.contains(new Coord(location, ' '));
     }
@@ -138,7 +131,8 @@ public class CoordinateMap {
      */
     public Optional<Location> look(Location position, double heading, double maxRange) {
         Location pos = Location.from(position.plus(CoordUtils.fromAngle(heading, maxRange / scale)));
-        //Polygon path = GeometryUtils.asPath(position.getCoordinate(), pos.getCoordinate());
+        // Polygon path = GeometryUtils.asPath(position.getCoordinate(),
+        // pos.getCoordinate());
         LineString path = GeometryUtils.asLine(position.getCoordinate(), pos.getCoordinate());
         double distance = Double.MAX_VALUE;
         Coordinate found = null;
@@ -146,7 +140,7 @@ public class CoordinateMap {
             if (path.intersects(point.polygon)) {
                 for (Coordinate p2 : calcCoords(point)) {
                     double d = position.distance(p2);
-                    if (d<distance) {
+                    if (d < distance) {
                         distance = d;
                         found = p2;
                     }
@@ -156,28 +150,29 @@ public class CoordinateMap {
         if (found != null) {
             return Optional.of(Location.from(scaleInfo.scale(found.getX()), scaleInfo.scale(found.getY())));
         }
-       
+
         return Optional.empty();
     }
-    
+
     private Coordinate[] calcCoords(Coord point) {
-        int parts = (int) (scale/scaleInfo.getResolution());
+        int parts = (int) (scale / scaleInfo.getResolution());
         double incr = scale * scaleInfo.getResolution();
         Coordinate[] result = new Coordinate[parts * parts];
-        double x = point.x + incr/2;
-        for (int i=0;i<parts;i++) {
-            double y = point.y + incr/2;
-            for (int j=0;j<parts;j++) {
-                result[i*parts+j] = new Coordinate(x,y);
+        double x = point.x + incr / 2;
+        for (int i = 0; i < parts; i++) {
+            double y = point.y + incr / 2;
+            for (int j = 0; j < parts; j++) {
+                result[i * parts + j] = new Coordinate(x, y);
                 y += incr;
             }
             x += incr;
         }
         return result;
     }
+
     private double lineDistance(Location position, double heading, Coordinate c) {
-        return Math.abs( Math.cos(heading)*(position.getY()-c.getY()) 
-                - Math.sin(heading)*(position.getX()-c.getX()));
+        return Math.abs(
+                Math.cos(heading) * (position.getY() - c.getY()) - Math.sin(heading) * (position.getX() - c.getX()));
     }
 
     // a location in the map
@@ -191,24 +186,21 @@ public class CoordinateMap {
             this.x = fitRange(Math.round(x / scale));
             this.y = fitRange(Math.round(y / scale));
             this.c = c;
-            
-            
+
             double xStart = x;
             double yStart = y;
-            double xFini = x+1;
-            double yFini = y+1;
-            
-            Coordinate[] lst = { new Coordinate(xStart,yStart),
-                    new Coordinate(xStart,yFini),
-                    new Coordinate(xFini,yFini),
-                    new Coordinate(xFini,yStart),
-                    new Coordinate(xStart,yStart)};
+            double xFini = x + 1;
+            double yFini = y + 1;
+
+            Coordinate[] lst = { new Coordinate(xStart, yStart), new Coordinate(xStart, yFini),
+                    new Coordinate(xFini, yFini), new Coordinate(xFini, yStart), new Coordinate(xStart, yStart) };
             polygon = geometryFactory.createPolygon(lst);
         }
 
         public Coord(FrontsCoordinate coords, char c) {
             this(coords.getCoordinate(), c);
         }
+
         public Coord(Coordinate coords, char c) {
             this(coords.getX(), coords.getY(), c);
         }
@@ -231,9 +223,9 @@ public class CoordinateMap {
         public Polygon getPolygon() {
             return polygon;
         }
-        
+
         public Location asLocation() {
-            return Location.from( x, y);
+            return Location.from(x, y);
         }
     }
 }

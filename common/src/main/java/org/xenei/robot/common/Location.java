@@ -6,24 +6,24 @@ import org.locationtech.jts.geom.Coordinate;
 import org.xenei.robot.common.utils.CoordUtils;
 
 public interface Location extends FrontsCoordinate {
-    static Location ORIGIN = from(new Coordinate(0,0));
-        
+    static Location ORIGIN = from(new Coordinate(0, 0));
+
     static Location from(Coordinate c) {
         return new Location() {
-        UnmodifiableCoordinate coord = UnmodifiableCoordinate.make(new Coordinate(0,0));
+            UnmodifiableCoordinate coord = UnmodifiableCoordinate.make(new Coordinate(0, 0));
 
-        @Override
-        public UnmodifiableCoordinate getCoordinate() {
-            return coord;
-        }
-        
-        @Override
-        public String toString() {
-            return String.format("Location[ %s r:%.2f]", CoordUtils.toString(getCoordinate(), 4), range());
-        }
+            @Override
+            public UnmodifiableCoordinate getCoordinate() {
+                return coord;
+            }
+
+            @Override
+            public String toString() {
+                return String.format("Location[ %s r:%.2f]", CoordUtils.toString(getCoordinate(), 4), range());
+            }
         };
     }
-    
+
     /**
      * Construct coordinates from a Point.
      * 
@@ -42,7 +42,6 @@ public interface Location extends FrontsCoordinate {
     static Location from(double x, double y) {
         return from(new Coordinate(x, y));
     }
-    
 
     /**
      * Compares Coordinates by angle and then range.
@@ -58,7 +57,6 @@ public interface Location extends FrontsCoordinate {
         int x = Double.compare(one.range(), two.range());
         return x == 0 ? Double.compare(one.theta(), two.theta()) : x;
     };
-    
 
     /**
      * Return the angle in radians from the origin.
@@ -77,7 +75,7 @@ public interface Location extends FrontsCoordinate {
     default double range() {
         return ORIGIN.distance(this);
     }
-    
+
     default boolean near(FrontsCoordinate c, double tolerance) {
         return this.distance(c) <= tolerance;
     }

@@ -16,7 +16,6 @@ import org.xenei.robot.common.utils.CoordUtils;
 public class FakeMoverTest {
     private static final double DELTA = 0.00000000001;
 
-    private final Double radians = Math.toRadians(45);
     private final double sqrt2 = Math.sqrt(2.0);
     private FakeMover underTest;
 

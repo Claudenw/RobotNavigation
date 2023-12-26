@@ -4,10 +4,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xenei.robot.common.FrontsCoordinate;
 import org.xenei.robot.common.Location;
-import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Mover;
 import org.xenei.robot.common.Position;
-import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.common.utils.CoordUtils;
 
 public class FakeMover implements Mover {
@@ -39,10 +37,10 @@ public class FakeMover implements Mover {
     public Position position() {
         return position;
     }
-    
+
     @Override
     public void setHeading(double heading) {
-        position = Position.from(position,heading);
+        position = Position.from(position, heading);
     }
 
 }

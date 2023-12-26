@@ -44,7 +44,6 @@ import org.apache.jena.shared.Lock;
 import org.apache.jena.shared.PrefixMapping;
 import org.apache.jena.sparql.core.Var;
 import org.apache.jena.sparql.expr.Expr;
-import org.apache.jena.sparql.expr.aggregate.AggCount;
 import org.apache.jena.update.UpdateExecutionFactory;
 import org.apache.jena.update.UpdateRequest;
 import org.apache.jena.vocabulary.RDF;
@@ -56,14 +55,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xenei.robot.common.FrontsCoordinate;
 import org.xenei.robot.common.Location;
-import org.xenei.robot.common.Mover;
 import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.common.UnmodifiableCoordinate;
 import org.xenei.robot.common.mapping.Map;
 import org.xenei.robot.common.planning.Solution;
 import org.xenei.robot.common.planning.Step;
 import org.xenei.robot.common.utils.CoordUtils;
-import org.xenei.robot.common.utils.DoubleUtils;
 import org.xenei.robot.common.utils.GeometryUtils;
 import org.xenei.robot.mapper.rdf.Namespace;
 
@@ -114,7 +111,7 @@ public class MapImpl implements Map {
     public Coordinate adopt(Coordinate c) {
 
         double x = scale.scale(c.getX());
-        double y = scale.scale(c.getY()); 
+        double y = scale.scale(c.getY());
         return (Precision.equals(x, c.getX(), 0) && Precision.equals(y, c.getY(), 0)) ? c : new Coordinate(x, y);
     }
 
@@ -191,7 +188,7 @@ public class MapImpl implements Map {
                 newDat.addInsert(Namespace.PlanningModel, Namespace.s, Namespace.visited, visited);
             }
             if (isIndirect) {
-                newDat.addInsert(Namespace.PlanningModel, Namespace.s,Namespace.isIndirect, isIndirect);
+                newDat.addInsert(Namespace.PlanningModel, Namespace.s, Namespace.isIndirect, isIndirect);
             }
             // clear and set existing value
             req.add(new UpdateBuilder().addDelete(Namespace.PlanningModel, Namespace.s, Namespace.distance, Namespace.o)
@@ -217,13 +214,14 @@ public class MapImpl implements Map {
 
     private Geometry cell(Coordinate point) {
         Coordinate[] coords = { point, //
-                new Coordinate(point.x+scale.getResolution(), point.y), //
-                new Coordinate(point.x+scale.getResolution(), point.y+scale.getResolution()), //
-                new Coordinate(point.x, point.y+scale.getResolution()), //
+                new Coordinate(point.x + scale.getResolution(), point.y), //
+                new Coordinate(point.x + scale.getResolution(), point.y + scale.getResolution()), //
+                new Coordinate(point.x, point.y + scale.getResolution()), //
                 point };
         return GeometryUtils.asPolygon(coords);
-        
+
     }
+
     @Override
     public Coordinate addObstacle(Coordinate point) {
         MapCoordinate coord = new MapCoordinate(point);
@@ -326,7 +324,8 @@ public class MapImpl implements Map {
         triples.add(Triple.create(tn.asNode(), Geo.AS_WKT_PROP.asNode(), path.asNode()));
         int i = 0;
         for (MapCoordinate c : lst) {
-            Optional<UpdateBuilder> updt = addBuilder(Namespace.PlanningModel, c, Namespace.Coord, cell(c.getCoordinate()));
+            Optional<UpdateBuilder> updt = addBuilder(Namespace.PlanningModel, c, Namespace.Coord,
+                    cell(c.getCoordinate()));
             if (updt.isPresent()) {
                 req.add(updt.get().build());
             }
@@ -409,9 +408,12 @@ public class MapImpl implements Map {
         return ask(ask);
     }
 
-    private Optional<UpdateBuilder> addBuilder(Resource model, MapCoordinate coordinate, Resource type, Geometry geometry) {
-        return (!exists(coordinate, type)) ? Optional.of(new UpdateBuilder().addInsert(model,
-                GraphGeomFactory.asRDF(coordinate.getCoordinate(), type, geometry).getModel())) : Optional.empty();
+    private Optional<UpdateBuilder> addBuilder(Resource model, MapCoordinate coordinate, Resource type,
+            Geometry geometry) {
+        return (!exists(coordinate, type))
+                ? Optional.of(new UpdateBuilder().addInsert(model,
+                        GraphGeomFactory.asRDF(coordinate.getCoordinate(), type, geometry).getModel()))
+                : Optional.empty();
     }
 
     private boolean add(Resource model, MapCoordinate coordinate, Resource type, Geometry geometry) {
@@ -531,12 +533,10 @@ public class MapImpl implements Map {
         Var other2 = Var.alloc("other2");
         Var other2Wkt = Var.alloc("other2Wkt");
 
-
-
         Expr adjCalc = exprF.cond(exprF.bound(adjustment), exprF.add(otherDist, adjustment), exprF.asExpr(otherDist));
         Expr indirectCalc = exprF.cond(exprF.bound(indirect), exprF.asExpr(otherDist), exprF.asExpr(0));
-        Expr distCalc = exprF.add( adjCalc, indirectCalc);
-        
+        Expr distCalc = exprF.add(adjCalc, indirectCalc);
+
 //        SelectBuilder query2 = new SelectBuilder().addVar("?sX").addVar("?sY").addVar("?oX").addVar("?oY")
 //                .addVar(otherDist).addVar(adjustment).addVar(dist).addVar(cost) //
 //                .from(Namespace.UnionModel.getURI()) //
@@ -618,18 +618,17 @@ public class MapImpl implements Map {
         // remove all the distance and adjustments and then calculate the distance to
         // the new target
 
-        UpdateRequest req = new UpdateRequest()
-                .add(new UpdateBuilder() //
-                        .addDelete(Namespace.PlanningModel, Namespace.s, Namespace.p, Namespace.o) //
-                        .addGraph(Namespace.PlanningModel, new WhereBuilder() //
-                                .addWhere(Namespace.s, Namespace.p, List.of(Namespace.adjustment, Namespace.distance)) //
-                        ).build()).add(new UpdateBuilder() //
-                                .addInsert(Namespace.PlanningModel, Namespace.s, Namespace.distance, distance) //
-                                .addGraph(Namespace.UnionModel, new WhereBuilder() //
-                                        .addWhere(Namespace.s, RDF.type, List.of(Namespace.Coord, Namespace.Path)) //
-                                        .addWhere(Namespace.s, Geo.AS_WKT_PROP, wkt) //
-                                        .addBind(GraphGeomFactory.calcDistance(exprF, targ, wkt), distance))
-                                .build());
+        UpdateRequest req = new UpdateRequest().add(new UpdateBuilder() //
+                .addDelete(Namespace.PlanningModel, Namespace.s, Namespace.p, Namespace.o) //
+                .addGraph(Namespace.PlanningModel, new WhereBuilder() //
+                        .addWhere(Namespace.s, Namespace.p, List.of(Namespace.adjustment, Namespace.distance)) //
+                ).build()).add(new UpdateBuilder() //
+                        .addInsert(Namespace.PlanningModel, Namespace.s, Namespace.distance, distance) //
+                        .addGraph(Namespace.UnionModel, new WhereBuilder() //
+                                .addWhere(Namespace.s, RDF.type, List.of(Namespace.Coord, Namespace.Path)) //
+                                .addWhere(Namespace.s, Geo.AS_WKT_PROP, wkt) //
+                                .addBind(GraphGeomFactory.calcDistance(exprF, targ, wkt), distance))
+                        .build());
         doUpdate(req);
 
         // check each item that has a distance and see if there is a path to the target,
@@ -723,37 +722,37 @@ public class MapImpl implements Map {
         // new Clusterer(type,eps,minCount).run();
     }
 
+    @Override
     public void updateIsIndirect(Coordinate target, double buffer, Set<Coordinate> newObstacles) {
         Var isIndirect = Var.alloc("isIndirect");
         Var wkt = Var.alloc("wkt");
         Var x = Var.alloc("x");
         Var y = Var.alloc("y");
-        
-        SelectBuilder sb=new SelectBuilder().addVar(x).addVar(y).setDistinct(true) //
-                .addGraph( Namespace.UnionModel, new WhereBuilder() //
-                .addWhere(Namespace.s, RDF.type, Namespace.Coord) //
-                .addWhere(Namespace.s, Namespace.x, x) //
-                .addWhere(Namespace.s, Namespace.y, y) //
-                .addOptional(Namespace.s, Namespace.isIndirect, isIndirect) //
-                .addFilter(exprF.not(exprF.bound(isIndirect)))
-            );
-        
+
+        SelectBuilder sb = new SelectBuilder().addVar(x).addVar(y).setDistinct(true) //
+                .addGraph(Namespace.UnionModel, new WhereBuilder() //
+                        .addWhere(Namespace.s, RDF.type, Namespace.Coord) //
+                        .addWhere(Namespace.s, Namespace.x, x) //
+                        .addWhere(Namespace.s, Namespace.y, y) //
+                        .addOptional(Namespace.s, Namespace.isIndirect, isIndirect) //
+                        .addFilter(exprF.not(exprF.bound(isIndirect))));
+
         List<Coordinate> candidates = new ArrayList<>();
 
         Predicate<QuerySolution> processor = soln -> {
-            candidates.add( new Coordinate(soln.getLiteral(x.getName()).getDouble(),
-                    soln.getLiteral(y.getName()).getDouble()));
+            candidates.add(
+                    new Coordinate(soln.getLiteral(x.getName()).getDouble(), soln.getLiteral(y.getName()).getDouble()));
             return true;
         };
-        
+
         this.exec(sb, processor);
-        
+
         List<Point> newObst = newObstacles.stream().map(c -> GeometryUtils.asPoint(c)).collect(Collectors.toList());
-        
+
         List<Literal> updateCoords = new ArrayList<>();
-        
+
         for (Coordinate c : candidates) {
-            LineString ls = GeometryUtils.asLine(c,target);
+            LineString ls = GeometryUtils.asLine(c, target);
             for (Point obst : newObst) {
                 if (ls.distance(obst) < buffer) {
                     updateCoords.add(GraphGeomFactory.asWKT(c));
@@ -762,17 +761,16 @@ public class MapImpl implements Map {
             }
         }
         if (!updateCoords.isEmpty()) {
-        UpdateBuilder ub = new UpdateBuilder()
-                .addInsert(Namespace.PlanningModel, Namespace.s, Namespace.isIndirect, Boolean.TRUE) //
-                .addGraph( Namespace.UnionModel, new WhereBuilder() //
-                    .addWhere(Namespace.s, RDF.type, Namespace.Coord) //
-                    .addWhere(Namespace.s, Geo.AS_WKT_NODE, wkt)
-                    .addFilter(exprF.in(wkt, updateCoords.toArray()))
-                );
-        doUpdate(ub);
+            UpdateBuilder ub = new UpdateBuilder()
+                    .addInsert(Namespace.PlanningModel, Namespace.s, Namespace.isIndirect, Boolean.TRUE) //
+                    .addGraph(Namespace.UnionModel, new WhereBuilder() //
+                            .addWhere(Namespace.s, RDF.type, Namespace.Coord) //
+                            .addWhere(Namespace.s, Geo.AS_WKT_NODE, wkt)
+                            .addFilter(exprF.in(wkt, updateCoords.toArray())));
+            doUpdate(ub);
         }
     }
-    
+
     private class LockHandler implements AutoCloseable {
         Lock lock;
 
@@ -791,7 +789,7 @@ public class MapImpl implements Map {
     private class MapCoordinate implements FrontsCoordinate {
 
         UnmodifiableCoordinate coord;
-        
+
         public MapCoordinate(Coordinate coordinate) {
             coord = UnmodifiableCoordinate.make(adopt(coordinate));
         }

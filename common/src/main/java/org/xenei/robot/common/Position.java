@@ -7,12 +7,12 @@ import org.xenei.robot.common.utils.DoubleUtils;
 import org.xenei.robot.common.utils.GeometryUtils;
 
 public interface Position extends Location {
-    
+
     static Position from(Coordinate c, double head) {
         return new Position() {
             double heading = head;
             UnmodifiableCoordinate coord = UnmodifiableCoordinate.make(c);
-            
+
             @Override
             public UnmodifiableCoordinate getCoordinate() {
                 return coord;
@@ -30,7 +30,6 @@ public interface Position extends Location {
             }
         };
     }
-    
 
     /**
      * Constructs a position from a point with a heading of 0.0.
@@ -78,24 +77,24 @@ public interface Position extends Location {
      * @param heading the heading in radians.
      */
     static Position from(double x, double y, double heading) {
-        return from(new Coordinate(x,y), heading);
+        return from(new Coordinate(x, y), heading);
     }
-    
+
     /**
      * Gets the heading.
      * 
      * @return the heading in radians
      */
     double getHeading();
-    
+
     default double headingTo(Coordinate heading) {
-        return AngleUtils.normalize( Math.atan2( heading.getY() - this.getY(), heading.getX()-this.getX()));
+        return AngleUtils.normalize(Math.atan2(heading.getY() - this.getY(), heading.getX() - this.getX()));
     }
-    
+
     default double headingTo(FrontsCoordinate heading) {
         return headingTo(heading.getCoordinate());
     }
-    
+
     /**
      * Calculates the next position.
      * <p>
@@ -111,28 +110,29 @@ public interface Position extends Location {
         if (relativeCoordinates.range() == 0) {
             return this;
         }
-        
+
         double range = relativeCoordinates.range();
         double thetar = relativeCoordinates.theta();
         double thetah = this.getHeading();
-       
+
         double apime = AngleUtils.normalize(thetah + thetar);
-        //double aprime = this.headingTo(relativeCoordinates);
-        
-        //double heading = AngleUtils.normalize(this.heading+this.headingTo(relativeCoordinates));
+        // double aprime = this.headingTo(relativeCoordinates);
+
+        // double heading =
+        // AngleUtils.normalize(this.heading+this.headingTo(relativeCoordinates));
         Coordinate a = this.plus(CoordUtils.fromAngle(apime, range));
         return Position.from(a, apime);
     }
-    
+
     default Location relativeLocation(Coordinate absoluteLocation) {
         double range = distance(absoluteLocation);
         if (range == 0) {
             return Location.ORIGIN;
         }
-        //double x = this.getX() - absoluteLocation.getX();
-        //double y = this.getY() - absoluteLocation.getY();
+        // double x = this.getX() - absoluteLocation.getX();
+        // double y = this.getY() - absoluteLocation.getY();
         double theta = this.headingTo(absoluteLocation) - this.getHeading();
-        
+
         return Location.from(CoordUtils.fromAngle(theta, range));
     }
 

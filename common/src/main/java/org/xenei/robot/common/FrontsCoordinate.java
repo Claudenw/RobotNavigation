@@ -6,9 +6,10 @@ import org.locationtech.jts.geom.Coordinate;
 import org.xenei.robot.common.utils.CoordUtils;
 
 public interface FrontsCoordinate extends HasCoordinate {
-    
+
     /**
      * Compares Coordinates by XY positions.
+     * 
      * @see CoordUtils#XYCompr
      */
     static Comparator<FrontsCoordinate> XYCompr = (one, two) -> {
@@ -17,7 +18,7 @@ public interface FrontsCoordinate extends HasCoordinate {
 
     @Override
     UnmodifiableCoordinate getCoordinate();
-    
+
     default double getX() {
         return getCoordinate().getX();
     }
@@ -29,7 +30,7 @@ public interface FrontsCoordinate extends HasCoordinate {
     default boolean equals2D(Coordinate other) {
         return getCoordinate().equals2D(other);
     }
-    
+
     default boolean equals2D(FrontsCoordinate other) {
         return equals2D(other.getCoordinate());
     }
@@ -57,28 +58,28 @@ public interface FrontsCoordinate extends HasCoordinate {
     default double distance(FrontsCoordinate c) {
         return distance(c.getCoordinate());
     }
-    
+
     default double angleBetween(FrontsCoordinate other) {
         return angleBetween(other.getCoordinate());
     }
-    
+
     default double angleBetween(Coordinate dest) {
         return CoordUtils.angleBetween(this.getCoordinate(), dest);
     }
-    
+
     default Coordinate minus(Coordinate other) {
-        return new Coordinate( getX() - other.getX(), getY()-other.getY());
+        return new Coordinate(getX() - other.getX(), getY() - other.getY());
     }
-    
+
     default Coordinate minus(FrontsCoordinate other) {
-        return new Coordinate( getX() - other.getX(), getY()-other.getY());
+        return new Coordinate(getX() - other.getX(), getY() - other.getY());
     }
-    
+
     default Coordinate plus(Coordinate other) {
-        return new Coordinate( getX()+other.getX(), getY()+other.getY());
+        return new Coordinate(getX() + other.getX(), getY() + other.getY());
     }
-    
+
     default Coordinate plus(FrontsCoordinate other) {
-        return new Coordinate( getX()+other.getX(), getY()+other.getY());
+        return new Coordinate(getX() + other.getX(), getY() + other.getY());
     }
 }

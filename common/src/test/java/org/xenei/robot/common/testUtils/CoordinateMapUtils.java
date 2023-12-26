@@ -4,7 +4,6 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import org.locationtech.jts.geom.Coordinate;
-import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.Point;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,11 +24,11 @@ public class CoordinateMapUtils {
         CoordinateMap cmap = new CoordinateMapBuilder(initialMap.scale()).merge(initialMap).build();
         List<Coordinate> lst = map.getObstacles().stream().map(g -> {
             Point p = g.getCentroid();
-            return new Coordinate(p.getX(), p.getY());})
-                .collect(Collectors.toList());
+            return new Coordinate(p.getX(), p.getY());
+        }).collect(Collectors.toList());
 
         cmap.enable(lst, '@');
-        
+
         planner.getTargets().stream().forEach(c -> cmap.enable(c, '*'));
         planner.getSolution().stream().forEach(r -> cmap.enable(r, '='));
         cmap.enable(position, 'p');

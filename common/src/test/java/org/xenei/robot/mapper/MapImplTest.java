@@ -18,7 +18,6 @@ import org.apache.jena.arq.querybuilder.ExprFactory;
 import org.apache.jena.arq.querybuilder.SelectBuilder;
 import org.apache.jena.arq.querybuilder.WhereBuilder;
 import org.apache.jena.geosparql.implementation.vocabulary.Geo;
-import org.apache.jena.util.iterator.UniqueFilter;
 import org.apache.jena.vocabulary.RDF;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -28,15 +27,13 @@ import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.Point;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.ScaleInfo;
-import org.xenei.robot.common.planning.Solution;
 import org.xenei.robot.common.planning.Step;
 import org.xenei.robot.common.utils.CoordUtils;
-import org.xenei.robot.common.utils.DoubleUtils;
 import org.xenei.robot.common.utils.GeometryUtils;
 import org.xenei.robot.mapper.rdf.Namespace;
 
 public class MapImplTest {
-    
+
     private final double buffer = 0.5;
 
     private MapImpl underTest;
@@ -240,7 +237,7 @@ public class MapImplTest {
         underTest.addCoord(c.getCoordinate(), 0, false, false);
         assertFalse(underTest.ask(ask));
         underTest.updateCoordinate(Namespace.PlanningModel, Namespace.Coord, c.getCoordinate(), Namespace.distance, 5);
-        System.out.println(MapReports.dumpModel(underTest) );
+        System.out.println(MapReports.dumpModel(underTest));
         assertTrue(underTest.ask(ask));
 
         ExprFactory exprF = new ExprFactory();
@@ -253,7 +250,8 @@ public class MapImplTest {
         assertTrue(underTest.ask(ask));
 
         Step before = underTest.getStep(c).get();
-        underTest.updateCoordinate(Namespace.PlanningModel, Namespace.Coord, c.getCoordinate(), Namespace.distance, before.cost() + 5);
+        underTest.updateCoordinate(Namespace.PlanningModel, Namespace.Coord, c.getCoordinate(), Namespace.distance,
+                before.cost() + 5);
 
         SelectBuilder sb = new SelectBuilder().from(Namespace.UnionModel.getURI())
                 .addWhere(Namespace.s, Namespace.distance, "?x").addWhere(Namespace.s, Namespace.x, c.getX())
@@ -292,9 +290,10 @@ public class MapImplTest {
                         .addWhere(Namespace.s, RDF.type, Namespace.Coord)
                         .addWhere(Namespace.s, Geo.AS_WKT_PROP, GraphGeomFactory.asWKT(GeometryUtils.asPoint(p))));
         assertTrue(underTest.ask(ask));
-        
+
         underTest = new MapImpl(scale);
-        Coordinate c = new Coordinate(-1+(scale.getResolution()/2)-scale.getResolution()/10, -3-(scale.getResolution()/2));
+        Coordinate c = new Coordinate(-1 + (scale.getResolution() / 2) - scale.getResolution() / 10,
+                -3 - (scale.getResolution() / 2));
         underTest.addCoord(c, 11, false, false);
         System.out.println(MapReports.dumpModel(underTest, Namespace.PlanningModel));
         assertTrue(underTest.ask(ask));
@@ -317,6 +316,5 @@ public class MapImplTest {
         System.out.println(MapReports.dumpModel(underTest));
         assertTrue(underTest.ask(ask));
     }
-    
 
 }

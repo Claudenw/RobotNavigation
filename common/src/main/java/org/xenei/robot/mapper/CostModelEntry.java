@@ -1,8 +1,6 @@
 package org.xenei.robot.mapper;
 
 import org.locationtech.jts.geom.Coordinate;
-import org.xenei.robot.common.utils.CoordUtils;
-
 
 public class CostModelEntry {
     public final Coordinate a;

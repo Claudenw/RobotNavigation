@@ -66,7 +66,6 @@ public class PositionTest {
         assertEquals(SQRT2, nxt.getY(), DELTA);
 
         cmd = Location.from(CoordUtils.fromAngle(RADIANS_90, 2));
-        double ct = cmd.theta();
         nxt = nxt.nextPosition(cmd);
         assertEquals(RADIANS_135, nxt.getHeading(), DELTA);
         assertEquals(0.0, nxt.getX(), DELTA);

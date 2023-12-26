@@ -14,7 +14,6 @@ import org.apache.jena.query.QueryExecutionFactory;
 import org.apache.jena.rdf.model.Literal;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.Resource;
-import org.apache.jena.rdf.model.Statement;
 import org.apache.jena.vocabulary.RDF;
 import org.junit.jupiter.api.Test;
 import org.locationtech.jts.geom.Coordinate;
@@ -60,27 +59,28 @@ public class GraphGeomFactoryTest {
 
         ExprFactory exprF = new ExprFactory(m);
         AskBuilder ask = new AskBuilder().addWhere(Namespace.s, Geo.AS_WKT_PROP, "?wkt")
-                .addBind(GraphGeomFactory.calcDistance(exprF, "?wkt", testWkt), "?cost").addFilter(exprF.eq("?cost", 4));
+                .addBind(GraphGeomFactory.calcDistance(exprF, "?wkt", testWkt), "?cost")
+                .addFilter(exprF.eq("?cost", 4));
 
         try (QueryExecution qexec = QueryExecutionFactory.create(ask.build(), ds)) {
             assertTrue(qexec.execAsk());
         }
     }
 
-  @Test
-  public void asRDFTest() {
-      Coordinate p = new Coordinate( -1, 3 );
-      
-      Resource r = GraphGeomFactory.asRDF(p, Namespace.Coord);
-      assertTrue( r.hasLiteral(Namespace.x, -1.0));
-      assertTrue( r.hasLiteral(Namespace.y, 3.0));
-      assertTrue( r.hasProperty(RDF.type, Namespace.Coord));
-      assertTrue( r.hasProperty(Geo.AS_WKT_PROP,GraphGeomFactory.asWKT(GeometryUtils.asPoint(p))));
-      
-      r = GraphGeomFactory.asRDF(p, Namespace.Coord, GeometryUtils.asPolygon(p,3));
-      assertTrue( r.hasLiteral(Namespace.x, -1.0));
-      assertTrue( r.hasLiteral(Namespace.y, 3.0));
-      assertTrue( r.hasProperty(RDF.type, Namespace.Coord));
-      assertTrue( r.hasProperty(Geo.AS_WKT_PROP,GraphGeomFactory.asWKT(GeometryUtils.asPolygon(p,3))));
-  }
+    @Test
+    public void asRDFTest() {
+        Coordinate p = new Coordinate(-1, 3);
+
+        Resource r = GraphGeomFactory.asRDF(p, Namespace.Coord);
+        assertTrue(r.hasLiteral(Namespace.x, -1.0));
+        assertTrue(r.hasLiteral(Namespace.y, 3.0));
+        assertTrue(r.hasProperty(RDF.type, Namespace.Coord));
+        assertTrue(r.hasProperty(Geo.AS_WKT_PROP, GraphGeomFactory.asWKT(GeometryUtils.asPoint(p))));
+
+        r = GraphGeomFactory.asRDF(p, Namespace.Coord, GeometryUtils.asPolygon(p, 3));
+        assertTrue(r.hasLiteral(Namespace.x, -1.0));
+        assertTrue(r.hasLiteral(Namespace.y, 3.0));
+        assertTrue(r.hasProperty(RDF.type, Namespace.Coord));
+        assertTrue(r.hasProperty(Geo.AS_WKT_PROP, GraphGeomFactory.asWKT(GeometryUtils.asPolygon(p, 3))));
+    }
 }

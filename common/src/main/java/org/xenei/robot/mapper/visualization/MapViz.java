@@ -34,8 +34,7 @@ public class MapViz {
         this.panel = new JTSPanel();
         this.solution = solution;
         this.scale = scale;
-        this.buffer = (int) (map.getScale().getResolution()*scale)/2;
-        
+        this.buffer = (int) (map.getScale().getResolution() * scale) / 2;
 
         JFrame frame = new JFrame("Map Visualization");
         frame.setLayout(new BorderLayout());
@@ -50,11 +49,11 @@ public class MapViz {
 
     private AbstractDrawingCommand getPoly(Geometry geom, Color color) {
         if (geom instanceof Point) {
-            
+
             return new AbstractDrawingCommand(geom, color) {
                 @Override
                 protected void fillGeom(Graphics g, int[] xler, int[] yler) {
-                    g.fillOval(xler[0]-buffer, yler[0]-buffer, buffer*2, buffer*2);
+                    g.fillOval(xler[0] - buffer, yler[0] - buffer, buffer * 2, buffer * 2);
                 }
             };
         }
@@ -75,11 +74,11 @@ public class MapViz {
                 }
             };
         }
-        
+
         return new AbstractDrawingCommand(geom, color) {
             @Override
             protected void fillGeom(Graphics g, int[] xler, int[] yler) {
-                g.drawString( geom.getClass().getSimpleName(), xler[0], yler[0]);
+                g.drawString(geom.getClass().getSimpleName(), xler[0], yler[0]);
             }
         };
     }
@@ -100,9 +99,9 @@ public class MapViz {
         } else {
             cmds.add(getPoly(GeometryUtils.asPolygon(lst.get(0), 0.5), Color.WHITE));
         }
-        
+
         if (target != null) {
-            cmds.add( getPoly(GeometryUtils.asPolygon(target, 0.5), Color.GREEN));
+            cmds.add(getPoly(GeometryUtils.asPolygon(target, 0.5), Color.GREEN));
         }
 
         rescale(cmds);
@@ -114,7 +113,7 @@ public class MapViz {
     }
 
     private void rescale(List<AbstractDrawingCommand> lst) {
-        
+
         double max = Integer.MIN_VALUE;
         for (AbstractDrawingCommand cmd : lst) {
             for (int i : cmd.xler) {
@@ -139,34 +138,35 @@ public class MapViz {
             }
         }
     }
-    
+
     /**
      * 
      * @see https://www.smartycoder.com
      *
      */
     public abstract class AbstractDrawingCommand implements DrawingCommand {
-            int[] xler;
-            int[] yler;
-            private Color color;
+        int[] xler;
+        int[] yler;
+        private Color color;
 
-            AbstractDrawingCommand(Geometry geom, Color color) {
-                this.color = color;
-                Coordinate[] coords = geom.getCoordinates();
-                xler = new int[coords.length];
-                yler = new int[coords.length];
+        AbstractDrawingCommand(Geometry geom, Color color) {
+            this.color = color;
+            Coordinate[] coords = geom.getCoordinates();
+            xler = new int[coords.length];
+            yler = new int[coords.length];
 
-                for (int i = 0; i < coords.length; i++) {
-                    xler[i] = (int) Math.round(coords[i].getX()*scale);
-                    yler[i] = (int) Math.round(coords[i].getY()*scale);
-                }
+            for (int i = 0; i < coords.length; i++) {
+                xler[i] = (int) Math.round(coords[i].getX() * scale);
+                yler[i] = (int) Math.round(coords[i].getY() * scale);
             }
+        }
 
-            public void doDrawing(Graphics g) {
-                g.setColor(color);
-                fillGeom(g, xler, yler);
-            }
+        @Override
+        public void doDrawing(Graphics g) {
+            g.setColor(color);
+            fillGeom(g, xler, yler);
+        }
 
-            abstract protected void fillGeom(Graphics g, int[] xler, int[] yler);
+        abstract protected void fillGeom(Graphics g, int[] xler, int[] yler);
     }
 }

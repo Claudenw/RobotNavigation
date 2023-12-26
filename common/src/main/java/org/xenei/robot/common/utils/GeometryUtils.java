@@ -30,7 +30,7 @@ public class GeometryUtils {
     public static Geometry asCluster(Coordinate[] c) {
         Geometry g = geometryFactory.createMultiPointFromCoords(c).convexHull();
         if (g instanceof LineString) {
-            return asPath( g.getCoordinates() );
+            return asPath(g.getCoordinates());
         }
         if (g instanceof Point) {
             return asPolygon(g.getCoordinate());

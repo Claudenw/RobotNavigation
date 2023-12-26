@@ -18,10 +18,11 @@ public class StepImpl implements Step {
     public StepImpl(Coordinate position, Coordinate target) {
         this(position, position.distance(target));
     }
-    
+
     public StepImpl(Coordinate position, Coordinate target, Geometry geom) {
         this(position, position.distance(target), geom);
     }
+
     public StepImpl(FrontsCoordinate position, Coordinate target) {
         this(position.getCoordinate(), position.distance(target));
     }
@@ -33,15 +34,15 @@ public class StepImpl implements Step {
     public StepImpl(Coordinate position, FrontsCoordinate target) {
         this(position, position.distance(target.getCoordinate()));
     }
-    
+
     public StepImpl(Coordinate position, FrontsCoordinate target, Geometry geom) {
         this(position, position.distance(target.getCoordinate()), geom);
     }
-    
+
     public StepImpl(FrontsCoordinate position, FrontsCoordinate target) {
         this(position.getCoordinate(), position.distance(target));
     }
-    
+
     public StepImpl(FrontsCoordinate position, FrontsCoordinate target, Geometry geom) {
         this(position.getCoordinate(), position.distance(target), geom);
     }
@@ -49,30 +50,33 @@ public class StepImpl implements Step {
     public StepImpl(FrontsCoordinate point, double cost) {
         this(point.getCoordinate(), cost);
     }
-    
+
     public StepImpl(FrontsCoordinate point, double cost, Geometry geom) {
         this(point.getCoordinate(), cost, geom);
     }
-    
+
     public StepImpl(Coordinate point, double cost, Geometry geom) {
         coord = UnmodifiableCoordinate.make(point);
         Objects.requireNonNull(geom);
         this.cost = cost;
         this.geom = geom;
     }
-  
+
     public StepImpl(Coordinate point, double cost) {
         this(point, cost, new GeometryFactory().createPoint(point));
     }
 
+    @Override
     public UnmodifiableCoordinate getCoordinate() {
         return coord;
     }
 
+    @Override
     public double cost() {
         return cost;
     }
-    
+
+    @Override
     public Geometry getGeometry() {
         return geom;
     }
@@ -88,11 +92,11 @@ public class StepImpl implements Step {
             return true;
         }
         if (obj instanceof StepImpl) {
-            return compareTo((StepImpl)obj) == 0;
+            return compareTo((StepImpl) obj) == 0;
         }
         return false;
     }
-    
+
     @Override
     public int hashCode() {
         return 37 * getCoordinate().hashCode() + Coordinate.hashCode(cost);

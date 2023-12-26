@@ -4,8 +4,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Position;
-import org.xenei.robot.common.Location;
-import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.common.mapping.CoordinateMap;
 import org.xenei.robot.common.utils.CoordUtils;
 
@@ -22,6 +20,7 @@ public class FakeDistanceSensor1 implements FakeDistanceSensor {
         this.map = map;
     }
 
+    @Override
     public CoordinateMap map() {
         return map;
     }
@@ -38,8 +37,8 @@ public class FakeDistanceSensor1 implements FakeDistanceSensor {
         for (int i = 0; i < BLOCKSIZE; i++) {
             Location nxt = look(position, position.getHeading() + (RADIANS * i));
             System.out.println(nxt);
-            double heading = position.headingTo(nxt)-position.getHeading();
-            double d = position.distance(nxt); 
+            double heading = position.headingTo(nxt) - position.getHeading();
+            double d = position.distance(nxt);
             result[i] = Location.from(CoordUtils.fromAngle(heading, d));
             if (LOG.isDebugEnabled()) {
                 LOG.debug("Reading {}: {}", i, result[i]);

@@ -4,6 +4,8 @@ import org.locationtech.jts.geom.Coordinate;
 
 public class UnmodifiableCoordinate extends Coordinate {
 
+    private static final long serialVersionUID = 1674775782994045928L;
+
     public static UnmodifiableCoordinate make(Coordinate coordinate) {
         return coordinate instanceof UnmodifiableCoordinate ? (UnmodifiableCoordinate) coordinate
                 : new UnmodifiableCoordinate(coordinate);

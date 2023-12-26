@@ -1,6 +1,5 @@
 package org.xenei.robot.common;
 
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -21,14 +20,15 @@ public class SolutionTest {
 
     private Solution underTest;
 
-    public static Coordinate[] expectedSolution = { new Coordinate(-1, -3), new Coordinate(-1, -2), new Coordinate(-2, -2),
-            new Coordinate(0, -2), new Coordinate(2, -2), new Coordinate(2, -1), new Coordinate(2, 0), new Coordinate(-1, 1) };
-    
-    public static Coordinate[] expectedSimplification = { new Coordinate(-1, -3), new Coordinate(2, -2), new Coordinate(2, 0),
-            new Coordinate(-1, 1) };
+    public static Coordinate[] expectedSolution = { new Coordinate(-1, -3), new Coordinate(-1, -2),
+            new Coordinate(-2, -2), new Coordinate(0, -2), new Coordinate(2, -2), new Coordinate(2, -1),
+            new Coordinate(2, 0), new Coordinate(-1, 1) };
+
+    public static Coordinate[] expectedSimplification = { new Coordinate(-1, -3), new Coordinate(2, -2),
+            new Coordinate(2, 0), new Coordinate(-1, 1) };
 
     public static double expectedCost = 11.16227766016838;
-    
+
     public static double expectedSimplifiedCost = 8.32455532033676;
 
     @BeforeEach

@@ -4,8 +4,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Position;
-import org.xenei.robot.common.Location;
-import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.common.mapping.CoordinateMap;
 import org.xenei.robot.common.utils.CoordUtils;
 
@@ -22,6 +20,7 @@ public class FakeDistanceSensor2 implements FakeDistanceSensor {
         this.angle = angle;
     }
 
+    @Override
     public CoordinateMap map() {
         return map;
     }
@@ -54,6 +53,5 @@ public class FakeDistanceSensor2 implements FakeDistanceSensor {
     public double maxRange() {
         return MAX_RANGE;
     }
-
 
 }
