@@ -16,7 +16,7 @@ public class AngleUtilsTest {
     @ParameterizedTest
     @MethodSource("angleParameters")
     public void normalizeTest(double arg, double expected) {
-        assertEquals(expected, AngleUtils.normalize(expected), Precision.EPSILON);
+        assertEquals(expected, AngleUtils.normalize(arg), AngleUtils.TOLERANCE);
     }
 
     private static Stream<Arguments> angleParameters() {
@@ -26,7 +26,7 @@ public class AngleUtilsTest {
         List<Arguments> lst = new ArrayList<Arguments>();
         lst.add(Arguments.of(0, 0));
         lst.add(Arguments.of(-0, -0));
-        lst.add(Arguments.of(-Math.PI, -Math.PI));
+        lst.add(Arguments.of(-Math.PI, Math.PI));
         while (position <= 2 * Math.PI) {
             lst.add(Arguments.of(position, expected));
             position += incr;
@@ -39,7 +39,7 @@ public class AngleUtilsTest {
             lst.add(Arguments.of(position, expected));
             position -= incr;
             expected -= incr;
-            if (expected < -Math.PI) {
+            if (expected <= -Math.PI) {
                 expected += 2 * Math.PI;
             }
         } while (position > -2 * Math.PI);

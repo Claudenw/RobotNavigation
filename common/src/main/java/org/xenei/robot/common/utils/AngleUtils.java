@@ -9,6 +9,11 @@ public class AngleUtils {
     public static final double RADIANS_225 = -RADIANS_135;
     public static final double RADIANS_270 = -RADIANS_90;
     public static final double RADIANS_315 = -RADIANS_45;
+    
+    /**
+     * The point at which rounding errors appear in angular calculations.
+     */
+    public static final double TOLERANCE = 0.000000000000001;
 
     private AngleUtils() {
     }
