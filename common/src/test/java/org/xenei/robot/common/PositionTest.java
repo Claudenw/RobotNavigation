@@ -3,7 +3,6 @@ package org.xenei.robot.common;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.xenei.robot.common.LocationTest.DELTA;
 import static org.xenei.robot.common.utils.AngleUtils.RADIANS_135;
 import static org.xenei.robot.common.utils.AngleUtils.RADIANS_180;
 import static org.xenei.robot.common.utils.AngleUtils.RADIANS_225;
@@ -29,6 +28,8 @@ import org.xenei.robot.common.utils.AngleUtils;
 import org.xenei.robot.common.utils.CoordUtils;
 
 public class PositionTest {
+    
+    private final static double TOLERANCE = 0.000000000001;
 
     private static double[] angles = { 0, RADIANS_45, RADIANS_90, RADIANS_135, RADIANS_180, RADIANS_225, RADIANS_270,
             RADIANS_315 };
@@ -45,41 +46,41 @@ public class PositionTest {
     public void zigZagTest() {
         Location cmd = Location.from(CoordUtils.fromAngle(RADIANS_45, 2));
         Position nxt = initial.nextPosition(cmd);
-        assertEquals(RADIANS_45, nxt.getHeading(), DELTA);
-        assertEquals(SQRT2, nxt.getX(), DELTA);
-        assertEquals(SQRT2, nxt.getY(), DELTA);
+        assertEquals(RADIANS_45, nxt.getHeading(), AngleUtils.TOLERANCE);
+        assertEquals(SQRT2, nxt.getX(), TOLERANCE);
+        assertEquals(SQRT2, nxt.getY(), TOLERANCE);
 
         cmd = Location.from(CoordUtils.fromAngle(-RADIANS_45, 2));
         nxt = nxt.nextPosition(cmd);
 
-        assertEquals(SQRT2 + 2, nxt.getX(), DELTA);
-        assertEquals(SQRT2, nxt.getY(), DELTA);
-        assertEquals(0.0, nxt.getHeading(), DELTA);
+        assertEquals(SQRT2 + 2, nxt.getX(), TOLERANCE);
+        assertEquals(SQRT2, nxt.getY(), TOLERANCE);
+        assertEquals(0.0, nxt.getHeading(), AngleUtils.TOLERANCE);
     }
 
     @Test
     public void boxTest() {
         Location cmd = Location.from(CoordUtils.fromAngle(RADIANS_45, 2));
         Position nxt = initial.nextPosition(cmd);
-        assertEquals(RADIANS_45, nxt.getHeading(), DELTA);
-        assertEquals(SQRT2, nxt.getX(), DELTA);
-        assertEquals(SQRT2, nxt.getY(), DELTA);
+        assertEquals(RADIANS_45, nxt.getHeading(), AngleUtils.TOLERANCE);
+        assertEquals(SQRT2, nxt.getX(), TOLERANCE);
+        assertEquals(SQRT2, nxt.getY(), TOLERANCE);
 
         cmd = Location.from(CoordUtils.fromAngle(RADIANS_90, 2));
         nxt = nxt.nextPosition(cmd);
-        assertEquals(RADIANS_135, nxt.getHeading(), DELTA);
-        assertEquals(0.0, nxt.getX(), DELTA);
-        assertEquals(SQRT2 * 2, nxt.getY(), DELTA);
+        assertEquals(RADIANS_135, nxt.getHeading(), AngleUtils.TOLERANCE);
+        assertEquals(0.0, nxt.getX(), TOLERANCE);
+        assertEquals(SQRT2 * 2, nxt.getY(), TOLERANCE);
 
         nxt = nxt.nextPosition(cmd);
-        assertEquals(RADIANS_225, nxt.getHeading(), DELTA);
-        assertEquals(-SQRT2, nxt.getX(), DELTA);
-        assertEquals(SQRT2, nxt.getY(), DELTA);
+        assertEquals(RADIANS_225, nxt.getHeading(), AngleUtils.TOLERANCE);
+        assertEquals(-SQRT2, nxt.getX(), TOLERANCE);
+        assertEquals(SQRT2, nxt.getY(), TOLERANCE);
 
         nxt = nxt.nextPosition(cmd);
-        assertEquals(RADIANS_315, nxt.getHeading(), DELTA);
-        assertEquals(0, nxt.getX(), DELTA);
-        assertEquals(0, nxt.getY(), DELTA);
+        assertEquals(RADIANS_315, nxt.getHeading(), AngleUtils.TOLERANCE);
+        assertEquals(0, nxt.getX(), TOLERANCE);
+        assertEquals(0, nxt.getY(), TOLERANCE);
     }
 
     @ParameterizedTest(name = "{index} {0}")
@@ -139,7 +140,7 @@ public class PositionTest {
     public void nextPositionTest(int degrees, Location l, double radians) {
         Position p = Position.from(0, 0, 0);
         Position t = p.nextPosition(l);
-        CoordinateUtils.assertEquivalent(l, t, DELTA);
+        CoordinateUtils.assertEquivalent(l, t, TOLERANCE);
         assertEquals(radians, t.getHeading(), ScaleInfo.DEFAULT.getResolution());
     }
 
@@ -168,12 +169,12 @@ public class PositionTest {
     }
 
     @ParameterizedTest(name = "{index} {0}")
-    @MethodSource("headingToParameters")
-    public void headingToTest(Position p, Coordinate c, double expected) {
+    @MethodSource("headingParameters")
+    public void headingTest(Position p, Coordinate c, double expected) {
         assertEquals(expected, p.headingTo(c), ScaleInfo.DEFAULT.getResolution());
     }
 
-    public static Stream<Arguments> headingToParameters() {
+    public static Stream<Arguments> headingParameters() {
         List<Arguments> lst = new ArrayList<>();
         lst.add(Arguments.arguments(Position.from(-1, -3, 0), new Coordinate(-1, -1), RADIANS_90));
         lst.add(Arguments.arguments(Position.from(-1, -3, RADIANS_90), new Coordinate(-1, -1), RADIANS_90));
@@ -188,12 +189,12 @@ public class PositionTest {
     public void relativeLocationTest(Position position, Coordinate absolute, double heading) {
         Location relative = position.relativeLocation(absolute);
         Position p2 = position.nextPosition(relative);
-        CoordinateUtils.assertEquivalent(absolute, p2, DELTA);
-        assertEquals(AngleUtils.normalize(heading), AngleUtils.normalize(p2.getHeading()), DELTA);
+        CoordinateUtils.assertEquivalent(absolute, p2, TOLERANCE);
+        assertEquals(AngleUtils.normalize(heading), AngleUtils.normalize(p2.getHeading()), AngleUtils.TOLERANCE);
     }
 
     private static Arguments makeRelativeLocArguments(Position p, Coordinate c) {
-        double heading = p.equals2D(c, DELTA) ? p.getHeading() : p.headingTo(c);
+        double heading = p.equals2D(c, TOLERANCE) ? p.getHeading() : p.headingTo(c);
         return Arguments.arguments(p, c, heading);
     }
 

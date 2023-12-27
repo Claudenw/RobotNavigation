@@ -108,10 +108,8 @@ public class MapImplTest {
      */
     public static void assertCoordinateInObstacles(Collection<? extends Geometry> obsts, Coordinate c) {
         boolean found = false;
-        Point p = GeometryUtils.asPoint(c);
         for (Geometry geom : obsts) {
-
-            if (geom.contains(p)) {
+            if (List.of( geom.getCoordinates()).contains(c)) {
                 found = true;
                 break;
             }
@@ -269,6 +267,9 @@ public class MapImplTest {
 
     @Test
     public void clearViewTest() {
+        ScaleInfo scale = new ScaleInfo.Builder().build();
+        underTest = new MapImpl(scale);
+        
         underTest.addObstacle(new Coordinate(-3, -3));
         Coordinate a = new Coordinate(-3, -4);
         Coordinate b = new Coordinate(-3, -2);
@@ -283,7 +284,7 @@ public class MapImplTest {
         ScaleInfo scale = new ScaleInfo.Builder().build();
         underTest = new MapImpl(scale);
         underTest.addCoord(p, 11, false, false);
-        System.out.println(MapReports.dumpModel(underTest, Namespace.PlanningModel));
+        
         AskBuilder ask = new AskBuilder().addGraph(Namespace.PlanningModel,
                 new WhereBuilder().addWhere(Namespace.s, Namespace.x, p.x).addWhere(Namespace.s, Namespace.y, p.y)
                         .addWhere(Namespace.s, Namespace.distance, 11.0)
@@ -291,11 +292,11 @@ public class MapImplTest {
                         .addWhere(Namespace.s, Geo.AS_WKT_PROP, GraphGeomFactory.asWKT(GeometryUtils.asPoint(p))));
         assertTrue(underTest.ask(ask));
 
+        // verify nearby shows up as -1,-3
         underTest = new MapImpl(scale);
-        Coordinate c = new Coordinate(-1 + (scale.getResolution() / 2) - scale.getResolution() / 10,
-                -3 - (scale.getResolution() / 2));
-        underTest.addCoord(c, 11, false, false);
-        System.out.println(MapReports.dumpModel(underTest, Namespace.PlanningModel));
+        Coordinate c = new Coordinate(-1 + (scale.getResolution() / 2),
+                -3 + (scale.getResolution() / 2)+(scale.getResolution() / 10));
+        Step step = underTest.addCoord(c, 11, false, false);
         assertTrue(underTest.ask(ask));
     }
 

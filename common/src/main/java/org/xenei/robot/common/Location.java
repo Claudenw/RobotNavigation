@@ -75,9 +75,4 @@ public interface Location extends FrontsCoordinate {
     default double range() {
         return ORIGIN.distance(this);
     }
-
-    default boolean near(FrontsCoordinate c, double tolerance) {
-        return this.distance(c) <= tolerance;
-    }
-
 }

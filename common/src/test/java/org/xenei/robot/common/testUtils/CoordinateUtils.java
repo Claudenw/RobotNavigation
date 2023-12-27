@@ -36,7 +36,7 @@ public class CoordinateUtils {
         Coordinate one = asCoordinate(a);
         Coordinate two = asCoordinate(b);
         assertTrue(one.equals2D(two, delta), () -> String.format("%s Expected %s actual %s delta %s", prefix.get(),
-                CoordUtils.toString(one), CoordUtils.toString(two), delta));
+                one, two, delta));
     }
 
     public static void assertEquivalent(Object one, Object two, double delta) {

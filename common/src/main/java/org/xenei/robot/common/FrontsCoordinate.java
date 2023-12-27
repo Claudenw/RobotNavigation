@@ -7,6 +7,13 @@ import org.xenei.robot.common.utils.CoordUtils;
 
 public interface FrontsCoordinate extends HasCoordinate {
 
+    public static final FrontsCoordinate ORIGIN = new FrontsCoordinate() {
+        UnmodifiableCoordinate zero = UnmodifiableCoordinate.make(new Coordinate(0,0));
+        @Override
+        public UnmodifiableCoordinate getCoordinate() {
+            return zero; 
+        }};
+        
     /**
      * Compares Coordinates by XY positions.
      * 
@@ -81,5 +88,13 @@ public interface FrontsCoordinate extends HasCoordinate {
 
     default Coordinate plus(FrontsCoordinate other) {
         return new Coordinate(getX() + other.getX(), getY() + other.getY());
+    }
+    
+    default boolean near(Coordinate other, double tolerance) {
+        return this.distance(other) <= tolerance;
+    }
+    
+    default boolean near(FrontsCoordinate other, double tolerance) {
+        return near(other.getCoordinate(),tolerance);
     }
 }

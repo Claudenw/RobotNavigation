@@ -77,11 +77,11 @@ public class MapperImpl implements Mapper {
         }
 
         void doMap(Location relativeObstacle) {
+            // create absolute coordinates
+            Position absoluteObstacle = currentPosition.nextPosition(relativeObstacle);
+            newObstacles.add(map.addObstacle(absoluteObstacle.getCoordinate()));
             // filter out any range < 1.0
             if (!DoubleUtils.inRange(relativeObstacle.range(), buffer)) {
-                // create absolute coordinates
-                Position absoluteObstacle = currentPosition.nextPosition(relativeObstacle);
-                newObstacles.add(map.addObstacle(absoluteObstacle.getCoordinate()));
                 Optional<Coordinate> possibleCoord = findCoordinateNear(relativeObstacle);
                 if (possibleCoord.isPresent()) {
                     coordSet.add(possibleCoord.get());

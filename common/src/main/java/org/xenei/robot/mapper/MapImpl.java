@@ -455,10 +455,10 @@ public class MapImpl implements Map {
 
     @Override
     public boolean clearView(Coordinate from, Coordinate target, double buffer) {
-        LOG.debug("checking {} to {} ", from, target);
+        LOG.debug("checking clearView from {} to {} ", from, target);
         Literal pathWkt = GraphGeomFactory.asWKTString(from, target);
         Var wkt = Var.alloc("wkt");
-
+        
         AskBuilder ask = new AskBuilder().from(Namespace.UnionModel.getURI()) //
                 .addWhere(Namespace.s, RDF.type, Namespace.Obst) //
                 .addWhere(Namespace.s, Geo.AS_WKT_PROP, wkt)

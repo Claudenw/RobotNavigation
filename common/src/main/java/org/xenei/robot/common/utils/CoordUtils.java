@@ -70,7 +70,7 @@ public class CoordUtils {
         if (diff.getX() == 0 && diff.getY() == 0) {
             return 0;
         }
-        double theta = AngleUtils.normalize(Math.atan(diff.getY() / diff.getX()));
+        double theta = Math.atan(diff.getY() / diff.getX());
         boolean yNeg = DoubleUtils.isNeg(diff.getY());
         boolean tNeg = DoubleUtils.isNeg(theta);
 
