@@ -10,7 +10,7 @@ public interface Location extends FrontsCoordinate {
 
     static Location from(Coordinate c) {
         return new Location() {
-            UnmodifiableCoordinate coord = UnmodifiableCoordinate.make(new Coordinate(0, 0));
+            UnmodifiableCoordinate coord = UnmodifiableCoordinate.make(c);
 
             @Override
             public UnmodifiableCoordinate getCoordinate() {
