@@ -105,7 +105,7 @@ public class MapImplTest {
         Optional<Step> pr = underTest.getBestStep(p, buffer);
         assertTrue(pr.isPresent());
         Coordinate p2 = new Coordinate(-1, -2);
-        assertEquals(new StepImpl(p2, 4), pr.get());
+        assertEquals(StepImpl.builder().setCoordinate(p2).setCost(9).setDistance(2).build(), pr.get());
     }
 
     /**
@@ -139,7 +139,9 @@ public class MapImplTest {
         Optional<Step> pr = underTest.getStep(Location.from(p));
         assertTrue(pr.isPresent());
         assertEquals(0, CoordUtils.XYCompr.compare(p, pr.get().getCoordinate()));
-        assertEquals(p.distance(t), pr.get().cost());
+        assertEquals(p.distance(t), pr.get().distance());
+        // p can not see t so cost should be 2x distance
+        assertEquals(pr.get().distance()*2, pr.get().cost());
 
         pr = underTest.getStep(Location.from(t));
         assertTrue(pr.isEmpty());
@@ -148,7 +150,7 @@ public class MapImplTest {
             pr = underTest.getStep(Location.from(e));
             assertTrue(pr.isPresent());
             assertEquals(0, CoordUtils.XYCompr.compare(e, pr.get().getCoordinate()));
-            assertEquals(e.distance(t), pr.get().cost());
+            assertEquals(e.distance(t), pr.get().distance());
         }
         for (Coordinate o : obstacles) {
             pr = underTest.getStep(Location.from(o));
@@ -199,7 +201,7 @@ public class MapImplTest {
         Location a = Location.from(p);
         Location b = Location.from(expected[0]);
         Location c = Location.from(t);
-        underTest.addCoord(t, 0, false, false);
+        underTest.addCoord(t, 1, false, false);
 
         System.out.println(MapReports.dumpModel(underTest));
         assertTrue(underTest.hasPath(a, b));
@@ -240,35 +242,41 @@ public class MapImplTest {
         // Resource r = Namespace.urlOf(c);
 
         // check not there, update then verify that it is.
-        AskBuilder ask = new AskBuilder().from(Namespace.UnionModel.getURI())
-                .addWhere(Namespace.s, Namespace.distance, 5).addWhere(Namespace.s, Namespace.x, c.getX())
+        AskBuilder ask = new AskBuilder().from(Namespace.UnionModel.getURI()) //
+                .addWhere(Namespace.s, Namespace.distance, 5) //
+                .addWhere(Namespace.s, Namespace.x, c.getX()) //
                 .addWhere(Namespace.s, Namespace.y, c.getY());
         assertFalse(underTest.ask(ask));
 
+        // no coordinate so update should not do anything.
         underTest.updateCoordinate(Namespace.PlanningModel, Namespace.Coord, c.getCoordinate(), Namespace.distance, 5);
         assertFalse(underTest.ask(ask));
 
-        underTest.addCoord(c.getCoordinate(), 0, false, false);
+        // add the coordinate with a distance of 1.
+        underTest.addCoord(c.getCoordinate(), 1, false, false);
         assertFalse(underTest.ask(ask));
+        // now update it to 5 and verify that it is there.
         underTest.updateCoordinate(Namespace.PlanningModel, Namespace.Coord, c.getCoordinate(), Namespace.distance, 5);
-        System.out.println(MapReports.dumpModel(underTest));
         assertTrue(underTest.ask(ask));
 
         ExprFactory exprF = new ExprFactory();
 
-        ask = new AskBuilder().from(Namespace.UnionModel.getURI())
-                .addWhere(Namespace.s, Namespace.distance, Namespace.o).addFilter(exprF.eq(Namespace.o, 5.0));
+        ask = new AskBuilder().from(Namespace.UnionModel.getURI()) //
+                .addWhere(Namespace.s, Namespace.distance, Namespace.o) //
+                .addFilter(exprF.eq(Namespace.o, 5.0));
         assertTrue(underTest.ask(ask));
 
+        
         c = Location.from(expected[0]);
         assertTrue(underTest.ask(ask));
 
         Step before = underTest.getStep(c).get();
         underTest.updateCoordinate(Namespace.PlanningModel, Namespace.Coord, c.getCoordinate(), Namespace.distance,
-                before.cost() + 5);
+                before.distance() + 5);
 
-        SelectBuilder sb = new SelectBuilder().from(Namespace.UnionModel.getURI())
-                .addWhere(Namespace.s, Namespace.distance, "?x").addWhere(Namespace.s, Namespace.x, c.getX())
+        SelectBuilder sb = new SelectBuilder().from(Namespace.UnionModel.getURI()) //
+                .addWhere(Namespace.s, Namespace.distance, before.distance() + 5) //
+                .addWhere(Namespace.s, Namespace.x, c.getX()) //
                 .addWhere(Namespace.s, Namespace.y, c.getY());
         int count[] = { 0 };
         underTest.exec(sb, (q) -> {
@@ -277,8 +285,9 @@ public class MapImplTest {
         });
         assertEquals(1, count[0]);
 
+        System.out.println(MapReports.dumpModel(underTest));
         Step after = underTest.getStep(c).get();
-        assertEquals(before.cost() + 5, after.cost());
+        assertEquals(before.distance() + 5, after.distance());
     }
 
     @Test

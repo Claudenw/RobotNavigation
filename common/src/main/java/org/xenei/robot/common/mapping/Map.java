@@ -75,7 +75,7 @@ public interface Map {
      * 
      * @param target the point to update.
      */
-    void setTemporaryCost(Coordinate target, double cost);
+    //void setTemporaryCost(Coordinate target, double cost);
 
     /**
      * Returns true if the coordinate is within an obstacle.

@@ -88,7 +88,7 @@ public class MapReports {
         // distance from other to target
         Var otherDist = Var.alloc("otherDist");
         // additional adjustment from other to target
-        Var adjustment = Var.alloc("adjustment");
+
         Var indirect = Var.alloc("indirect");
         Var indirectFlg = Var.alloc("indirectFlg");
         Var visited = Var.alloc("visited");
@@ -97,12 +97,11 @@ public class MapReports {
 
         ExprFactory exprF = new ExprFactory(MapImpl.getPrefixMapping());
 
-        Expr adjCalc = exprF.cond(exprF.bound(adjustment), exprF.add(otherDist, adjustment), exprF.asExpr(otherDist));
         Expr indirectCalc = exprF.cond(exprF.bound(indirect), exprF.asExpr(otherDist), exprF.asExpr(0));
-        Expr distCalc = exprF.add(adjCalc, indirectCalc);
+        Expr distCalc = indirectCalc;
 
         SelectBuilder query = new SelectBuilder().addVar(x).addVar(y).addVar(cost) //
-                .addVar(visited).addVar(otherDist).addVar(adjustment).addVar(indirect) //
+                .addVar(visited).addVar(otherDist).addVar(indirect) //
                 .from(Namespace.UnionModel.getURI()) //
                 .addWhere(Namespace.s, RDF.type, Namespace.Coord) //
                 .addWhere(Namespace.s, Namespace.x, x).addWhere(Namespace.s, Namespace.y, y)
@@ -110,20 +109,18 @@ public class MapReports {
                 // .addFilter( exprF.not(exprF.bound(visited))) //
                 .addWhere(Namespace.s, Namespace.distance, otherDist) //
                 .addWhere(Namespace.s, Geo.AS_WKT_PROP, otherWkt) //
-                .addOptional(Namespace.s, Namespace.adjustment, adjustment) //
                 .addOptional(Namespace.s, Namespace.isIndirect, indirect) //
                 .addBind(distCalc, cost) //
                 .addBind(exprF.cond(exprF.bound(indirect), exprF.asExpr(-1), exprF.asExpr(0)), indirectFlg)
                 .addOrderBy(cost, Order.ASCENDING);
 
-        StringBuilder builder = new StringBuilder().append("'x','y','cost','dist','adj','visited','indirect'\n");
+        StringBuilder builder = new StringBuilder().append("'x','y','cost','dist','visited','indirect'\n");
         Predicate<QuerySolution> p = soln -> {
-            builder.append(String.format("%s,%s,%s,%s,%s,%s,%s\n", //
+            builder.append(String.format("%s,%s,%s,%s,%s,%s\n", //
                     soln.getLiteral(x.getName()).getDouble(), //
                     soln.getLiteral(y.getName()).getDouble(), //
                     soln.getLiteral(cost.getName()).getDouble(), //
                     soln.getLiteral(otherDist.getName()).getDouble(), //
-                    soln.contains(adjustment.getName()) ? soln.getLiteral(adjustment.getName()).getDouble() : 0.0, //
                     soln.contains(visited.getName()), //
                     soln.contains(indirect.getName()) //
             ));

@@ -19,8 +19,6 @@ public class Namespace {
     public static final Property x = ResourceFactory.createProperty(URI + "x");
     public static final Property y = ResourceFactory.createProperty(URI + "y");
     public static final Property distance = ResourceFactory.createProperty(URI + "distance");
-    public static final Property adjustment = ResourceFactory.createProperty(URI + "adjustment");
-    public static final Property cost = ResourceFactory.createProperty(URI + "cost");
     public static final Property point = ResourceFactory.createProperty(URI + "point");
     public static final Property visited = ResourceFactory.createProperty(URI + "visited");
     public static final Property isIndirect = ResourceFactory.createProperty(URI + "isIndirect");
