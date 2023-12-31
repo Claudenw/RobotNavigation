@@ -9,10 +9,7 @@ public class CoordUtils {
     private CoordUtils() {
     }
 
-    public static Comparator<Coordinate> XYCompr = (one, two) -> {
-        int x = Double.compare(one.getX(), two.getX());
-        return x == 0 ? Double.compare(one.getY(), two.getY()) : x;
-    };
+    public static Comparator<Coordinate> XYCompr = (one, two) -> one.compareTo(two);
 
     public static String toString(Coordinate p) {
         return String.format("{%f,%f}", p.getX(), p.getY());

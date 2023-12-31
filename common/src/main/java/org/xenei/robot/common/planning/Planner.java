@@ -86,8 +86,7 @@ public interface Planner {
     Diff selectTarget();
 
     /**
-     * Change the position to the new position. Causes a recalculation of costs for
-     * cells.
+     * Sets the current position and adds to the solution.
      * 
      * @param position the position to reset to.
      */

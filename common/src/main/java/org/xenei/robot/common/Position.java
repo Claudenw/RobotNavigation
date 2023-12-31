@@ -142,8 +142,8 @@ public interface Position extends Location {
 
     default boolean checkCollision(Coordinate c, double tolerance) {
         Coordinate l = CoordUtils.fromAngle(getHeading(), distance(c));
-        double d = GeometryUtils.asPath(this.getCoordinate(), l).distance(GeometryUtils.asPoint(c));
-        return DoubleUtils.inRange(d, tolerance);
+        double d = GeometryUtils.asPath(tolerance, this.getCoordinate(), l).distance(GeometryUtils.asPoint(c));
+        return DoubleUtils.inRange(d, tolerance/2);
     }
 
 }

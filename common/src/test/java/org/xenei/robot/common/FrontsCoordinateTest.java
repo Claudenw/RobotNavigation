@@ -28,7 +28,7 @@ public class FrontsCoordinateTest {
             return UnmodifiableCoordinate.make(new Coordinate(4,5));
         }};
 
-    private static FrontsCoordinate make(Coordinate c) {
+    public static FrontsCoordinate make(Coordinate c) {
         return new FrontsCoordinate() {
 
             @Override
@@ -37,7 +37,7 @@ public class FrontsCoordinateTest {
             }};
     }
     
-    private static FrontsCoordinate make(double x, double y) {
+    public static FrontsCoordinate make(double x, double y) {
         return make(new Coordinate(x,y));
     }
     

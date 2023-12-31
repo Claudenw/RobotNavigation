@@ -36,6 +36,7 @@ public interface Map {
      * @param distance the distance to the final target
      * @param visited true if the target has been visited.
      * @param isIndirect true if the target can not see the final target.
+     * @return the Step comprising the mapped target locaton and the distance value.
      */
     Step addCoord(Coordinate target, double distance, boolean visited, boolean isIndirect);
 

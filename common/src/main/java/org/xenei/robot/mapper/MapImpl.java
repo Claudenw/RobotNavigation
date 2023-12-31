@@ -109,7 +109,6 @@ public class MapImpl implements Map {
 
     @Override
     public Coordinate adopt(Coordinate c) {
-
         double x = scale.scale(c.getX());
         double y = scale.scale(c.getY());
         return (Precision.equals(x, c.getX(), 0) && Precision.equals(y, c.getY(), 0)) ? c : new Coordinate(x, y);
@@ -456,13 +455,12 @@ public class MapImpl implements Map {
     @Override
     public boolean clearView(Coordinate from, Coordinate target, double buffer) {
         LOG.debug("checking clearView from {} to {} ", from, target);
-        Literal pathWkt = GraphGeomFactory.asWKTString(from, target);
+        Literal pathWkt = GraphGeomFactory.asWKTPath(buffer, from, target);
         Var wkt = Var.alloc("wkt");
-        
         AskBuilder ask = new AskBuilder().from(Namespace.UnionModel.getURI()) //
                 .addWhere(Namespace.s, RDF.type, Namespace.Obst) //
                 .addWhere(Namespace.s, Geo.AS_WKT_PROP, wkt)
-                .addFilter(GraphGeomFactory.checkCollision(exprF, pathWkt, wkt, buffer));
+                .addFilter(exprF.eq( GraphGeomFactory.calcDistance(exprF, pathWkt, wkt), 0));
         return !ask(ask);
     }
 
@@ -621,11 +619,14 @@ public class MapImpl implements Map {
         UpdateRequest req = new UpdateRequest().add(new UpdateBuilder() //
                 .addDelete(Namespace.PlanningModel, Namespace.s, Namespace.p, Namespace.o) //
                 .addGraph(Namespace.PlanningModel, new WhereBuilder() //
-                        .addWhere(Namespace.s, Namespace.p, List.of(Namespace.adjustment, Namespace.distance)) //
-                ).build()).add(new UpdateBuilder() //
+                        .addWhere(Namespace.s, Namespace.p, Namespace.o) //
+                        .addFilter( exprF.in(Namespace.p, exprF.asList(Namespace.isIndirect, Namespace.adjustment, Namespace.distance))) //
+                ).build()) //
+                .add(new UpdateBuilder() //
                         .addInsert(Namespace.PlanningModel, Namespace.s, Namespace.distance, distance) //
                         .addGraph(Namespace.UnionModel, new WhereBuilder() //
-                                .addWhere(Namespace.s, RDF.type, List.of(Namespace.Coord, Namespace.Path)) //
+                                .addWhere(Namespace.s, RDF.type, Namespace.o) //
+                                .addFilter( exprF.in(Namespace.o, exprF.asList(Namespace.Coord, Namespace.Path))) //
                                 .addWhere(Namespace.s, Geo.AS_WKT_PROP, wkt) //
                                 .addBind(GraphGeomFactory.calcDistance(exprF, targ, wkt), distance))
                         .build());
@@ -638,7 +639,7 @@ public class MapImpl implements Map {
         Var candidate = Var.alloc("candidate");
         SelectBuilder sb = new SelectBuilder().from(Namespace.PlanningModel.getURI()) //
                 .addVar(distance).addVar(candidate).addVar(wkt) //
-                .addWhere(candidate, RDF.type, List.of(Namespace.Coord, Namespace.Path)) //
+                .addWhere(candidate, RDF.type, Namespace.Coord) //
                 .addWhere(candidate, Geo.AS_WKT_PROP, wkt) //
                 .addWhere(candidate, Namespace.distance, distance);
 
@@ -655,7 +656,7 @@ public class MapImpl implements Map {
             }
             if (!clearView) {
                 insertRow.add(Triple.create(soln.getResource(candidate.getName()).asNode(),
-                        Namespace.adjustment.asNode(), soln.getLiteral(distance.getName()).asNode()));
+                        Namespace.isIndirect.asNode(), sb.makeNode(Boolean.TRUE)));
             }
             return true;
         };

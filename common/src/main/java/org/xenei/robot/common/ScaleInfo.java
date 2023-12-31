@@ -1,35 +1,60 @@
 package org.xenei.robot.common;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+
 import org.xenei.robot.common.utils.DoubleUtils;
 
-public class ScaleInfo {
+public final class ScaleInfo {
 
     private static double DEFAULT_RESOLUTION = 0.5;
+    private static double DEFAULT_SCALE = 1.0;
 
-    public static ScaleInfo DEFAULT = new ScaleInfo(DEFAULT_RESOLUTION);
+    public static ScaleInfo DEFAULT = new ScaleInfo(DEFAULT_RESOLUTION, DEFAULT_SCALE);
 
     public static ScaleInfo.Builder builder() {
         return new Builder();
     }
 
     private final double resolution;
+    private final double scale;
     private final int decimalPlaces;
+    private final double truncationFactor;
+    private final int modulusFactor;
 
-    private ScaleInfo(double resolution) {
+    private ScaleInfo(double resolution, double scale) {
+        this.scale = scale;
         this.resolution = resolution;
         this.decimalPlaces = (int) Math.ceil(Math.log10(1 / resolution));
+        this.truncationFactor = Math.pow(10,decimalPlaces);
+        this.modulusFactor = (int)(resolution * truncationFactor);
     }
 
     public double getResolution() {
         return resolution;
     }
+    
+    public double getBuffer() {
+        return resolution/2;
+    }
 
     public int decimalPlaces() {
         return decimalPlaces;
     }
+    
+    public double scale(double value) {
+        long scaledValue =  (long) Math.floor((Math.abs(value) * scale * truncationFactor)+(modulusFactor/2.0));
+        scaledValue -= scaledValue % modulusFactor;
+        if (value<0) {
+            scaledValue *= -1;
+        }
+        return DoubleUtils.truncate(scaledValue/truncationFactor, decimalPlaces);
+    }
+
 
     public static class Builder {
         private double resolution = DEFAULT_RESOLUTION;
+        private double scale = DEFAULT_SCALE;
 
         /**
          * Resolution of the sale in meters. (e.g. centimeter resolution would be 0.01);
@@ -42,15 +67,15 @@ public class ScaleInfo {
             return this;
         }
 
+        public Builder setScale(double scale) {
+            this.scale = scale;
+            return this;
+        }
+        
         public ScaleInfo build() {
-            return new ScaleInfo(this.resolution);
+            return new ScaleInfo(this.resolution, this.scale);
         }
     }
 
-    public double scale(double value) {
-        double l = Math.floor(value / resolution);
-        double x = DoubleUtils.truncate(l * resolution, decimalPlaces());
-        return x;
-    }
-
+    
 }

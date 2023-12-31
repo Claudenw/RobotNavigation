@@ -1,19 +1,25 @@
 package org.xenei.robot.common.mapping;
 
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Optional;
 import java.util.SortedSet;
 import java.util.TreeSet;
+import java.util.function.Consumer;
 import java.util.stream.Stream;
 
 import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.LineString;
+import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
 import org.xenei.robot.common.FrontsCoordinate;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.ScaleInfo;
+import org.xenei.robot.common.UnmodifiableCoordinate;
 import org.xenei.robot.common.utils.CoordUtils;
+import org.xenei.robot.common.utils.DoubleUtils;
 import org.xenei.robot.common.utils.GeometryUtils;
 
 public class CoordinateMap {
@@ -24,8 +30,8 @@ public class CoordinateMap {
     final double scale;
     final ScaleInfo scaleInfo = ScaleInfo.builder().setResolution(0.5).build();
 
-    private static int fitRange(long x) {
-        return x > Integer.MAX_VALUE ? Integer.MAX_VALUE : (x < Integer.MIN_VALUE ? Integer.MIN_VALUE : (int) x);
+    private static double fitRange(double x) {
+        return x > Integer.MAX_VALUE ? Integer.MAX_VALUE : (x < Integer.MIN_VALUE ? Integer.MIN_VALUE : x);
     }
 
     public CoordinateMap(double scale) {
@@ -35,6 +41,10 @@ public class CoordinateMap {
 
     public double scale() {
         return scale;
+    }
+    
+    public ScaleInfo scaleInfo() {
+        return scaleInfo;
     }
 
     public void enable(FrontsCoordinate coord, char c) {
@@ -91,6 +101,7 @@ public class CoordinateMap {
         return getObstacles().filter(obstacle -> obstacle.isWithinDistance(path, 0.49)).findFirst().isEmpty();
     }
 
+    int asInt(double d) { return (int)Math.round(d); }
     /**
      * Generates the map for display.
      * 
@@ -99,16 +110,18 @@ public class CoordinateMap {
      */
     public StringBuilder stringBuilder() {
         StringBuilder sb = new StringBuilder();
-        int minX = points.stream().map(c -> c.x).min(Integer::compare).get();
+        int minX = points.stream().map(c -> asInt(c.getX())).min(Integer::compare).get();
         Coord row = points.first();
+        int rowY = asInt(row.getY());
         StringBuilder rowBuilder = new StringBuilder();
         for (Coord point : points) {
-            if (row.y != point.y) {
+            if (rowY != asInt(point.getY())) {
                 sb.append(rowBuilder.append("\n"));
                 rowBuilder = new StringBuilder();
                 row = point;
+                rowY = asInt(row.getY());
             }
-            int x = point.x - minX;
+            int x = asInt(point.getX()) - minX;
             if (x > -rowBuilder.length()) {
                 for (int i = rowBuilder.length(); i < x; i++) {
                     rowBuilder.append(' ');
@@ -124,6 +137,9 @@ public class CoordinateMap {
      * Scan the map for an entry from the position on the heading upto the max
      * range.
      * 
+     * The positions on the map are calculated as x+.5 y+.5 to center the position into a square at grid
+     * location x,y
+     * 
      * @param position the position to start from
      * @param heading the heading to check.
      * @param maxRange the maximum range to check.
@@ -131,44 +147,52 @@ public class CoordinateMap {
      */
     public Optional<Location> look(Location position, double heading, double maxRange) {
         Location pos = Location.from(position.plus(CoordUtils.fromAngle(heading, maxRange / scale)));
-        // Polygon path = GeometryUtils.asPath(position.getCoordinate(),
-        // pos.getCoordinate());
-        LineString path = GeometryUtils.asLine(position.getCoordinate(), pos.getCoordinate());
-        double distance = Double.MAX_VALUE;
-        Coordinate found = null;
-        for (Coord point : points) {
-            if (path.intersects(point.polygon)) {
-                for (Coordinate p2 : calcCoords(point)) {
-                    double d = position.distance(p2);
-                    if (d < distance) {
-                        distance = d;
-                        found = p2;
-                    }
+        Coordinate found[] = { null };
+        
+        Consumer<Coordinate> filter = new Consumer<Coordinate>() {
+            double distance = Double.MAX_VALUE;
+            @Override
+            public void accept(Coordinate t) {
+                double d = position.distance(t);
+                if (d < distance) {
+                    distance = d;
+                    found[0] = t;
                 }
             }
+        };
+
+        
+        LineString path = GeometryUtils.asLine(position.getCoordinate(), pos.getCoordinate());
+        
+        for (Coord point : points) {
+            if (path.intersects(point.polygon)) {
+                // find face
+                Geometry g = path.intersection(point.polygon);
+                Arrays.stream(g.getCoordinates()).forEach(filter::accept);
+                //calcCoords(point, filter );
+            }
         }
-        if (found != null) {
-            return Optional.of(Location.from(scaleInfo.scale(found.getX()), scaleInfo.scale(found.getY())));
+        if (found[0] != null) {
+            return Optional.of(Location.from(scaleInfo.scale(found[0].getX()), scaleInfo.scale(found[0].getY())));
         }
 
         return Optional.empty();
     }
 
-    private Coordinate[] calcCoords(Coord point) {
-        int parts = (int) (scale / scaleInfo.getResolution());
-        double incr = scale * scaleInfo.getResolution();
-        Coordinate[] result = new Coordinate[parts * parts];
-        double x = point.x + incr / 2;
-        for (int i = 0; i < parts; i++) {
-            double y = point.y + incr / 2;
-            for (int j = 0; j < parts; j++) {
-                result[i * parts + j] = new Coordinate(x, y);
-                y += incr;
-            }
-            x += incr;
-        }
-        return result;
-    }
+//    private void calcCoords(Coord point, Consumer<Coordinate> filter) {
+//        int parts = (int) (scale / scaleInfo.getResolution());
+//        double incr = scale * scaleInfo.getResolution();
+//        Coordinate[] result = new Coordinate[parts * parts];
+//        double x = point.getX() + incr / 2;
+//        for (int i = 0; i < parts; i++) {
+//            double y = point.getY() + incr / 2;
+//            for (int j = 0; j < parts; j++) {
+//                filter.accept(new Coordinate(x,y));
+//                y += incr;
+//            }
+//            x += incr;
+//        }
+//    }
 
     private double lineDistance(Location position, double heading, Coordinate c) {
         return Math.abs(
@@ -176,25 +200,15 @@ public class CoordinateMap {
     }
 
     // a location in the map
-    public class Coord implements Comparable<Coord> {
-        public final int x;
-        public final int y;
+    public class Coord implements Comparable<Coord>, FrontsCoordinate {
+        public final UnmodifiableCoordinate coordinate;
         public char c;
         public final Polygon polygon;
 
         Coord(double x, double y, char c) {
-            this.x = fitRange(Math.round(x / scale));
-            this.y = fitRange(Math.round(y / scale));
+            coordinate = UnmodifiableCoordinate.make(new Coordinate(fitRange(x / scale),fitRange(y / scale)));
             this.c = c;
-
-            double xStart = x;
-            double yStart = y;
-            double xFini = x + 1;
-            double yFini = y + 1;
-
-            Coordinate[] lst = { new Coordinate(xStart, yStart), new Coordinate(xStart, yFini),
-                    new Coordinate(xFini, yFini), new Coordinate(xFini, yStart), new Coordinate(xStart, yStart) };
-            polygon = geometryFactory.createPolygon(lst);
+            polygon = GeometryUtils.asPolygon( coordinate, scale/2, 4 );
         }
 
         public Coord(FrontsCoordinate coords, char c) {
@@ -207,17 +221,13 @@ public class CoordinateMap {
 
         @Override
         public String toString() {
-            return String.format("Coord[%s,%s]", x, y);
+            return String.format("Coord[%s,%s]", getX(), getY());
         }
 
         @Override
         public int compareTo(Coord other) {
-            int result = -1 * Integer.compare(y, other.y);
-            return result == 0 ? Integer.compare(x, other.x) : result;
-        }
-
-        public Coordinate asCoordinate() {
-            return new Coordinate(x, y);
+            int result = -1 * Double.compare(getY(), other.getY());
+            return result == 0 ? Double.compare(getX(), other.getX()) : result;
         }
 
         public Polygon getPolygon() {
@@ -225,7 +235,12 @@ public class CoordinateMap {
         }
 
         public Location asLocation() {
-            return Location.from(x, y);
+            return Location.from(coordinate);
+        }
+
+        @Override
+        public UnmodifiableCoordinate getCoordinate() {
+            return coordinate;
         }
     }
 }

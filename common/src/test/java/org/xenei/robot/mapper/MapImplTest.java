@@ -27,6 +27,7 @@ import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.Point;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.ScaleInfo;
+import org.xenei.robot.common.mapping.CoordinateMap;
 import org.xenei.robot.common.planning.Step;
 import org.xenei.robot.common.utils.CoordUtils;
 import org.xenei.robot.common.utils.GeometryUtils;
@@ -54,6 +55,8 @@ public class MapImplTest {
     static Coordinate p = new Coordinate(-1, -3);
 
     static Coordinate t = new Coordinate(-1, 1);
+    
+    CoordinateMap cMap;
 
     public static List<Coordinate> obstacleList() {
         return Arrays.asList(obstacles);
@@ -69,13 +72,18 @@ public class MapImplTest {
     @BeforeEach
     public void setup() {
         ScaleInfo scale = new ScaleInfo.Builder().build();
+        cMap = new CoordinateMap(1);
         underTest = new MapImpl(scale);
         underTest.addCoord(p, p.distance(t), false, true);
+        cMap.enable(p, 'p');
+        cMap.enable(t, 't');
         for (Coordinate e : expected) {
             underTest.addCoord(e, e.distance(t), false, true);
+            cMap.enable(e, 'e');
         }
         for (Coordinate o : obstacles) {
             underTest.addObstacle(o);
+            cMap.enable(o, '#');
         }
         for (Coordinate[] l : paths) {
             underTest.addPath(l[0], l[1]);
@@ -106,7 +114,7 @@ public class MapImplTest {
      * @param obsts the list of geometries.
      * @param c he coorindate to contain.
      */
-    public static void assertCoordinateInObstacles(Collection<? extends Geometry> obsts, Coordinate c) {
+    static void assertCoordinateInObstacles(Collection<? extends Geometry> obsts, Coordinate c) {
         boolean found = false;
         for (Geometry geom : obsts) {
             if (List.of( geom.getCoordinates()).contains(c)) {
@@ -208,14 +216,22 @@ public class MapImplTest {
 
     @Test
     public void recalculateTest() {
+        AskBuilder ask = new AskBuilder();
+        ExprFactory exprF = ask.getExprFactory();
+        ask.from(Namespace.UnionModel.getURI()).addWhere(Namespace.s, RDF.type, Namespace.Coord)
+        .addOptional(Namespace.s, Namespace.isIndirect, Namespace.o)
+                .addFilter( exprF.not( exprF.bound(Namespace.o)));
+        
         Location c = Location.from(expected[0]);
         Step before = underTest.getStep(c).get();
+        assertFalse( underTest.ask(ask), () ->"Should not have any direct points" );
 
-        Location newTarget = Location.from(-2, 2);
-
+        Location newTarget = Location.from(-4, 1);
         underTest.recalculate(newTarget.getCoordinate(), buffer);
+        
         Step after = underTest.getStep(c).get();
         assertNotEquals(before.cost(), after.cost());
+        assertTrue(underTest.ask(ask), ()->"Should have some indirect points");
     }
 
     @Test
@@ -283,21 +299,25 @@ public class MapImplTest {
     public void testAddTarget() {
         ScaleInfo scale = new ScaleInfo.Builder().build();
         underTest = new MapImpl(scale);
-        underTest.addCoord(p, 11, false, false);
+        Step step = underTest.addCoord(p, 11, false, false);
+        assertEquals( 11, step.cost());
         
-        AskBuilder ask = new AskBuilder().addGraph(Namespace.PlanningModel,
-                new WhereBuilder().addWhere(Namespace.s, Namespace.x, p.x).addWhere(Namespace.s, Namespace.y, p.y)
-                        .addWhere(Namespace.s, Namespace.distance, 11.0)
-                        .addWhere(Namespace.s, RDF.type, Namespace.Coord)
-                        .addWhere(Namespace.s, Geo.AS_WKT_PROP, GraphGeomFactory.asWKT(GeometryUtils.asPoint(p))));
+        AskBuilder ask = new AskBuilder().addGraph(Namespace.PlanningModel, new WhereBuilder() //
+                .addWhere(Namespace.s, Namespace.x, step.getX()) //
+                .addWhere(Namespace.s, Namespace.y, step.getY()) //
+                .addWhere(Namespace.s, Namespace.distance, 11.0) //
+                .addWhere(Namespace.s, RDF.type, Namespace.Coord) //
+                .addWhere(Namespace.s, Geo.AS_WKT_PROP, GraphGeomFactory.asWKT(GeometryUtils.asPoint(p))));
         assertTrue(underTest.ask(ask));
 
-        // verify nearby shows up as -1,-3
+        // verify inserting a node near map coord shows up at map coord
         underTest = new MapImpl(scale);
-        Coordinate c = new Coordinate(-1 + (scale.getResolution() / 2),
-                -3 + (scale.getResolution() / 2)+(scale.getResolution() / 10));
-        Step step = underTest.addCoord(c, 11, false, false);
+        double incr = scale.getResolution()/2;
+        Coordinate c = new Coordinate( p.getX()+incr, p.getY()+incr );
+                //-3 + (scale.getResolution() / 2) + (scale.getResolution() / 10));
+        step = underTest.addCoord(c, 11, false, false);
         assertTrue(underTest.ask(ask));
+        assertEquals( 11, step.cost());
     }
 
     @Test

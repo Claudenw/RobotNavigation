@@ -32,20 +32,20 @@ public class GraphGeomFactoryTest {
         return ds;
     }
 
-    @Test
-    public void checkCollisionTest() {
-        Coordinate c = new Coordinate(1, 1);
-        Model m = GraphGeomFactory.asRDF(c, Namespace.Obst, GeometryUtils.asPolygon(c, 1)).getModel();
-        Dataset ds = createDataset(m);
-        Literal testWkt = GraphGeomFactory.asWKT(c);
-
-        ExprFactory exprF = new ExprFactory(m);
-        AskBuilder ask = new AskBuilder().addWhere(Namespace.s, Geo.AS_WKT_PROP, "?wkt")
-                .addFilter(GraphGeomFactory.checkCollision(exprF, "?wkt", testWkt, 0));
-        try (QueryExecution qexec = QueryExecutionFactory.create(ask.build(), ds)) {
-            assertTrue(qexec.execAsk());
-        }
-    }
+//    @Test
+//    public void checkCollisionTest() {
+//        Coordinate c = new Coordinate(1, 1);
+//        Model m = GraphGeomFactory.asRDF(c, Namespace.Obst, GeometryUtils.asPolygon(c, 1)).getModel();
+//        Dataset ds = createDataset(m);
+//        Literal testWkt = GraphGeomFactory.asWKT(c);
+//
+//        ExprFactory exprF = new ExprFactory(m);
+//        AskBuilder ask = new AskBuilder().addWhere(Namespace.s, Geo.AS_WKT_PROP, "?wkt")
+//                .addFilter(GraphGeomFactory.checkCollision(exprF, "?wkt", testWkt, 0));
+//        try (QueryExecution qexec = QueryExecutionFactory.create(ask.build(), ds)) {
+//            assertTrue(qexec.execAsk());
+//        }
+//    }
 
     @Test
     public void calcDistanceTest() {

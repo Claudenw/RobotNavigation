@@ -85,7 +85,7 @@ public class ProcessorTest {
                 if (cont) {
                     // we can really see the final position.
                     LOG.info("can see {} from {}", planner.getRootTarget(), planner.getCurrentPosition());
-                    Literal pathWkt = GraphGeomFactory.asWKTString(planner.getRootTarget(), 
+                    Literal pathWkt = GraphGeomFactory.asWKTPath(buffer, planner.getRootTarget(), 
                             planner.getCurrentPosition().getCoordinate());
                     Var wkt = Var.alloc("wkt");
 
@@ -94,15 +94,14 @@ public class ProcessorTest {
                             .from(Namespace.UnionModel.getURI()) //
                             .addWhere(Namespace.s, RDF.type, Namespace.Obst) //
                             .addWhere(Namespace.s, Geo.AS_WKT_PROP, wkt)
-                            .addBind(GraphGeomFactory.checkCollision(exprF, pathWkt, wkt, buffer), "?colission")
                             .addBind(GraphGeomFactory.calcDistance(exprF, pathWkt, wkt), "?dist")
-                            .addBind(exprF.le(GraphGeomFactory.calcDistance(exprF, pathWkt, wkt), buffer), "?le")
+                            .addBind(exprF.eq(GraphGeomFactory.calcDistance(exprF, pathWkt, wkt), 0), "?le")
                             ));
 
                     AskBuilder ask = new AskBuilder().from(Namespace.UnionModel.getURI()) //
                             .addWhere(Namespace.s, RDF.type, Namespace.Obst) //
                             .addWhere(Namespace.s, Geo.AS_WKT_PROP, wkt)
-                            .addFilter(GraphGeomFactory.checkCollision(new ExprFactory(), pathWkt, wkt, buffer));
+                            .addFilter(exprF.eq(GraphGeomFactory.calcDistance(exprF, pathWkt, wkt), 0));
                     System.out.println( ((MapImpl)map).ask(ask));
                     System.out.println(MapReports.dumpQuery((MapImpl) map,
                             new SelectBuilder().from(Namespace.UnionModel.getURI())

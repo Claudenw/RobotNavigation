@@ -1,6 +1,8 @@
 package org.xenei.robot.mapper;
 
 import java.io.ByteArrayOutputStream;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
@@ -15,6 +17,8 @@ import org.apache.jena.riot.Lang;
 import org.apache.jena.sparql.core.Var;
 import org.apache.jena.sparql.expr.Expr;
 import org.apache.jena.vocabulary.RDF;
+import org.xenei.robot.common.mapping.CoordinateMap;
+import org.xenei.robot.common.mapping.CoordinateMap.Coord;
 import org.xenei.robot.mapper.rdf.Namespace;
 
 public class MapReports {
@@ -130,6 +134,41 @@ public class MapReports {
         return builder.toString();
     }
 
+//    /**
+//     * Generates the map for display.
+//     * 
+//     * @param c the character to use for enabled items.
+//     * @return the StringBuilder.
+//     */
+//    public StringBuilder stringBuilder(MapImpl map) {
+//        StringBuilder sb = new StringBuilder();
+//        List<CoordinateMap.Coord> points = new ArrayList<>();
+//        SelectBuilder sb = new SelectBuilder()
+//                
+//        
+//        int minX = points.stream().map(c -> asInt(c.getX())).min(Integer::compare).get();
+//        Coord row = points.first();
+//        int rowY = asInt(row.getY());
+//        StringBuilder rowBuilder = new StringBuilder();
+//        for (Coord point : points) {
+//            if (rowY != asInt(point.getY())) {
+//                sb.append(rowBuilder.append("\n"));
+//                rowBuilder = new StringBuilder();
+//                row = point;
+//                rowY = asInt(row.getY());
+//            }
+//            int x = asInt(point.getX()) - minX;
+//            if (x > -rowBuilder.length()) {
+//                for (int i = rowBuilder.length(); i < x; i++) {
+//                    rowBuilder.append(' ');
+//                }
+//            }
+//            rowBuilder.append(point.c);
+//        }
+//        sb.append(rowBuilder.append("\n"));
+//        return sb;
+//    }
+    
     private static class Dumper implements Consumer<Model> {
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
 
@@ -143,4 +182,5 @@ public class MapReports {
             return bos.toString();
         }
     }
+   
 }

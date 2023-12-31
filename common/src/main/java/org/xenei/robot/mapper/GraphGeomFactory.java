@@ -45,13 +45,18 @@ public class GraphGeomFactory {
         return asWKT(GeometryUtils.asLine(points));
     }
 
+    public static Literal asWKTPath(double buffer, Coordinate... points) {
+        return asWKT(GeometryUtils.asPath(buffer, points));
+    }
+    
     static Literal asWKTPolygon(Coordinate[] points) {
         return asWKT(GeometryUtils.asPolygon(points));
     }
 
-    public static Expr checkCollision(ExprFactory expF, Object geo1, Object geo2, double tolerance) {
-        return expF.le(calcDistance(expF, geo1, geo2), tolerance);
-    }
+//    public static Expr checkCollision(ExprFactory expF, Object geo1, Object geo2, double tolerance) {
+//        //return expF.le(calcDistance(expF, geo1, geo2), tolerance);
+//        return exprF.call(INTERSECTS, )
+//    }
 
     public static Expr calcDistance(ExprFactory expF, Object geo1, Object geo2) {
         return expF.call(DISTANCE, geo1, geo2, DEGREES);

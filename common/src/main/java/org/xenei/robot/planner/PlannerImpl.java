@@ -77,7 +77,7 @@ public class PlannerImpl implements Planner {
     }
 
     /**
-     * Sets the current position and resets the solution.
+     * Sets the current position and adds to the solution.
      * 
      * @param pos the new current position.
      */

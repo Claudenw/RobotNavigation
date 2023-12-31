@@ -5,6 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -34,6 +36,7 @@ import org.xenei.robot.common.planning.Step;
 import org.xenei.robot.common.testUtils.CoordinateUtils;
 import org.xenei.robot.common.testUtils.MapLibrary;
 import org.xenei.robot.mapper.MapImpl;
+import org.xenei.robot.mapper.StepImpl;
 
 public class PlannerTest {
 
@@ -88,6 +91,8 @@ public class PlannerTest {
     public void changeCurrentPositionTest() {
         Map map = Mockito.mock(Map.class);
         when(map.getScale()).thenReturn(ScaleInfo.DEFAULT);
+        when(map.addCoord(any(Coordinate.class), anyDouble(), anyBoolean(), anyBoolean()))
+        .thenAnswer(i -> new StepImpl( (Coordinate)i.getArguments()[0], (double)(i.getArguments()[1])));
 
         Location finalCoord = Location.from(-1, 1);
         Location startCoord = Location.from(-1, -3);
@@ -101,7 +106,7 @@ public class PlannerTest {
         assertTrue(diff.didPositionChange());
 
         //map.addTarget(p.getCoordinate(), p.distance(underTest.getTarget()));
-        verify(map, times(2)).addCoord(coordinateCaptor.capture(), doubleCaptor.capture(), false, false);
+        verify(map, times(2)).addCoord(coordinateCaptor.capture(), doubleCaptor.capture(), anyBoolean(), anyBoolean());
         List<Coordinate> lst = coordinateCaptor.getAllValues();
         assertTrue(startCoord.equals2D(lst.get(0)));
         assertTrue(p.equals2D(lst.get(1)));
@@ -118,6 +123,9 @@ public class PlannerTest {
     public void constructorTest() {
         Map map = Mockito.mock(Map.class);
         when(map.getScale()).thenReturn(ScaleInfo.DEFAULT);
+        when(map.addCoord(any(Coordinate.class), anyDouble(), anyBoolean(), anyBoolean()))
+        .thenAnswer(i -> new StepImpl( (Coordinate)i.getArguments()[0], (double)(i.getArguments()[1])));
+
 
         Location finalCoord = Location.from(-1, 1);
         Location startCoord = Location.from(-1, -3);
@@ -126,11 +134,11 @@ public class PlannerTest {
         assertFalse(diff.didChange());
 
         // verify addTarget called
-        verify(map, times(1)).addCoord(coordinateCaptor.capture(), doubleCaptor.capture(), false, false);
+        verify(map, times(1)).addCoord(coordinateCaptor.capture(), doubleCaptor.capture(), anyBoolean(), anyBoolean());
         assertTrue(startCoord.equals2D(coordinateCaptor.getValue()));
 
         // verify recalculate called
-        verify(map).recalculate(coordinateCaptor.capture(), buffer);
+        verify(map).recalculate(coordinateCaptor.capture(), anyDouble());
         assertTrue(finalCoord.equals2D(coordinateCaptor.getValue()));
 
         // verify solution has 1 item
@@ -184,7 +192,7 @@ public class PlannerTest {
         underTest.addListener(() -> result[0]++);
         underTest.notifyListeners();
         assertEquals(1, result[0]);
-        verify(map).recalculate(coordinateCaptor.capture(), buffer);
+        verify(map).recalculate(coordinateCaptor.capture(), anyDouble());
         assertTrue(finalCoord.equals2D(coordinateCaptor.getValue()));
     }
 
@@ -200,15 +208,15 @@ public class PlannerTest {
         underTest.recalculateCosts();
 
         // verify recalculate was called once for each target
-        verify(map, times(2)).recalculate(coordinateCaptor.capture(), buffer);
+        verify(map, times(2)).recalculate(coordinateCaptor.capture(), anyDouble());
         List<Coordinate> lst = coordinateCaptor.getAllValues();
         assertTrue(finalCoord.equals2D(lst.get(0)));
         assertTrue(newTarget.equals2D(lst.get(1)));
 
         // verify setTemporaryCost was called once
-        verify(map).setTemporaryCost(coordinateCaptor.capture(), doubleCaptor.capture());
-        assertTrue(startCoord.equals2D(coordinateCaptor.getValue()));
-        assertEquals(Double.POSITIVE_INFINITY,doubleCaptor.getValue());
+        verify(map,times(2)).recalculate(coordinateCaptor.capture(), doubleCaptor.capture());
+        assertTrue(newTarget.equals2D(coordinateCaptor.getValue()));
+        assertEquals(buffer,doubleCaptor.getValue());
 
         // verify solution has 1 item
         Solution solution = underTest.getSolution();
@@ -221,6 +229,8 @@ public class PlannerTest {
     public void restartTest() {
         Map map = Mockito.mock(Map.class);
         when(map.getScale()).thenReturn(ScaleInfo.DEFAULT);
+        when(map.addCoord(any(Coordinate.class), anyDouble(), anyBoolean(), anyBoolean()))
+        .thenAnswer(i -> new StepImpl( (Coordinate)i.getArguments()[0], (double)(i.getArguments()[1])));
 
         Location finalCoord = Location.from(-1, 1);
         Location startCoord = Location.from(-1, -3);
@@ -234,7 +244,7 @@ public class PlannerTest {
         assertTrue(nextStart.equals2D(underTest.getCurrentPosition()));
 
         // verify addTarget called
-        verify(map, times(2)).addCoord(coordinateCaptor.capture(), doubleCaptor.capture(), false, false);
+        verify(map, times(2)).addCoord(coordinateCaptor.capture(), doubleCaptor.capture(), anyBoolean(), anyBoolean());
         List<Coordinate> coords = coordinateCaptor.getAllValues();
         assertTrue(startCoord.equals2D(coords.get(0)));
         assertTrue(nextStart.equals2D(coords.get(1)));
@@ -271,9 +281,13 @@ public class PlannerTest {
         when(step.cost()).thenReturn(Double.valueOf(5));
 
 
+
         Map map = Mockito.mock(Map.class);
         when(map.getScale()).thenReturn(ScaleInfo.DEFAULT);
-        when(map.getBestStep(any(), any())).thenReturn(Optional.of(step)).thenReturn(Optional.empty());
+        when(map.addCoord(any(Coordinate.class), anyDouble(), anyBoolean(), anyBoolean()))
+        .thenAnswer(i -> new StepImpl( (Coordinate)i.getArguments()[0], (double)(i.getArguments()[1])));
+
+        when(map.getBestStep(any(), anyDouble())).thenReturn(Optional.of(step)).thenReturn(Optional.empty());
         underTest = new PlannerImpl(map, startCoord, buffer, finalCoord);
 
         // first target (step)

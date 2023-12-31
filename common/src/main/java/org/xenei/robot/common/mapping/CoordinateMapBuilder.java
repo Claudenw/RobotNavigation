@@ -6,13 +6,15 @@ import org.xenei.robot.common.mapping.CoordinateMap.Coord;
 public class CoordinateMapBuilder {
 
     private CoordinateMap map;
+    private double offset;
 
     public CoordinateMapBuilder(double scale) {
         map = new CoordinateMap(scale);
+        offset = scale/2;
     }
 
     public CoordinateMapBuilder set(int x, int y, char c) {
-        map.enable(new Coordinate(x, y), c);
+        map.enable(new Coordinate(x+offset, y+offset), c);
         return this;
     }
 

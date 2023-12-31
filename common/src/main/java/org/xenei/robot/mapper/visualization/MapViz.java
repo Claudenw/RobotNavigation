@@ -95,7 +95,7 @@ public class MapViz {
 
         List<Coordinate> lst = solution.get().stream().collect(Collectors.toList());
         if (lst.size() > 1) {
-            cmds.add(getPoly(GeometryUtils.asPath(lst.toArray(new Coordinate[lst.size()])), Color.WHITE));
+            cmds.add(getPoly(GeometryUtils.asPath(buffer, lst.toArray(new Coordinate[lst.size()])), Color.WHITE));
         } else {
             cmds.add(getPoly(GeometryUtils.asPolygon(lst.get(0), 0.5), Color.WHITE));
         }

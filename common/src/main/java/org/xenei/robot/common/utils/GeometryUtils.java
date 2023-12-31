@@ -13,6 +13,8 @@ import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
+import org.locationtech.jts.operation.buffer.BufferOp;
+import org.locationtech.jts.operation.buffer.BufferParameters;
 import org.xenei.robot.common.HasCoordinate;
 import org.xenei.robot.common.Location;
 
@@ -23,27 +25,30 @@ public class GeometryUtils {
     private GeometryUtils() {
     }
 
-    public static Geometry asCluster(Collection<Coordinate> c) {
-        return asCluster(c.toArray(new Coordinate[c.size()]));
-    }
-
-    public static Geometry asCluster(Coordinate[] c) {
-        Geometry g = geometryFactory.createMultiPointFromCoords(c).convexHull();
-        if (g instanceof LineString) {
-            return asPath(g.getCoordinates());
-        }
-        if (g instanceof Point) {
-            return asPolygon(g.getCoordinate());
-        }
-        return g;
-    }
+//    public static Geometry asCluster(Collection<Coordinate> c) {
+//        return asCluster(c.toArray(new Coordinate[c.size()]));
+//    }
+//
+//    public static Geometry asCluster(Coordinate[] c) {
+//        Geometry g = geometryFactory.createMultiPointFromCoords(c).convexHull();
+//        if (g instanceof LineString) {
+//            return asPath(g.getCoordinates());
+//        }
+//        if (g instanceof Point) {
+//            return asPolygon(g.getCoordinate());
+//        }
+//        return g;
+//    }
 
     public static Polygon asPolygon(Coordinate coord, double radius) {
         return asPolygon(coord, radius, 6);
     }
 
     public static Polygon asPolygon(Coordinate coord, double radius, int edges) {
-        double angle = 0.0;
+        double angle = edges == 4 ?  AngleUtils.RADIANS_45 : 0.0;
+        if (edges == 4) {
+            radius *= DoubleUtils.SQRT2;
+        }
         double radians = Math.PI * 2.0 / edges;
         Coordinate[] cell = new Coordinate[edges + 1];
         Location l = Location.from(coord);
@@ -62,17 +67,9 @@ public class GeometryUtils {
     public static Polygon asPolygon(HasCoordinate coord, double radius, int edges) {
         return asPolygon(coord.getCoordinate(), radius, edges);
     }
-
-    public static Collection<Coordinate> asCollection(Collection<? extends HasCoordinate> coord) {
-        return asCollection(coord.toArray(new HasCoordinate[coord.size()]));
-    }
-
-    public static Collection<Coordinate> asCollection(HasCoordinate... coord) {
-        return Arrays.stream(coord).map(HasCoordinate::getCoordinate).collect(Collectors.toList());
-    }
-
+    
     public static Polygon asPolygon(HasCoordinate... coord) {
-        return asPolygon(asCollection(coord));
+        return asPolygon(Arrays.stream(coord).map(HasCoordinate::getCoordinate).collect(Collectors.toList()));
     }
 
     public static Polygon asPolygon(Coordinate... coord) {
@@ -93,32 +90,39 @@ public class GeometryUtils {
                 CoordUtils.add(b, cDown) };
     }
 
-    public static Polygon asPath(Coordinate... points) {
-        int limit = points.length - 1;
-        Stack<Coordinate> down = new Stack<>();
-        List<Coordinate> all = new ArrayList<>();
-        all.add(points[0]);
-        down.push(points[0]);
-        for (int i = 0; i < limit; i++) {
-            Coordinate[] segment = pathSegment(.5, points[i], points[i + 1]);
-            all.add(segment[0]);
-            all.add(segment[1]);
-            down.push(segment[2]);
-            down.push(segment[3]);
-        }
-        all.add(points[limit]);
-        while (!down.empty()) {
-            all.add(down.pop());
-        }
-        return asPolygon(all);
+    public static Geometry addBuffer(double buffer, Geometry initial) {
+        BufferOp bufOp = new BufferOp(initial);
+        bufOp.setEndCapStyle(BufferParameters.CAP_ROUND);//BufferOp.CAP_BUTT);
+        return bufOp.getResultGeometry(buffer/2);
+    }
+    
+    public static Geometry asPath(double buffer, Coordinate... points) {
+//        int limit = points.length - 1;
+//        Stack<Coordinate> down = new Stack<>();
+//        List<Coordinate> all = new ArrayList<>();
+//        all.add(points[0]);
+//        down.push(points[0]);
+//        for (int i = 0; i < limit; i++) {
+//            Coordinate[] segment = pathSegment(.5, points[i], points[i + 1]);
+//            all.add(segment[0]);
+//            all.add(segment[1]);
+//            down.push(segment[2]);
+//            down.push(segment[3]);
+//        }
+//        all.add(points[limit]);
+//        while (!down.empty()) {
+//            all.add(down.pop());
+//        }
+//        return asPolygon(all);
+        return addBuffer(buffer, asLine(points));
     }
 
-    public static Polygon asPath(Collection<Coordinate> points) {
-        return asPath(points.toArray(new Coordinate[points.size()]));
+    public static Geometry asPath(double buffer, Collection<Coordinate> points) {
+        return asPath(buffer, points.toArray(new Coordinate[points.size()]));
     }
 
-    public static Polygon asPath(HasCoordinate... points) {
-        return asPath(asCollection(points));
+    public static Geometry asPath(double buffer, HasCoordinate... points) {
+        return asPath(buffer, Arrays.stream(points).map(HasCoordinate::getCoordinate).collect(Collectors.toList()));
     }
 
     public static Point asPoint(Coordinate c) {
