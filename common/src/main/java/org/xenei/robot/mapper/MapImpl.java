@@ -834,24 +834,6 @@ public class MapImpl implements Map {
     
     private class SPARQL {
         
-//        /**
-//         * Creates the standard Step where builder.
-//         * @param subject the Subject of the search
-//         * @param distance the distance variable.
-//         * @param indirect the indirect variable
-//         * @param cost the cost variable
-//         * @return WhereBuilder
-//         */
-//        static WhereBuilder stepWhere(Var subject, Var distance, Var indirect, Var cost) {
-//            ExprFactory exprF = new ExprFactory(getPrefixes());
-//            
-//            final Expr indirectCalc = exprF.cond(exprF.bound(indirect), exprF.asExpr(distance), exprF.asExpr(0));
-//            return new WhereBuilder() //
-//                    .addWhere(subject, RDF.type, Namespace.Coord) //
-//                    .addOptional(subject, Namespace.isIndirect, indirect) //
-//                    .addBind(exprF.add( indirectCalc, distance), cost);
-//        }
-        
         static Expr indirectCalc(Var distance, Var indirect) {
             ExprFactory exprF = new ExprFactory(getPrefixes());
             return exprF.add(exprF.cond(exprF.bound(indirect), exprF.asExpr(distance), exprF.asExpr(0)),
