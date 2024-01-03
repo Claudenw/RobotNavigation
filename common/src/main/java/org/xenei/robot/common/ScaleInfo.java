@@ -1,8 +1,5 @@
 package org.xenei.robot.common;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-
 import org.xenei.robot.common.utils.DoubleUtils;
 
 public final class ScaleInfo {
@@ -26,31 +23,30 @@ public final class ScaleInfo {
         this.scale = scale;
         this.resolution = resolution;
         this.decimalPlaces = (int) Math.ceil(Math.log10(1 / resolution));
-        this.truncationFactor = Math.pow(10,decimalPlaces);
-        this.modulusFactor = (int)(resolution * truncationFactor);
+        this.truncationFactor = Math.pow(10, decimalPlaces);
+        this.modulusFactor = (int) (resolution * truncationFactor);
     }
 
     public double getResolution() {
         return resolution;
     }
-    
+
     public double getBuffer() {
-        return resolution/2;
+        return resolution / 2;
     }
 
     public int decimalPlaces() {
         return decimalPlaces;
     }
-    
+
     public double scale(double value) {
-        long scaledValue =  (long) Math.floor((Math.abs(value) * scale * truncationFactor)+(modulusFactor/2.0));
+        long scaledValue = (long) Math.floor((Math.abs(value) * scale * truncationFactor) + (modulusFactor / 2.0));
         scaledValue -= scaledValue % modulusFactor;
-        if (value<0) {
+        if (value < 0) {
             scaledValue *= -1;
         }
-        return DoubleUtils.truncate(scaledValue/truncationFactor, decimalPlaces);
+        return DoubleUtils.truncate(scaledValue / truncationFactor, decimalPlaces);
     }
-
 
     public static class Builder {
         private double resolution = DEFAULT_RESOLUTION;
@@ -71,11 +67,10 @@ public final class ScaleInfo {
             this.scale = scale;
             return this;
         }
-        
+
         public ScaleInfo build() {
             return new ScaleInfo(this.resolution, this.scale);
         }
     }
 
-    
 }

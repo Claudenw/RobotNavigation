@@ -9,7 +9,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.Test;
 import org.locationtech.jts.geom.Coordinate;
@@ -26,6 +28,9 @@ import org.xenei.robot.common.planning.Step;
 import org.xenei.robot.common.testUtils.CoordinateUtils;
 import org.xenei.robot.common.utils.AngleUtils;
 import org.xenei.robot.common.utils.CoordUtils;
+import org.xenei.robot.mapper.MapImpl.MapCoordinate;
+import org.xenei.robot.mapper.MapperImpl.ObstacleMapper;
+import org.xenei.robot.mapper.rdf.Namespace;
 
 public class MapperImplTest {
 
@@ -52,9 +57,11 @@ public class MapperImplTest {
 
         Position currentPosition = Position.from(-1, -3, AngleUtils.RADIANS_90);
         Coordinate target = new Coordinate(-1, 1);
+        Coordinate mapValue = new Coordinate(-1,-1.5);
         Map map = Mockito.mock(Map.class);
         when(map.getScale()).thenReturn(ScaleInfo.DEFAULT);
-        when(map.addObstacle(any())).thenReturn( new Coordinate(1,0));
+        when(map.addObstacle(any())).thenReturn( mapValue);
+        when(map.adopt(any())).thenReturn(mapValue);
         Mapper underTest = new MapperImpl(map);
 
         // an obstacle one unit away is too close so no target generated.
@@ -65,7 +72,7 @@ public class MapperImplTest {
         
         verify(map).updateIsIndirect(coordinateCaptor.capture(), doubleCaptor.capture(), setCaptor.capture());
         assertEquals(1,setCaptor.getValue().size());
-        CoordinateUtils.assertEquivalent(new Coordinate(1,0), setCaptor.getValue().iterator().next());
+        CoordinateUtils.assertEquivalent(mapValue, setCaptor.getValue().iterator().next());
         
         // verify obstacle was added
         verify(map).addObstacle(coordinateCaptor.capture());
@@ -78,6 +85,7 @@ public class MapperImplTest {
 
         Position currentPosition = Position.from(-1, -3, AngleUtils.RADIANS_90);
         Coordinate target = new Coordinate(-1, 1);
+        
         Map map = Mockito.mock(Map.class);
         when(map.getScale()).thenReturn(ScaleInfo.DEFAULT);
         when(map.addObstacle(any())).thenReturn( new Coordinate(2,0));
@@ -106,4 +114,30 @@ public class MapperImplTest {
         CoordinateUtils.assertEquivalent(new Coordinate(-1,-2), coordinateCaptor.getValue());
 
     }
+    
+//    @Test
+//    public void processSensorDataTest() {
+//        
+//        Position currentPosition = Position.from(-1, -3, AngleUtils.RADIANS_90);
+//        Coordinate target = new Coordinate(-1, 1);
+//        Map map = new MapImpl(ScaleInfo.DEFAULT);
+//        
+//        Mapper underTest = new MapperImpl(map);
+//        
+//        underTest.processSensorData(currentPosition, 0.5, target, )
+//        
+//        @Override
+//        public List<Step> processSensorData(Position currentPosition, double buffer, Coordinate target,
+//                Location[] obstacles) {
+//
+//            LOG.debug("Sense position: {}", currentPosition);
+//
+//            ObstacleMapper mapper = new ObstacleMapper(currentPosition, buffer, target);
+//            List.of(obstacles).forEach(mapper::doMap);
+//            map.updateIsIndirect(target, buffer, mapper.newObstacles);
+//            return mapper.coordSet.stream()
+//                    .map(c -> map.addCoord(c, c.distance(target), false, !map.clearView(c, target, buffer)))
+//                    .collect(Collectors.toList());
+//        }
+//    }
 }

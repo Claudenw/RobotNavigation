@@ -2,9 +2,11 @@ package org.xenei.robot.mapper;
 
 import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 import org.apache.jena.arq.querybuilder.ExprFactory;
 import org.apache.jena.arq.querybuilder.Order;
@@ -17,6 +19,8 @@ import org.apache.jena.riot.Lang;
 import org.apache.jena.sparql.core.Var;
 import org.apache.jena.sparql.expr.Expr;
 import org.apache.jena.vocabulary.RDF;
+import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.Point;
 import org.xenei.robot.common.mapping.CoordinateMap;
 import org.xenei.robot.common.mapping.CoordinateMap.Coord;
 import org.xenei.robot.mapper.rdf.Namespace;
@@ -80,54 +84,25 @@ public class MapReports {
     }
 
     public static String dumpDistance(MapImpl map) {
-
-        // cost of trip.
-        Var cost = Var.alloc("cost");
-        // wkt of other
-        Var otherWkt = Var.alloc("otherWkt");
-        // distance from other to target
-        Var otherDist = Var.alloc("otherDist");
-        // additional adjustment from other to target
-
-        Var indirect = Var.alloc("indirect");
-        Var indirectFlg = Var.alloc("indirectFlg");
-        Var visited = Var.alloc("visited");
-        Var x = Var.alloc("x");
-        Var y = Var.alloc("y");
-
-        ExprFactory exprF = new ExprFactory(MapImpl.getPrefixMapping());
-
-        Expr indirectCalc = exprF.cond(exprF.bound(indirect), exprF.asExpr(otherDist), exprF.asExpr(0));
-        Expr distCalc = indirectCalc;
-
-        SelectBuilder query = new SelectBuilder().addVar(x).addVar(y).addVar(cost) //
-                .addVar(visited).addVar(otherDist).addVar(indirect) //
-                .from(Namespace.UnionModel.getURI()) //
-                .addWhere(Namespace.s, RDF.type, Namespace.Coord) //
-                .addWhere(Namespace.s, Namespace.x, x).addWhere(Namespace.s, Namespace.y, y)
-                .addOptional(Namespace.s, Namespace.visited, visited) //
-                // .addFilter( exprF.not(exprF.bound(visited))) //
-                .addWhere(Namespace.s, Namespace.distance, otherDist) //
-                .addWhere(Namespace.s, Geo.AS_WKT_PROP, otherWkt) //
-                .addOptional(Namespace.s, Namespace.isIndirect, indirect) //
-                .addBind(distCalc, cost) //
-                .addBind(exprF.cond(exprF.bound(indirect), exprF.asExpr(-1), exprF.asExpr(0)), indirectFlg)
-                .addOrderBy(cost, Order.ASCENDING);
-
-        StringBuilder builder = new StringBuilder().append("'x','y','cost','dist','visited','indirect'\n");
-        Predicate<QuerySolution> p = soln -> {
-            builder.append(String.format("%s,%s,%s,%s,%s,%s\n", //
-                    soln.getLiteral(x.getName()).getDouble(), //
-                    soln.getLiteral(y.getName()).getDouble(), //
-                    soln.getLiteral(cost.getName()).getDouble(), //
-                    soln.getLiteral(otherDist.getName()).getDouble(), //
-                    soln.contains(visited.getName()), //
-                    soln.contains(indirect.getName()) //
-            ));
-            return true;
-        };
-
-        map.exec(query, p);
+        StringBuilder builder = new StringBuilder().append("'x','y','cost','dist'\n");
+        map.getTargets().forEach( step -> 
+            builder.append(String.format("%s,%s,%s,%s\n", //
+                    step.getX(),
+                    step.getY(),
+                    step.cost(),
+                    step.distance()
+                )));
+        
+        return builder.toString();
+    }
+    
+    public static String dumpObstacles(MapImpl map) {
+        StringBuilder builder = new StringBuilder();
+        List<Coordinate> lst = map.getObstacles().stream().map( g-> g.getCentroid())
+                .map( p -> new Coordinate(p.getX(), p.getY())).collect(Collectors.toList());
+        Coordinate[] ary = lst.toArray( new Coordinate[lst.size()]);
+        Arrays.sort(ary);
+        Arrays.stream(ary).forEach( c-> builder.append( String.format("Obst: %s\n", c)));
         return builder.toString();
     }
 

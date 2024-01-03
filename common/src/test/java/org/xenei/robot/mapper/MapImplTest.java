@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.BiPredicate;
+import java.util.stream.Stream;
 
 import org.apache.jena.arq.querybuilder.AskBuilder;
 import org.apache.jena.arq.querybuilder.ExprFactory;
@@ -22,6 +23,9 @@ import org.apache.jena.vocabulary.RDF;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.Point;
@@ -29,6 +33,7 @@ import org.xenei.robot.common.Location;
 import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.common.mapping.CoordinateMap;
 import org.xenei.robot.common.planning.Step;
+import org.xenei.robot.common.testUtils.MapLibrary;
 import org.xenei.robot.common.utils.CoordUtils;
 import org.xenei.robot.common.utils.GeometryUtils;
 import org.xenei.robot.mapper.rdf.Namespace;
@@ -116,8 +121,9 @@ public class MapImplTest {
      */
     static void assertCoordinateInObstacles(Collection<? extends Geometry> obsts, Coordinate c) {
         boolean found = false;
+        Geometry cGeom = GeometryUtils.asPoint(c);
         for (Geometry geom : obsts) {
-            if (List.of( geom.getCoordinates()).contains(c)) {
+            if (geom.intersects(cGeom)) {
                 found = true;
                 break;
             }
@@ -203,14 +209,12 @@ public class MapImplTest {
         Location c = Location.from(t);
         underTest.addCoord(t, 1, false, false);
 
-        System.out.println(MapReports.dumpModel(underTest));
         assertTrue(underTest.hasPath(a, b));
         assertFalse(underTest.hasPath(b, c));
         assertFalse(underTest.hasPath(a, c));
 
         underTest.addPath(b.getCoordinate(), c.getCoordinate());
 
-        System.out.println(MapReports.dumpModel(underTest));
         assertTrue(underTest.hasPath(a, b));
         assertTrue(underTest.hasPath(b, c));
         // FIXME assertTrue(underTest.hasPath(a, c));
@@ -285,7 +289,6 @@ public class MapImplTest {
         });
         assertEquals(1, count[0]);
 
-        System.out.println(MapReports.dumpModel(underTest));
         Step after = underTest.getStep(c).get();
         assertEquals(before.distance() + 5, after.distance());
     }
@@ -343,8 +346,38 @@ public class MapImplTest {
                 .addWhere(Namespace.s, "robut:point/geo:asWKT", GraphGeomFactory.asWKT(GeometryUtils.asPoint(p)))
                 .addWhere(Namespace.s, "robut:point/geo:asWKT",
                         GraphGeomFactory.asWKT(GeometryUtils.asPoint(expected[0])));
-        System.out.println(MapReports.dumpModel(underTest));
         assertTrue(underTest.ask(ask));
+    }
+    
+    @ParameterizedTest(name = "{index} {1}")
+    @MethodSource("loadObstaclesTestParameters")
+    public void loadObstaclesTest(MapImpl underTest, Coordinate c) {
+        assertTrue( underTest.isObstacle(c));
+    }
+    
+    private static void listFail(Geometry geom, Coordinate c) {
+        if (!geom.intersects(GeometryUtils.asPoint(c))) {
+            System.out.format( "%s %s failed\n", geom, c);
+        }
+    }
+    private static Stream<Arguments> loadObstaclesTestParameters() {
+        CoordinateMap cMap =  MapLibrary.map2('#');
+        MapImpl underTest= new MapImpl(ScaleInfo.DEFAULT);
+        List<Coordinate> lst = new ArrayList<>();
+        
+        cMap.getObstacles().forEach( g -> {
+            Point p = g.getCentroid();
+            Coordinate c = new Coordinate( p.getX(), p.getY());
+            lst.add(c);
+            underTest.addObstacle(c);
+            listFail(g, c );
+            Arrays.stream(g.getCoordinates()).forEach( c2 -> {lst.add(c2);
+            listFail(g,c2);
+          
+            });  
+        });
+        
+        return lst.stream().map( c -> Arguments.of( underTest, c));
     }
 
 }

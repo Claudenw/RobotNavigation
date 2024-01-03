@@ -16,7 +16,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.apache.commons.math3.util.Precision;
-import org.apache.jena.arq.querybuilder.AbstractQueryBuilder;
 import org.apache.jena.arq.querybuilder.AskBuilder;
 import org.apache.jena.arq.querybuilder.ConstructBuilder;
 import org.apache.jena.arq.querybuilder.ExprFactory;
@@ -24,7 +23,6 @@ import org.apache.jena.arq.querybuilder.Order;
 import org.apache.jena.arq.querybuilder.SelectBuilder;
 import org.apache.jena.arq.querybuilder.UpdateBuilder;
 import org.apache.jena.arq.querybuilder.WhereBuilder;
-import org.apache.jena.arq.querybuilder.handlers.WhereHandler;
 import org.apache.jena.geosparql.implementation.vocabulary.Geo;
 import org.apache.jena.geosparql.implementation.vocabulary.GeoSPARQL_URI;
 import org.apache.jena.geosparql.implementation.vocabulary.SRS_URI;
@@ -72,12 +70,10 @@ public class MapImpl implements Map {
     private final ScaleInfo scale;
     private final Dataset data;
     private final ExprFactory exprF;
-    
+
     public static PrefixMapping getPrefixes() {
-        return PrefixMapping.Factory.create()
-        .setNsPrefixes(GeoSPARQL_URI.getPrefixes())
-        .setNsPrefixes(PrefixMapping.Standard)
-        .setNsPrefix("robut", Namespace.URI);
+        return PrefixMapping.Factory.create().setNsPrefixes(GeoSPARQL_URI.getPrefixes())
+                .setNsPrefixes(PrefixMapping.Standard).setNsPrefix("robut", Namespace.URI);
     }
 
     public MapImpl(ScaleInfo scale) {
@@ -218,16 +214,11 @@ public class MapImpl implements Map {
         doUpdate(req);
         LOG.debug("Added {} for {}", mapCoord, target);
         return StepImpl.builder().setCoordinate(mapCoord).setDistance(distance)
-                .setCost(isIndirect ? distance*2 : distance ).build();
+                .setCost(isIndirect ? distance * 2 : distance).build();
     }
 
     private Geometry cell(Coordinate point) {
-        Coordinate[] coords = { point, //
-                new Coordinate(point.x + scale.getResolution(), point.y), //
-                new Coordinate(point.x + scale.getResolution(), point.y + scale.getResolution()), //
-                new Coordinate(point.x, point.y + scale.getResolution()), //
-                point };
-        return GeometryUtils.asPolygon(coords);
+        return GeometryUtils.asPolygon(point, scale.getResolution() / 2, 4);
 
     }
 
@@ -240,12 +231,12 @@ public class MapImpl implements Map {
 
     @Override
     public boolean isObstacle(Coordinate point) {
-        Literal pointWKT = GraphGeomFactory.asWKT(adopt(point));
+        Literal pointWKT = GraphGeomFactory.asWKT(point);
         Var wkt = Var.alloc("wkt");
         AskBuilder ask = new AskBuilder().addGraph(Namespace.UnionModel,
                 new WhereBuilder().addWhere(Namespace.s, RDF.type, Namespace.Obst) //
                         .addWhere(Namespace.s, Geo.AS_WKT_PROP, wkt) //
-                        .addFilter(GraphGeomFactory.isNearby(exprF, wkt, pointWKT, scale.getResolution())));
+                        .addFilter(GraphGeomFactory.intersects(exprF, pointWKT, wkt)));
         return ask(ask);
     }
 
@@ -292,21 +283,19 @@ public class MapImpl implements Map {
                 .addWhere(Namespace.s, Geo.AS_WKT_PROP, geom) //
                 .addOptional(Namespace.s, Namespace.isIndirect, indirect) //
                 .addBind(SPARQL.indirectCalc(dist, indirect), cost);
-        
+
         StepImpl.Builder builder = StepImpl.builder();
 
         Predicate<QuerySolution> processor = soln -> {
             Geometry geometry = GraphGeomFactory.fromWkt(soln.getLiteral(geom.getName()));
-            builder.setCoordinate(coordinate)
-            .setCost(soln.getLiteral(cost.getName()).getDouble())
-            .setDistance(soln.getLiteral(dist.getName()).getDouble())
-            .setGeometry(geometry);
+            builder.setCoordinate(coordinate).setCost(soln.getLiteral(cost.getName()).getDouble())
+                    .setDistance(soln.getLiteral(dist.getName()).getDouble()).setGeometry(geometry);
             return false;
         };
 
         exec(sb, processor);
 
-        return builder.isValid() ? Optional.of( builder.build()) : Optional.empty();
+        return builder.isValid() ? Optional.of(builder.build()) : Optional.empty();
     }
 
     /**
@@ -360,63 +349,7 @@ public class MapImpl implements Map {
         cutPath(Namespace.PlanningModel, a, b);
     }
 
-//    /**
-//     * Creates a coordinate of the type.
-//     * @param coordinate the coordinate
-//     * @param type the type of record.
-//     */
-//    private Model createType(Coordinate coordinate, Resource type, Literal wkt) {
-//        Model result = ModelFactory.createDefaultModel();
-//        Resource r = result.createResource(type);
-//        r.addLiteral( Namespace.x, coordinate.getX());
-//        r.addLiteral( Namespace.y, coordinate.getY());
-//        r.addLiteral( Geo.AS_WKT_PROP, wkt);
-//        return result;
-//    }
-//    
-//    /**
-//     * Creates a coordinate of the type.
-//     * @param coordinate the coordinate
-//     * @param type the type of record.
-//     */
-//    private Model createType(Coordinate coordinate, Resource type) {
-//        return createType(coordinate, type, GraphGeomFactory.asWKT(coordinate));
-//    }
-//    
-    /**
-     * Finds the WKT of the nearest node to {@code coordinate} within the resolution
-     * of the map, that is of type {@code type}.
-     * 
-     * @param coordinate
-     * @param type
-     * @return an optional that is either the WKT of the nearest node or empty.
-     */
-    private Model nearest(MapCoordinate coordinate, Resource type) {
-        Literal wkt = GraphGeomFactory.asWKT(coordinate.getCoordinate());
-        Var dist = Var.alloc("dist");
-        Var result = Var.alloc("result");
-
-        ConstructBuilder cb = new ConstructBuilder().addConstruct(Namespace.s, Namespace.p, Namespace.o)
-                .from(Namespace.UnionModel.getURI()).addWhere(Namespace.s, Namespace.p, Namespace.o)
-                .addSubQuery(new SelectBuilder().from(Namespace.UnionModel.getURI())
-                        .addWhere(Namespace.s, Geo.AS_WKT_PROP, result).addWhere(Namespace.s, RDF.type, type)
-                        .addBind(GraphGeomFactory.calcDistance(exprF, wkt, result), dist)
-                        .addOrderBy(dist, Order.ASCENDING).setLimit(1));
-
-        return construct(cb);
-    }
-
-    private Model get(Resource model, MapCoordinate coordinate, Resource type) {
-        ConstructBuilder cb = new ConstructBuilder().addConstruct(Namespace.s, Namespace.p, Namespace.o)
-                .from(model.getURI()).addWhere(Namespace.s, Namespace.p, Namespace.o)
-                .addWhere(Namespace.s, Namespace.x, coordinate.getX())
-                .addWhere(Namespace.s, Namespace.y, coordinate.getY()).addWhere(Namespace.s, RDF.type, type);
-
-        return construct(cb);
-    }
-
     private boolean exists(MapCoordinate coordinate, Resource type) {
-        Literal wkt = GraphGeomFactory.asWKT(coordinate.getCoordinate());
         AskBuilder ask = new AskBuilder().from(Namespace.UnionModel.getURI()) //
                 .addWhere(Namespace.s, RDF.type, type) //
                 .addWhere(Namespace.s, Namespace.x, coordinate.getX()) //
@@ -477,7 +410,7 @@ public class MapImpl implements Map {
         AskBuilder ask = new AskBuilder().from(Namespace.UnionModel.getURI()) //
                 .addWhere(Namespace.s, RDF.type, Namespace.Obst) //
                 .addWhere(Namespace.s, Geo.AS_WKT_PROP, wkt)
-                .addFilter(exprF.eq( GraphGeomFactory.calcDistance(exprF, pathWkt, wkt), 0));
+                .addFilter(exprF.eq(GraphGeomFactory.calcDistance(exprF, pathWkt, wkt), 0));
         return !ask(ask);
     }
 
@@ -547,46 +480,18 @@ public class MapImpl implements Map {
         Var other2 = Var.alloc("other2");
         Var other2Wkt = Var.alloc("other2Wkt");
 
-        //Expr adjCalc = exprF.cond(exprF.bound(adjustment), exprF.add(otherDist, adjustment), exprF.asExpr(otherDist));
-        //Expr indirectCalc = exprF.cond(exprF.bound(indirect), exprF.asExpr(otherDist), exprF.asExpr(0));
-        //Expr distCalc = exprF.add(adjCalc, indirectCalc);
-
-//        SelectBuilder query2 = new SelectBuilder().addVar("?sX").addVar("?sY").addVar("?oX").addVar("?oY")
-//                .addVar(otherDist).addVar(adjustment).addVar(dist).addVar(cost) //
-//                .from(Namespace.UnionModel.getURI()) //
-//                .addWhere(Namespace.s, RDF.type, Namespace.Coord) //
-//                .addWhere(Namespace.s, Geo.AS_WKT_PROP, wkt) //
-//                .addWhere(Namespace.s, Namespace.x, "?sX").addWhere(Namespace.s, Namespace.y, "?sY")
-//                .addWhere(other, RDF.type, Namespace.Coord) //
-//                .addOptional(other, Namespace.visited, visited) //
-//                .addFilter(exprF.and(exprF.ne(other, Namespace.s), exprF.not(exprF.bound(visited)))) //
-//                .addWhere(other, Namespace.x, "?oX").addWhere(other, Namespace.y, "?oY")
-//                .addWhere(other, Namespace.distance, otherDist) //
-//                .addWhere(other, Geo.AS_WKT_PROP, otherWkt) //
-//                .addOptional(other, Namespace.adjustment, adjustment) //
-//                .addOptional(other, Namespace.isIndirect, indirect) //
-//                .addBind(GraphGeomFactory.calcDistance(exprF, otherWkt, wkt), dist) //
-//                .addBind(exprF.add(distCalc, dist), cost) //
-//                .addOrderBy(cost, Order.ASCENDING);
-//        System.out.println(MapReports.dumpModel(this));
-
         SelectBuilder query = new SelectBuilder().addVar(cost).addVar(otherWkt).addVar(other).addVar(dist) //
-                .from(Namespace.UnionModel.getURI())
-                .addWhere(Namespace.s, RDF.type, Namespace.Coord) //
-                .addWhere(Namespace.s, Geo.AS_WKT_PROP, wkt)
-                .addWhere(other, RDF.type, Namespace.Coord) //
+                .from(Namespace.UnionModel.getURI()).addWhere(Namespace.s, RDF.type, Namespace.Coord) //
+                .addWhere(Namespace.s, Geo.AS_WKT_PROP, wkt).addWhere(other, RDF.type, Namespace.Coord) //
                 .addOptional(other, Namespace.isIndirect, indirect) //
                 .addWhere(other, Geo.AS_WKT_PROP, otherWkt) //
                 .addWhere(other, Namespace.distance, otherDist) //
                 .addOptional(other, Namespace.visited, visited) //
                 .addFilter(exprF.and(exprF.ne(other, Namespace.s), exprF.not(exprF.bound(visited)))) //
                 .addBind(GraphGeomFactory.calcDistance(exprF, otherWkt, wkt), dist) //
-                .addBind(exprF.add( otherDist, SPARQL.indirectCalc(otherDist, indirect)), cost) //
-                .addOrderBy(cost, Order.ASCENDING)
-                ;
+                .addBind(exprF.add(otherDist, SPARQL.indirectCalc(otherDist, indirect)), cost) //
+                .addOrderBy(cost, Order.ASCENDING);
 
-        System.out.println(MapReports.dumpQuery(this, query));
-        
         // skip coords that are within the tolerance range of visited coords
         AskBuilder ask = new AskBuilder() //
                 .addWhere(other2, Namespace.visited, "?ignore") //
@@ -605,10 +510,8 @@ public class MapImpl implements Map {
                 ask.setVar(otherWkt, candidateWkt);
 
                 if (!ask(ask) && clearView(currentCoords, candidate, buffer)) {
-                    builder.setCoordinate(candidate)
-                    .setCost( soln.getLiteral(cost.getName()).getDouble())
-                    .setDistance( soln.getLiteral(dist.getName()).getDouble())
-                    .setGeometry(geom);
+                    builder.setCoordinate(candidate).setCost(soln.getLiteral(cost.getName()).getDouble())
+                            .setDistance(soln.getLiteral(dist.getName()).getDouble()).setGeometry(geom);
 
                     LOG.debug("getBest() -> {}", builder);
                     return false;
@@ -643,13 +546,13 @@ public class MapImpl implements Map {
                 .addDelete(Namespace.PlanningModel, Namespace.s, Namespace.p, Namespace.o) //
                 .addGraph(Namespace.PlanningModel, new WhereBuilder() //
                         .addWhere(Namespace.s, Namespace.p, Namespace.o) //
-                        .addFilter( exprF.in(Namespace.p, exprF.asList(Namespace.isIndirect, Namespace.distance))) //
+                        .addFilter(exprF.in(Namespace.p, exprF.asList(Namespace.isIndirect, Namespace.distance))) //
                 ).build()) //
                 .add(new UpdateBuilder() //
                         .addInsert(Namespace.PlanningModel, Namespace.s, Namespace.distance, distance) //
                         .addGraph(Namespace.UnionModel, new WhereBuilder() //
                                 .addWhere(Namespace.s, RDF.type, Namespace.o) //
-                                .addFilter( exprF.in(Namespace.o, exprF.asList(Namespace.Coord, Namespace.Path))) //
+                                .addFilter(exprF.in(Namespace.o, exprF.asList(Namespace.Coord, Namespace.Path))) //
                                 .addWhere(Namespace.s, Geo.AS_WKT_PROP, wkt) //
                                 .addBind(GraphGeomFactory.calcDistance(exprF, targ, wkt), distance))
                         .build());
@@ -700,29 +603,24 @@ public class MapImpl implements Map {
         Var x = Var.alloc("x");
         Var y = Var.alloc("y");
         Var indirect = Var.alloc("indirect");
-        Expr indirectCalc = exprF.cond(exprF.bound(indirect), exprF.asExpr(distance), exprF.asExpr(0));
-        
+
         SelectBuilder sb = new SelectBuilder().addVar(cost).addVar(wkt).addVar(x).addVar(y).addVar(distance) //
-                .from(Namespace.PlanningModel.getURI())
-              .addWhere(Namespace.s, RDF.type, Namespace.Coord) //
-              .addOptional(Namespace.s, Namespace.isIndirect, indirect) //
-                        .addWhere(Namespace.s, Namespace.distance, distance) //
-                        .addWhere(Namespace.s, Geo.AS_WKT_PROP, wkt) //
-                .addWhere(Namespace.s, Namespace.x, x)
-                .addWhere(Namespace.s, Namespace.y, y)
-              .addBind(SPARQL.indirectCalc(distance, indirect), cost)
-                .addOrderBy(cost, Order.ASCENDING);
+                .from(Namespace.PlanningModel.getURI()).addWhere(Namespace.s, RDF.type, Namespace.Coord) //
+                .addOptional(Namespace.s, Namespace.isIndirect, indirect) //
+                .addWhere(Namespace.s, Namespace.distance, distance) //
+                .addWhere(Namespace.s, Geo.AS_WKT_PROP, wkt) //
+                .addWhere(Namespace.s, Namespace.x, x).addWhere(Namespace.s, Namespace.y, y)
+                .addBind(SPARQL.indirectCalc(distance, indirect), cost).addOrderBy(cost, Order.ASCENDING);
 
         SortedSet<Step> candidates = new TreeSet<Step>();
 
         Predicate<QuerySolution> processor = soln -> {
             Geometry geom = GraphGeomFactory.fromWkt(soln.getLiteral(wkt.getName()));
-            candidates.add( StepImpl.builder().setCoordinate(new Coordinate( //
+            candidates.add(StepImpl.builder().setCoordinate(new Coordinate( //
                     soln.getLiteral(x.getName()).getDouble(), //
                     soln.getLiteral(y.getName()).getDouble())) //
-            .setCost(soln.getLiteral(cost.getName()).getDouble()) //
-            .setDistance(soln.getLiteral(distance.getName()).getDouble())
-            .setGeometry(geom).build());
+                    .setCost(soln.getLiteral(cost.getName()).getDouble()) //
+                    .setDistance(soln.getLiteral(distance.getName()).getDouble()).setGeometry(geom).build());
             return true;
         };
 
@@ -813,7 +711,7 @@ public class MapImpl implements Map {
 
     }
 
-    private class MapCoordinate implements FrontsCoordinate {
+    class MapCoordinate implements FrontsCoordinate {
 
         UnmodifiableCoordinate coord;
 
@@ -831,14 +729,13 @@ public class MapImpl implements Map {
         }
 
     }
-    
+
     private class SPARQL {
-        
+
         static Expr indirectCalc(Var distance, Var indirect) {
             ExprFactory exprF = new ExprFactory(getPrefixes());
-            return exprF.add(exprF.cond(exprF.bound(indirect), exprF.asExpr(distance), exprF.asExpr(0)),
-                    distance);
-           
+            return exprF.add(exprF.cond(exprF.bound(indirect), exprF.asExpr(distance), exprF.asExpr(0)), distance);
+
         }
     }
 }

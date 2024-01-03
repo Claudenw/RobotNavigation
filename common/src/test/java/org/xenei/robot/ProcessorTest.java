@@ -147,6 +147,7 @@ public class ProcessorTest {
                 }
                 planner.notifyListeners();
                 System.out.println( MapReports.dumpDistance((MapImpl)map) );
+                System.out.println( MapReports.dumpObstacles((MapImpl)map));
                 diff.reset();
             }
         }

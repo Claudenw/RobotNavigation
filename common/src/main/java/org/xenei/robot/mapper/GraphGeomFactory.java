@@ -22,6 +22,7 @@ import org.xenei.robot.common.utils.GeometryUtils;
 import org.xenei.robot.mapper.rdf.Namespace;
 
 public class GraphGeomFactory {
+    private static Resource OVERLAPS = ResourceFactory.createResource(Geof.SF_OVERLAPS);
     private static Resource INTERSECTS = ResourceFactory.createResource(Geof.SF_INTERSECTS);
     private static Resource DISTANCE = ResourceFactory.createProperty(Geof.DISTANCE_NAME);
     private static Resource NEARBY = ResourceFactory.createProperty(SpatialExtension.NEARBY);
@@ -65,6 +66,14 @@ public class GraphGeomFactory {
         return expF.call(DISTANCE, geo1, geo2, DEGREES);
     }
 
+    public static Expr overlaps(ExprFactory expF, Object geo1, Object geo2) {
+        return expF.call(OVERLAPS, geo1, geo2);
+    }
+    
+    public static Expr intersects(ExprFactory expF, Object geo1, Object geo2) {
+        return expF.call(INTERSECTS, geo1, geo2);
+    }
+    
     @SuppressWarnings("unchecked")
     static Expr isNearby(ExprFactory exprF, Object geo1, Object geo2, Object distance) {
         return exprF.call(NEARBY, geo1, geo2, distance, METERS);

@@ -137,33 +137,34 @@ public class PositionTest {
 
     @ParameterizedTest(name = "{index} {0}")
     @MethodSource("nextPositionParameters")
-    public void nextPositionTest(int degrees, Location l, double radians) {
-        Position p = Position.from(0, 0, 0);
-        Position t = p.nextPosition(l);
-        CoordinateUtils.assertEquivalent(l, t, TOLERANCE);
+    public void nextPositionTest(Position p, Location relative, Location expected, double radians) {
+        Position t = p.nextPosition(relative);
+        CoordinateUtils.assertEquivalent(expected, t, TOLERANCE);
         assertEquals(radians, t.getHeading(), ScaleInfo.DEFAULT.getResolution());
     }
 
     private static Stream<Arguments> nextPositionParameters() {
         List<Arguments> args = new ArrayList<>();
 
-        args.add(Arguments.of(0, Location.from(1, 0), 0));
-        args.add(Arguments.of(45, Location.from(1, 1), RADIANS_45));
-        args.add(Arguments.of(90, Location.from(0, 1), RADIANS_90));
-        args.add(Arguments.of(135, Location.from(-1, 1), RADIANS_135));
-        args.add(Arguments.of(180, Location.from(-1, 0), RADIANS_180));
-        args.add(Arguments.of(225, Location.from(-1, -1), RADIANS_225));
-        args.add(Arguments.of(270, Location.from(0, -1), RADIANS_270));
-        args.add(Arguments.of(315, Location.from(1, -1), RADIANS_315));
+        args.add(Arguments.of(Position.from(0, 0, 0), Location.from(1, 0), Location.from(1, 0), 0));
+        args.add(Arguments.of(Position.from(0, 0, 0), Location.from(1, 1), Location.from(1, 1), RADIANS_45));
+        args.add(Arguments.of(Position.from(0, 0, 0), Location.from(0, 1), Location.from(0, 1), RADIANS_90));
+        args.add(Arguments.of(Position.from(0, 0, 0), Location.from(-1, 1), Location.from(-1, 1), RADIANS_135));
+        args.add(Arguments.of(Position.from(0, 0, 0), Location.from(-1, 0), Location.from(-1, 0), RADIANS_180));
+        args.add(Arguments.of(Position.from(0, 0, 0), Location.from(-1, -1), Location.from(-1, -1), RADIANS_225));
+        args.add(Arguments.of(Position.from(0, 0, 0), Location.from(0, -1), Location.from(0, -1), RADIANS_270));
+        args.add(Arguments.of(Position.from(0, 0, 0), Location.from(1, -1), Location.from(1, -1), RADIANS_315));
 
-        args.add(Arguments.of(0, Location.from(Precision.EPSILON, 0), 0));
-        args.add(Arguments.of(45, Location.from(Precision.EPSILON, Precision.EPSILON), RADIANS_45));
-        args.add(Arguments.of(90, Location.from(0, Precision.EPSILON), RADIANS_90));
-        args.add(Arguments.of(135, Location.from(-Precision.EPSILON, Precision.EPSILON), RADIANS_135));
-        args.add(Arguments.of(180, Location.from(-Precision.EPSILON, 0), RADIANS_180));
-        args.add(Arguments.of(225, Location.from(-Precision.EPSILON, -Precision.EPSILON), RADIANS_225));
-        args.add(Arguments.of(270, Location.from(0, -Precision.EPSILON), RADIANS_270));
-        args.add(Arguments.of(315, Location.from(Precision.EPSILON, -Precision.EPSILON), RADIANS_315));
+        args.add(Arguments.of(Position.from(0, 0, 0), Location.from(Precision.EPSILON, 0), Location.from(Precision.EPSILON, 0), 0));
+        args.add(Arguments.of(Position.from(0, 0, 0), Location.from(Precision.EPSILON, Precision.EPSILON), Location.from(Precision.EPSILON, Precision.EPSILON), RADIANS_45));
+        args.add(Arguments.of(Position.from(0, 0, 0), Location.from(0, Precision.EPSILON), Location.from(0, Precision.EPSILON), RADIANS_90));
+        args.add(Arguments.of(Position.from(0, 0, 0), Location.from(-Precision.EPSILON, Precision.EPSILON), Location.from(-Precision.EPSILON, Precision.EPSILON), RADIANS_135));
+        args.add(Arguments.of(Position.from(0, 0, 0), Location.from(-Precision.EPSILON, 0), Location.from(-Precision.EPSILON, 0), RADIANS_180));
+        args.add(Arguments.of(Position.from(0, 0, 0), Location.from(-Precision.EPSILON, -Precision.EPSILON), Location.from(-Precision.EPSILON, -Precision.EPSILON), RADIANS_225));
+        args.add(Arguments.of(Position.from(0, 0, 0), Location.from(0, -Precision.EPSILON), Location.from(0, -Precision.EPSILON), RADIANS_270));
+        args.add(Arguments.of(Position.from(0, 0, 0), Location.from(Precision.EPSILON, -Precision.EPSILON), Location.from(Precision.EPSILON, -Precision.EPSILON), RADIANS_315));
+
+        args.add(Arguments.of(Position.from(-1, -3, RADIANS_90), Location.from(0.5, 3.0), Location.from(-4.0, -2.5), 2.976443976175166));
 
         return args.stream();
     }

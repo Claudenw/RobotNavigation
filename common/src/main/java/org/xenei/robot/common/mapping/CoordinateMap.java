@@ -169,7 +169,6 @@ public class CoordinateMap {
                 // find face
                 Geometry g = path.intersection(point.polygon);
                 Arrays.stream(g.getCoordinates()).forEach(filter::accept);
-                //calcCoords(point, filter );
             }
         }
         if (found[0] != null) {
@@ -178,21 +177,6 @@ public class CoordinateMap {
 
         return Optional.empty();
     }
-
-//    private void calcCoords(Coord point, Consumer<Coordinate> filter) {
-//        int parts = (int) (scale / scaleInfo.getResolution());
-//        double incr = scale * scaleInfo.getResolution();
-//        Coordinate[] result = new Coordinate[parts * parts];
-//        double x = point.getX() + incr / 2;
-//        for (int i = 0; i < parts; i++) {
-//            double y = point.getY() + incr / 2;
-//            for (int j = 0; j < parts; j++) {
-//                filter.accept(new Coordinate(x,y));
-//                y += incr;
-//            }
-//            x += incr;
-//        }
-//    }
 
     private double lineDistance(Location position, double heading, Coordinate c) {
         return Math.abs(

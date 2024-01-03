@@ -111,15 +111,16 @@ public interface Position extends Location {
             return this;
         }
 
+        double x = AngleUtils.RADIANS_90;
+        
         double range = relativeCoordinates.range();
         double thetar = relativeCoordinates.theta();
         double thetah = this.getHeading();
 
         double apime = AngleUtils.normalize(thetah + thetar);
-        // double aprime = this.headingTo(relativeCoordinates);
+        //double apime = thetah + thetar;
 
-        // double heading =
-        // AngleUtils.normalize(this.heading+this.headingTo(relativeCoordinates));
+        //Coordinate c = CoordUtils.fromAngle(apime, range);
         Coordinate a = this.plus(CoordUtils.fromAngle(apime, range));
         return Position.from(a, apime);
     }

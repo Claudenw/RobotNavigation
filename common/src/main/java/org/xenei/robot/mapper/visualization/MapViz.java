@@ -20,6 +20,7 @@ import org.locationtech.jts.geom.Polygon;
 import org.xenei.robot.common.mapping.Map;
 import org.xenei.robot.common.planning.Solution;
 import org.xenei.robot.common.planning.Step;
+import org.xenei.robot.common.utils.DoubleUtils;
 import org.xenei.robot.common.utils.GeometryUtils;
 
 public class MapViz {
@@ -95,13 +96,13 @@ public class MapViz {
 
         List<Coordinate> lst = solution.get().stream().collect(Collectors.toList());
         if (lst.size() > 1) {
-            cmds.add(getPoly(GeometryUtils.asPath(buffer, lst.toArray(new Coordinate[lst.size()])), Color.WHITE));
+            cmds.add(getPoly(GeometryUtils.asPath(0.25, lst.toArray(new Coordinate[lst.size()])), Color.WHITE));
         } else {
-            cmds.add(getPoly(GeometryUtils.asPolygon(lst.get(0), 0.5), Color.WHITE));
+            cmds.add(getPoly(GeometryUtils.asPolygon(lst.get(0), .25), Color.WHITE));
         }
 
         if (target != null) {
-            cmds.add(getPoly(GeometryUtils.asPolygon(target, 0.5), Color.GREEN));
+            cmds.add(getPoly(GeometryUtils.asPolygon(target, 0.25), Color.GREEN));
         }
 
         rescale(cmds);
@@ -157,7 +158,7 @@ public class MapViz {
 
             for (int i = 0; i < coords.length; i++) {
                 xler[i] = (int) Math.round(coords[i].getX() * scale);
-                yler[i] = (int) Math.round(coords[i].getY() * scale);
+                yler[i] = -1* (int) Math.round(coords[i].getY() * scale);
             }
         }
 

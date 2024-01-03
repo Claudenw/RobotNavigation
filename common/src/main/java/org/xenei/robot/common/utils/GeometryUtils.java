@@ -80,15 +80,15 @@ public class GeometryUtils {
         return geometryFactory.createPolygon(coord.toArray(new Coordinate[coord.size()]));
     }
 
-    public static Coordinate[] pathSegment(double width, Coordinate a, Coordinate b) {
-
-        double angle = CoordUtils.angleBetween(a, b);
-        double r = width / 2;
-        Coordinate cUp = CoordUtils.fromAngle(angle + AngleUtils.RADIANS_90, r);
-        Coordinate cDown = CoordUtils.fromAngle(angle - AngleUtils.RADIANS_90, r);
-        return new Coordinate[] { CoordUtils.add(a, cUp), CoordUtils.add(b, cUp), CoordUtils.add(a, cDown),
-                CoordUtils.add(b, cDown) };
-    }
+//    public static Coordinate[] pathSegment(double width, Coordinate a, Coordinate b) {
+//
+//        double angle = CoordUtils.angleBetween(a, b);
+//        double r = width / 2;
+//        Coordinate cUp = CoordUtils.fromAngle(angle + AngleUtils.RADIANS_90, r);
+//        Coordinate cDown = CoordUtils.fromAngle(angle - AngleUtils.RADIANS_90, r);
+//        return new Coordinate[] { CoordUtils.add(a, cUp), CoordUtils.add(b, cUp), CoordUtils.add(a, cDown),
+//                CoordUtils.add(b, cDown) };
+//    }
 
     public static Geometry addBuffer(double buffer, Geometry initial) {
         BufferOp bufOp = new BufferOp(initial);
