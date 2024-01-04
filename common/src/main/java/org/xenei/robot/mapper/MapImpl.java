@@ -6,10 +6,12 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
+import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -49,17 +51,22 @@ import org.apache.jena.update.UpdateRequest;
 import org.apache.jena.vocabulary.RDF;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.geom.GeometryCollection;
+import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.LineString;
-import org.locationtech.jts.geom.Point;
+import org.locationtech.jts.operation.linemerge.LineMerger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xenei.robot.common.FrontsCoordinate;
 import org.xenei.robot.common.Location;
+import org.xenei.robot.common.Position;
 import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.common.UnmodifiableCoordinate;
 import org.xenei.robot.common.mapping.Map;
+import org.xenei.robot.common.mapping.Obstacle;
 import org.xenei.robot.common.planning.Solution;
 import org.xenei.robot.common.planning.Step;
+import org.xenei.robot.common.utils.AngleUtils;
 import org.xenei.robot.common.utils.CoordUtils;
 import org.xenei.robot.common.utils.GeometryUtils;
 import org.xenei.robot.mapper.rdf.Namespace;
@@ -70,6 +77,8 @@ public class MapImpl implements Map {
     private final ScaleInfo scale;
     private final Dataset data;
     private final ExprFactory exprF;
+    private final ObstacleHandler obstacleHandler;
+    private final double buffer = 0.5; // FIXME
 
     public static PrefixMapping getPrefixes() {
         return PrefixMapping.Factory.create().setNsPrefixes(GeoSPARQL_URI.getPrefixes())
@@ -91,6 +100,7 @@ public class MapImpl implements Map {
         } catch (SpatialIndexException e) {
             throw new RuntimeException(e);
         }
+        obstacleHandler = new ObstacleHandler();
     }
 
     @Override
@@ -222,42 +232,20 @@ public class MapImpl implements Map {
 
     }
 
+    @SuppressWarnings("unchecked")
     @Override
-    public Coordinate addObstacle(Coordinate point) {
-        MapCoordinate coord = new MapCoordinate(point);
-        add(Namespace.PlanningModel, coord, Namespace.Obst, cell(coord.getCoordinate()));
-        return coord.getCoordinate();
+    public Set<Obstacle> addObstacle(Obstacle obst) {
+        return (Set<Obstacle>) obstacleHandler.addObstacle(obst);
     }
 
     @Override
     public boolean isObstacle(Coordinate point) {
-        Literal pointWKT = GraphGeomFactory.asWKT(point);
-        Var wkt = Var.alloc("wkt");
-        AskBuilder ask = new AskBuilder().addGraph(Namespace.UnionModel,
-                new WhereBuilder().addWhere(Namespace.s, RDF.type, Namespace.Obst) //
-                        .addWhere(Namespace.s, Geo.AS_WKT_PROP, wkt) //
-                        .addFilter(GraphGeomFactory.intersects(exprF, pointWKT, wkt)));
-        return ask(ask);
+        return obstacleHandler.isObstacle(point);
     }
 
     @Override
-    public Set<Geometry> getObstacles() {
-        Var wkt = Var.alloc("wkt");
-
-        SelectBuilder sb = new SelectBuilder().addVar(wkt).addGraph(Namespace.UnionModel, new WhereBuilder()
-                .addWhere(Namespace.s, RDF.type, Namespace.Obst).addWhere(Namespace.s, Geo.AS_WKT_PROP, wkt));
-
-        Set<Geometry> result = new HashSet<>();
-
-        Predicate<QuerySolution> processor = soln -> {
-            Geometry g = GraphGeomFactory.fromWkt(soln.getLiteral(wkt.getName()));
-            result.add(g);
-            return true;
-        };
-
-        exec(sb, processor);
-
-        return result;
+    public Set<Obstacle> getObstacles() {
+        return obstacleHandler.getObstacles();
     }
 
     /**
@@ -357,6 +345,15 @@ public class MapImpl implements Map {
         return ask(ask);
     }
 
+    /**
+     * Creates a builder for the coordinate if it does not exist.
+     * 
+     * @param model the name of the model to build the RDF data in/
+     * @param coordinate the coordinate that the data exists at.
+     * @param type Type of object
+     * @param geometry the Geometry of the object
+     * @return an optional containing the UpdateBuilder or and empty optional.
+     */
     private Optional<UpdateBuilder> addBuilder(Resource model, MapCoordinate coordinate, Resource type,
             Geometry geometry) {
         return (!exists(coordinate, type))
@@ -365,14 +362,14 @@ public class MapImpl implements Map {
                 : Optional.empty();
     }
 
-    private boolean add(Resource model, MapCoordinate coordinate, Resource type, Geometry geometry) {
-        Optional<UpdateBuilder> builder = addBuilder(model, coordinate, type, geometry);
-        if (builder.isPresent()) {
-            doUpdate(builder.get());
-            return true;
-        }
-        return false;
-    }
+//    private boolean add(Resource model, MapCoordinate coordinate, Resource type, Geometry geometry) {
+//        Optional<UpdateBuilder> builder = addBuilder(model, coordinate, type, geometry);
+//        if (builder.isPresent()) {
+//            doUpdate(builder.get());
+//            return true;
+//        }
+//        return false;
+//    }
 
     public void cutPath(Resource model, Coordinate a, Coordinate b) {
         Var ra = Var.alloc("a");
@@ -636,7 +633,7 @@ public class MapImpl implements Map {
 
     @Override
     public boolean areEquivalent(Coordinate a, Coordinate b) {
-        return new MapCoordinate(a).equals2D(new MapCoordinate(b), Precision.EPSILON);
+        return new MapCoordinate(a).equals2D(new MapCoordinate(b), getScale().getResolution());
     }
 
     Model getModel() {
@@ -648,7 +645,7 @@ public class MapImpl implements Map {
     }
 
     @Override
-    public void updateIsIndirect(Coordinate target, double buffer, Set<Coordinate> newObstacles) {
+    public void updateIsIndirect(Coordinate target, double buffer, Set<Obstacle> newObstacles) {
         Var isIndirect = Var.alloc("isIndirect");
         Var wkt = Var.alloc("wkt");
         Var x = Var.alloc("x");
@@ -672,14 +669,15 @@ public class MapImpl implements Map {
 
         this.exec(sb, processor);
 
-        List<Point> newObst = newObstacles.stream().map(c -> GeometryUtils.asPoint(c)).collect(Collectors.toList());
+        // List<Point> newObst = newObstacles.stream().map(c ->
+        // GeometryUtils.asPoint(c)).collect(Collectors.toList());
 
         List<Literal> updateCoords = new ArrayList<>();
 
         for (Coordinate c : candidates) {
             LineString ls = GeometryUtils.asLine(c, target);
-            for (Point obst : newObst) {
-                if (ls.distance(obst) < buffer) {
+            for (Obstacle obst : newObstacles) {
+                if (ls.distance(obst.geom()) < buffer) {
                     updateCoords.add(GraphGeomFactory.asWKT(c));
                     break;
                 }
@@ -694,6 +692,11 @@ public class MapImpl implements Map {
                             .addFilter(exprF.in(wkt, updateCoords.toArray())));
             doUpdate(ub);
         }
+    }
+
+    @Override
+    public Obstacle createObstacle(Position startPosition, Location relativeLocation) {
+        return new ObstacleImpl(startPosition, relativeLocation);
     }
 
     private class LockHandler implements AutoCloseable {
@@ -737,5 +740,247 @@ public class MapImpl implements Map {
             return exprF.add(exprF.cond(exprF.bound(indirect), exprF.asExpr(distance), exprF.asExpr(0)), distance);
 
         }
+    }
+
+    private class ObstacleImpl implements Obstacle {
+        private final Literal wkt;
+        private final Geometry geom;
+        private final UUID uuid;
+        private Resource rdf;
+
+        ObstacleImpl(Geometry geom) {
+            this(UUID.randomUUID(), geom);
+        }
+
+        ObstacleImpl(UUID uuid, Geometry geom) {
+            this.uuid = uuid;
+            this.geom = geom;
+            this.wkt = GraphGeomFactory.asWKT(geom);
+        }
+
+//        ObstacleImpl(Resource rdf, Geometry geom) {
+//            this.rdf = rdf;
+//            this.uuid = parseUUID(rdf);;
+//            this.geom = geom;
+//            this.wkt = GraphGeomFactory.asWKT(geom);
+//        }
+//        
+//        ObstacleImpl(Literal wkt) {
+//            this(UUID.randomUUID(), wkt);
+//        }
+
+//        ObstacleImpl(UUID uuid, Literal wkt) {
+//            this.uuid = uuid;
+//            this.geom = GraphGeomFactory.fromWkt(wkt);
+//            this.wkt = wkt;
+//        }
+//        
+        ObstacleImpl(Resource rdf, Literal wkt) {
+            this.rdf = rdf;
+            this.uuid = parseUUID(rdf);
+            this.geom = GraphGeomFactory.fromWkt(wkt);
+            this.wkt = wkt;
+        }
+
+        ObstacleImpl(Position startPostition, Location relativeLocation) {
+            double halfRes = getScale().getResolution() / 2;
+            Position absoluteObstacle = startPostition.nextPosition(relativeLocation);
+            Coordinate[] points = new Coordinate[3];
+            points[1] = absoluteObstacle.getCoordinate();
+            Location relative = Location.from(CoordUtils.fromAngle(AngleUtils.RADIANS_90, halfRes));
+            points[0] = absoluteObstacle.nextPosition(relative).getCoordinate();
+            relative = Location.from(CoordUtils.fromAngle(-AngleUtils.RADIANS_90, halfRes));
+            points[2] = absoluteObstacle.nextPosition(relative).getCoordinate();
+            geom = GeometryUtils.asLine(points);
+            wkt = GraphGeomFactory.asWKT(geom);
+            uuid = UUID.randomUUID();
+        }
+
+        private static UUID parseUUID(Resource rdf) {
+            return UUID.fromString(rdf.getURI().substring("urn:uuid:".length()));
+        }
+
+        @Override
+        public Literal wkt() {
+            return wkt;
+        }
+
+        @Override
+        public Geometry geom() {
+            return geom;
+        }
+
+        @Override
+        public UUID uuid() {
+            return uuid;
+        }
+
+        @Override
+        public Resource rdf() {
+            Resource result = rdf;
+            if (result == null) {
+                result = rdf = ResourceFactory.createResource("urn:uuid:" + uuid().toString());
+            }
+            return result;
+        }
+
+        Resource in(Model m) {
+            Resource result = m.createResource(rdf().getURI(), Namespace.Obst);
+            result.addLiteral(Geo.AS_WKT_PROP, wkt());
+            return result;
+        }
+
+        @Override
+        public int hashCode() {
+            return uuid.hashCode();
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj)
+                return true;
+            if ((obj == null) || (getClass() != obj.getClass()))
+                return false;
+            ObstacleImpl other = (ObstacleImpl) obj;
+            return Objects.equals(uuid, other.uuid);
+        }
+    }
+
+    private class ObstacleHandler {
+
+        private Geometry[] merge(Obstacle obstacle, Collection<? extends Obstacle> others) {
+            LineMerger merger = new LineMerger();
+            merger.add(obstacle.geom());
+            others.stream().map(Obstacle::geom).forEach(merger::add);
+
+            @SuppressWarnings("unchecked")
+            Collection<Geometry> collection = merger.getMergedLineStrings();
+            return collection.toArray(new Geometry[collection.size()]);
+        }
+
+        private Geometry[] union(Obstacle obstacle, Collection<? extends Obstacle> others) {
+            List<Geometry> gList = new ArrayList<>();
+            gList.add(obstacle.geom());
+            others.stream().map(Obstacle::geom).forEach(gList::add);
+            GeometryFactory factory = new GeometryFactory();
+
+            // note the following geometry collection may be invalid (say with overlapping
+            // polygons)
+            GeometryCollection geometryCollection = (GeometryCollection) factory.buildGeometry(gList);
+
+            return new Geometry[] { geometryCollection.union() };
+        }
+
+        private Set<ObstacleImpl> mergeIntersectOrTouch(Obstacle obstacle) {
+            Var otherWkt = Var.alloc("otherWkt");
+            SelectBuilder sb = new SelectBuilder().setDistinct(true).addVar(Namespace.s).addVar(otherWkt) //
+                    .from(Namespace.UnionModel.getURI()) //
+                    .addWhere(Namespace.s, Geo.AS_WKT_NODE, otherWkt) //
+                    .addWhere(Namespace.s, RDF.type, Namespace.Obst)
+                    .addFilter(exprF.or(GraphGeomFactory.touches(exprF, obstacle.wkt(), otherWkt),
+                            GraphGeomFactory.intersects(exprF, obstacle.wkt(), otherWkt)));
+
+            Set<ObstacleImpl> solns = new HashSet<>();
+
+            Predicate<QuerySolution> processor = soln -> {
+                solns.add(
+                        new ObstacleImpl(soln.getResource(Namespace.s.getName()), soln.getLiteral(otherWkt.getName())));
+                return true;
+            };
+
+            exec(sb, processor);
+
+            Set<ObstacleImpl> solution = new HashSet<>();
+
+            if (solns.isEmpty()) {
+                ObstacleImpl obstImpl = (ObstacleImpl) obstacle;
+                Resource r = obstImpl.in(ModelFactory.createDefaultModel());
+                doUpdate(new UpdateBuilder().addInsert(Namespace.PlanningModel, r.getModel()));
+                solution.add(obstImpl);
+            } else {
+                // System.out.println("Before merge");
+                // System.out.println(MapReports.dumpModel(this));
+
+                // Geometry[] result = union(obstacle, solns);
+                Geometry[] result = merge(obstacle, solns);
+
+                UpdateRequest req = new UpdateRequest();
+                for (Obstacle obst : solns) {
+                    req.add(new UpdateBuilder().addDelete(Namespace.PlanningModel, obst.rdf(), Namespace.p, Namespace.o)
+                            .addGraph(Namespace.UnionModel,
+                                    new WhereBuilder().addWhere(obst.rdf(), Namespace.p, Namespace.o))
+                            .build());
+                }
+
+                Model merged = ModelFactory.createDefaultModel();
+                Arrays.stream(result).forEach(g -> {
+                    // obst = new ObstacleImpl( ConcaveHull.concaveHullByLength(g,
+                    // scale.getResolution()));
+                    ObstacleImpl obst = new ObstacleImpl(g);
+                    obst.in(merged);
+                    solution.add(obst);
+                });
+                req.add(new UpdateBuilder().addInsert(Namespace.PlanningModel, merged).build());
+
+                doUpdate(req);
+//               System.out.println("After merge");
+//               System.out.println(MapReports.dumpModel(MapImpl.this));
+            }
+            return solution;
+        }
+
+        Set<? extends Obstacle> addObstacle(Obstacle obst) {
+            // find all Obstacles that this obstacle will intersect or touch
+            // if there are any, merge them together.
+            // if not just write this on to the graph.
+            Set<ObstacleImpl> work = mergeIntersectOrTouch(obst);
+            // delete any Coords that are within buffer of any of the work geometries.
+            Var wkt = Var.alloc("wkt");
+            Var obstRes = Var.alloc("obst");
+            Var otherWkt = Var.alloc("otherWkt");
+            UpdateBuilder update = new UpdateBuilder()
+                    .addDelete(Namespace.PlanningModel, Namespace.s, Namespace.p, Namespace.o)
+                    .addGraph(Namespace.UnionModel, new WhereBuilder() //
+                            .addWhere(Namespace.s, Namespace.p, Namespace.o) //
+                            .addWhere(Namespace.s, RDF.type, Namespace.Coord) //
+                            .addWhere(Namespace.s, Geo.AS_WKT_NODE, wkt) //
+                            .addWhere(obstRes, Geo.AS_WKT_NODE, otherWkt)
+                            .addFilter(exprF.lt(GraphGeomFactory.calcDistance(exprF, wkt, otherWkt), buffer))
+                            .addFilter(exprF.in(exprF.asExpr(obstRes), exprF
+                                    .asList(work.stream().map(Obstacle::rdf).collect(Collectors.toList()).toArray()))));
+            doUpdate(update);
+            return work;
+        }
+
+        boolean isObstacle(Coordinate point) {
+            Literal pointWKT = GraphGeomFactory.asWKT(point);
+            Var wkt = Var.alloc("wkt");
+            AskBuilder ask = new AskBuilder().addGraph(Namespace.UnionModel,
+                    new WhereBuilder().addWhere(Namespace.s, RDF.type, Namespace.Obst) //
+                            .addWhere(Namespace.s, Geo.AS_WKT_PROP, wkt) //
+                            .addFilter(GraphGeomFactory.intersects(exprF, pointWKT, wkt)));
+            return ask(ask);
+        }
+
+        Set<Obstacle> getObstacles() {
+            Var wkt = Var.alloc("wkt");
+
+            SelectBuilder sb = new SelectBuilder().addVar(Namespace.s).addVar(wkt) //
+                    .addGraph(Namespace.UnionModel, new WhereBuilder().addWhere(Namespace.s, RDF.type, Namespace.Obst) //
+                            .addWhere(Namespace.s, Geo.AS_WKT_PROP, wkt));
+
+            Set<Obstacle> result = new HashSet<>();
+
+            // System.out.println(MapReports.dumpQuery(MapImpl.this, sb));
+            Predicate<QuerySolution> processor = soln -> {
+                result.add(new ObstacleImpl(soln.getResource(Namespace.s.getName()), soln.getLiteral(wkt.getName())));
+                return true;
+            };
+
+            exec(sb, processor);
+
+            return result;
+        }
+
     }
 }

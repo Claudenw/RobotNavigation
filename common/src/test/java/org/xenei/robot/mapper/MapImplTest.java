@@ -30,11 +30,16 @@ import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.Point;
 import org.xenei.robot.common.Location;
+import org.xenei.robot.common.Position;
 import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.common.mapping.CoordinateMap;
+import org.xenei.robot.common.mapping.Obstacle;
 import org.xenei.robot.common.planning.Step;
+import org.xenei.robot.common.testUtils.CoordinateUtils;
 import org.xenei.robot.common.testUtils.MapLibrary;
+import org.xenei.robot.common.utils.AngleUtils;
 import org.xenei.robot.common.utils.CoordUtils;
+import org.xenei.robot.common.utils.DoubleUtils;
 import org.xenei.robot.common.utils.GeometryUtils;
 import org.xenei.robot.mapper.rdf.Namespace;
 
@@ -67,43 +72,36 @@ public class MapImplTest {
         return Arrays.asList(obstacles);
     }
 
-    @BeforeAll
-    public static void setupPaths() {
-        for (Coordinate e : expected) {
-            paths.add(new Coordinate[] { p, e });
-        }
-    }
+//    @BeforeAll
+//    public static void setupPaths() {
+//        for (Coordinate e : expected) {
+//            paths.add(new Coordinate[] { p, e });
+//        }
+//    }
+//
+//    @BeforeEach
+//    public void setup() {
+//        ScaleInfo scale = new ScaleInfo.Builder().build();
+//        cMap = new CoordinateMap(1);
+//        underTest = new MapImpl(scale);
+//        underTest.addCoord(p, p.distance(t), false, true);
+//        cMap.enable(p, 'p');
+//        cMap.enable(t, 't');
+//        for (Coordinate e : expected) {
+//            underTest.addCoord(e, e.distance(t), false, true);
+//            cMap.enable(e, 'e');
+//        }
+//        Position pos = Position.from(p, 0);
+//        for (Coordinate o : obstacles) {
+//            underTest.addObstacle( underTest.createObstacle(pos, pos.relativeLocation(o)));
+//            cMap.enable(o, '#');
+//        }
+//        for (Coordinate[] l : paths) {
+//            underTest.addPath(l[0], l[1]);
+//        }
+//    }
 
-    @BeforeEach
-    public void setup() {
-        ScaleInfo scale = new ScaleInfo.Builder().build();
-        cMap = new CoordinateMap(1);
-        underTest = new MapImpl(scale);
-        underTest.addCoord(p, p.distance(t), false, true);
-        cMap.enable(p, 'p');
-        cMap.enable(t, 't');
-        for (Coordinate e : expected) {
-            underTest.addCoord(e, e.distance(t), false, true);
-            cMap.enable(e, 'e');
-        }
-        for (Coordinate o : obstacles) {
-            underTest.addObstacle(o);
-            cMap.enable(o, '#');
-        }
-        for (Coordinate[] l : paths) {
-            underTest.addPath(l[0], l[1]);
-        }
-    }
 
-    @Test
-    public void isObstacleTest() {
-        for (Coordinate o : obstacles) {
-            assertTrue(underTest.isObstacle(o), () -> "Missing " + o);
-        }
-        for (Coordinate e : expected) {
-            assertFalse(underTest.isObstacle(e), () -> "Should not have " + e);
-        }
-    }
 
     @Test
     public void getBestTargetTest() {
@@ -129,15 +127,6 @@ public class MapImplTest {
             }
         }
         assertTrue(found, () -> "Missing coordinate " + c);
-    }
-
-    @Test
-    public void getObstaclesTest() {
-        Set<Geometry> obsts = underTest.getObstacles();
-        assertEquals(obstacles.length, obsts.size());
-        for (Coordinate o : obstacles) {
-            assertCoordinateInObstacles(obsts, o);
-        }
     }
 
     @Test
@@ -297,8 +286,9 @@ public class MapImplTest {
     public void clearViewTest() {
         ScaleInfo scale = new ScaleInfo.Builder().build();
         underTest = new MapImpl(scale);
-        
-        underTest.addObstacle(new Coordinate(-3, -3));
+        Position pos = Position.from(p, 0);
+
+        underTest.addObstacle(underTest.createObstacle(pos, pos.relativeLocation(new  Coordinate(-3, -3))));
         Coordinate a = new Coordinate(-3, -4);
         Coordinate b = new Coordinate(-3, -2);
 
@@ -349,35 +339,92 @@ public class MapImplTest {
         assertTrue(underTest.ask(ask));
     }
     
-    @ParameterizedTest(name = "{index} {1}")
-    @MethodSource("loadObstaclesTestParameters")
-    public void loadObstaclesTest(MapImpl underTest, Coordinate c) {
-        assertTrue( underTest.isObstacle(c));
+    @Test
+    public void createObstacleTest() {
+        underTest = new MapImpl(ScaleInfo.DEFAULT);
+        double halfRes = ScaleInfo.DEFAULT.getResolution()/2;
+        Position pos = Position.from(p, 0);
+        Location relative = Location.from(1,0);
+        Obstacle obst = underTest.createObstacle(pos, relative);
+        Coordinate[] lst = obst.geom().getCoordinates();
+        assertEquals(3, lst.length);
+        CoordinateUtils.assertEquivalent(new Coordinate(0,-2.75), lst[0], halfRes);
+        CoordinateUtils.assertEquivalent(new Coordinate(0,-3), lst[1], halfRes);
+        CoordinateUtils.assertEquivalent(new Coordinate(0,-3.25), lst[2], halfRes);
+        assertEquals( GraphGeomFactory.asWKT(obst.geom()), obst.wkt());
     }
     
-    private static void listFail(Geometry geom, Coordinate c) {
-        if (!geom.intersects(GeometryUtils.asPoint(c))) {
-            System.out.format( "%s %s failed\n", geom, c);
-        }
+    @Test
+    public void addObstacleTest() {
+        underTest = new MapImpl(ScaleInfo.DEFAULT);
+        Position pos = Position.from(p, 0);
+        Location relative = Location.from(1,0);
+        Obstacle obst = underTest.createObstacle(pos, relative);
+        Set<Obstacle> result = underTest.addObstacle(obst);
+        assertEquals(1, result.size());
+        assertEquals(obst, result.iterator().next());
+        System.out.println(MapReports.dumpModel(underTest));
+        relative = Location.from(1, 1);
+        Obstacle obst2 = underTest.createObstacle(pos, relative);
+        result = underTest.addObstacle(obst2);
+        relative = Location.from(CoordUtils.fromAngle(AngleUtils.RADIANS_45/2, 1));
+        Obstacle obst3 = underTest.createObstacle(pos, relative);
+        result = underTest.addObstacle(obst3);
+        System.out.println(MapReports.dumpModel(underTest));
+        System.out.println( obst2.wkt());
+        assertEquals(2, underTest.getObstacles().size());
     }
-    private static Stream<Arguments> loadObstaclesTestParameters() {
-        CoordinateMap cMap =  MapLibrary.map2('#');
-        MapImpl underTest= new MapImpl(ScaleInfo.DEFAULT);
-        List<Coordinate> lst = new ArrayList<>();
-        
-        cMap.getObstacles().forEach( g -> {
-            Point p = g.getCentroid();
-            Coordinate c = new Coordinate( p.getX(), p.getY());
-            lst.add(c);
-            underTest.addObstacle(c);
-            listFail(g, c );
-            Arrays.stream(g.getCoordinates()).forEach( c2 -> {lst.add(c2);
-            listFail(g,c2);
-          
-            });  
-        });
-        
-        return lst.stream().map( c -> Arguments.of( underTest, c));
+    
+    @Test
+    public void isObstacleTest() {
+        underTest = new MapImpl(ScaleInfo.DEFAULT);
+        Position pos = Position.from(p, 0);
+        Location relative = Location.from(1,0);
+        Obstacle obst = underTest.createObstacle(pos, relative);
+        underTest.addObstacle(obst);
+        relative = Location.from(1, 1);
+        Obstacle obst2 = underTest.createObstacle(pos, relative);
+        underTest.addObstacle(obst2);
+        relative = Location.from(CoordUtils.fromAngle(AngleUtils.RADIANS_45/2, 1));
+        Obstacle obst3 = underTest.createObstacle(pos, relative);
+        underTest.addObstacle(obst3);
+        for (Coordinate c : obst.geom().getCoordinates())
+        assertTrue(underTest.isObstacle(c), ()-> "Did not find c");
+        for (Coordinate c : obst2.geom().getCoordinates())
+            assertTrue(underTest.isObstacle(c), ()-> "Did not find c");
+        for (Coordinate c : obst3.geom().getCoordinates())
+            assertTrue(underTest.isObstacle(c), ()-> "Did not find c");
     }
+//    
+//    @ParameterizedTest(name = "{index} {1}")
+//    @MethodSource("loadObstaclesTestParameters")
+//    public void loadObstaclesTest(MapImpl underTest, Coordinate c) {
+//        assertTrue( underTest.isObstacle(c));
+//    }
+//    
+//    private static void listFail(Geometry geom, Coordinate c) {
+//        if (!geom.intersects(GeometryUtils.asPoint(c))) {
+//            System.out.format( "%s %s failed\n", geom, c);
+//        }
+//    }
+//    private static Stream<Arguments> loadObstaclesTestParameters() {
+//        CoordinateMap cMap =  MapLibrary.map2('#');
+//        MapImpl underTest= new MapImpl(ScaleInfo.DEFAULT);
+//        List<Coordinate> lst = new ArrayList<>();
+//        
+//        cMap.getObstacles().forEach( g -> {
+//            Point p = g.getCentroid();
+//            Coordinate c = new Coordinate( p.getX(), p.getY());
+//            lst.add(c);
+//            underTest.addObstacle(c);
+//            listFail(g, c );
+//            Arrays.stream(g.getCoordinates()).forEach( c2 -> {lst.add(c2);
+//            listFail(g,c2);
+//          
+//            });  
+//        });
+//        
+//        return lst.stream().map( c -> Arguments.of( underTest, c));
+//    }
 
 }

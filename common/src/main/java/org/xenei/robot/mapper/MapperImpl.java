@@ -15,9 +15,12 @@ import org.xenei.robot.common.Position;
 import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.common.mapping.Map;
 import org.xenei.robot.common.mapping.Mapper;
+import org.xenei.robot.common.mapping.Obstacle;
 import org.xenei.robot.common.planning.Step;
+import org.xenei.robot.common.utils.AngleUtils;
 import org.xenei.robot.common.utils.CoordUtils;
 import org.xenei.robot.common.utils.DoubleUtils;
+import org.xenei.robot.common.utils.GeometryUtils;
 
 public class MapperImpl implements Mapper {
     private static final Logger LOG = LoggerFactory.getLogger(MapperImpl.class);
@@ -58,7 +61,7 @@ public class MapperImpl implements Mapper {
     class ObstacleMapper {
         final Position currentPosition;
         final double buffer;
-        final Set<Coordinate> newObstacles;
+        final Set<Obstacle> newObstacles;
         final Set<Coordinate> coordSet;
 
         ObstacleMapper(Position currentPosition, double buffer) {
@@ -79,16 +82,9 @@ public class MapperImpl implements Mapper {
              * relativeObstacle is always a point on an edge of an obstacle. so add 1/2 map resolution to 
              * the relative distance to place the obstacle within a cell.
              */
-            ScaleInfo scaleInfo = map.getScale();
-            double halfRes = scaleInfo.getResolution() / 2;
-            Position absoluteObstacle = adjustPosition(relativeObstacle, halfRes);
-            Coordinate c = map.adopt(absoluteObstacle.getCoordinate());
-            if (currentPosition.distance(c) < currentPosition.distance(absoluteObstacle)) {
-                absoluteObstacle = adjustPosition(relativeObstacle, scaleInfo.getResolution());
-                c = map.adopt(absoluteObstacle.getCoordinate());
-            }
 
-            newObstacles.add(map.addObstacle(absoluteObstacle.getCoordinate()));
+            newObstacles.addAll(map.addObstacle(map.createObstacle(currentPosition,  relativeObstacle)));
+
             // filter out any range < 1.0
             if (!DoubleUtils.inRange(relativeObstacle.range(), buffer)) {
                 Optional<Coordinate> possibleCoord = findCoordinateNear(relativeObstacle);
@@ -96,8 +92,7 @@ public class MapperImpl implements Mapper {
                     coordSet.add(possibleCoord.get());
                 }
             }
-
-       }
+        }
 
         /**
          * Finds an open coordinate between the obstacle and the current position when

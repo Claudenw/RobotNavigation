@@ -16,8 +16,8 @@ import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
+import org.xenei.robot.common.FrontsCoordinate;
 import org.xenei.robot.common.FrontsCoordinateTest;
-import org.xenei.robot.common.HasCoordinate;
 import org.xenei.robot.common.testUtils.CoordinateUtils;
 
 public class GeometryUtilsTest {
@@ -63,10 +63,10 @@ public class GeometryUtilsTest {
         lst.add(Arguments.of("coord array", geom, expected));
         lst.add(Arguments.of("coord collection", GeometryUtils.asPolygon(Arrays.asList(expected)), expected));
 
-        List<HasCoordinate> hList = Arrays.stream(expected).map(FrontsCoordinateTest::make)
+        List<FrontsCoordinate> hList = Arrays.stream(expected).map(FrontsCoordinateTest::make)
                 .collect(Collectors.toList());
 
-        lst.add(Arguments.of("hasCoord array", GeometryUtils.asPolygon(hList.toArray(new HasCoordinate[hList.size()])),
+        lst.add(Arguments.of("hasCoord array", GeometryUtils.asPolygon(hList.toArray(new FrontsCoordinate[hList.size()])),
                 expected));
 
 

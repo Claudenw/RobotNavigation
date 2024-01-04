@@ -24,6 +24,7 @@ import org.xenei.robot.mapper.rdf.Namespace;
 public class GraphGeomFactory {
     private static Resource OVERLAPS = ResourceFactory.createResource(Geof.SF_OVERLAPS);
     private static Resource INTERSECTS = ResourceFactory.createResource(Geof.SF_INTERSECTS);
+    private static Resource TOUCH = ResourceFactory.createResource(Geof.SF_TOUCHES);
     private static Resource DISTANCE = ResourceFactory.createProperty(Geof.DISTANCE_NAME);
     private static Resource NEARBY = ResourceFactory.createProperty(SpatialExtension.NEARBY);
     private static Resource METERS = ResourceFactory.createResource(Unit_URI.METRE_URL);
@@ -74,6 +75,10 @@ public class GraphGeomFactory {
         return expF.call(INTERSECTS, geo1, geo2);
     }
     
+    public static Expr touches(ExprFactory expF, Object geo1, Object geo2) {
+        return expF.call(TOUCH, geo1, geo2);
+    }
+    
     @SuppressWarnings("unchecked")
     static Expr isNearby(ExprFactory exprF, Object geo1, Object geo2, Object distance) {
         return exprF.call(NEARBY, geo1, geo2, distance, METERS);
@@ -102,5 +107,4 @@ public class GraphGeomFactory {
     static Resource asRDF(FrontsCoordinate p, Resource type, org.locationtech.jts.geom.Geometry geom) {
         return asRDF(p.getCoordinate(), type, geom);
     }
-
 }

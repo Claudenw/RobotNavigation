@@ -4,8 +4,11 @@ import java.util.Collection;
 import java.util.Optional;
 import java.util.Set;
 
+import org.apache.jena.rdf.model.Literal;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
+import org.xenei.robot.common.Location;
+import org.xenei.robot.common.Position;
 import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.common.planning.Solution;
 import org.xenei.robot.common.planning.Step;
@@ -71,13 +74,6 @@ public interface Map {
     Optional<Step> getBestStep(Coordinate currentCoords, double buffer);
 
     /**
-     * Sets the adjustment value for the point specified by the step.
-     * 
-     * @param target the point to update.
-     */
-    //void setTemporaryCost(Coordinate target, double cost);
-
-    /**
      * Returns true if the coordinate is within an obstacle.
      * 
      * @param coord the coordinate to check.
@@ -90,14 +86,14 @@ public interface Map {
      * 
      * @param obstacle the obstacle to add.
      */
-    Coordinate addObstacle(Coordinate obstacle);
-
+    //Coordinate addObstacle(Coordinate obstacle);
+    Set<Obstacle> addObstacle(Obstacle obstacle);
     /**
      * Gets the geometry for all the known obstacles.
      * 
      * @return the set of geometries for all the knowns obstacles.
      */
-    Set<Geometry> getObstacles();
+    Set<Obstacle> getObstacles();
 
     /**
      * Breaks the path between a and b.
@@ -148,6 +144,14 @@ public interface Map {
      * @param buffer the buffer
      * @param newObstacles the set of new obstacles.
      */
-    void updateIsIndirect(Coordinate target, double buffer, Set<Coordinate> newObstacles);
+    void updateIsIndirect(Coordinate target, double buffer, Set<Obstacle> newObstacles);
+    
+    /**
+     * Create an Obstacle.
+     * @param startPosition  The position from which we locate the obstacle.
+     * @param relativeLocation the relative locaiton of the obstacle from the start position.
+     * @return An obstacle.
+     */
+    Obstacle createObstacle(Position startPosition, Location relativeLocation);
 
 }

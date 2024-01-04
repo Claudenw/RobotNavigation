@@ -5,7 +5,7 @@ import java.util.Comparator;
 import org.locationtech.jts.geom.Coordinate;
 import org.xenei.robot.common.utils.CoordUtils;
 
-public interface FrontsCoordinate extends HasCoordinate {
+public interface FrontsCoordinate {
 
     public static final FrontsCoordinate ORIGIN = new FrontsCoordinate() {
         UnmodifiableCoordinate zero = UnmodifiableCoordinate.make(new Coordinate(0,0));
@@ -23,7 +23,6 @@ public interface FrontsCoordinate extends HasCoordinate {
         return CoordUtils.XYCompr.compare(one.getCoordinate(), two.getCoordinate());
     };
 
-    @Override
     UnmodifiableCoordinate getCoordinate();
 
     default double getX() {

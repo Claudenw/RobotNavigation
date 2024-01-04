@@ -15,9 +15,11 @@ import javax.swing.WindowConstants;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.LineString;
+import org.locationtech.jts.geom.MultiLineString;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
 import org.xenei.robot.common.mapping.Map;
+import org.xenei.robot.common.mapping.Obstacle;
 import org.xenei.robot.common.planning.Solution;
 import org.xenei.robot.common.planning.Step;
 import org.xenei.robot.common.utils.DoubleUtils;
@@ -67,7 +69,7 @@ public class MapViz {
             };
         }
 
-        if (geom instanceof LineString) {
+        if (geom instanceof LineString || geom instanceof MultiLineString) {
             return new AbstractDrawingCommand(geom, color) {
                 @Override
                 protected void fillGeom(Graphics g, int[] xler, int[] yler) {
@@ -86,8 +88,8 @@ public class MapViz {
 
     public void redraw(Coordinate target) {
         List<AbstractDrawingCommand> cmds = new ArrayList<>();
-        for (Geometry obst : map.getObstacles()) {
-            cmds.add(getPoly(obst, Color.RED));
+        for (Obstacle obst : map.getObstacles()) {
+            cmds.add(getPoly(obst.geom(), Color.RED));
         }
 
         for (Step targ : map.getTargets()) {

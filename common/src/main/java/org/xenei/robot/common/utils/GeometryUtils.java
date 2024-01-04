@@ -15,7 +15,7 @@ import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.operation.buffer.BufferOp;
 import org.locationtech.jts.operation.buffer.BufferParameters;
-import org.xenei.robot.common.HasCoordinate;
+import org.xenei.robot.common.FrontsCoordinate;
 import org.xenei.robot.common.Location;
 
 public class GeometryUtils {
@@ -60,16 +60,16 @@ public class GeometryUtils {
         return geometryFactory.createPolygon(cell);
     }
 
-    public static Polygon asPolygon(HasCoordinate coord, double radius) {
+    public static Polygon asPolygon(FrontsCoordinate coord, double radius) {
         return asPolygon(coord.getCoordinate(), radius);
     }
 
-    public static Polygon asPolygon(HasCoordinate coord, double radius, int edges) {
+    public static Polygon asPolygon(FrontsCoordinate coord, double radius, int edges) {
         return asPolygon(coord.getCoordinate(), radius, edges);
     }
     
-    public static Polygon asPolygon(HasCoordinate... coord) {
-        return asPolygon(Arrays.stream(coord).map(HasCoordinate::getCoordinate).collect(Collectors.toList()));
+    public static Polygon asPolygon(FrontsCoordinate... coord) {
+        return asPolygon(Arrays.stream(coord).map(FrontsCoordinate::getCoordinate).collect(Collectors.toList()));
     }
 
     public static Polygon asPolygon(Coordinate... coord) {
@@ -121,15 +121,15 @@ public class GeometryUtils {
         return asPath(buffer, points.toArray(new Coordinate[points.size()]));
     }
 
-    public static Geometry asPath(double buffer, HasCoordinate... points) {
-        return asPath(buffer, Arrays.stream(points).map(HasCoordinate::getCoordinate).collect(Collectors.toList()));
+    public static Geometry asPath(double buffer, FrontsCoordinate... points) {
+        return asPath(buffer, Arrays.stream(points).map(FrontsCoordinate::getCoordinate).collect(Collectors.toList()));
     }
 
     public static Point asPoint(Coordinate c) {
         return geometryFactory.createPoint(c);
     }
 
-    public static Point asPoint(HasCoordinate c) {
+    public static Point asPoint(FrontsCoordinate c) {
         return asPoint(c.getCoordinate());
     }
 

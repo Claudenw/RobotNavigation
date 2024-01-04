@@ -1,5 +1,8 @@
 package org.xenei.robot.mapper.rdf;
 
+import java.util.UUID;
+
+import org.apache.jena.datatypes.TypeMapper;
 import org.apache.jena.geosparql.implementation.vocabulary.SpatialExtension;
 import org.apache.jena.rdf.model.Property;
 import org.apache.jena.rdf.model.Resource;
@@ -32,14 +35,6 @@ public class Namespace {
     public static final Var p = Var.alloc("p");
     public static final Var o = Var.alloc("o");
 
-//    public static <T extends WhereClause<?>> T addData(T whereClause, Object r, Coordinate c) {
-//       whereClause.addWhere(r, Namespace.x, c.getX());
-//       whereClause.addWhere(r, Namespace.y, c.getY());
-//       whereClause.addWhere(r, Geo.AS_WKT_PROP, asWKT(c))
-//       return whereClause;
-//    }
-//    
-//    public static UpdateBuilder addData(UpdateBuilder updateBuilder, Object r, Coordinate c) {
-//        return updateBuilder.addWhere(r, Namespace.x, c.getX()).addWhere(r, Namespace.y, c.getY());
-//     }
+
+
 }

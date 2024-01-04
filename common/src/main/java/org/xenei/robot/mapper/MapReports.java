@@ -98,7 +98,7 @@ public class MapReports {
     
     public static String dumpObstacles(MapImpl map) {
         StringBuilder builder = new StringBuilder();
-        List<Coordinate> lst = map.getObstacles().stream().map( g-> g.getCentroid())
+        List<Coordinate> lst = map.getObstacles().stream().map( g-> g.geom().getCentroid())
                 .map( p -> new Coordinate(p.getX(), p.getY())).collect(Collectors.toList());
         Coordinate[] ary = lst.toArray( new Coordinate[lst.size()]);
         Arrays.sort(ary);
