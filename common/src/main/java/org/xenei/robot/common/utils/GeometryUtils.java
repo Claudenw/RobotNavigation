@@ -13,38 +13,27 @@ import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
+import org.locationtech.jts.geom.PrecisionModel;
 import org.locationtech.jts.operation.buffer.BufferOp;
 import org.locationtech.jts.operation.buffer.BufferParameters;
 import org.xenei.robot.common.FrontsCoordinate;
 import org.xenei.robot.common.Location;
+import org.xenei.robot.common.ScaleInfo;
+import org.xenei.robot.mapper.rdf.WktDataType;
 
 public class GeometryUtils {
 
-    private static GeometryFactory geometryFactory = new GeometryFactory();
-
-    private GeometryUtils() {
+    private final GeometryFactory geometryFactory;
+    
+    public GeometryUtils(GeometryFactory geometryFactory) {
+        this.geometryFactory = geometryFactory;
     }
 
-//    public static Geometry asCluster(Collection<Coordinate> c) {
-//        return asCluster(c.toArray(new Coordinate[c.size()]));
-//    }
-//
-//    public static Geometry asCluster(Coordinate[] c) {
-//        Geometry g = geometryFactory.createMultiPointFromCoords(c).convexHull();
-//        if (g instanceof LineString) {
-//            return asPath(g.getCoordinates());
-//        }
-//        if (g instanceof Point) {
-//            return asPolygon(g.getCoordinate());
-//        }
-//        return g;
-//    }
-
-    public static Polygon asPolygon(Coordinate coord, double radius) {
+    public Polygon asPolygon(Coordinate coord, double radius) {
         return asPolygon(coord, radius, 6);
     }
 
-    public static Polygon asPolygon(Coordinate coord, double radius, int edges) {
+    public Polygon asPolygon(Coordinate coord, double radius, int edges) {
         double angle = edges == 4 ?  AngleUtils.RADIANS_45 : 0.0;
         if (edges == 4) {
             radius *= DoubleUtils.SQRT2;
@@ -60,27 +49,27 @@ public class GeometryUtils {
         return geometryFactory.createPolygon(cell);
     }
 
-    public static Polygon asPolygon(FrontsCoordinate coord, double radius) {
+    public Polygon asPolygon(FrontsCoordinate coord, double radius) {
         return asPolygon(coord.getCoordinate(), radius);
     }
 
-    public static Polygon asPolygon(FrontsCoordinate coord, double radius, int edges) {
+    public Polygon asPolygon(FrontsCoordinate coord, double radius, int edges) {
         return asPolygon(coord.getCoordinate(), radius, edges);
     }
     
-    public static Polygon asPolygon(FrontsCoordinate... coord) {
+    public Polygon asPolygon(FrontsCoordinate... coord) {
         return asPolygon(Arrays.stream(coord).map(FrontsCoordinate::getCoordinate).collect(Collectors.toList()));
     }
 
-    public static Polygon asPolygon(Coordinate... coord) {
+    public Polygon asPolygon(Coordinate... coord) {
         return geometryFactory.createPolygon(coord);
     }
 
-    public static Polygon asPolygon(Collection<Coordinate> coord) {
+    public Polygon asPolygon(Collection<Coordinate> coord) {
         return geometryFactory.createPolygon(coord.toArray(new Coordinate[coord.size()]));
     }
 
-//    public static Coordinate[] pathSegment(double width, Coordinate a, Coordinate b) {
+//    public Coordinate[] pathSegment(double width, Coordinate a, Coordinate b) {
 //
 //        double angle = CoordUtils.angleBetween(a, b);
 //        double r = width / 2;
@@ -90,13 +79,16 @@ public class GeometryUtils {
 //                CoordUtils.add(b, cDown) };
 //    }
 
-    public static Geometry addBuffer(double buffer, Geometry initial) {
+    public Geometry addBuffer(double buffer, Geometry initial) {
+        if (buffer < geometryFactory.getPrecisionModel().getScale()) {
+            return initial;
+        }
         BufferOp bufOp = new BufferOp(initial);
         bufOp.setEndCapStyle(BufferParameters.CAP_ROUND);//BufferOp.CAP_BUTT);
         return bufOp.getResultGeometry(buffer/2);
     }
     
-    public static Geometry asPath(double buffer, Coordinate... points) {
+    public Geometry asPath(double buffer, Coordinate... points) {
 //        int limit = points.length - 1;
 //        Stack<Coordinate> down = new Stack<>();
 //        List<Coordinate> all = new ArrayList<>();
@@ -117,23 +109,23 @@ public class GeometryUtils {
         return addBuffer(buffer, asLine(points));
     }
 
-    public static Geometry asPath(double buffer, Collection<Coordinate> points) {
+    public Geometry asPath(double buffer, Collection<Coordinate> points) {
         return asPath(buffer, points.toArray(new Coordinate[points.size()]));
     }
 
-    public static Geometry asPath(double buffer, FrontsCoordinate... points) {
+    public Geometry asPath(double buffer, FrontsCoordinate... points) {
         return asPath(buffer, Arrays.stream(points).map(FrontsCoordinate::getCoordinate).collect(Collectors.toList()));
     }
 
-    public static Point asPoint(Coordinate c) {
+    public Point asPoint(Coordinate c) {
         return geometryFactory.createPoint(c);
     }
 
-    public static Point asPoint(FrontsCoordinate c) {
+    public Point asPoint(FrontsCoordinate c) {
         return asPoint(c.getCoordinate());
     }
 
-    public static LineString asLine(Coordinate... coords) {
+    public LineString asLine(Coordinate... coords) {
         return geometryFactory.createLineString(coords);
     }
 }

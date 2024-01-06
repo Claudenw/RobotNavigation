@@ -25,7 +25,9 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.locationtech.jts.geom.Coordinate;
 import org.xenei.robot.common.testUtils.CoordinateUtils;
 import org.xenei.robot.common.utils.AngleUtils;
+import org.xenei.robot.common.utils.RobutContext;
 import org.xenei.robot.common.utils.CoordUtils;
+import org.xenei.robot.common.utils.DoubleUtils;
 
 public class PositionTest {
     
@@ -35,7 +37,8 @@ public class PositionTest {
             RADIANS_315 };
 
     private Position initial;
-    private double buffer = 0.5;
+    private static double buffer = 0.5;
+    private static RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT);
 
     @BeforeEach
     public void setup() {
@@ -87,10 +90,10 @@ public class PositionTest {
     @MethodSource("collisionParameters")
     public void collisionTest(String name, boolean state, Position pos, Coordinate target) {
         if (state) {
-            assertTrue(pos.checkCollision(target, buffer),
+            assertTrue(pos.checkCollision(ctxt,target, buffer),
                     () -> String.format("Did not collide with %s/%s", target.getX(), target.getY()));
         } else {
-            assertFalse(pos.checkCollision(target, buffer),
+            assertFalse(pos.checkCollision(ctxt,target, buffer),
                     () -> String.format("Did collide with %s/%s", target.getX(), target.getY()));
         }
     }
@@ -110,30 +113,6 @@ public class PositionTest {
         }
         return args.stream();
     }
-
-//    @ParameterizedTest(name = "{index} {0}")
-//    @MethodSource("fromCoordinateParameters")
-//    public void fromCoordinateTest(int degrees, Coordinate c, double radians) {
-//        Position p = Pos.from(0, 0, 0);
-//        Position t = Pos.from(c, 0);
-//        CoordinateUtils.assertEquivalent(t, c, ScaleInfo.DEFAULT.getResolution());
-//        assertEquals(radians, t.getHeading(), ScaleInfo.DEFAULT.getResolution());
-//    }
-//
-//    private static Stream<Arguments> fromCoordinateParameters() {
-//        List<Arguments> args = new ArrayList<>();
-//
-//        args.add(Arguments.of(0, new Coordinate(1, 0), 0));
-//        args.add(Arguments.of(45, new Coordinate(1, 1), RADIANS_45));
-//        args.add(Arguments.of(90, new Coordinate(0, 1), RADIANS_90));
-//        args.add(Arguments.of(135, new Coordinate(-1, 1), RADIANS_135));
-//        args.add(Arguments.of(180, new Coordinate(-1, 0), RADIANS_180));
-//        args.add(Arguments.of(225, new Coordinate(-1, -1), RADIANS_225));
-//        args.add(Arguments.of(270, new Coordinate(0, -1), RADIANS_270));
-//        args.add(Arguments.of(315, new Coordinate(1, -1), RADIANS_315));
-//
-//        return args.stream();
-//    }
 
     @ParameterizedTest(name = "{index} {0}")
     @MethodSource("nextPositionParameters")

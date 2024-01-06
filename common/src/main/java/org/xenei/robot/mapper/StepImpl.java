@@ -8,6 +8,7 @@ import org.locationtech.jts.geom.GeometryFactory;
 import org.xenei.robot.common.FrontsCoordinate;
 import org.xenei.robot.common.UnmodifiableCoordinate;
 import org.xenei.robot.common.planning.Step;
+import org.xenei.robot.common.utils.RobutContext;
 import org.xenei.robot.common.utils.CoordUtils;
 import org.xenei.robot.common.utils.GeometryUtils;
 
@@ -54,11 +55,11 @@ public class StepImpl implements Step {
             return String.format("StepBuilder {%s cost:%.4f}", CoordUtils.toString(coord, 3), cost);
         }
         
-        public boolean isValid() {
-            return isValid(false);
+        public boolean isValid(RobutContext ctxt) {
+            return isValid(ctxt,false);
         }
         
-        public boolean isValid(boolean throwExceptions) {
+        public boolean isValid(RobutContext ctxt, boolean throwExceptions) {
             if (coord == null) {
                 if (throwExceptions) {
             Objects.requireNonNull(coord, "Coordinates may not be null");
@@ -90,13 +91,13 @@ public class StepImpl implements Step {
                 return false;
             }
             if (geom == null) {
-                geom = GeometryUtils.asPoint(coord);
+                geom = ctxt.geometryUtils.asPoint(coord);
             }
             return true;
         }
         
-        public Step build() {
-            isValid(true);
+        public Step build(RobutContext ctxt) {
+            isValid(ctxt, true);
             return new StepImpl(coord, cost, distance, geom);
         }
     }

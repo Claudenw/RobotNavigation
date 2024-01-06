@@ -30,6 +30,7 @@ import org.xenei.robot.common.testUtils.FakeDistanceSensor2;
 import org.xenei.robot.common.testUtils.FakeMover;
 import org.xenei.robot.common.testUtils.MapLibrary;
 import org.xenei.robot.common.utils.AngleUtils;
+import org.xenei.robot.common.utils.RobutContext;
 import org.xenei.robot.common.utils.DoubleUtils;
 import org.xenei.robot.mapper.GraphGeomFactory;
 import org.xenei.robot.mapper.MapImpl;
@@ -44,6 +45,7 @@ public class ProcessorTest {
 
     private final MapViz mapViz;
     private final Map map;
+    private final RobutContext ctxt;
     private Planner planner;
     private final Mapper mapper;
     private FakeDistanceSensor sensor;
@@ -51,7 +53,9 @@ public class ProcessorTest {
     private final double buffer;
 
     ProcessorTest() {
-        map = new MapImpl(ScaleInfo.DEFAULT);
+        ctxt = new RobutContext(ScaleInfo.DEFAULT);
+        map = new MapImpl(ctxt);
+        //map = new MapImpl(ScaleInfo.builder().setResolution(.3).build());
         mapViz = new MapViz(100, map, () -> planner.getSolution());
         mapper = new MapperImpl(map);
         mover = new FakeMover(Location.from(-1, -3), 1);
@@ -85,7 +89,7 @@ public class ProcessorTest {
                 if (cont) {
                     // we can really see the final position.
                     LOG.info("can see {} from {}", planner.getRootTarget(), planner.getCurrentPosition());
-                    Literal pathWkt = GraphGeomFactory.asWKTPath(buffer, planner.getRootTarget(), 
+                    Literal pathWkt = ctxt.graphGeomFactory.asWKTPath(buffer, planner.getRootTarget(), 
                             planner.getCurrentPosition().getCoordinate());
                     Var wkt = Var.alloc("wkt");
 
@@ -94,14 +98,14 @@ public class ProcessorTest {
                             .from(Namespace.UnionModel.getURI()) //
                             .addWhere(Namespace.s, RDF.type, Namespace.Obst) //
                             .addWhere(Namespace.s, Geo.AS_WKT_PROP, wkt)
-                            .addBind(GraphGeomFactory.calcDistance(exprF, pathWkt, wkt), "?dist")
-                            .addBind(exprF.eq(GraphGeomFactory.calcDistance(exprF, pathWkt, wkt), 0), "?le")
+                            .addBind(ctxt.graphGeomFactory.calcDistance(exprF, pathWkt, wkt), "?dist")
+                            .addBind(exprF.eq(ctxt.graphGeomFactory.calcDistance(exprF, pathWkt, wkt), 0), "?le")
                             ));
 
                     AskBuilder ask = new AskBuilder().from(Namespace.UnionModel.getURI()) //
                             .addWhere(Namespace.s, RDF.type, Namespace.Obst) //
                             .addWhere(Namespace.s, Geo.AS_WKT_PROP, wkt)
-                            .addFilter(exprF.eq(GraphGeomFactory.calcDistance(exprF, pathWkt, wkt), 0));
+                            .addFilter(exprF.eq(ctxt.graphGeomFactory.calcDistance(exprF, pathWkt, wkt), 0));
                     System.out.println( ((MapImpl)map).ask(ask));
                     System.out.println(MapReports.dumpQuery((MapImpl) map,
                             new SelectBuilder().from(Namespace.UnionModel.getURI())
@@ -148,6 +152,7 @@ public class ProcessorTest {
                 planner.notifyListeners();
                 System.out.println( MapReports.dumpDistance((MapImpl)map) );
                 System.out.println( MapReports.dumpObstacles((MapImpl)map));
+                System.out.println( MapReports.dumpObstacleDistance((MapImpl)map));
                 diff.reset();
             }
         }

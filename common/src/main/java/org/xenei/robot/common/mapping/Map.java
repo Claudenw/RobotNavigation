@@ -12,6 +12,7 @@ import org.xenei.robot.common.Position;
 import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.common.planning.Solution;
 import org.xenei.robot.common.planning.Step;
+import org.xenei.robot.common.utils.RobutContext;
 
 public interface Map {
 
@@ -111,11 +112,11 @@ public interface Map {
     void recordSolution(Solution solution, double buffer);
 
     /**
-     * Get the scale info for this map.
+     * Get the context info for this map.
      * 
-     * @return the ScaleInfo.
+     * @return the Context.
      */
-    ScaleInfo getScale();
+    RobutContext getContext();
 
     /**
      * True if the two coordinates resolve to the same point on the map. This

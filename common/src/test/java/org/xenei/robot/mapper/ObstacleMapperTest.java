@@ -14,17 +14,19 @@ import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Position;
 import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.common.utils.AngleUtils;
+import org.xenei.robot.common.utils.RobutContext;
 import org.xenei.robot.mapper.MapperImpl.ObstacleMapper;
 
 public class ObstacleMapperTest {
 
     private double buffer = .5;
+    
 
     @ParameterizedTest(name = "{index} {0} {1}")
     @MethodSource("doMapParameters")
     public void doMapTest(Position currentPosition, Location relativeLocation, Coordinate expected,
             Coordinate expCoord) {
-        MapImpl map = new MapImpl(ScaleInfo.DEFAULT);
+        MapImpl map = new MapImpl(new RobutContext(ScaleInfo.DEFAULT));
         MapperImpl mapper = new MapperImpl(map);
 
         ObstacleMapper underTest = mapper.new ObstacleMapper(currentPosition, buffer);

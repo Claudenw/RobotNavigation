@@ -34,9 +34,10 @@ import org.xenei.robot.common.planning.Solution;
 import org.xenei.robot.common.planning.Step;
 import org.xenei.robot.common.testUtils.CoordinateUtils;
 import org.xenei.robot.common.utils.AngleUtils;
+import org.xenei.robot.common.utils.RobutContext;
 
 public class PlannerTest {
-
+    private RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT);
     private Planner underTest;
     private final double buffer = 0.5;
 
@@ -67,7 +68,7 @@ public class PlannerTest {
         Step step = Mockito.mock(Step.class);
         when(step.getCoordinate()).thenReturn(UnmodifiableCoordinate.make(new Coordinate(1, 1)));
         Map map = Mockito.mock(Map.class);
-        when(map.getScale()).thenReturn(ScaleInfo.DEFAULT);
+        when(map.getContext()).thenReturn(ctxt);
         when(map.addCoord(any(Coordinate.class), anyDouble(), anyBoolean(), anyBoolean())).thenReturn(step);
 
         Location finalCoord = Location.from(-1, 1);
@@ -99,7 +100,7 @@ public class PlannerTest {
     public void constructorTest() {
         Step step = Mockito.mock(Step.class);
         Map map = Mockito.mock(Map.class);
-        when(map.getScale()).thenReturn(ScaleInfo.DEFAULT);
+        when(map.getContext()).thenReturn(ctxt);
         when(map.addCoord(any(Coordinate.class), anyDouble(), anyBoolean(), anyBoolean())).thenReturn(step);
 
         Location finalCoord = Location.from(-1, 1);
@@ -126,7 +127,7 @@ public class PlannerTest {
     @Test
     public void targetTest() {
         Map map = Mockito.mock(Map.class);
-        when(map.getScale()).thenReturn(ScaleInfo.DEFAULT);
+        when(map.getContext()).thenReturn(ctxt);
 
         Location finalCoord = Location.from(-1, 1);
         Location startCoord = Location.from(-1, -3);
@@ -204,7 +205,7 @@ public class PlannerTest {
     public void restartTest() {
         Step step = Mockito.mock(Step.class);
         Map map = Mockito.mock(Map.class);
-        when(map.getScale()).thenReturn(ScaleInfo.DEFAULT);
+        when(map.getContext()).thenReturn(ctxt);
         when(map.addCoord(any(Coordinate.class), anyDouble(), anyBoolean(), anyBoolean())).thenReturn(step);
         // .thenAnswer(i -> new StepImpl( (Coordinate)i.getArguments()[0],
         // (double)(i.getArguments()[1])));
@@ -236,7 +237,7 @@ public class PlannerTest {
     @Test
     public void getPlanRecordsTest() {
         Map map = Mockito.mock(Map.class);
-        when(map.getScale()).thenReturn(ScaleInfo.DEFAULT);
+        when(map.getContext()).thenReturn(ctxt);
         when(map.getTargets()).thenReturn(Collections.emptyList());
 
         Location finalCoord = Location.from(-1, 1);
@@ -258,7 +259,7 @@ public class PlannerTest {
         when(step.cost()).thenReturn(Double.valueOf(5));
 
         Map map = Mockito.mock(Map.class);
-        when(map.getScale()).thenReturn(ScaleInfo.DEFAULT);
+        when(map.getContext()).thenReturn(ctxt);
         when(map.addCoord(any(Coordinate.class), anyDouble(), anyBoolean(), anyBoolean())).thenReturn(step);
 
         when(map.getBestStep(any(), anyDouble())).thenReturn(Optional.of(step)).thenReturn(Optional.empty());

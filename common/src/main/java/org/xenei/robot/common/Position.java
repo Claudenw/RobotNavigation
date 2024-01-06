@@ -1,7 +1,10 @@
 package org.xenei.robot.common;
 
 import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.geom.Point;
 import org.xenei.robot.common.utils.AngleUtils;
+import org.xenei.robot.common.utils.RobutContext;
 import org.xenei.robot.common.utils.CoordUtils;
 import org.xenei.robot.common.utils.DoubleUtils;
 import org.xenei.robot.common.utils.GeometryUtils;
@@ -137,13 +140,13 @@ public interface Position extends Location {
         return Location.from(CoordUtils.fromAngle(theta, range));
     }
 
-    default boolean checkCollision(FrontsCoordinate fc, double tolerance) {
-        return checkCollision(fc.getCoordinate(), tolerance);
+    default boolean checkCollision(RobutContext ctxt, FrontsCoordinate fc, double tolerance) {
+        return checkCollision(ctxt, fc.getCoordinate(), tolerance);
     }
 
-    default boolean checkCollision(Coordinate c, double tolerance) {
+    default boolean checkCollision(RobutContext ctxt, Coordinate c, double tolerance) {
         Coordinate l = CoordUtils.fromAngle(getHeading(), distance(c));
-        double d = GeometryUtils.asPath(tolerance, this.getCoordinate(), l).distance(GeometryUtils.asPoint(c));
+        double d = ctxt.geometryUtils.asPath(tolerance, this.getCoordinate(), l).distance(ctxt.geometryUtils.asPoint(c));
         return DoubleUtils.inRange(d, tolerance/2);
     }
 

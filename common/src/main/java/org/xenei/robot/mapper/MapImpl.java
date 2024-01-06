@@ -60,33 +60,30 @@ import org.slf4j.LoggerFactory;
 import org.xenei.robot.common.FrontsCoordinate;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Position;
-import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.common.UnmodifiableCoordinate;
 import org.xenei.robot.common.mapping.Map;
 import org.xenei.robot.common.mapping.Obstacle;
 import org.xenei.robot.common.planning.Solution;
 import org.xenei.robot.common.planning.Step;
-import org.xenei.robot.common.utils.AngleUtils;
+import org.xenei.robot.common.utils.RobutContext;
 import org.xenei.robot.common.utils.CoordUtils;
-import org.xenei.robot.common.utils.GeometryUtils;
 import org.xenei.robot.mapper.rdf.Namespace;
 
 public class MapImpl implements Map {
     private static final Logger LOG = LoggerFactory.getLogger(MapImpl.class);
-
-    private final ScaleInfo scale;
+    private final RobutContext ctxt;
     private final Dataset data;
     private final ExprFactory exprF;
     private final ObstacleHandler obstacleHandler;
-    private final double buffer = 0.5; // FIXME
+    private final double buffer = 0.25; // FIXME
 
     public static PrefixMapping getPrefixes() {
         return PrefixMapping.Factory.create().setNsPrefixes(GeoSPARQL_URI.getPrefixes())
                 .setNsPrefixes(PrefixMapping.Standard).setNsPrefix("robut", Namespace.URI);
     }
 
-    public MapImpl(ScaleInfo scale) {
-        this.scale = scale;
+    public MapImpl(RobutContext ctxt) {
+        this.ctxt = ctxt;
         data = DatasetFactory.create();
         data.getDefaultModel().setNsPrefixes(getPrefixes());
         // data.getDefaultModel().add(GraphModFactory.asRDF(new Coordinate(0,0), null,
@@ -118,14 +115,14 @@ public class MapImpl implements Map {
     }
 
     @Override
-    public ScaleInfo getScale() {
-        return scale;
+    public RobutContext getContext() {
+        return ctxt;
     }
 
     @Override
     public Coordinate adopt(Coordinate c) {
-        double x = scale.scale(c.getX());
-        double y = scale.scale(c.getY());
+        double x = ctxt.scaleInfo.scale(c.getX());
+        double y = ctxt.scaleInfo.scale(c.getY());
         return (Precision.equals(x, c.getX(), 0) && Precision.equals(y, c.getY(), 0)) ? c : new Coordinate(x, y);
     }
 
@@ -195,7 +192,7 @@ public class MapImpl implements Map {
         UpdateRequest req = new UpdateRequest();
         if (exists(mapCoord, Namespace.Coord)) {
             WhereBuilder where = new WhereBuilder().addWhere(Namespace.s, RDF.type, Namespace.Coord)
-                    .addWhere(Namespace.s, Geo.AS_WKT_PROP, GraphGeomFactory.asWKT(mapCoord.getCoordinate()));
+                    .addWhere(Namespace.s, Geo.AS_WKT_PROP, ctxt.graphGeomFactory.asWKT(mapCoord.getCoordinate()));
             UpdateBuilder newDat = new UpdateBuilder()
                     .addInsert(Namespace.PlanningModel, Namespace.s, Namespace.distance, distance).addWhere(where);
             if (visited) {
@@ -210,7 +207,7 @@ public class MapImpl implements Map {
                     .add(newDat.build());
         } else {
             // no existing record
-            Resource qA = GraphGeomFactory.asRDF(mapCoord, Namespace.Coord);
+            Resource qA = ctxt.graphGeomFactory.asRDF(mapCoord, Namespace.Coord);
             qA.addLiteral(Namespace.distance, distance);
             if (visited) {
                 qA.addLiteral(Namespace.visited, visited);
@@ -224,11 +221,11 @@ public class MapImpl implements Map {
         doUpdate(req);
         LOG.debug("Added {} for {}", mapCoord, target);
         return StepImpl.builder().setCoordinate(mapCoord).setDistance(distance)
-                .setCost(isIndirect ? distance * 2 : distance).build();
+                .setCost(isIndirect ? distance * 2 : distance).build(ctxt);
     }
 
     private Geometry cell(Coordinate point) {
-        return GeometryUtils.asPolygon(point, scale.getResolution() / 2, 4);
+        return ctxt.geometryUtils.asPolygon(point, ctxt.scaleInfo.getResolution() / 2, 4);
 
     }
 
@@ -275,7 +272,7 @@ public class MapImpl implements Map {
         StepImpl.Builder builder = StepImpl.builder();
 
         Predicate<QuerySolution> processor = soln -> {
-            Geometry geometry = GraphGeomFactory.fromWkt(soln.getLiteral(geom.getName()));
+            Geometry geometry = ctxt.graphGeomFactory.fromWkt(soln.getLiteral(geom.getName()));
             builder.setCoordinate(coordinate).setCost(soln.getLiteral(cost.getName()).getDouble())
                     .setDistance(soln.getLiteral(dist.getName()).getDouble()).setGeometry(geometry);
             return false;
@@ -283,7 +280,7 @@ public class MapImpl implements Map {
 
         exec(sb, processor);
 
-        return builder.isValid() ? Optional.of(builder.build()) : Optional.empty();
+        return builder.isValid(ctxt) ? Optional.of(builder.build(ctxt)) : Optional.empty();
     }
 
     /**
@@ -308,7 +305,7 @@ public class MapImpl implements Map {
         Coordinate[] points = new Coordinate[lst.size()];
         int[] idx = { 0 };
         lst.stream().forEach(c -> points[idx[0]++] = c.getCoordinate());
-        Literal path = GraphGeomFactory.asWKTString(points);
+        Literal path = ctxt.graphGeomFactory.asWKTString(points);
         Resource tn = ResourceFactory.createResource();
         UpdateRequest req = new UpdateRequest();
         WhereBuilder wb = new WhereBuilder();
@@ -358,7 +355,7 @@ public class MapImpl implements Map {
             Geometry geometry) {
         return (!exists(coordinate, type))
                 ? Optional.of(new UpdateBuilder().addInsert(model,
-                        GraphGeomFactory.asRDF(coordinate.getCoordinate(), type, geometry).getModel()))
+                        ctxt.graphGeomFactory.asRDF(coordinate.getCoordinate(), type, geometry).getModel()))
                 : Optional.empty();
     }
 
@@ -402,12 +399,12 @@ public class MapImpl implements Map {
     @Override
     public boolean clearView(Coordinate from, Coordinate target, double buffer) {
         LOG.debug("checking clearView from {} to {} ", from, target);
-        Literal pathWkt = GraphGeomFactory.asWKTPath(buffer, from, target);
+        Literal pathWkt = ctxt.graphGeomFactory.asWKTPath(buffer, from, target);
         Var wkt = Var.alloc("wkt");
         AskBuilder ask = new AskBuilder().from(Namespace.UnionModel.getURI()) //
                 .addWhere(Namespace.s, RDF.type, Namespace.Obst) //
                 .addWhere(Namespace.s, Geo.AS_WKT_PROP, wkt)
-                .addFilter(exprF.eq(GraphGeomFactory.calcDistance(exprF, pathWkt, wkt), 0));
+                .addFilter(exprF.eq(ctxt.graphGeomFactory.calcDistance(exprF, pathWkt, wkt), 0));
         return !ask(ask);
     }
 
@@ -440,7 +437,7 @@ public class MapImpl implements Map {
                             .build()));
         } else {
             LOG.info("coordinate {} of type {} is not on the map",
-                    CoordUtils.toString(coordinate, scale.decimalPlaces()), type);
+                    CoordUtils.toString(coordinate, ctxt.scaleInfo.decimalPlaces()), type);
         }
 
     }
@@ -459,7 +456,7 @@ public class MapImpl implements Map {
             return Optional.empty();
         }
         MapCoordinate mapCoords = new MapCoordinate(currentCoords);
-        Literal wkt = GraphGeomFactory.asWKT(mapCoords.getCoordinate());
+        Literal wkt = ctxt.graphGeomFactory.asWKT(mapCoords.getCoordinate());
         // cost of trip.
         Var cost = Var.alloc("cost");
 
@@ -485,28 +482,29 @@ public class MapImpl implements Map {
                 .addWhere(other, Namespace.distance, otherDist) //
                 .addOptional(other, Namespace.visited, visited) //
                 .addFilter(exprF.and(exprF.ne(other, Namespace.s), exprF.not(exprF.bound(visited)))) //
-                .addBind(GraphGeomFactory.calcDistance(exprF, otherWkt, wkt), dist) //
+                .addBind(ctxt.graphGeomFactory.calcDistance(exprF, otherWkt, wkt), dist) //
                 .addBind(exprF.add(otherDist, SPARQL.indirectCalc(otherDist, indirect)), cost) //
                 .addOrderBy(cost, Order.ASCENDING);
 
-        // skip coords that are within the tolerance range of visited coords
-        AskBuilder ask = new AskBuilder() //
-                .addWhere(other2, Namespace.visited, "?ignore") //
-                .addWhere(other2, RDF.type, Namespace.Coord)//
-                .addWhere(other2, Geo.AS_WKT_PROP, other2Wkt) //
-                .addFilter(exprF.le(GraphGeomFactory.calcDistance(exprF, otherWkt, other2Wkt), buffer)) //
-        ;
+//        // skip coords that are within the tolerance range of visited coords
+//        AskBuilder ask = new AskBuilder() //
+//                .addWhere(other2, Namespace.visited, "?ignore") //
+//                .addWhere(other2, RDF.type, Namespace.Coord)//
+//                .addWhere(other2, Geo.AS_WKT_PROP, other2Wkt) //
+//                .addFilter(exprF.le(ctxt.graphGeomFactory.calcDistance(exprF, otherWkt, other2Wkt), buffer)) //
+//        ;
 
+        System.out.println(MapReports.dumpQuery(this, query));
         StepImpl.Builder builder = StepImpl.builder();
 
         Predicate<QuerySolution> processor = soln -> {
 
-            Geometry geom = GraphGeomFactory.fromWkt(soln.getLiteral(otherWkt.getName()));
+            Geometry geom = ctxt.graphGeomFactory.fromWkt(soln.getLiteral(otherWkt.getName()));
             for (Coordinate candidate : geom.getCoordinates()) {
-                Literal candidateWkt = GraphGeomFactory.asWKT(candidate);
-                ask.setVar(otherWkt, candidateWkt);
+                Literal candidateWkt = ctxt.graphGeomFactory.asWKT(candidate);
+                // ask.setVar(otherWkt, candidateWkt);
 
-                if (!ask(ask) && clearView(currentCoords, candidate, buffer)) {
+                if (/*!ask(ask) &&*/ clearView(currentCoords, candidate, buffer)) {
                     builder.setCoordinate(candidate).setCost(soln.getLiteral(cost.getName()).getDouble())
                             .setDistance(soln.getLiteral(dist.getName()).getDouble()).setGeometry(geom);
 
@@ -519,11 +517,11 @@ public class MapImpl implements Map {
 
         exec(query, processor);
 
-        if (!builder.isValid()) {
+        if (!builder.isValid(ctxt)) {
             LOG.debug("No Selected map points");
             return Optional.empty();
         }
-        Step step = builder.build();
+        Step step = builder.build(ctxt);
         updateCoordinate(Namespace.PlanningModel, Namespace.Coord, step.getCoordinate(), Namespace.visited,
                 Boolean.TRUE);
         return Optional.of(step);
@@ -535,7 +533,7 @@ public class MapImpl implements Map {
         Var distance = Var.alloc("distance");
         Var wkt = Var.alloc("wkt");
         MapCoordinate result = new MapCoordinate(target);
-        Literal targ = GraphGeomFactory.asWKT(result.getCoordinate());
+        Literal targ = ctxt.graphGeomFactory.asWKT(result.getCoordinate());
         // remove all the distance and adjustments and then calculate the distance to
         // the new target
 
@@ -551,7 +549,7 @@ public class MapImpl implements Map {
                                 .addWhere(Namespace.s, RDF.type, Namespace.o) //
                                 .addFilter(exprF.in(Namespace.o, exprF.asList(Namespace.Coord, Namespace.Path))) //
                                 .addWhere(Namespace.s, Geo.AS_WKT_PROP, wkt) //
-                                .addBind(GraphGeomFactory.calcDistance(exprF, targ, wkt), distance))
+                                .addBind(ctxt.graphGeomFactory.calcDistance(exprF, targ, wkt), distance))
                         .build());
         doUpdate(req);
 
@@ -569,7 +567,7 @@ public class MapImpl implements Map {
         List<Triple> insertRow = new ArrayList<>();
 
         Predicate<QuerySolution> processor = soln -> {
-            Geometry g = GraphGeomFactory.fromWkt(soln.getLiteral(wkt.getName()));
+            Geometry g = ctxt.graphGeomFactory.fromWkt(soln.getLiteral(wkt.getName()));
             boolean clearView = false;
             for (Coordinate c : g.getCoordinates()) {
                 if (clearView(c, target, buffer)) {
@@ -612,12 +610,12 @@ public class MapImpl implements Map {
         SortedSet<Step> candidates = new TreeSet<Step>();
 
         Predicate<QuerySolution> processor = soln -> {
-            Geometry geom = GraphGeomFactory.fromWkt(soln.getLiteral(wkt.getName()));
+            Geometry geom = ctxt.graphGeomFactory.fromWkt(soln.getLiteral(wkt.getName()));
             candidates.add(StepImpl.builder().setCoordinate(new Coordinate( //
                     soln.getLiteral(x.getName()).getDouble(), //
                     soln.getLiteral(y.getName()).getDouble())) //
                     .setCost(soln.getLiteral(cost.getName()).getDouble()) //
-                    .setDistance(soln.getLiteral(distance.getName()).getDouble()).setGeometry(geom).build());
+                    .setDistance(soln.getLiteral(distance.getName()).getDouble()).setGeometry(geom).build(ctxt));
             return true;
         };
 
@@ -633,7 +631,7 @@ public class MapImpl implements Map {
 
     @Override
     public boolean areEquivalent(Coordinate a, Coordinate b) {
-        return new MapCoordinate(a).equals2D(new MapCoordinate(b), getScale().getResolution());
+        return new MapCoordinate(a).equals2D(new MapCoordinate(b), ctxt.scaleInfo.getResolution());
     }
 
     Model getModel() {
@@ -670,15 +668,15 @@ public class MapImpl implements Map {
         this.exec(sb, processor);
 
         // List<Point> newObst = newObstacles.stream().map(c ->
-        // GeometryUtils.asPoint(c)).collect(Collectors.toList());
+        // ctxt.geometryUtils.asPoint(c)).collect(Collectors.toList());
 
         List<Literal> updateCoords = new ArrayList<>();
 
         for (Coordinate c : candidates) {
-            LineString ls = GeometryUtils.asLine(c, target);
+            LineString ls = ctxt.geometryUtils.asLine(c, target);
             for (Obstacle obst : newObstacles) {
                 if (ls.distance(obst.geom()) < buffer) {
-                    updateCoords.add(GraphGeomFactory.asWKT(c));
+                    updateCoords.add(ctxt.graphGeomFactory.asWKT(c));
                     break;
                 }
             }
@@ -755,14 +753,14 @@ public class MapImpl implements Map {
         ObstacleImpl(UUID uuid, Geometry geom) {
             this.uuid = uuid;
             this.geom = geom;
-            this.wkt = GraphGeomFactory.asWKT(geom);
+            this.wkt = ctxt.graphGeomFactory.asWKT(geom);
         }
 
 //        ObstacleImpl(Resource rdf, Geometry geom) {
 //            this.rdf = rdf;
 //            this.uuid = parseUUID(rdf);;
 //            this.geom = geom;
-//            this.wkt = GraphGeomFactory.asWKT(geom);
+//            this.wkt = ctxt.graphGeomFactory.asWKT(geom);
 //        }
 //        
 //        ObstacleImpl(Literal wkt) {
@@ -771,28 +769,28 @@ public class MapImpl implements Map {
 
 //        ObstacleImpl(UUID uuid, Literal wkt) {
 //            this.uuid = uuid;
-//            this.geom = GraphGeomFactory.fromWkt(wkt);
+//            this.geom = ctxt.graphGeomFactory.fromWkt(wkt);
 //            this.wkt = wkt;
 //        }
 //        
         ObstacleImpl(Resource rdf, Literal wkt) {
             this.rdf = rdf;
             this.uuid = parseUUID(rdf);
-            this.geom = GraphGeomFactory.fromWkt(wkt);
+            this.geom = ctxt.graphGeomFactory.fromWkt(wkt);
             this.wkt = wkt;
         }
 
         ObstacleImpl(Position startPostition, Location relativeLocation) {
-            double halfRes = getScale().getResolution() / 2;
+//            double halfRes = getScale().getResolution() / 2;
             Position absoluteObstacle = startPostition.nextPosition(relativeLocation);
-            Coordinate[] points = new Coordinate[3];
-            points[1] = absoluteObstacle.getCoordinate();
-            Location relative = Location.from(CoordUtils.fromAngle(AngleUtils.RADIANS_90, halfRes));
-            points[0] = absoluteObstacle.nextPosition(relative).getCoordinate();
-            relative = Location.from(CoordUtils.fromAngle(-AngleUtils.RADIANS_90, halfRes));
-            points[2] = absoluteObstacle.nextPosition(relative).getCoordinate();
-            geom = GeometryUtils.asLine(points);
-            wkt = GraphGeomFactory.asWKT(geom);
+//            Coordinate[] points = new Coordinate[3];
+//            points[1] = absoluteObstacle.getCoordinate();
+//            Location relative = Location.from(CoordUtils.fromAngle(AngleUtils.RADIANS_90, halfRes));
+//            points[0] = absoluteObstacle.nextPosition(relative).getCoordinate();
+//            relative = Location.from(CoordUtils.fromAngle(-AngleUtils.RADIANS_90, halfRes));
+//            points[2] = absoluteObstacle.nextPosition(relative).getCoordinate();
+            geom = ctxt.geometryUtils.asPoint(absoluteObstacle);
+            wkt = ctxt.graphGeomFactory.asWKT(geom);
             uuid = UUID.randomUUID();
         }
 
@@ -877,8 +875,11 @@ public class MapImpl implements Map {
                     .from(Namespace.UnionModel.getURI()) //
                     .addWhere(Namespace.s, Geo.AS_WKT_NODE, otherWkt) //
                     .addWhere(Namespace.s, RDF.type, Namespace.Obst)
-                    .addFilter(exprF.or(GraphGeomFactory.touches(exprF, obstacle.wkt(), otherWkt),
-                            GraphGeomFactory.intersects(exprF, obstacle.wkt(), otherWkt)));
+//                    .addFilter( exprF.or(exprF.or(ctxt.graphGeomFactory.touches(exprF, obstacle.wkt(), otherWkt),
+//                            ctxt.graphGeomFactory.intersects(exprF, obstacle.wkt(), otherWkt)),
+//                            ctxt.graphGeomFactory.isNearby(exprF, obstacle.wkt(), otherWkt, ctxt.scaleInfo.getResolution())));
+                    .addFilter(ctxt.graphGeomFactory.isNearby(exprF, obstacle.wkt(), otherWkt,
+                            ctxt.scaleInfo.getResolution()));
 
             Set<ObstacleImpl> solns = new HashSet<>();
 
@@ -887,9 +888,10 @@ public class MapImpl implements Map {
                         new ObstacleImpl(soln.getResource(Namespace.s.getName()), soln.getLiteral(otherWkt.getName())));
                 return true;
             };
-
+            System.out.println(MapReports.dumpObstacleDistance(MapImpl.this));
             exec(sb, processor);
 
+            System.out.println(MapReports.dumpObstacleDistance(MapImpl.this));
             Set<ObstacleImpl> solution = new HashSet<>();
 
             if (solns.isEmpty()) {
@@ -898,34 +900,39 @@ public class MapImpl implements Map {
                 doUpdate(new UpdateBuilder().addInsert(Namespace.PlanningModel, r.getModel()));
                 solution.add(obstImpl);
             } else {
+                solns.remove(obstacle);
                 // System.out.println("Before merge");
                 // System.out.println(MapReports.dumpModel(this));
+                if (!solns.isEmpty()) {
+                    Geometry[] result = union(obstacle, solns);
+                    // Geometry[] result = merge(obstacle, solns);
 
-                // Geometry[] result = union(obstacle, solns);
-                Geometry[] result = merge(obstacle, solns);
+                    UpdateRequest req = new UpdateRequest();
+                    for (Obstacle obst : solns) {
+                        req.add(new UpdateBuilder()
+                                .addDelete(Namespace.PlanningModel, obst.rdf(), Namespace.p, Namespace.o)
+                                .addGraph(Namespace.UnionModel,
+                                        new WhereBuilder().addWhere(obst.rdf(), Namespace.p, Namespace.o))
+                                .build());
+                    }
 
-                UpdateRequest req = new UpdateRequest();
-                for (Obstacle obst : solns) {
-                    req.add(new UpdateBuilder().addDelete(Namespace.PlanningModel, obst.rdf(), Namespace.p, Namespace.o)
-                            .addGraph(Namespace.UnionModel,
-                                    new WhereBuilder().addWhere(obst.rdf(), Namespace.p, Namespace.o))
-                            .build());
-                }
+                    Model merged = ModelFactory.createDefaultModel();
+                    Arrays.stream(result).forEach(g -> {
+                        // obst = new ObstacleImpl( ConcaveHull.concaveHullByLength(g,
+                        // ctxt.scaleInfo.getResolution()));
+                        ObstacleImpl obst = new ObstacleImpl(g);
+                        obst.in(merged);
+                        solution.add(obst);
+                    });
+                    req.add(new UpdateBuilder().addInsert(Namespace.PlanningModel, merged).build());
 
-                Model merged = ModelFactory.createDefaultModel();
-                Arrays.stream(result).forEach(g -> {
-                    // obst = new ObstacleImpl( ConcaveHull.concaveHullByLength(g,
-                    // scale.getResolution()));
-                    ObstacleImpl obst = new ObstacleImpl(g);
-                    obst.in(merged);
-                    solution.add(obst);
-                });
-                req.add(new UpdateBuilder().addInsert(Namespace.PlanningModel, merged).build());
-
-                doUpdate(req);
+                    doUpdate(req);
 //               System.out.println("After merge");
 //               System.out.println(MapReports.dumpModel(MapImpl.this));
+                }
             }
+            System.out.println(MapReports.dumpObstacleDistance(MapImpl.this));
+            System.out.println(MapReports.dumpModel(MapImpl.this));
             return solution;
         }
 
@@ -945,7 +952,7 @@ public class MapImpl implements Map {
                             .addWhere(Namespace.s, RDF.type, Namespace.Coord) //
                             .addWhere(Namespace.s, Geo.AS_WKT_NODE, wkt) //
                             .addWhere(obstRes, Geo.AS_WKT_NODE, otherWkt)
-                            .addFilter(exprF.lt(GraphGeomFactory.calcDistance(exprF, wkt, otherWkt), buffer))
+                            .addFilter(exprF.lt(ctxt.graphGeomFactory.calcDistance(exprF, wkt, otherWkt), buffer))
                             .addFilter(exprF.in(exprF.asExpr(obstRes), exprF
                                     .asList(work.stream().map(Obstacle::rdf).collect(Collectors.toList()).toArray()))));
             doUpdate(update);
@@ -953,12 +960,12 @@ public class MapImpl implements Map {
         }
 
         boolean isObstacle(Coordinate point) {
-            Literal pointWKT = GraphGeomFactory.asWKT(point);
+            Literal pointWKT = ctxt.graphGeomFactory.asWKT(point);
             Var wkt = Var.alloc("wkt");
             AskBuilder ask = new AskBuilder().addGraph(Namespace.UnionModel,
                     new WhereBuilder().addWhere(Namespace.s, RDF.type, Namespace.Obst) //
                             .addWhere(Namespace.s, Geo.AS_WKT_PROP, wkt) //
-                            .addFilter(GraphGeomFactory.intersects(exprF, pointWKT, wkt)));
+                            .addFilter(ctxt.graphGeomFactory.intersects(exprF, pointWKT, wkt)));
             return ask(ask);
         }
 

@@ -18,17 +18,15 @@ import org.xenei.robot.common.FrontsCoordinate;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.common.UnmodifiableCoordinate;
+import org.xenei.robot.common.utils.RobutContext;
 import org.xenei.robot.common.utils.CoordUtils;
 import org.xenei.robot.common.utils.DoubleUtils;
 import org.xenei.robot.common.utils.GeometryUtils;
 
 public class CoordinateMap {
-    GeometryFactory geometryFactory = new GeometryFactory();
-
-    SortedSet<Coord> points;
-
+     SortedSet<Coord> points;
+     final RobutContext ctxt;
     final double scale;
-    final ScaleInfo scaleInfo = ScaleInfo.builder().setResolution(0.5).build();
 
     private static double fitRange(double x) {
         return x > Integer.MAX_VALUE ? Integer.MAX_VALUE : (x < Integer.MIN_VALUE ? Integer.MIN_VALUE : x);
@@ -37,14 +35,15 @@ public class CoordinateMap {
     public CoordinateMap(double scale) {
         this.points = new TreeSet<Coord>();
         this.scale = scale;
+        this.ctxt = new RobutContext(ScaleInfo.builder().setResolution(0.5).build());
     }
 
     public double scale() {
         return scale;
     }
     
-    public ScaleInfo scaleInfo() {
-        return scaleInfo;
+    public RobutContext getContext() {
+        return ctxt;
     }
 
     public void enable(FrontsCoordinate coord, char c) {
@@ -97,7 +96,7 @@ public class CoordinateMap {
      * @return true if there are no obstructions.
      */
     public boolean clearView(Coordinate from, Coordinate target) {
-        LineString path = geometryFactory.createLineString(new Coordinate[] { from, target });
+        LineString path = ctxt.geometryFactory.createLineString(new Coordinate[] { from, target });
         return getObstacles().filter(obstacle -> obstacle.isWithinDistance(path, 0.49)).findFirst().isEmpty();
     }
 
@@ -162,7 +161,7 @@ public class CoordinateMap {
         };
 
         
-        LineString path = GeometryUtils.asLine(position.getCoordinate(), pos.getCoordinate());
+        LineString path = ctxt.geometryUtils.asLine(position.getCoordinate(), pos.getCoordinate());
         
         for (Coord point : points) {
             if (path.intersects(point.polygon)) {
@@ -172,7 +171,7 @@ public class CoordinateMap {
             }
         }
         if (found[0] != null) {
-            return Optional.of(Location.from(scaleInfo.scale(found[0].getX()), scaleInfo.scale(found[0].getY())));
+            return Optional.of(Location.from(ctxt.scaleInfo.scale(found[0].getX()), ctxt.scaleInfo.scale(found[0].getY())));
         }
 
         return Optional.empty();
@@ -192,7 +191,7 @@ public class CoordinateMap {
         Coord(double x, double y, char c) {
             coordinate = UnmodifiableCoordinate.make(new Coordinate(fitRange(x / scale),fitRange(y / scale)));
             this.c = c;
-            polygon = GeometryUtils.asPolygon( coordinate, scale/2, 4 );
+            polygon = ctxt.geometryUtils.asPolygon( coordinate, scale/2, 4 );
         }
 
         public Coord(FrontsCoordinate coords, char c) {

@@ -66,7 +66,7 @@ public class MapperImpl implements Mapper {
 
         ObstacleMapper(Position currentPosition, double buffer) {
             this.currentPosition = currentPosition;
-            this.buffer = buffer + map.getScale().getResolution();
+            this.buffer = buffer + map.getContext().scaleInfo.getResolution();
             this.newObstacles = new HashSet<>();
             this.coordSet = new HashSet<Coordinate>();
         }
@@ -102,8 +102,7 @@ public class MapperImpl implements Mapper {
          * @return
          */
         Optional<Coordinate> findCoordinateNear(Location relativeObstacle) {
-            ScaleInfo scaleInfo = map.getScale();
-            double d = relativeObstacle.range() - buffer;
+             double d = relativeObstacle.range() - buffer;
             if (d < buffer) {
                 return Optional.empty();
             }
@@ -111,7 +110,7 @@ public class MapperImpl implements Mapper {
             Location candidate = currentPosition.nextPosition(relativeCoord);
             Coordinate newCoord = map.adopt(candidate.getCoordinate());
             if (map.isObstacle(newCoord)) {
-                d -= scaleInfo.getResolution();
+                d -= map.getContext().scaleInfo.getResolution();
                 if (d < buffer) {
                     return Optional.empty();
                 }

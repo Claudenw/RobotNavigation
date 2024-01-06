@@ -139,7 +139,7 @@ public class PlannerImpl implements Planner {
 
     @Override
     public Diff selectTarget() {
-        if (currentPosition.equals2D(getTarget(), map.getScale().getResolution())) {
+        if (currentPosition.equals2D(getTarget(), map.getContext().scaleInfo.getResolution())) {
             LOG.debug("Reached intermediate target");
             target.pop();
             if (target.isEmpty()) {

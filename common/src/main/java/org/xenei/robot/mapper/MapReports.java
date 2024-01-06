@@ -4,6 +4,8 @@ import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -23,6 +25,7 @@ import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Point;
 import org.xenei.robot.common.mapping.CoordinateMap;
 import org.xenei.robot.common.mapping.CoordinateMap.Coord;
+import org.xenei.robot.common.mapping.Obstacle;
 import org.xenei.robot.mapper.rdf.Namespace;
 
 public class MapReports {
@@ -58,6 +61,7 @@ public class MapReports {
 //        return result;
 //    }
 
+    
     public static String dumpModel(MapImpl map) {
         return dumpModel(map, Namespace.UnionModel);
     }
@@ -98,13 +102,36 @@ public class MapReports {
     
     public static String dumpObstacles(MapImpl map) {
         StringBuilder builder = new StringBuilder();
-        List<Coordinate> lst = map.getObstacles().stream().map( g-> g.geom().getCentroid())
-                .map( p -> new Coordinate(p.getX(), p.getY())).collect(Collectors.toList());
-        Coordinate[] ary = lst.toArray( new Coordinate[lst.size()]);
-        Arrays.sort(ary);
-        Arrays.stream(ary).forEach( c-> builder.append( String.format("Obst: %s\n", c)));
+        TreeSet<Obstacle> obs = new TreeSet<>((a,b) -> a.wkt().toString().compareTo(b.wkt().toString()));
+        obs.addAll(map.getObstacles());
+        obs.forEach( o -> builder.append( String.format("Obst: %s %s\n", o.uuid(), o.geom())));
         return builder.toString();
     }
+    
+    public static String dumpObstacleDistance(MapImpl map) {
+        StringBuilder builder = new StringBuilder();
+        TreeSet<Obstacle> obs = new TreeSet<>((a,b) -> a.wkt().toString().compareTo(b.wkt().toString()));
+        obs.addAll(map.getObstacles());
+        List<Obstacle> lst = new ArrayList<Obstacle>();
+        lst.addAll(obs);
+        double[][] dist = new double[obs.size()][obs.size()];
+        
+        for (int i=0;i<lst.size()-1;i++) {
+            for (int j=i+1;j<lst.size();j++) {
+                dist[i][j] = lst.get(i).geom().distance(lst.get(j).geom());
+                dist[j][i] = dist[i][j];
+            }
+        }
+        for (int i=0;i<lst.size();i++) {
+            builder.append( lst.get(i).uuid() ).append(' ');
+            for (int j=0;j<lst.size();j++) {
+                builder.append( String.format("%.3f ", dist[i][j]));
+            }
+            builder.append("\n");
+        }
+        return builder.toString();
+    }
+    
 
 //    /**
 //     * Generates the map for display.

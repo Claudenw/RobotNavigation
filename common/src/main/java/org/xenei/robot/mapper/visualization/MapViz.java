@@ -22,22 +22,23 @@ import org.xenei.robot.common.mapping.Map;
 import org.xenei.robot.common.mapping.Obstacle;
 import org.xenei.robot.common.planning.Solution;
 import org.xenei.robot.common.planning.Step;
+import org.xenei.robot.common.utils.RobutContext;
 import org.xenei.robot.common.utils.DoubleUtils;
 import org.xenei.robot.common.utils.GeometryUtils;
 
 public class MapViz {
-    private Supplier<Solution> solution;
-    private Map map;
-    private JTSPanel panel;
-    private int scale;
-    private int buffer;
+    private final Supplier<Solution> solution;
+    private final Map map;
+    private final JTSPanel panel;
+    private final int scale;
+    private final int buffer;
 
     public MapViz(int scale, Map map, Supplier<Solution> solution) {
         this.map = map;
         this.panel = new JTSPanel();
         this.solution = solution;
         this.scale = scale;
-        this.buffer = (int) (map.getScale().getResolution() * scale) / 2;
+        this.buffer = (int) (map.getContext().scaleInfo.getResolution() * scale) / 2;
 
         JFrame frame = new JFrame("Map Visualization");
         frame.setLayout(new BorderLayout());
@@ -87,6 +88,7 @@ public class MapViz {
     }
 
     public void redraw(Coordinate target) {
+        GeometryUtils geometryUtils = map.getContext().geometryUtils;
         List<AbstractDrawingCommand> cmds = new ArrayList<>();
         for (Obstacle obst : map.getObstacles()) {
             cmds.add(getPoly(obst.geom(), Color.RED));
@@ -98,13 +100,13 @@ public class MapViz {
 
         List<Coordinate> lst = solution.get().stream().collect(Collectors.toList());
         if (lst.size() > 1) {
-            cmds.add(getPoly(GeometryUtils.asPath(0.25, lst.toArray(new Coordinate[lst.size()])), Color.WHITE));
+            cmds.add(getPoly(geometryUtils.asPath(0.25, lst.toArray(new Coordinate[lst.size()])), Color.WHITE));
         } else {
-            cmds.add(getPoly(GeometryUtils.asPolygon(lst.get(0), .25), Color.WHITE));
+            cmds.add(getPoly(geometryUtils.asPolygon(lst.get(0), .25), Color.WHITE));
         }
 
         if (target != null) {
-            cmds.add(getPoly(GeometryUtils.asPolygon(target, 0.25), Color.GREEN));
+            cmds.add(getPoly(geometryUtils.asPolygon(target, 0.25), Color.GREEN));
         }
 
         rescale(cmds);
