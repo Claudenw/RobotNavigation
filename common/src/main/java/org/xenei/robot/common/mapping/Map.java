@@ -42,7 +42,7 @@ public interface Map {
      * @param isIndirect true if the target can not see the final target.
      * @return the Step comprising the mapped target locaton and the distance value.
      */
-    Step addCoord(Coordinate target, double distance, boolean visited, boolean isIndirect);
+    Optional<Step> addCoord(Coordinate target, double distance, boolean visited, boolean isIndirect);
 
     /**
      * Gets the collection of all targets in the planning graph

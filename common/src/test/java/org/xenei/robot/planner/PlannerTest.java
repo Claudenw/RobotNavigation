@@ -69,7 +69,7 @@ public class PlannerTest {
         when(step.getCoordinate()).thenReturn(UnmodifiableCoordinate.make(new Coordinate(1, 1)));
         Map map = Mockito.mock(Map.class);
         when(map.getContext()).thenReturn(ctxt);
-        when(map.addCoord(any(Coordinate.class), anyDouble(), anyBoolean(), anyBoolean())).thenReturn(step);
+        when(map.addCoord(any(Coordinate.class), anyDouble(), anyBoolean(), anyBoolean())).thenReturn(Optional.of(step));
 
         Location finalCoord = Location.from(-1, 1);
         Location startCoord = Location.from(-1, -3);
@@ -101,7 +101,7 @@ public class PlannerTest {
         Step step = Mockito.mock(Step.class);
         Map map = Mockito.mock(Map.class);
         when(map.getContext()).thenReturn(ctxt);
-        when(map.addCoord(any(Coordinate.class), anyDouble(), anyBoolean(), anyBoolean())).thenReturn(step);
+        when(map.addCoord(any(Coordinate.class), anyDouble(), anyBoolean(), anyBoolean())).thenReturn(Optional.of(step));
 
         Location finalCoord = Location.from(-1, 1);
         Location startCoord = Location.from(-1, -3);
@@ -206,7 +206,7 @@ public class PlannerTest {
         Step step = Mockito.mock(Step.class);
         Map map = Mockito.mock(Map.class);
         when(map.getContext()).thenReturn(ctxt);
-        when(map.addCoord(any(Coordinate.class), anyDouble(), anyBoolean(), anyBoolean())).thenReturn(step);
+        when(map.addCoord(any(Coordinate.class), anyDouble(), anyBoolean(), anyBoolean())).thenReturn(Optional.of(step));
         // .thenAnswer(i -> new StepImpl( (Coordinate)i.getArguments()[0],
         // (double)(i.getArguments()[1])));
 
@@ -260,7 +260,7 @@ public class PlannerTest {
 
         Map map = Mockito.mock(Map.class);
         when(map.getContext()).thenReturn(ctxt);
-        when(map.addCoord(any(Coordinate.class), anyDouble(), anyBoolean(), anyBoolean())).thenReturn(step);
+        when(map.addCoord(any(Coordinate.class), anyDouble(), anyBoolean(), anyBoolean())).thenReturn(Optional.of(step));
 
         when(map.getBestStep(any(), anyDouble())).thenReturn(Optional.of(step)).thenReturn(Optional.empty());
         underTest = new PlannerImpl(map, startCoord, buffer, finalCoord);

@@ -191,7 +191,7 @@ public class MapImpl implements Map {
     }
 
     @Override
-    public Step addCoord(Coordinate target, double distance, boolean visited, boolean isIndirect) {
+    public Optional<Step> addCoord(Coordinate target, double distance, boolean visited, boolean isIndirect) {
         MapCoordinate mapCoord = new MapCoordinate(target);
         UpdateRequest req = new UpdateRequest();
         if (exists(mapCoord, Namespace.Coord)) {
@@ -224,8 +224,9 @@ public class MapImpl implements Map {
 
         doUpdate(req);
         LOG.debug("Added {} for {}", mapCoord, target);
-        return StepImpl.builder().setCoordinate(mapCoord).setDistance(distance)
-                .setCost(isIndirect ? distance * 2 : distance).build(ctxt);
+        return Optional.ofNullable(distance<=0 ? null :
+         StepImpl.builder().setCoordinate(mapCoord).setDistance(distance)
+                .setCost(isIndirect ? distance * 2 : distance).build(ctxt));
     }
 
     private Geometry cell(Coordinate point) {

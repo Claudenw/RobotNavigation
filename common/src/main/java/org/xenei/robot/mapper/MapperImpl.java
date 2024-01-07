@@ -49,7 +49,7 @@ public class MapperImpl implements Mapper {
         
         return mapper.coordSet.stream()
                 .map(c -> map.addCoord(c, c.distance(target), false, !map.isClearPath(c, target, buffer)))
-                .collect(Collectors.toList());
+                .flatMap( Optional::stream ).collect(Collectors.toList());
     }
 
     @Override

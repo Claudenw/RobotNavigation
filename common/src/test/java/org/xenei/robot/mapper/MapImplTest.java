@@ -303,7 +303,7 @@ public class MapImplTest {
     @Test
     public void testAddTarget() {
         underTest = new MapImpl(ctxt);
-        Step step = underTest.addCoord(p, 11, false, false);
+        Step step = underTest.addCoord(p, 11, false, false).get();
         assertEquals( 11, step.cost());
         
         AskBuilder ask = new AskBuilder().addGraph(Namespace.PlanningModel, new WhereBuilder() //
@@ -319,7 +319,7 @@ public class MapImplTest {
         double incr = ctxt.scaleInfo.getHalfResolution();
         Coordinate c = new Coordinate( p.getX()+incr, p.getY()+incr );
                 //-3 + (scale.getResolution() / 2) + (scale.getResolution() / 10));
-        step = underTest.addCoord(c, 11, false, false);
+        step = underTest.addCoord(c, 11, false, false).get();
         assertTrue(underTest.ask(ask));
         assertEquals( 11, step.cost());
     }
