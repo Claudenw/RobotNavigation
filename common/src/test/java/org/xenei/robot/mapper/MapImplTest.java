@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.BiPredicate;
+import java.util.stream.Stream;
 
 import org.apache.jena.arq.querybuilder.AskBuilder;
 import org.apache.jena.arq.querybuilder.ExprFactory;
@@ -22,20 +23,32 @@ import org.apache.jena.vocabulary.RDF;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.Point;
 import org.xenei.robot.common.Location;
+import org.xenei.robot.common.Position;
 import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.common.mapping.CoordinateMap;
+import org.xenei.robot.common.mapping.Obstacle;
 import org.xenei.robot.common.planning.Step;
+import org.xenei.robot.common.testUtils.CoordinateUtils;
+import org.xenei.robot.common.testUtils.MapLibrary;
+import org.xenei.robot.common.utils.AngleUtils;
+import org.xenei.robot.common.utils.RobutContext;
 import org.xenei.robot.common.utils.CoordUtils;
+import org.xenei.robot.common.utils.DoubleUtils;
 import org.xenei.robot.common.utils.GeometryUtils;
 import org.xenei.robot.mapper.rdf.Namespace;
 
 public class MapImplTest {
 
     private final double buffer = 0.5;
+    
+    private static RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT);
 
     private MapImpl underTest;
 
@@ -62,18 +75,16 @@ public class MapImplTest {
         return Arrays.asList(obstacles);
     }
 
-    @BeforeAll
-    public static void setupPaths() {
-        for (Coordinate e : expected) {
-            paths.add(new Coordinate[] { p, e });
+        @BeforeAll
+        public static void setupPaths() {
+            for (Coordinate e : expected) {
+                paths.add(new Coordinate[] { p, e });
+            }
         }
-    }
 
-    @BeforeEach
-    public void setup() {
-        ScaleInfo scale = new ScaleInfo.Builder().build();
+    private void setup() {
         cMap = new CoordinateMap(1);
-        underTest = new MapImpl(scale);
+        underTest = new MapImpl(ctxt);
         underTest.addCoord(p, p.distance(t), false, true);
         cMap.enable(p, 'p');
         cMap.enable(t, 't');
@@ -81,8 +92,9 @@ public class MapImplTest {
             underTest.addCoord(e, e.distance(t), false, true);
             cMap.enable(e, 'e');
         }
+        Position pos = Position.from(p, 0);
         for (Coordinate o : obstacles) {
-            underTest.addObstacle(o);
+            underTest.addObstacle( underTest.createObstacle(pos, pos.relativeLocation(o)));
             cMap.enable(o, '#');
         }
         for (Coordinate[] l : paths) {
@@ -91,21 +103,12 @@ public class MapImplTest {
     }
 
     @Test
-    public void isObstacleTest() {
-        for (Coordinate o : obstacles) {
-            assertTrue(underTest.isObstacle(o), () -> "Missing " + o);
-        }
-        for (Coordinate e : expected) {
-            assertFalse(underTest.isObstacle(e), () -> "Should not have " + e);
-        }
-    }
-
-    @Test
     public void getBestTargetTest() {
+        setup();
         Optional<Step> pr = underTest.getBestStep(p, buffer);
         assertTrue(pr.isPresent());
         Coordinate p2 = new Coordinate(-1, -2);
-        assertEquals(new StepImpl(p2, 4), pr.get());
+        assertEquals(StepImpl.builder().setCoordinate(p2).setCost(9).setDistance(2).build(ctxt), pr.get());
     }
 
     /**
@@ -116,8 +119,9 @@ public class MapImplTest {
      */
     static void assertCoordinateInObstacles(Collection<? extends Geometry> obsts, Coordinate c) {
         boolean found = false;
+        Geometry cGeom = ctxt.geometryUtils.asPoint(c);
         for (Geometry geom : obsts) {
-            if (List.of( geom.getCoordinates()).contains(c)) {
+            if (geom.intersects(cGeom)) {
                 found = true;
                 break;
             }
@@ -126,20 +130,14 @@ public class MapImplTest {
     }
 
     @Test
-    public void getObstaclesTest() {
-        Set<Geometry> obsts = underTest.getObstacles();
-        assertEquals(obstacles.length, obsts.size());
-        for (Coordinate o : obstacles) {
-            assertCoordinateInObstacles(obsts, o);
-        }
-    }
-
-    @Test
     public void getStepTest() {
+        setup();
         Optional<Step> pr = underTest.getStep(Location.from(p));
         assertTrue(pr.isPresent());
         assertEquals(0, CoordUtils.XYCompr.compare(p, pr.get().getCoordinate()));
-        assertEquals(p.distance(t), pr.get().cost());
+        assertEquals(p.distance(t), pr.get().distance());
+        // p can not see t so cost should be 2x distance
+        assertEquals(pr.get().distance()*2, pr.get().cost());
 
         pr = underTest.getStep(Location.from(t));
         assertTrue(pr.isEmpty());
@@ -148,7 +146,7 @@ public class MapImplTest {
             pr = underTest.getStep(Location.from(e));
             assertTrue(pr.isPresent());
             assertEquals(0, CoordUtils.XYCompr.compare(e, pr.get().getCoordinate()));
-            assertEquals(e.distance(t), pr.get().cost());
+            assertEquals(e.distance(t), pr.get().distance());
         }
         for (Coordinate o : obstacles) {
             pr = underTest.getStep(Location.from(o));
@@ -175,12 +173,12 @@ public class MapImplTest {
 
     @Test
     public void isEmptyTest() {
-        assertTrue(new MapImpl(ScaleInfo.DEFAULT).isEmpty());
-        assertFalse(underTest.isEmpty());
+        assertTrue(new MapImpl(ctxt).isEmpty());
     }
 
     @Test
     public void addPathTest() {
+        setup();
         Location a = Location.from(expected[0]);
         Location b = Location.from(expected[1]);
 
@@ -196,19 +194,18 @@ public class MapImplTest {
 
     @Test
     public void hasPathTest() {
+        setup();
         Location a = Location.from(p);
         Location b = Location.from(expected[0]);
         Location c = Location.from(t);
-        underTest.addCoord(t, 0, false, false);
+        underTest.addCoord(t, 1, false, false);
 
-        System.out.println(MapReports.dumpModel(underTest));
         assertTrue(underTest.hasPath(a, b));
         assertFalse(underTest.hasPath(b, c));
         assertFalse(underTest.hasPath(a, c));
 
         underTest.addPath(b.getCoordinate(), c.getCoordinate());
 
-        System.out.println(MapReports.dumpModel(underTest));
         assertTrue(underTest.hasPath(a, b));
         assertTrue(underTest.hasPath(b, c));
         // FIXME assertTrue(underTest.hasPath(a, c));
@@ -216,6 +213,7 @@ public class MapImplTest {
 
     @Test
     public void recalculateTest() {
+        setup();
         AskBuilder ask = new AskBuilder();
         ExprFactory exprF = ask.getExprFactory();
         ask.from(Namespace.UnionModel.getURI()).addWhere(Namespace.s, RDF.type, Namespace.Coord)
@@ -236,39 +234,46 @@ public class MapImplTest {
 
     @Test
     public void updateTest() {
+        setup();
         Location c = Location.from(5, 4);
         // Resource r = Namespace.urlOf(c);
 
         // check not there, update then verify that it is.
-        AskBuilder ask = new AskBuilder().from(Namespace.UnionModel.getURI())
-                .addWhere(Namespace.s, Namespace.distance, 5).addWhere(Namespace.s, Namespace.x, c.getX())
+        AskBuilder ask = new AskBuilder().from(Namespace.UnionModel.getURI()) //
+                .addWhere(Namespace.s, Namespace.distance, 5) //
+                .addWhere(Namespace.s, Namespace.x, c.getX()) //
                 .addWhere(Namespace.s, Namespace.y, c.getY());
         assertFalse(underTest.ask(ask));
 
+        // no coordinate so update should not do anything.
         underTest.updateCoordinate(Namespace.PlanningModel, Namespace.Coord, c.getCoordinate(), Namespace.distance, 5);
         assertFalse(underTest.ask(ask));
 
-        underTest.addCoord(c.getCoordinate(), 0, false, false);
+        // add the coordinate with a distance of 1.
+        underTest.addCoord(c.getCoordinate(), 1, false, false);
         assertFalse(underTest.ask(ask));
+        // now update it to 5 and verify that it is there.
         underTest.updateCoordinate(Namespace.PlanningModel, Namespace.Coord, c.getCoordinate(), Namespace.distance, 5);
-        System.out.println(MapReports.dumpModel(underTest));
         assertTrue(underTest.ask(ask));
 
         ExprFactory exprF = new ExprFactory();
 
-        ask = new AskBuilder().from(Namespace.UnionModel.getURI())
-                .addWhere(Namespace.s, Namespace.distance, Namespace.o).addFilter(exprF.eq(Namespace.o, 5.0));
+        ask = new AskBuilder().from(Namespace.UnionModel.getURI()) //
+                .addWhere(Namespace.s, Namespace.distance, Namespace.o) //
+                .addFilter(exprF.eq(Namespace.o, 5.0));
         assertTrue(underTest.ask(ask));
 
+        
         c = Location.from(expected[0]);
         assertTrue(underTest.ask(ask));
 
         Step before = underTest.getStep(c).get();
         underTest.updateCoordinate(Namespace.PlanningModel, Namespace.Coord, c.getCoordinate(), Namespace.distance,
-                before.cost() + 5);
+                before.distance() + 5);
 
-        SelectBuilder sb = new SelectBuilder().from(Namespace.UnionModel.getURI())
-                .addWhere(Namespace.s, Namespace.distance, "?x").addWhere(Namespace.s, Namespace.x, c.getX())
+        SelectBuilder sb = new SelectBuilder().from(Namespace.UnionModel.getURI()) //
+                .addWhere(Namespace.s, Namespace.distance, before.distance() + 5) //
+                .addWhere(Namespace.s, Namespace.x, c.getX()) //
                 .addWhere(Namespace.s, Namespace.y, c.getY());
         int count[] = { 0 };
         underTest.exec(sb, (q) -> {
@@ -278,28 +283,27 @@ public class MapImplTest {
         assertEquals(1, count[0]);
 
         Step after = underTest.getStep(c).get();
-        assertEquals(before.cost() + 5, after.cost());
+        assertEquals(before.distance() + 5, after.distance());
     }
 
     @Test
     public void clearViewTest() {
-        ScaleInfo scale = new ScaleInfo.Builder().build();
-        underTest = new MapImpl(scale);
-        
-        underTest.addObstacle(new Coordinate(-3, -3));
+        underTest = new MapImpl(ctxt);
+        Position pos = Position.from(p, 0);
+
+        underTest.addObstacle(underTest.createObstacle(pos, pos.relativeLocation(new  Coordinate(-3, -3))));
         Coordinate a = new Coordinate(-3, -4);
         Coordinate b = new Coordinate(-3, -2);
 
-        assertFalse(underTest.clearView(a, b, buffer));
+        assertFalse(underTest.isClearPath(a, b, buffer));
         b = new Coordinate(-4, -4);
-        assertTrue(underTest.clearView(a, b, buffer));
+        assertTrue(underTest.isClearPath(a, b, buffer));
     }
 
     @Test
     public void testAddTarget() {
-        ScaleInfo scale = new ScaleInfo.Builder().build();
-        underTest = new MapImpl(scale);
-        Step step = underTest.addCoord(p, 11, false, false);
+        underTest = new MapImpl(ctxt);
+        Step step = underTest.addCoord(p, 11, false, false).get();
         assertEquals( 11, step.cost());
         
         AskBuilder ask = new AskBuilder().addGraph(Namespace.PlanningModel, new WhereBuilder() //
@@ -307,35 +311,121 @@ public class MapImplTest {
                 .addWhere(Namespace.s, Namespace.y, step.getY()) //
                 .addWhere(Namespace.s, Namespace.distance, 11.0) //
                 .addWhere(Namespace.s, RDF.type, Namespace.Coord) //
-                .addWhere(Namespace.s, Geo.AS_WKT_PROP, GraphGeomFactory.asWKT(GeometryUtils.asPoint(p))));
+                .addWhere(Namespace.s, Geo.AS_WKT_PROP, ctxt.graphGeomFactory.asWKT(ctxt.geometryUtils.asPoint(p))));
         assertTrue(underTest.ask(ask));
 
         // verify inserting a node near map coord shows up at map coord
-        underTest = new MapImpl(scale);
-        double incr = scale.getResolution()/2;
+    underTest = new MapImpl(ctxt);
+        double incr = ctxt.scaleInfo.getHalfResolution();
         Coordinate c = new Coordinate( p.getX()+incr, p.getY()+incr );
                 //-3 + (scale.getResolution() / 2) + (scale.getResolution() / 10));
-        step = underTest.addCoord(c, 11, false, false);
+        step = underTest.addCoord(c, 11, false, false).get();
         assertTrue(underTest.ask(ask));
         assertEquals( 11, step.cost());
     }
 
     @Test
     public void testAddPath() {
-        ScaleInfo scale = new ScaleInfo.Builder().build();
-        underTest = new MapImpl(scale);
+        underTest = new MapImpl(ctxt);
         underTest.addCoord(p, p.distance(t), false, false);
         underTest.addCoord(expected[0], expected[0].distance(t), false, false);
         underTest.addPath(p, expected[0]);
 
         AskBuilder ask = new AskBuilder().addPrefixes(MapImpl.getPrefixMapping()).from(Namespace.PlanningModel.getURI())
                 .addWhere(Namespace.s, RDF.type, Namespace.Path)
-                .addWhere(Namespace.s, Geo.AS_WKT_PROP, GraphGeomFactory.asWKT(GeometryUtils.asLine(p, expected[0])))
-                .addWhere(Namespace.s, "robut:point/geo:asWKT", GraphGeomFactory.asWKT(GeometryUtils.asPoint(p)))
+                .addWhere(Namespace.s, Geo.AS_WKT_PROP, ctxt.graphGeomFactory.asWKT(ctxt.geometryUtils.asLine(p, expected[0])))
+                .addWhere(Namespace.s, "robut:point/geo:asWKT", ctxt.graphGeomFactory.asWKT(ctxt.geometryUtils.asPoint(p)))
                 .addWhere(Namespace.s, "robut:point/geo:asWKT",
-                        GraphGeomFactory.asWKT(GeometryUtils.asPoint(expected[0])));
-        System.out.println(MapReports.dumpModel(underTest));
+                        ctxt.graphGeomFactory.asWKT(ctxt.geometryUtils.asPoint(expected[0])));
         assertTrue(underTest.ask(ask));
     }
+    
+    @Test
+    public void createObstacleTest() {
+        underTest = new MapImpl(ctxt);
+        double halfRes = ScaleInfo.DEFAULT.getResolution()/2;
+        Position pos = Position.from(p, 0);
+        Location relative = Location.from(1,0);
+        Obstacle obst = underTest.createObstacle(pos, relative);
+        Coordinate[] lst = obst.geom().getCoordinates();
+        assertEquals(3, lst.length);
+        CoordinateUtils.assertEquivalent(new Coordinate(0,-2.75), lst[0], halfRes);
+        CoordinateUtils.assertEquivalent(new Coordinate(0,-3), lst[1], halfRes);
+        CoordinateUtils.assertEquivalent(new Coordinate(0,-3.25), lst[2], halfRes);
+        assertEquals( ctxt.graphGeomFactory.asWKT(obst.geom()), obst.wkt());
+    }
+    
+    @Test
+    public void addObstacleTest() {
+        underTest = new MapImpl(ctxt);
+        Position pos = Position.from(p, 0);
+        Location relative = Location.from(ctxt.scaleInfo.getResolution(),0);
+        Obstacle obst = underTest.createObstacle(pos, relative);
+        Set<Obstacle> result = underTest.addObstacle(obst);
+        assertEquals(1, result.size());
+        assertEquals(obst, result.iterator().next());
+        System.out.println(MapReports.dumpModel(underTest));
+        relative = Location.from(0, ctxt.scaleInfo.getResolution());
+        Obstacle obst2 = underTest.createObstacle(pos, relative);
+        result = underTest.addObstacle(obst2);
+        relative = Location.from(ctxt.scaleInfo.getHalfResolution(),ctxt.scaleInfo.getHalfResolution());
+        Obstacle obst3 = underTest.createObstacle(pos, relative);
+        result = underTest.addObstacle(obst3);
+        System.out.println(MapReports.dumpModel(underTest));
+        System.out.println( obst2.wkt());
+        assertEquals(1, underTest.getObstacles().size());
+    }
+    
+    @Test
+    public void isObstacleTest() {
+        underTest = new MapImpl(ctxt);
+        Position pos = Position.from(p, 0);
+        Location relative = Location.from(1,0);
+        Obstacle obst = underTest.createObstacle(pos, relative);
+        underTest.addObstacle(obst);
+        relative = Location.from(1, 1);
+        Obstacle obst2 = underTest.createObstacle(pos, relative);
+        underTest.addObstacle(obst2);
+        relative = Location.from(CoordUtils.fromAngle(AngleUtils.RADIANS_45/2, 1));
+        Obstacle obst3 = underTest.createObstacle(pos, relative);
+        underTest.addObstacle(obst3);
+        for (Coordinate c : obst.geom().getCoordinates())
+        assertTrue(underTest.isObstacle(c), ()-> "Did not find c");
+        for (Coordinate c : obst2.geom().getCoordinates())
+            assertTrue(underTest.isObstacle(c), ()-> "Did not find c");
+        for (Coordinate c : obst3.geom().getCoordinates())
+            assertTrue(underTest.isObstacle(c), ()-> "Did not find c");
+    }
+//    
+//    @ParameterizedTest(name = "{index} {1}")
+//    @MethodSource("loadObstaclesTestParameters")
+//    public void loadObstaclesTest(MapImpl underTest, Coordinate c) {
+//        assertTrue( underTest.isObstacle(c));
+//    }
+//    
+//    private static void listFail(Geometry geom, Coordinate c) {
+//        if (!geom.intersects(ctxt.geometryUtils.asPoint(c))) {
+//            System.out.format( "%s %s failed\n", geom, c);
+//        }
+//    }
+//    private static Stream<Arguments> loadObstaclesTestParameters() {
+//        CoordinateMap cMap =  MapLibrary.map2('#');
+//        MapImpl underTest= new MapImpl(ScaleInfo.DEFAULT);
+//        List<Coordinate> lst = new ArrayList<>();
+//        
+//        cMap.getObstacles().forEach( g -> {
+//            Point p = g.getCentroid();
+//            Coordinate c = new Coordinate( p.getX(), p.getY());
+//            lst.add(c);
+//            underTest.addObstacle(c);
+//            listFail(g, c );
+//            Arrays.stream(g.getCoordinates()).forEach( c2 -> {lst.add(c2);
+//            listFail(g,c2);
+//          
+//            });  
+//        });
+//        
+//        return lst.stream().map( c -> Arguments.of( underTest, c));
+//    }
 
 }

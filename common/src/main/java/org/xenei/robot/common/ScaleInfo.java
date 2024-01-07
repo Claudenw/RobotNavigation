@@ -1,8 +1,6 @@
 package org.xenei.robot.common;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-
+import org.locationtech.jts.geom.PrecisionModel;
 import org.xenei.robot.common.utils.DoubleUtils;
 
 public final class ScaleInfo {
@@ -10,8 +8,8 @@ public final class ScaleInfo {
     private static double DEFAULT_RESOLUTION = 0.5;
     private static double DEFAULT_SCALE = 1.0;
 
-    public static ScaleInfo DEFAULT = new ScaleInfo(DEFAULT_RESOLUTION, DEFAULT_SCALE);
-
+    public static final ScaleInfo DEFAULT = new ScaleInfo(DEFAULT_RESOLUTION, DEFAULT_SCALE);
+   
     public static ScaleInfo.Builder builder() {
         return new Builder();
     }
@@ -21,36 +19,41 @@ public final class ScaleInfo {
     private final int decimalPlaces;
     private final double truncationFactor;
     private final int modulusFactor;
+    private final PrecisionModel precisionModel;
 
     private ScaleInfo(double resolution, double scale) {
         this.scale = scale;
         this.resolution = resolution;
         this.decimalPlaces = (int) Math.ceil(Math.log10(1 / resolution));
-        this.truncationFactor = Math.pow(10,decimalPlaces);
-        this.modulusFactor = (int)(resolution * truncationFactor);
+        this.truncationFactor = Math.pow(10, decimalPlaces);
+        this.modulusFactor = (int) (resolution * truncationFactor);
+        this.precisionModel = new PrecisionModel( 100*truncationFactor);
     }
 
     public double getResolution() {
         return resolution;
     }
-    
-    public double getBuffer() {
-        return resolution/2;
+
+    public double getHalfResolution() {
+        return resolution / 2;
     }
 
     public int decimalPlaces() {
         return decimalPlaces;
     }
     
-    public double scale(double value) {
-        long scaledValue =  (long) Math.floor((Math.abs(value) * scale * truncationFactor)+(modulusFactor/2.0));
-        scaledValue -= scaledValue % modulusFactor;
-        if (value<0) {
-            scaledValue *= -1;
-        }
-        return DoubleUtils.truncate(scaledValue/truncationFactor, decimalPlaces);
+    public PrecisionModel getPrecisionModel() {
+        return precisionModel;
     }
 
+    public double scale(double value) {
+        long scaledValue = (long) Math.floor((Math.abs(value) * scale * truncationFactor) + (modulusFactor / 2.0));
+        scaledValue -= scaledValue % modulusFactor;
+        if (value < 0) {
+            scaledValue *= -1;
+        }
+        return DoubleUtils.truncate(scaledValue / truncationFactor, decimalPlaces);
+    }
 
     public static class Builder {
         private double resolution = DEFAULT_RESOLUTION;
@@ -71,11 +74,10 @@ public final class ScaleInfo {
             this.scale = scale;
             return this;
         }
-        
+
         public ScaleInfo build() {
             return new ScaleInfo(this.resolution, this.scale);
         }
     }
 
-    
 }

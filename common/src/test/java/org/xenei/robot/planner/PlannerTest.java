@@ -15,84 +15,61 @@ import static org.mockito.Mockito.when;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.Test;
 import org.locationtech.jts.geom.Coordinate;
-import org.locationtech.jts.geom.Geometry;
-import org.locationtech.jts.geom.Point;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
+import org.xenei.robot.common.FrontsCoordinate;
+import org.xenei.robot.common.FrontsCoordinateTest;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Position;
 import org.xenei.robot.common.ScaleInfo;
-import org.xenei.robot.common.mapping.CoordinateMap;
+import org.xenei.robot.common.UnmodifiableCoordinate;
 import org.xenei.robot.common.mapping.Map;
 import org.xenei.robot.common.planning.Planner;
 import org.xenei.robot.common.planning.Planner.Diff;
 import org.xenei.robot.common.planning.Solution;
 import org.xenei.robot.common.planning.Step;
 import org.xenei.robot.common.testUtils.CoordinateUtils;
-import org.xenei.robot.common.testUtils.MapLibrary;
-import org.xenei.robot.mapper.MapImpl;
-import org.xenei.robot.mapper.StepImpl;
+import org.xenei.robot.common.utils.AngleUtils;
+import org.xenei.robot.common.utils.RobutContext;
 
 public class PlannerTest {
-
+    private RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT);
     private Planner underTest;
     private final double buffer = 0.5;
 
     private ArgumentCaptor<Coordinate> coordinateCaptor = ArgumentCaptor.forClass(Coordinate.class);
-    //private ArgumentCaptor<Step> stepCaptor = ArgumentCaptor.forClass(Step.class);
+    // private ArgumentCaptor<Step> stepCaptor =
+    // ArgumentCaptor.forClass(Step.class);
     private ArgumentCaptor<Double> doubleCaptor = ArgumentCaptor.forClass(Double.class);
 
     @Test
     public void setTargetTest() {
-        CoordinateMap cmap = MapLibrary.map2('#');
-        Map map = new MapImpl(ScaleInfo.DEFAULT);
-        Location origin = Location.from(0, 0);
-        underTest = new PlannerImpl(map, origin, buffer);
-        for (int x = 0; x <= 13; x++) {
-            for (int y = 0; y <= 15; y++) {
-                Location c = Location.from(x, y);
-                if (!cmap.isEnabled(c)) {
-                    underTest.setTarget(c);
-                    verifyState(map, cmap);
-                    assertEquals(0, underTest.getSolution().stepCount());
-                }
-            }
-        }
-    }
+        FrontsCoordinate fc = FrontsCoordinateTest.make(1, 1);
+        Map map = Mockito.mock(Map.class);
 
-    private Function<Geometry, Coordinate> toCoord = g -> {
-        Point p = g.getCentroid();
-        return new Coordinate(p.getX(), p.getY());
-    };
+        underTest = new PlannerImpl(map, Location.ORIGIN, buffer);
+        underTest.setTarget(fc);
 
-    private CoordinateMap verifyState(Map map, CoordinateMap cmap) {
-
-        for (Geometry c : map.getObstacles()) {
-            assertTrue(cmap.isEnabled(toCoord.apply(c)), () -> c + " should have been sensed.");
-        }
-        CoordinateMap sensedMap = new CoordinateMap(cmap.scale());
-        sensedMap.enable(map.getObstacles().stream().map(toCoord).collect(Collectors.toList()), 'x');
-
-        for (Step pr : map.getTargets()) {
-            assertFalse(sensedMap.isEnabled(pr), () -> "Plan record " + pr + " should not have been sensed");
-        }
-
-        underTest.getSolution().stream().forEach(
-                c -> assertFalse(sensedMap.isEnabled(c), () -> "Path record " + c + " should not have been enabled"));
-        return sensedMap;
+        assertEquals(fc.getCoordinate(), underTest.getTarget());
+        assertEquals(AngleUtils.RADIANS_45, underTest.getCurrentPosition().getHeading());
+        verify(map).recalculate(coordinateCaptor.capture(), anyDouble());
+        assertEquals(fc.getCoordinate(), coordinateCaptor.getValue());
+        Solution solution = underTest.getSolution();
+        assertEquals(0, solution.stepCount());
+        assertEquals(Location.ORIGIN.getCoordinate(), solution.start());
     }
 
     @Test
     public void changeCurrentPositionTest() {
+        Step step = Mockito.mock(Step.class);
+        when(step.getCoordinate()).thenReturn(UnmodifiableCoordinate.make(new Coordinate(1, 1)));
         Map map = Mockito.mock(Map.class);
-        when(map.getScale()).thenReturn(ScaleInfo.DEFAULT);
-        when(map.addCoord(any(Coordinate.class), anyDouble(), anyBoolean(), anyBoolean()))
-        .thenAnswer(i -> new StepImpl( (Coordinate)i.getArguments()[0], (double)(i.getArguments()[1])));
+        when(map.getContext()).thenReturn(ctxt);
+        when(map.addCoord(any(Coordinate.class), anyDouble(), anyBoolean(), anyBoolean())).thenReturn(Optional.of(step));
 
         Location finalCoord = Location.from(-1, 1);
         Location startCoord = Location.from(-1, -3);
@@ -105,7 +82,7 @@ public class PlannerTest {
         assertTrue(diff.didChange());
         assertTrue(diff.didPositionChange());
 
-        //map.addTarget(p.getCoordinate(), p.distance(underTest.getTarget()));
+        // map.addTarget(p.getCoordinate(), p.distance(underTest.getTarget()));
         verify(map, times(2)).addCoord(coordinateCaptor.capture(), doubleCaptor.capture(), anyBoolean(), anyBoolean());
         List<Coordinate> lst = coordinateCaptor.getAllValues();
         assertTrue(startCoord.equals2D(lst.get(0)));
@@ -121,11 +98,10 @@ public class PlannerTest {
 
     @Test
     public void constructorTest() {
+        Step step = Mockito.mock(Step.class);
         Map map = Mockito.mock(Map.class);
-        when(map.getScale()).thenReturn(ScaleInfo.DEFAULT);
-        when(map.addCoord(any(Coordinate.class), anyDouble(), anyBoolean(), anyBoolean()))
-        .thenAnswer(i -> new StepImpl( (Coordinate)i.getArguments()[0], (double)(i.getArguments()[1])));
-
+        when(map.getContext()).thenReturn(ctxt);
+        when(map.addCoord(any(Coordinate.class), anyDouble(), anyBoolean(), anyBoolean())).thenReturn(Optional.of(step));
 
         Location finalCoord = Location.from(-1, 1);
         Location startCoord = Location.from(-1, -3);
@@ -151,7 +127,7 @@ public class PlannerTest {
     @Test
     public void targetTest() {
         Map map = Mockito.mock(Map.class);
-        when(map.getScale()).thenReturn(ScaleInfo.DEFAULT);
+        when(map.getContext()).thenReturn(ctxt);
 
         Location finalCoord = Location.from(-1, 1);
         Location startCoord = Location.from(-1, -3);
@@ -214,9 +190,9 @@ public class PlannerTest {
         assertTrue(newTarget.equals2D(lst.get(1)));
 
         // verify setTemporaryCost was called once
-        verify(map,times(2)).recalculate(coordinateCaptor.capture(), doubleCaptor.capture());
+        verify(map, times(2)).recalculate(coordinateCaptor.capture(), doubleCaptor.capture());
         assertTrue(newTarget.equals2D(coordinateCaptor.getValue()));
-        assertEquals(buffer,doubleCaptor.getValue());
+        assertEquals(buffer, doubleCaptor.getValue());
 
         // verify solution has 1 item
         Solution solution = underTest.getSolution();
@@ -227,10 +203,12 @@ public class PlannerTest {
 
     @Test
     public void restartTest() {
+        Step step = Mockito.mock(Step.class);
         Map map = Mockito.mock(Map.class);
-        when(map.getScale()).thenReturn(ScaleInfo.DEFAULT);
-        when(map.addCoord(any(Coordinate.class), anyDouble(), anyBoolean(), anyBoolean()))
-        .thenAnswer(i -> new StepImpl( (Coordinate)i.getArguments()[0], (double)(i.getArguments()[1])));
+        when(map.getContext()).thenReturn(ctxt);
+        when(map.addCoord(any(Coordinate.class), anyDouble(), anyBoolean(), anyBoolean())).thenReturn(Optional.of(step));
+        // .thenAnswer(i -> new StepImpl( (Coordinate)i.getArguments()[0],
+        // (double)(i.getArguments()[1])));
 
         Location finalCoord = Location.from(-1, 1);
         Location startCoord = Location.from(-1, -3);
@@ -259,7 +237,7 @@ public class PlannerTest {
     @Test
     public void getPlanRecordsTest() {
         Map map = Mockito.mock(Map.class);
-        when(map.getScale()).thenReturn(ScaleInfo.DEFAULT);
+        when(map.getContext()).thenReturn(ctxt);
         when(map.getTargets()).thenReturn(Collections.emptyList());
 
         Location finalCoord = Location.from(-1, 1);
@@ -280,12 +258,9 @@ public class PlannerTest {
         when(step.getCoordinate()).thenReturn(stepLocation.getCoordinate());
         when(step.cost()).thenReturn(Double.valueOf(5));
 
-
-
         Map map = Mockito.mock(Map.class);
-        when(map.getScale()).thenReturn(ScaleInfo.DEFAULT);
-        when(map.addCoord(any(Coordinate.class), anyDouble(), anyBoolean(), anyBoolean()))
-        .thenAnswer(i -> new StepImpl( (Coordinate)i.getArguments()[0], (double)(i.getArguments()[1])));
+        when(map.getContext()).thenReturn(ctxt);
+        when(map.addCoord(any(Coordinate.class), anyDouble(), anyBoolean(), anyBoolean())).thenReturn(Optional.of(step));
 
         when(map.getBestStep(any(), anyDouble())).thenReturn(Optional.of(step)).thenReturn(Optional.empty());
         underTest = new PlannerImpl(map, startCoord, buffer, finalCoord);

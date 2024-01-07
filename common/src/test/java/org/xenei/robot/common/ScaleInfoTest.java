@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.locationtech.jts.geom.Coordinate;
 import org.xenei.robot.common.utils.CoordUtilsTest;
 
 public class ScaleInfoTest {
@@ -47,6 +48,8 @@ public class ScaleInfoTest {
         lst.add( Arguments.of( underTest, -2.0, -1.75 )); 
         lst.add( Arguments.of( underTest, 0.0, 0.0 ));
         lst.add( Arguments.of( underTest, 0.0, -0.0 ));
+        lst.add( Arguments.of( underTest, -4.0, -4.22360679774998));
+        lst.add( Arguments.of( underTest, -1.5, -1.3881966011250098));
         return Stream.of(lst.toArray(new Arguments[0]));
     }
 

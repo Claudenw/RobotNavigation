@@ -15,26 +15,30 @@ import javax.swing.WindowConstants;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.LineString;
+import org.locationtech.jts.geom.MultiLineString;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
 import org.xenei.robot.common.mapping.Map;
+import org.xenei.robot.common.mapping.Obstacle;
 import org.xenei.robot.common.planning.Solution;
 import org.xenei.robot.common.planning.Step;
+import org.xenei.robot.common.utils.RobutContext;
+import org.xenei.robot.common.utils.DoubleUtils;
 import org.xenei.robot.common.utils.GeometryUtils;
 
 public class MapViz {
-    private Supplier<Solution> solution;
-    private Map map;
-    private JTSPanel panel;
-    private int scale;
-    private int buffer;
+    private final Supplier<Solution> solution;
+    private final Map map;
+    private final JTSPanel panel;
+    private final int scale;
+    private final int buffer;
 
     public MapViz(int scale, Map map, Supplier<Solution> solution) {
         this.map = map;
         this.panel = new JTSPanel();
         this.solution = solution;
         this.scale = scale;
-        this.buffer = (int) (map.getScale().getResolution() * scale) / 2;
+        this.buffer = (int) (map.getContext().scaleInfo.getResolution() * scale) / 2;
 
         JFrame frame = new JFrame("Map Visualization");
         frame.setLayout(new BorderLayout());
@@ -66,7 +70,7 @@ public class MapViz {
             };
         }
 
-        if (geom instanceof LineString) {
+        if (geom instanceof LineString || geom instanceof MultiLineString) {
             return new AbstractDrawingCommand(geom, color) {
                 @Override
                 protected void fillGeom(Graphics g, int[] xler, int[] yler) {
@@ -84,32 +88,37 @@ public class MapViz {
     }
 
     public void redraw(Coordinate target) {
+        GeometryUtils geometryUtils = map.getContext().geometryUtils;
         List<AbstractDrawingCommand> cmds = new ArrayList<>();
-        for (Geometry obst : map.getObstacles()) {
-            cmds.add(getPoly(obst, Color.RED));
+        StringBuilder sb = new StringBuilder();
+        for (Obstacle obst : map.getObstacles()) {
+            cmds.add(getPoly(obst.geom(), Color.RED));
         }
+        sb.append( ""+cmds.size()+" after Obstacles\n");
 
         for (Step targ : map.getTargets()) {
             cmds.add(getPoly(targ.getGeometry(), Color.CYAN));
         }
+        sb.append( ""+cmds.size()+" after Targets\n");
 
         List<Coordinate> lst = solution.get().stream().collect(Collectors.toList());
         if (lst.size() > 1) {
-            cmds.add(getPoly(GeometryUtils.asPath(buffer, lst.toArray(new Coordinate[lst.size()])), Color.WHITE));
+            cmds.add(getPoly(geometryUtils.asPath(0.25, lst.toArray(new Coordinate[lst.size()])), Color.WHITE));
         } else {
-            cmds.add(getPoly(GeometryUtils.asPolygon(lst.get(0), 0.5), Color.WHITE));
+            cmds.add(getPoly(geometryUtils.asPolygon(lst.get(0), .25), Color.WHITE));
         }
+        sb.append( ""+cmds.size()+" after Solution\n");
 
         if (target != null) {
-            cmds.add(getPoly(GeometryUtils.asPolygon(target, 0.5), Color.GREEN));
+            cmds.add(getPoly(geometryUtils.asPolygon(target, 0.25), Color.GREEN));
         }
+        sb.append( ""+cmds.size()+" after Target\n");
 
         rescale(cmds);
+        sb.append( ""+cmds.size()+" after Rescale\n");
 
-        EventQueue.invokeLater(() -> {
-            panel.clear();
-            cmds.forEach(panel::addDrawCommand);
-        });
+        
+        EventQueue.invokeLater( new LaterInvoker(cmds, sb) );
     }
 
     private void rescale(List<AbstractDrawingCommand> lst) {
@@ -138,6 +147,23 @@ public class MapViz {
             }
         }
     }
+    
+    private class LaterInvoker implements Runnable {
+        List<AbstractDrawingCommand> cmds;
+        StringBuilder sb;
+        LaterInvoker(List<AbstractDrawingCommand> cmds, StringBuilder sb) {
+            this.cmds = cmds;
+            this.sb = sb;
+        }
+        
+        public void run() {
+            panel.clear();
+            sb.append( ""+cmds.size()+" after panel clear\n");
+            cmds.forEach(panel::addDrawCommand);
+            sb.append( ""+cmds.size()+" after draw\n");
+            System.out.println( "================== VIDEO REPORT ==========\n"+sb.toString());
+        };
+    }
 
     /**
      * 
@@ -157,7 +183,7 @@ public class MapViz {
 
             for (int i = 0; i < coords.length; i++) {
                 xler[i] = (int) Math.round(coords[i].getX() * scale);
-                yler[i] = (int) Math.round(coords[i].getY() * scale);
+                yler[i] = -1* (int) Math.round(coords[i].getY() * scale);
             }
         }
 

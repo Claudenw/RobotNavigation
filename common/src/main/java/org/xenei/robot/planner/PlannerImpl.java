@@ -20,7 +20,7 @@ import org.xenei.robot.common.utils.DoubleUtils;
 
 public class PlannerImpl implements Planner {
     private static final Logger LOG = LoggerFactory.getLogger(PlannerImpl.class);
-    private final Stack<Coordinate> target;
+    private final TargetStack target;
     private final Map map;
     private final Collection<Planner.Listener> listeners;
     private Position currentPosition;
@@ -49,7 +49,7 @@ public class PlannerImpl implements Planner {
         this.map = map;
         this.buffer = buffer;
         this.listeners = new CopyOnWriteArrayList<>();
-        this.target = new Stack<>();
+        this.target = new TargetStack();
         this.diff = new DiffImpl();
         if (target != null) {
             setTarget(target.getCoordinate());
@@ -84,9 +84,9 @@ public class PlannerImpl implements Planner {
     @Override
     public void changeCurrentPosition(Position pos) {
         currentPosition = Position.from(pos, pos.getHeading());
-        Step step = map.addCoord(currentPosition.getCoordinate(), currentPosition.distance(getRootTarget()), true,
-                !map.clearView(currentPosition.getCoordinate(), getRootTarget(), buffer));
-        solution.add(step.getCoordinate());
+        Optional<Step> step = map.addCoord(currentPosition.getCoordinate(), currentPosition.distance(getRootTarget()), true,
+                !map.isClearPath(currentPosition.getCoordinate(), getRootTarget(), buffer));
+        step.ifPresent( s ->solution.add(s.getCoordinate()));
     }
 
     private Position newPosition(Coordinate start) {
@@ -106,7 +106,7 @@ public class PlannerImpl implements Planner {
         if (getTarget() != null) {
             currentPosition = newPosition(start.getCoordinate());
             distance = start.distance(getRootTarget());
-            isIndirect = !map.clearView(currentPosition.getCoordinate(), getRootTarget(), buffer);
+            isIndirect = !map.isClearPath(currentPosition.getCoordinate(), getRootTarget(), buffer);
         } else {
             currentPosition = Position.from(start, 0);
         }
@@ -139,7 +139,7 @@ public class PlannerImpl implements Planner {
 
     @Override
     public Diff selectTarget() {
-        if (currentPosition.equals2D(getTarget(), map.getScale().getResolution())) {
+        if (currentPosition.equals2D(getTarget(), map.getContext().scaleInfo.getResolution())) {
             LOG.debug("Reached intermediate target");
             target.pop();
             if (target.isEmpty()) {
@@ -248,6 +248,24 @@ public class PlannerImpl implements Planner {
         public boolean didTargetChange() {
             return getTarget() == null || !target.equals2D(getTarget(), buffer);
         }
+    }
+    
+    private class TargetStack extends Stack<Coordinate> {
+        TargetStack() {
+            super();
+        }
+
+        @Override
+        public Coordinate push(Coordinate item) {
+            if (this.contains(item)) {
+                while (item != this.pop()) {
+                    // all activity in the while statement
+                }
+            }
+            return super.push(item);
+        }
+       
+        
     }
 
 }

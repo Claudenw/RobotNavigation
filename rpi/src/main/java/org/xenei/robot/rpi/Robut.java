@@ -17,6 +17,7 @@ import org.xenei.robot.common.mapping.Mapper;
 import org.xenei.robot.common.planning.Solution;
 import org.xenei.robot.common.planning.Step;
 import org.xenei.robot.common.utils.TimingUtils;
+import org.xenei.robot.common.utils.RobutContext;
 import org.xenei.robot.mapper.MapImpl;
 import org.xenei.robot.mapper.MapperImpl;
 import org.xenei.robot.rpi.sensors.Arduino;
@@ -38,7 +39,7 @@ public class Robut {
     public Robut(Coordinate origin) {
         compass = new CompassImpl();
         distSensor = new Arduino();
-        map = new MapImpl(ScaleInfo.DEFAULT);
+        map = new MapImpl(new RobutContext(ScaleInfo.DEFAULT));
         mapper = new MapperImpl(map);
         currentPosition = compass.getPosition(origin);
         

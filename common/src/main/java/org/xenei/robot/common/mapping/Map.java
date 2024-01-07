@@ -4,11 +4,15 @@ import java.util.Collection;
 import java.util.Optional;
 import java.util.Set;
 
+import org.apache.jena.rdf.model.Literal;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
+import org.xenei.robot.common.Location;
+import org.xenei.robot.common.Position;
 import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.common.planning.Solution;
 import org.xenei.robot.common.planning.Step;
+import org.xenei.robot.common.utils.RobutContext;
 
 public interface Map {
 
@@ -27,7 +31,7 @@ public interface Map {
      * @param dest the coordinates to end it
      * @return true if there are no obstacles between source and dest.
      */
-    boolean clearView(Coordinate source, Coordinate dest, double buffer);
+    boolean isClearPath(Coordinate source, Coordinate dest, double buffer);
 
     /**
      * Add the target to the planning
@@ -38,7 +42,7 @@ public interface Map {
      * @param isIndirect true if the target can not see the final target.
      * @return the Step comprising the mapped target locaton and the distance value.
      */
-    Step addCoord(Coordinate target, double distance, boolean visited, boolean isIndirect);
+    Optional<Step> addCoord(Coordinate target, double distance, boolean visited, boolean isIndirect);
 
     /**
      * Gets the collection of all targets in the planning graph
@@ -71,13 +75,6 @@ public interface Map {
     Optional<Step> getBestStep(Coordinate currentCoords, double buffer);
 
     /**
-     * Sets the adjustment value for the point specified by the step.
-     * 
-     * @param target the point to update.
-     */
-    void setTemporaryCost(Coordinate target, double cost);
-
-    /**
      * Returns true if the coordinate is within an obstacle.
      * 
      * @param coord the coordinate to check.
@@ -90,14 +87,14 @@ public interface Map {
      * 
      * @param obstacle the obstacle to add.
      */
-    Coordinate addObstacle(Coordinate obstacle);
-
+    //Coordinate addObstacle(Coordinate obstacle);
+    Set<Obstacle> addObstacle(Obstacle obstacle);
     /**
      * Gets the geometry for all the known obstacles.
      * 
      * @return the set of geometries for all the knowns obstacles.
      */
-    Set<Geometry> getObstacles();
+    Set<Obstacle> getObstacles();
 
     /**
      * Breaks the path between a and b.
@@ -115,11 +112,11 @@ public interface Map {
     void recordSolution(Solution solution, double buffer);
 
     /**
-     * Get the scale info for this map.
+     * Get the context info for this map.
      * 
-     * @return the ScaleInfo.
+     * @return the Context.
      */
-    ScaleInfo getScale();
+    RobutContext getContext();
 
     /**
      * True if the two coordinates resolve to the same point on the map. This
@@ -148,6 +145,14 @@ public interface Map {
      * @param buffer the buffer
      * @param newObstacles the set of new obstacles.
      */
-    void updateIsIndirect(Coordinate target, double buffer, Set<Coordinate> newObstacles);
+    void updateIsIndirect(Coordinate target, double buffer, Set<Obstacle> newObstacles);
+    
+    /**
+     * Create an Obstacle.
+     * @param startPosition  The position from which we locate the obstacle.
+     * @param relativeLocation the relative locaiton of the obstacle from the start position.
+     * @return An obstacle.
+     */
+    Obstacle createObstacle(Position startPosition, Location relativeLocation);
 
 }

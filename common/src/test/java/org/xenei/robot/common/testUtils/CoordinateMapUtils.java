@@ -23,7 +23,7 @@ public class CoordinateMapUtils {
     public static void logMap(Map map, Planner planner, CoordinateMap initialMap, Position position) {
         CoordinateMap cmap = new CoordinateMapBuilder(initialMap.scale()).merge(initialMap).build();
         List<Coordinate> lst = map.getObstacles().stream().map(g -> {
-            Point p = g.getCentroid();
+            Point p = g.geom().getCentroid();
             return new Coordinate(p.getX(), p.getY());
         }).collect(Collectors.toList());
 

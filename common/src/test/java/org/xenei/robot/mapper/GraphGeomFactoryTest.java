@@ -17,11 +17,15 @@ import org.apache.jena.rdf.model.Resource;
 import org.apache.jena.vocabulary.RDF;
 import org.junit.jupiter.api.Test;
 import org.locationtech.jts.geom.Coordinate;
+import org.xenei.robot.common.ScaleInfo;
+import org.xenei.robot.common.utils.RobutContext;
 import org.xenei.robot.common.utils.GeometryUtils;
 import org.xenei.robot.mapper.rdf.Namespace;
 
 public class GraphGeomFactoryTest {
 
+    private static RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT);
+    
     private Dataset createDataset(Model m) {
         Dataset ds = DatasetFactory.create(m);
         try {
@@ -35,13 +39,13 @@ public class GraphGeomFactoryTest {
 //    @Test
 //    public void checkCollisionTest() {
 //        Coordinate c = new Coordinate(1, 1);
-//        Model m = GraphGeomFactory.asRDF(c, Namespace.Obst, GeometryUtils.asPolygon(c, 1)).getModel();
+//        Model m = ctxt.graphGeomFactory.asRDF(c, Namespace.Obst, GeometryUtils.asPolygon(c, 1)).getModel();
 //        Dataset ds = createDataset(m);
-//        Literal testWkt = GraphGeomFactory.asWKT(c);
+//        Literal testWkt = ctxt.graphGeomFactory.asWKT(c);
 //
 //        ExprFactory exprF = new ExprFactory(m);
 //        AskBuilder ask = new AskBuilder().addWhere(Namespace.s, Geo.AS_WKT_PROP, "?wkt")
-//                .addFilter(GraphGeomFactory.checkCollision(exprF, "?wkt", testWkt, 0));
+//                .addFilter(ctxt.graphGeomFactory.checkCollision(exprF, "?wkt", testWkt, 0));
 //        try (QueryExecution qexec = QueryExecutionFactory.create(ask.build(), ds)) {
 //            assertTrue(qexec.execAsk());
 //        }
@@ -52,14 +56,14 @@ public class GraphGeomFactoryTest {
         Coordinate c = new Coordinate(1, 1);
         Coordinate b = new Coordinate(1, 5);
 
-        Model m = GraphGeomFactory.asRDF(c, Namespace.Coord).getModel();
-        m.add(GraphGeomFactory.asRDF(b, Namespace.Coord).getModel());
+        Model m = ctxt.graphGeomFactory.asRDF(c, Namespace.Coord).getModel();
+        m.add(ctxt.graphGeomFactory.asRDF(b, Namespace.Coord).getModel());
         Dataset ds = createDataset(m);
-        Literal testWkt = GraphGeomFactory.asWKT(c);
+        Literal testWkt = ctxt.graphGeomFactory.asWKT(c);
 
         ExprFactory exprF = new ExprFactory(m);
         AskBuilder ask = new AskBuilder().addWhere(Namespace.s, Geo.AS_WKT_PROP, "?wkt")
-                .addBind(GraphGeomFactory.calcDistance(exprF, "?wkt", testWkt), "?cost")
+                .addBind(ctxt.graphGeomFactory.calcDistance(exprF, "?wkt", testWkt), "?cost")
                 .addFilter(exprF.eq("?cost", 4));
 
         try (QueryExecution qexec = QueryExecutionFactory.create(ask.build(), ds)) {
@@ -71,16 +75,16 @@ public class GraphGeomFactoryTest {
     public void asRDFTest() {
         Coordinate p = new Coordinate(-1, 3);
 
-        Resource r = GraphGeomFactory.asRDF(p, Namespace.Coord);
+        Resource r = ctxt.graphGeomFactory.asRDF(p, Namespace.Coord);
         assertTrue(r.hasLiteral(Namespace.x, -1.0));
         assertTrue(r.hasLiteral(Namespace.y, 3.0));
         assertTrue(r.hasProperty(RDF.type, Namespace.Coord));
-        assertTrue(r.hasProperty(Geo.AS_WKT_PROP, GraphGeomFactory.asWKT(GeometryUtils.asPoint(p))));
+        assertTrue(r.hasProperty(Geo.AS_WKT_PROP, ctxt.graphGeomFactory.asWKT(ctxt.geometryUtils.asPoint(p))));
 
-        r = GraphGeomFactory.asRDF(p, Namespace.Coord, GeometryUtils.asPolygon(p, 3));
+        r = ctxt.graphGeomFactory.asRDF(p, Namespace.Coord, ctxt.geometryUtils.asPolygon(p, 3));
         assertTrue(r.hasLiteral(Namespace.x, -1.0));
         assertTrue(r.hasLiteral(Namespace.y, 3.0));
         assertTrue(r.hasProperty(RDF.type, Namespace.Coord));
-        assertTrue(r.hasProperty(Geo.AS_WKT_PROP, GraphGeomFactory.asWKT(GeometryUtils.asPolygon(p, 3))));
+        assertTrue(r.hasProperty(Geo.AS_WKT_PROP, ctxt.graphGeomFactory.asWKT(ctxt.geometryUtils.asPolygon(p, 3))));
     }
 }
