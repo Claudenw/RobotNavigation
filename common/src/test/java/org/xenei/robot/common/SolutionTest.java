@@ -12,9 +12,7 @@ import java.util.stream.Collectors;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.locationtech.jts.geom.Coordinate;
-import org.xenei.robot.common.mapping.CoordinateMap;
 import org.xenei.robot.common.planning.Solution;
-import org.xenei.robot.common.testUtils.MapLibrary;
 
 public class SolutionTest {
 
@@ -63,8 +61,20 @@ public class SolutionTest {
 
     @Test
     public void simplifyTest() {
-        CoordinateMap cmap = MapLibrary.map2('#');
-        underTest.simplify(cmap::clearView);
+        boolean canSee[][] = new boolean[expectedSolution.length][expectedSolution.length];
+
+        /*                                        0     1     2     3     4     5      6      7 */
+        /* -1, -3 */ canSee[0] = new boolean[] { true, true, true, true, true, false, false, false };
+        /* -1, -2 */ canSee[1] = new boolean[] { true, true, true, true, true, false, false, false };
+        /* -2, -2 */ canSee[2] = new boolean[] { true, true, true, true, true, false, false, false };
+        /* -0, -2 */ canSee[3] = new boolean[] { true, true, true, true, true, false, false, false };
+        /*  2, -2 */ canSee[4] = new boolean[] { true, true, true, true, true, true, true, false };
+        /*  2, -1 */ canSee[5] = new boolean[] { false, false, false, false, true, true, true, false  };
+        /*  2,  0 */ canSee[6] = new boolean[] { false, false, false, false, true, true, true, true };
+        /* -1,  1 */ canSee[7] = new boolean[] { false, false, false, false, false, false, true, true };
+
+        List<Coordinate> idx = Arrays.asList(expectedSolution);
+        underTest.simplify( (x,y) -> canSee[idx.indexOf(x)][idx.indexOf(y)]);
         assertEquals(3, underTest.stepCount());
         assertEquals(new Coordinate(-1, 1), underTest.end());
         assertEquals(new Coordinate(-1, -3), underTest.start());

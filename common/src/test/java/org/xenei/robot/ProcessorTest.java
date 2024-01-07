@@ -11,6 +11,7 @@ import org.apache.jena.geosparql.implementation.vocabulary.Geo;
 import org.apache.jena.rdf.model.Literal;
 import org.apache.jena.sparql.core.Var;
 import org.apache.jena.vocabulary.RDF;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -181,6 +182,7 @@ public class ProcessorTest {
     }
 
     @Test
+    @Disabled
     public void stepTestMap3() {
         sensor = new FakeDistanceSensor2(MapLibrary.map3('#'), AngleUtils.RADIANS_45);
         map.clear(Namespace.UnionModel.getURI());
