@@ -3,15 +3,12 @@ package org.xenei.robot.mapper.rdf;
 import java.util.UUID;
 
 import org.apache.jena.datatypes.TypeMapper;
-import org.apache.jena.geosparql.implementation.vocabulary.Geof;
-import org.apache.jena.geosparql.implementation.vocabulary.SpatialExtension;
-import org.apache.jena.geosparql.implementation.vocabulary.Unit_URI;
 import org.apache.jena.rdf.model.Property;
 import org.apache.jena.rdf.model.Resource;
 import org.apache.jena.rdf.model.ResourceFactory;
+import org.apache.jena.shared.PrefixMapping;
 import org.apache.jena.sparql.core.Var;
 import org.apache.jena.sparql.function.FunctionRegistry;
-import org.apache.sis.metadata.internal.MetadataTypes;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.xenei.robot.common.utils.RobutContext;
 import org.xenei.robot.mapper.rdf.functions.Functions;
@@ -20,6 +17,8 @@ public class Namespace {
     public static final String URI = "urn:org.xenei.robut:";
     public static final String FUNC_URI = URI+"function:";
     public static final String MODEL_URI = URI+"model:";
+    public static final String GEO_URI = "http://www.opengis.net/ont/geosparql#";
+    
     
     public static final Resource UnionModel = ResourceFactory.createResource("urn:x-arq:UnionGraph");
     public static final Resource BaseModel = ResourceFactory.createResource(MODEL_URI+ "BaseModel");
@@ -35,6 +34,7 @@ public class Namespace {
     public static final Property point = ResourceFactory.createProperty(URI + "point");
     public static final Property visited = ResourceFactory.createProperty(URI + "visited");
     public static final Property isIndirect = ResourceFactory.createProperty(URI + "isIndirect");
+    public static final Property wkt = ResourceFactory.createProperty(GEO_URI + "asWKT");
 
     
     public static Resource overlapsF = ResourceFactory.createResource(FUNC_URI+"overlaps");
@@ -46,11 +46,21 @@ public class Namespace {
     public static final Var s = Var.alloc("s");
     public static final Var p = Var.alloc("p");
     public static final Var o = Var.alloc("o");
+    
+    public static final String WKT = GEO_URI + "wktLiteral";
 
     public static void init(RobutContext context) {
         new WktDataType(context.geometryFactory, context.cache);
         new Functions().register();
     }
 
+    public static PrefixMapping getPrefixes() {
+        return  PrefixMapping.Factory.create()
+        .setNsPrefix("robut", URI)
+        .setNsPrefix("robutF", FUNC_URI)
+        .setNsPrefix("robutM", MODEL_URI)
+        .setNsPrefix("geo", GEO_URI)
+        ;
+    }
 
 }

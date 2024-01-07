@@ -7,7 +7,6 @@ import java.util.Collection;
 import org.apache.jena.arq.querybuilder.AskBuilder;
 import org.apache.jena.arq.querybuilder.ExprFactory;
 import org.apache.jena.arq.querybuilder.SelectBuilder;
-import org.apache.jena.geosparql.implementation.vocabulary.Geo;
 import org.apache.jena.rdf.model.Literal;
 import org.apache.jena.sparql.core.Var;
 import org.apache.jena.vocabulary.RDF;
@@ -97,14 +96,14 @@ public class ProcessorTest {
                     System.out.println(MapReports.dumpQuery((MapImpl) map, new SelectBuilder() //
                             .from(Namespace.UnionModel.getURI()) //
                             .addWhere(Namespace.s, RDF.type, Namespace.Obst) //
-                            .addWhere(Namespace.s, Geo.AS_WKT_PROP, wkt)
+                            .addWhere(Namespace.s, Namespace.wkt, wkt)
                             .addBind(ctxt.graphGeomFactory.calcDistance(exprF, pathWkt, wkt), "?dist")
                             .addBind(exprF.eq(ctxt.graphGeomFactory.calcDistance(exprF, pathWkt, wkt), 0), "?le")
                             ));
 
                     AskBuilder ask = new AskBuilder().from(Namespace.UnionModel.getURI()) //
                             .addWhere(Namespace.s, RDF.type, Namespace.Obst) //
-                            .addWhere(Namespace.s, Geo.AS_WKT_PROP, wkt)
+                            .addWhere(Namespace.s, Namespace.wkt, wkt)
                             .addFilter(exprF.eq(ctxt.graphGeomFactory.calcDistance(exprF, pathWkt, wkt), 0));
                     System.out.println( ((MapImpl)map).ask(ask));
                     System.out.println(MapReports.dumpQuery((MapImpl) map,

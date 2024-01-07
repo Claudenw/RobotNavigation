@@ -18,7 +18,6 @@ import org.apache.jena.arq.querybuilder.AskBuilder;
 import org.apache.jena.arq.querybuilder.ExprFactory;
 import org.apache.jena.arq.querybuilder.SelectBuilder;
 import org.apache.jena.arq.querybuilder.WhereBuilder;
-import org.apache.jena.geosparql.implementation.vocabulary.Geo;
 import org.apache.jena.vocabulary.RDF;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -311,7 +310,7 @@ public class MapImplTest {
                 .addWhere(Namespace.s, Namespace.y, step.getY()) //
                 .addWhere(Namespace.s, Namespace.distance, 11.0) //
                 .addWhere(Namespace.s, RDF.type, Namespace.Coord) //
-                .addWhere(Namespace.s, Geo.AS_WKT_PROP, ctxt.graphGeomFactory.asWKT(ctxt.geometryUtils.asPoint(p))));
+                .addWhere(Namespace.s, Namespace.wkt, ctxt.graphGeomFactory.asWKT(ctxt.geometryUtils.asPoint(p))));
         assertTrue(underTest.ask(ask));
 
         // verify inserting a node near map coord shows up at map coord
@@ -331,9 +330,9 @@ public class MapImplTest {
         underTest.addCoord(expected[0], expected[0].distance(t), false, false);
         underTest.addPath(p, expected[0]);
 
-        AskBuilder ask = new AskBuilder().addPrefixes(MapImpl.getPrefixMapping()).from(Namespace.PlanningModel.getURI())
+        AskBuilder ask = new AskBuilder().addPrefixes(MapImpl.getPrefixes()).from(Namespace.PlanningModel.getURI())
                 .addWhere(Namespace.s, RDF.type, Namespace.Path)
-                .addWhere(Namespace.s, Geo.AS_WKT_PROP, ctxt.graphGeomFactory.asWKT(ctxt.geometryUtils.asLine(p, expected[0])))
+                .addWhere(Namespace.s, Namespace.wkt, ctxt.graphGeomFactory.asWKT(ctxt.geometryUtils.asLine(p, expected[0])))
                 .addWhere(Namespace.s, "robut:point/geo:asWKT", ctxt.graphGeomFactory.asWKT(ctxt.geometryUtils.asPoint(p)))
                 .addWhere(Namespace.s, "robut:point/geo:asWKT",
                         ctxt.graphGeomFactory.asWKT(ctxt.geometryUtils.asPoint(expected[0])));

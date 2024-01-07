@@ -1,14 +1,12 @@
 package org.xenei.robot.mapper.rdf.functions;
 
 import org.apache.jena.datatypes.TypeMapper;
-import org.apache.jena.geosparql.implementation.UnitsConversionException;
 import org.apache.jena.sparql.expr.ExprList;
 import org.apache.jena.sparql.expr.NodeValue;
 import org.apache.jena.sparql.function.FunctionBase1;
 import org.apache.jena.sparql.function.FunctionBase2;
 import org.apache.jena.sparql.util.Context;
 import org.locationtech.jts.geom.Geometry;
-import org.opengis.geometry.MismatchedDimensionException;
 import org.xenei.robot.common.utils.RobutContext;
 import org.xenei.robot.mapper.rdf.WktDataType;
 import java.util.function.BiFunction;

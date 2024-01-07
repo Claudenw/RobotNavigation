@@ -7,10 +7,6 @@ import org.apache.jena.datatypes.BaseDatatype;
 import org.apache.jena.datatypes.DatatypeFormatException;
 import org.apache.jena.datatypes.RDFDatatype;
 import org.apache.jena.datatypes.TypeMapper;
-import org.apache.jena.geosparql.implementation.datatype.WKTDatatype;
-import org.apache.jena.geosparql.implementation.jts.CoordinateSequenceDimensions;
-import org.apache.jena.geosparql.implementation.jts.CustomCoordinateSequence;
-import org.apache.jena.geosparql.implementation.vocabulary.Geo;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.GeometryCollection;
 import org.locationtech.jts.geom.GeometryFactory;
@@ -21,8 +17,16 @@ import org.locationtech.jts.geom.MultiPoint;
 import org.locationtech.jts.geom.MultiPolygon;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
+
+
+import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.CoordinateXY;
+import org.locationtech.jts.geom.CoordinateXYM;
+import org.locationtech.jts.geom.CoordinateXYZM;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.xenei.robot.mapper.rdf.jts.CoordinateSequenceDimensions;
+import org.xenei.robot.mapper.rdf.jts.CustomCoordinateSequence;
 
 public class WktDataType extends BaseDatatype {
 
@@ -52,12 +56,12 @@ public class WktDataType extends BaseDatatype {
         }
     }
 
-    static final Logger LOGGER = LoggerFactory.getLogger(WKTDatatype.class);
+    static final Logger LOGGER = LoggerFactory.getLogger(WktDataType.class);
 
     /**
      * The default WKT type URI.
      */
-    public static final String URI = Geo.WKT;// Namespace.URI + ":datatype:wktLiteral";
+    public static final String URI = Namespace.WKT;
 
     /**
      * A static instance of WKTDatatype.
@@ -373,4 +377,7 @@ public class WktDataType extends BaseDatatype {
               return WktDataType.this.parse(literalForm);
           }
       }
+
+
 }
+

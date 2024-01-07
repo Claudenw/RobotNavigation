@@ -26,11 +26,6 @@ import org.apache.jena.arq.querybuilder.Order;
 import org.apache.jena.arq.querybuilder.SelectBuilder;
 import org.apache.jena.arq.querybuilder.UpdateBuilder;
 import org.apache.jena.arq.querybuilder.WhereBuilder;
-import org.apache.jena.geosparql.implementation.vocabulary.Geo;
-import org.apache.jena.geosparql.implementation.vocabulary.GeoSPARQL_URI;
-import org.apache.jena.geosparql.implementation.vocabulary.SRS_URI;
-import org.apache.jena.geosparql.spatial.SpatialIndex;
-import org.apache.jena.geosparql.spatial.SpatialIndexException;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.query.Dataset;
 import org.apache.jena.query.DatasetFactory;
@@ -82,8 +77,8 @@ public class MapImpl implements Map {
     private final double buffer = 0.25; // FIXME
 
     public static PrefixMapping getPrefixes() {
-        return PrefixMapping.Factory.create().setNsPrefixes(GeoSPARQL_URI.getPrefixes())
-                .setNsPrefixes(PrefixMapping.Standard).setNsPrefix("robut", Namespace.URI);
+        return PrefixMapping.Factory.create()
+                .setNsPrefixes(PrefixMapping.Standard).setNsPrefixes(Namespace.getPrefixes());
     }
 
     public MapImpl(RobutContext ctxt) {
@@ -95,12 +90,6 @@ public class MapImpl implements Map {
         data.addNamedModel(Namespace.BaseModel, defaultModel());
         data.addNamedModel(Namespace.PlanningModel, defaultModel());
         exprF = new ExprFactory(data.getPrefixMapping());
-
-        try {
-            SpatialIndex.buildSpatialIndex(data, SRS_URI.DEFAULT_WKT_CRS84);
-        } catch (SpatialIndexException e) {
-            throw new RuntimeException(e);
-        }
         obstacleHandler = new ObstacleHandler();
     }
 
@@ -130,16 +119,8 @@ public class MapImpl implements Map {
         return (Precision.equals(x, c.getX(), 0) && Precision.equals(y, c.getY(), 0)) ? c : new Coordinate(x, y);
     }
 
-    public static PrefixMapping getPrefixMapping() {
-        PrefixMapping pm = PrefixMapping.Factory.create();
-        pm.setNsPrefixes(GeoSPARQL_URI.getPrefixes());
-        pm.setNsPrefixes(PrefixMapping.Standard.getNsPrefixMap());
-        pm.setNsPrefix("robut", "urn:org.xenei.robot:");
-        return pm;
-    }
-
     private static Model defaultModel() {
-        return ModelFactory.createDefaultModel().setNsPrefixes(getPrefixMapping());
+        return ModelFactory.createDefaultModel().setNsPrefixes(getPrefixes());
     }
 
     public boolean isEmpty() {
@@ -196,7 +177,7 @@ public class MapImpl implements Map {
         UpdateRequest req = new UpdateRequest();
         if (exists(mapCoord, Namespace.Coord)) {
             WhereBuilder where = new WhereBuilder().addWhere(Namespace.s, RDF.type, Namespace.Coord)
-                    .addWhere(Namespace.s, Geo.AS_WKT_PROP, ctxt.graphGeomFactory.asWKT(mapCoord.getCoordinate()));
+                    .addWhere(Namespace.s, Namespace.wkt, ctxt.graphGeomFactory.asWKT(mapCoord.getCoordinate()));
             UpdateBuilder newDat = new UpdateBuilder()
                     .addInsert(Namespace.PlanningModel, Namespace.s, Namespace.distance, distance).addWhere(where);
             if (visited) {
@@ -270,7 +251,7 @@ public class MapImpl implements Map {
                 .addWhere(Namespace.s, Namespace.distance, dist) //
                 .addWhere(Namespace.s, Namespace.x, coordinate.getX()) //
                 .addWhere(Namespace.s, Namespace.y, coordinate.getY()) //
-                .addWhere(Namespace.s, Geo.AS_WKT_PROP, geom) //
+                .addWhere(Namespace.s, Namespace.wkt, geom) //
                 .addOptional(Namespace.s, Namespace.isIndirect, indirect) //
                 .addBind(SPARQL.indirectCalc(dist, indirect), cost);
 
@@ -316,7 +297,7 @@ public class MapImpl implements Map {
         WhereBuilder wb = new WhereBuilder();
         List<Triple> triples = new ArrayList<>();
         triples.add(Triple.create(tn.asNode(), RDF.type.asNode(), Namespace.Path.asNode()));
-        triples.add(Triple.create(tn.asNode(), Geo.AS_WKT_PROP.asNode(), path.asNode()));
+        triples.add(Triple.create(tn.asNode(), Namespace.wkt.asNode(), path.asNode()));
         int i = 0;
         for (MapCoordinate c : lst) {
             Optional<UpdateBuilder> updt = addBuilder(Namespace.PlanningModel, c, Namespace.Coord,
@@ -408,7 +389,7 @@ public class MapImpl implements Map {
         Var wkt = Var.alloc("wkt");
         AskBuilder ask = new AskBuilder().from(Namespace.UnionModel.getURI()) //
                 .addWhere(Namespace.s, RDF.type, Namespace.Obst) //
-                .addWhere(Namespace.s, Geo.AS_WKT_PROP, wkt)
+                .addWhere(Namespace.s, Namespace.wkt, wkt)
                 .addFilter(exprF.eq(ctxt.graphGeomFactory.calcDistance(exprF, pathWkt, wkt), 0));
         return !ask(ask);
     }
@@ -481,9 +462,9 @@ public class MapImpl implements Map {
 
         SelectBuilder query = new SelectBuilder().addVar(cost).addVar(otherWkt).addVar(other).addVar(dist) //
                 .from(Namespace.UnionModel.getURI()).addWhere(Namespace.s, RDF.type, Namespace.Coord) //
-                .addWhere(Namespace.s, Geo.AS_WKT_PROP, wkt).addWhere(other, RDF.type, Namespace.Coord) //
+                .addWhere(Namespace.s, Namespace.wkt, wkt).addWhere(other, RDF.type, Namespace.Coord) //
                 .addOptional(other, Namespace.isIndirect, indirect) //
-                .addWhere(other, Geo.AS_WKT_PROP, otherWkt) //
+                .addWhere(other, Namespace.wkt, otherWkt) //
                 .addWhere(other, Namespace.distance, otherDist) //
                 .addOptional(other, Namespace.visited, visited) //
                 .addFilter(exprF.and(exprF.ne(other, Namespace.s), exprF.not(exprF.bound(visited)))) //
@@ -495,7 +476,7 @@ public class MapImpl implements Map {
         AskBuilder ask = new AskBuilder() //
                 .addWhere(other2, Namespace.visited, "?ignore") //
                 .addWhere(other2, RDF.type, Namespace.Coord)//
-                .addWhere(other2, Geo.AS_WKT_PROP, other2Wkt) //
+                .addWhere(other2, Namespace.wkt, other2Wkt) //
                 .addFilter(exprF.le(ctxt.graphGeomFactory.calcDistance(exprF, otherWkt, other2Wkt), buffer)) //
         ;
 
@@ -558,7 +539,7 @@ public class MapImpl implements Map {
                         .addGraph(Namespace.UnionModel, new WhereBuilder() //
                                 .addWhere(Namespace.s, RDF.type, Namespace.o) //
                                 .addFilter(exprF.in(Namespace.o, exprF.asList(Namespace.Coord, Namespace.Path))) //
-                                .addWhere(Namespace.s, Geo.AS_WKT_PROP, wkt) //
+                                .addWhere(Namespace.s, Namespace.wkt, wkt) //
                                 .addBind(ctxt.graphGeomFactory.calcDistance(exprF, targ, wkt), distance))
                         .build());
         doUpdate(req);
@@ -571,7 +552,7 @@ public class MapImpl implements Map {
         SelectBuilder sb = new SelectBuilder().from(Namespace.PlanningModel.getURI()) //
                 .addVar(distance).addVar(candidate).addVar(wkt) //
                 .addWhere(candidate, RDF.type, Namespace.Coord) //
-                .addWhere(candidate, Geo.AS_WKT_PROP, wkt) //
+                .addWhere(candidate, Namespace.wkt, wkt) //
                 .addWhere(candidate, Namespace.distance, distance);
 
         List<Triple> insertRow = new ArrayList<>();
@@ -613,7 +594,7 @@ public class MapImpl implements Map {
                 .from(Namespace.PlanningModel.getURI()).addWhere(Namespace.s, RDF.type, Namespace.Coord) //
                 .addOptional(Namespace.s, Namespace.isIndirect, indirect) //
                 .addWhere(Namespace.s, Namespace.distance, distance) //
-                .addWhere(Namespace.s, Geo.AS_WKT_PROP, wkt) //
+                .addWhere(Namespace.s, Namespace.wkt, wkt) //
                 .addWhere(Namespace.s, Namespace.x, x).addWhere(Namespace.s, Namespace.y, y)
                 .addBind(SPARQL.indirectCalc(distance, indirect), cost).addOrderBy(cost, Order.ASCENDING);
 
@@ -696,7 +677,7 @@ public class MapImpl implements Map {
                     .addInsert(Namespace.PlanningModel, Namespace.s, Namespace.isIndirect, Boolean.TRUE) //
                     .addGraph(Namespace.UnionModel, new WhereBuilder() //
                             .addWhere(Namespace.s, RDF.type, Namespace.Coord) //
-                            .addWhere(Namespace.s, Geo.AS_WKT_NODE, wkt)
+                            .addWhere(Namespace.s, Namespace.wkt, wkt)
                             .addFilter(exprF.in(wkt, updateCoords.toArray())));
             doUpdate(ub);
         }
@@ -810,7 +791,7 @@ public class MapImpl implements Map {
 
         Resource in(Model m) {
             Resource result = m.createResource(rdf().getURI(), Namespace.Obst);
-            result.addLiteral(Geo.AS_WKT_PROP, wkt());
+            result.addLiteral(Namespace.wkt, wkt());
             return result;
         }
 
@@ -862,7 +843,7 @@ public class MapImpl implements Map {
             Var otherWkt = Var.alloc("otherWkt");
             SelectBuilder sb = new SelectBuilder().setDistinct(true).addVar(Namespace.s).addVar(otherWkt) //
                     .from(Namespace.UnionModel.getURI()) //
-                    .addWhere(Namespace.s, Geo.AS_WKT_NODE, otherWkt) //
+                    .addWhere(Namespace.s, Namespace.wkt, otherWkt) //
                     .addWhere(Namespace.s, RDF.type, Namespace.Obst)
                     .addFilter(ctxt.graphGeomFactory.isNearby(exprF, obstacle.wkt(), otherWkt,
                             ctxt.scaleInfo.getResolution()));
@@ -936,8 +917,8 @@ public class MapImpl implements Map {
                     .addGraph(Namespace.UnionModel, new WhereBuilder() //
                             .addWhere(Namespace.s, Namespace.p, Namespace.o) //
                             .addWhere(Namespace.s, RDF.type, Namespace.Coord) //
-                            .addWhere(Namespace.s, Geo.AS_WKT_NODE, wkt) //
-                            .addWhere(obstRes, Geo.AS_WKT_NODE, otherWkt)
+                            .addWhere(Namespace.s, Namespace.wkt, wkt) //
+                            .addWhere(obstRes, Namespace.wkt, otherWkt)
                             .addFilter(exprF.lt(ctxt.graphGeomFactory.calcDistance(exprF, wkt, otherWkt), buffer))
                             .addFilter(exprF.in(exprF.asExpr(obstRes), exprF
                                     .asList(work.stream().map(Obstacle::rdf).collect(Collectors.toList()).toArray()))));
@@ -950,7 +931,7 @@ public class MapImpl implements Map {
             Var wkt = Var.alloc("wkt");
             AskBuilder ask = new AskBuilder().addGraph(Namespace.UnionModel,
                     new WhereBuilder().addWhere(Namespace.s, RDF.type, Namespace.Obst) //
-                            .addWhere(Namespace.s, Geo.AS_WKT_PROP, wkt) //
+                            .addWhere(Namespace.s, Namespace.wkt, wkt) //
                             .addFilter(ctxt.graphGeomFactory.intersects(exprF, pointWKT, wkt)));
             return ask(ask);
         }
@@ -960,7 +941,7 @@ public class MapImpl implements Map {
 
             SelectBuilder sb = new SelectBuilder().addVar(Namespace.s).addVar(wkt) //
                     .addGraph(Namespace.UnionModel, new WhereBuilder().addWhere(Namespace.s, RDF.type, Namespace.Obst) //
-                            .addWhere(Namespace.s, Geo.AS_WKT_PROP, wkt));
+                            .addWhere(Namespace.s, Namespace.wkt, wkt));
 
             Set<Obstacle> result = new HashSet<>();
 

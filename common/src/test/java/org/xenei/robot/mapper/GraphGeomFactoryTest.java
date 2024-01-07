@@ -4,9 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.apache.jena.arq.querybuilder.AskBuilder;
 import org.apache.jena.arq.querybuilder.ExprFactory;
-import org.apache.jena.geosparql.implementation.vocabulary.Geo;
-import org.apache.jena.geosparql.spatial.SpatialIndex;
-import org.apache.jena.geosparql.spatial.SpatialIndexException;
 import org.apache.jena.query.Dataset;
 import org.apache.jena.query.DatasetFactory;
 import org.apache.jena.query.QueryExecution;
@@ -28,11 +25,6 @@ public class GraphGeomFactoryTest {
     
     private Dataset createDataset(Model m) {
         Dataset ds = DatasetFactory.create(m);
-        try {
-            SpatialIndex.buildSpatialIndex(ds, "http://www.opengis.net/def/crs/OGC/1.3/CRS84");
-        } catch (SpatialIndexException e) {
-            throw new RuntimeException(e);
-        }
         return ds;
     }
 
@@ -44,7 +36,7 @@ public class GraphGeomFactoryTest {
 //        Literal testWkt = ctxt.graphGeomFactory.asWKT(c);
 //
 //        ExprFactory exprF = new ExprFactory(m);
-//        AskBuilder ask = new AskBuilder().addWhere(Namespace.s, Geo.AS_WKT_PROP, "?wkt")
+//        AskBuilder ask = new AskBuilder().addWhere(Namespace.s, Namespace.wkt, "?wkt")
 //                .addFilter(ctxt.graphGeomFactory.checkCollision(exprF, "?wkt", testWkt, 0));
 //        try (QueryExecution qexec = QueryExecutionFactory.create(ask.build(), ds)) {
 //            assertTrue(qexec.execAsk());
@@ -62,7 +54,7 @@ public class GraphGeomFactoryTest {
         Literal testWkt = ctxt.graphGeomFactory.asWKT(c);
 
         ExprFactory exprF = new ExprFactory(m);
-        AskBuilder ask = new AskBuilder().addWhere(Namespace.s, Geo.AS_WKT_PROP, "?wkt")
+        AskBuilder ask = new AskBuilder().addWhere(Namespace.s, Namespace.wkt, "?wkt")
                 .addBind(ctxt.graphGeomFactory.calcDistance(exprF, "?wkt", testWkt), "?cost")
                 .addFilter(exprF.eq("?cost", 4));
 
@@ -79,12 +71,12 @@ public class GraphGeomFactoryTest {
         assertTrue(r.hasLiteral(Namespace.x, -1.0));
         assertTrue(r.hasLiteral(Namespace.y, 3.0));
         assertTrue(r.hasProperty(RDF.type, Namespace.Coord));
-        assertTrue(r.hasProperty(Geo.AS_WKT_PROP, ctxt.graphGeomFactory.asWKT(ctxt.geometryUtils.asPoint(p))));
+        assertTrue(r.hasProperty(Namespace.wkt, ctxt.graphGeomFactory.asWKT(ctxt.geometryUtils.asPoint(p))));
 
         r = ctxt.graphGeomFactory.asRDF(p, Namespace.Coord, ctxt.geometryUtils.asPolygon(p, 3));
         assertTrue(r.hasLiteral(Namespace.x, -1.0));
         assertTrue(r.hasLiteral(Namespace.y, 3.0));
         assertTrue(r.hasProperty(RDF.type, Namespace.Coord));
-        assertTrue(r.hasProperty(Geo.AS_WKT_PROP, ctxt.graphGeomFactory.asWKT(ctxt.geometryUtils.asPolygon(p, 3))));
+        assertTrue(r.hasProperty(Namespace.wkt, ctxt.graphGeomFactory.asWKT(ctxt.geometryUtils.asPolygon(p, 3))));
     }
 }
