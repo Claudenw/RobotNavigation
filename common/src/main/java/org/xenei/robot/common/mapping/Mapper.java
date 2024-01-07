@@ -25,7 +25,7 @@ public interface Mapper {
     Collection<Step> processSensorData(Position currentPosition, double buffer, Coordinate target,
             Location[] obstacles);
 
-    boolean clearView(Position currentPosition, Coordinate target, double buffer);
+    boolean isClearPath(Position currentPosition, Coordinate target, double buffer);
 
     boolean equivalent(FrontsCoordinate position, Coordinate target);
 }

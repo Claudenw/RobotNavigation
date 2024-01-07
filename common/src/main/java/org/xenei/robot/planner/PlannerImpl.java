@@ -85,7 +85,7 @@ public class PlannerImpl implements Planner {
     public void changeCurrentPosition(Position pos) {
         currentPosition = Position.from(pos, pos.getHeading());
         Step step = map.addCoord(currentPosition.getCoordinate(), currentPosition.distance(getRootTarget()), true,
-                !map.clearView(currentPosition.getCoordinate(), getRootTarget(), buffer));
+                !map.isClearPath(currentPosition.getCoordinate(), getRootTarget(), buffer));
         solution.add(step.getCoordinate());
     }
 
@@ -106,7 +106,7 @@ public class PlannerImpl implements Planner {
         if (getTarget() != null) {
             currentPosition = newPosition(start.getCoordinate());
             distance = start.distance(getRootTarget());
-            isIndirect = !map.clearView(currentPosition.getCoordinate(), getRootTarget(), buffer);
+            isIndirect = !map.isClearPath(currentPosition.getCoordinate(), getRootTarget(), buffer);
         } else {
             currentPosition = Position.from(start, 0);
         }

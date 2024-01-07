@@ -43,8 +43,12 @@ public class MapperImpl implements Mapper {
         ObstacleMapper mapper = new ObstacleMapper(currentPosition, buffer);
         List.of(obstacles).forEach(mapper::doMap);
         map.updateIsIndirect(target, buffer, mapper.newObstacles);
+        
+        System.out.println(MapReports.dumpObstacleDistance((MapImpl)map));
+        System.out.println(MapReports.dumpModel((MapImpl)map));
+        
         return mapper.coordSet.stream()
-                .map(c -> map.addCoord(c, c.distance(target), false, !map.clearView(c, target, buffer)))
+                .map(c -> map.addCoord(c, c.distance(target), false, !map.isClearPath(c, target, buffer)))
                 .collect(Collectors.toList());
     }
 
@@ -54,8 +58,8 @@ public class MapperImpl implements Mapper {
     }
 
     @Override
-    public boolean clearView(Position currentPosition, Coordinate target, double buffer) {
-        return map.clearView(currentPosition.getCoordinate(), target, buffer);
+    public boolean isClearPath(Position currentPosition, Coordinate target, double buffer) {
+        return map.isClearPath(currentPosition.getCoordinate(), target, buffer);
     }
 
     class ObstacleMapper {

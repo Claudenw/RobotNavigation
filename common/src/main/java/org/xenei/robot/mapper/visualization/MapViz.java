@@ -90,13 +90,16 @@ public class MapViz {
     public void redraw(Coordinate target) {
         GeometryUtils geometryUtils = map.getContext().geometryUtils;
         List<AbstractDrawingCommand> cmds = new ArrayList<>();
+        StringBuilder sb = new StringBuilder();
         for (Obstacle obst : map.getObstacles()) {
             cmds.add(getPoly(obst.geom(), Color.RED));
         }
+        sb.append( ""+cmds.size()+" after Obstacles\n");
 
         for (Step targ : map.getTargets()) {
             cmds.add(getPoly(targ.getGeometry(), Color.CYAN));
         }
+        sb.append( ""+cmds.size()+" after Targets\n");
 
         List<Coordinate> lst = solution.get().stream().collect(Collectors.toList());
         if (lst.size() > 1) {
@@ -104,17 +107,18 @@ public class MapViz {
         } else {
             cmds.add(getPoly(geometryUtils.asPolygon(lst.get(0), .25), Color.WHITE));
         }
+        sb.append( ""+cmds.size()+" after Solution\n");
 
         if (target != null) {
             cmds.add(getPoly(geometryUtils.asPolygon(target, 0.25), Color.GREEN));
         }
+        sb.append( ""+cmds.size()+" after Target\n");
 
         rescale(cmds);
+        sb.append( ""+cmds.size()+" after Rescale\n");
 
-        EventQueue.invokeLater(() -> {
-            panel.clear();
-            cmds.forEach(panel::addDrawCommand);
-        });
+        
+        EventQueue.invokeLater( new LaterInvoker(cmds, sb) );
     }
 
     private void rescale(List<AbstractDrawingCommand> lst) {
@@ -142,6 +146,23 @@ public class MapViz {
                 cmd.yler[i] /= offset;
             }
         }
+    }
+    
+    private class LaterInvoker implements Runnable {
+        List<AbstractDrawingCommand> cmds;
+        StringBuilder sb;
+        LaterInvoker(List<AbstractDrawingCommand> cmds, StringBuilder sb) {
+            this.cmds = cmds;
+            this.sb = sb;
+        }
+        
+        public void run() {
+            panel.clear();
+            sb.append( ""+cmds.size()+" after panel clear\n");
+            cmds.forEach(panel::addDrawCommand);
+            sb.append( ""+cmds.size()+" after draw\n");
+            System.out.println( "================== VIDEO REPORT ==========\n"+sb.toString());
+        };
     }
 
     /**

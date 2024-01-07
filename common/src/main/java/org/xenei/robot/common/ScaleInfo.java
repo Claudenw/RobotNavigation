@@ -27,7 +27,7 @@ public final class ScaleInfo {
         this.decimalPlaces = (int) Math.ceil(Math.log10(1 / resolution));
         this.truncationFactor = Math.pow(10, decimalPlaces);
         this.modulusFactor = (int) (resolution * truncationFactor);
-        this.precisionModel = new PrecisionModel( 10*truncationFactor);
+        this.precisionModel = new PrecisionModel( 100*truncationFactor);
     }
 
     public double getResolution() {

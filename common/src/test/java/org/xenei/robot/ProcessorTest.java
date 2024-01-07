@@ -73,14 +73,14 @@ public class ProcessorTest {
     public boolean checkTarget() {
         if (!mapper.equivalent(planner.getCurrentPosition(), planner.getRootTarget())) {
             // if we can see the final target go that way.
-            if (mapper.clearView(planner.getCurrentPosition(), planner.getRootTarget(), buffer)) {
+            if (mapper.isClearPath(planner.getCurrentPosition(), planner.getRootTarget(), buffer)) {
                 double newHeading = planner.getCurrentPosition().headingTo(planner.getRootTarget());
                 boolean cont = DoubleUtils.eq(newHeading, planner.getCurrentPosition().getHeading());
                 if (!cont) {
                     // heading is different so reset the heading, scan, and check again.
                     mover.setHeading(planner.getCurrentPosition().headingTo(planner.getRootTarget()));
                     processSensor();
-                    cont = mapper.clearView(planner.getCurrentPosition(), planner.getRootTarget(), buffer);
+                    cont = mapper.isClearPath(planner.getCurrentPosition(), planner.getRootTarget(), buffer);
                     if (!cont) {
                         // can't see the position really so reset the heading.
                         mover.setHeading(planner.getCurrentPosition().getHeading());
@@ -118,7 +118,7 @@ public class ProcessorTest {
             }
         }
         // if we can not see the target replan.
-        return mapper.clearView(planner.getCurrentPosition(), planner.getTarget(), buffer);
+        return mapper.isClearPath(planner.getCurrentPosition(), planner.getTarget(), buffer);
     }
 
     private void doTest(Location startCoord, Location finalCoord) {
@@ -164,7 +164,7 @@ public class ProcessorTest {
         System.out.println("Solution");
         solution.stream().forEach(System.out::println);
         System.out.println( "SUCCESS");
-        solution.simplify( (a,b) -> map.clearView(a, b, buffer));
+        solution.simplify( (a,b) -> map.isClearPath(a, b, buffer));
         System.out.println("Solution 2");
         solution.stream().forEach(System.out::println);
         

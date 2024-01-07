@@ -73,20 +73,12 @@ public class WktDataType extends BaseDatatype {
         return Geometry.class;
     }
 
-//    /**
-//     * This method Un-parses the JTS Geometry to the WKT literal
-//     *
-//     * @param geometry - the JTS Geometry to be un-parsed
-//     * @return WKT - the returned WKT Literal.
-//     * <br> Notice that the Spatial Reference System is not specified in
-//     * returned WKT literal.
-//     *
-//     */
     @Override
     public String unparse(Object geometry) {
         if (geometry instanceof Geometry) {
             Geometry geom = (Geometry) geometry;
             String result = geom.toText();
+            String other = geom.toString();
             if (cache != null) {
                 cache.put(result, geom);
             }

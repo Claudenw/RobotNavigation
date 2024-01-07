@@ -131,6 +131,7 @@ public class MapImplTest {
 
     @Test
     public void getStepTest() {
+        setup();
         Optional<Step> pr = underTest.getStep(Location.from(p));
         assertTrue(pr.isPresent());
         assertEquals(0, CoordUtils.XYCompr.compare(p, pr.get().getCoordinate()));
@@ -294,9 +295,9 @@ public class MapImplTest {
         Coordinate a = new Coordinate(-3, -4);
         Coordinate b = new Coordinate(-3, -2);
 
-        assertFalse(underTest.clearView(a, b, buffer));
+        assertFalse(underTest.isClearPath(a, b, buffer));
         b = new Coordinate(-4, -4);
-        assertTrue(underTest.clearView(a, b, buffer));
+        assertTrue(underTest.isClearPath(a, b, buffer));
     }
 
     @Test
@@ -372,7 +373,7 @@ public class MapImplTest {
         result = underTest.addObstacle(obst3);
         System.out.println(MapReports.dumpModel(underTest));
         System.out.println( obst2.wkt());
-        assertEquals(2, underTest.getObstacles().size());
+        assertEquals(1, underTest.getObstacles().size());
     }
     
     @Test

@@ -23,10 +23,10 @@ import org.xenei.robot.mapper.rdf.WktDataType;
 
 public class GeometryUtils {
 
-    private final GeometryFactory geometryFactory;
+    private final RobutContext ctxt;
     
-    public GeometryUtils(GeometryFactory geometryFactory) {
-        this.geometryFactory = geometryFactory;
+    public GeometryUtils(RobutContext ctxt) {
+        this.ctxt = ctxt;
     }
 
     public Polygon asPolygon(Coordinate coord, double radius) {
@@ -46,7 +46,7 @@ public class GeometryUtils {
             angle += radians;
         }
         cell[edges] = cell[0];
-        return geometryFactory.createPolygon(cell);
+        return ctxt.geometryFactory.createPolygon(cell);
     }
 
     public Polygon asPolygon(FrontsCoordinate coord, double radius) {
@@ -62,11 +62,11 @@ public class GeometryUtils {
     }
 
     public Polygon asPolygon(Coordinate... coord) {
-        return geometryFactory.createPolygon(coord);
+        return ctxt.geometryFactory.createPolygon(coord);
     }
 
     public Polygon asPolygon(Collection<Coordinate> coord) {
-        return geometryFactory.createPolygon(coord.toArray(new Coordinate[coord.size()]));
+        return ctxt.geometryFactory.createPolygon(coord.toArray(new Coordinate[coord.size()]));
     }
 
 //    public Coordinate[] pathSegment(double width, Coordinate a, Coordinate b) {
@@ -80,9 +80,9 @@ public class GeometryUtils {
 //    }
 
     public Geometry addBuffer(double buffer, Geometry initial) {
-        if (buffer < geometryFactory.getPrecisionModel().getScale()) {
-            return initial;
-        }
+//        if (buffer < ctxt.geometryFactory.getPrecisionModel().getScale()) {
+//            return initial;
+//        }
         BufferOp bufOp = new BufferOp(initial);
         bufOp.setEndCapStyle(BufferParameters.CAP_ROUND);//BufferOp.CAP_BUTT);
         return bufOp.getResultGeometry(buffer/2);
@@ -118,7 +118,7 @@ public class GeometryUtils {
     }
 
     public Point asPoint(Coordinate c) {
-        return geometryFactory.createPoint(c);
+        return ctxt.geometryFactory.createPoint(c);
     }
 
     public Point asPoint(FrontsCoordinate c) {
@@ -126,6 +126,6 @@ public class GeometryUtils {
     }
 
     public LineString asLine(Coordinate... coords) {
-        return geometryFactory.createLineString(coords);
+        return ctxt.geometryFactory.createLineString(coords);
     }
 }

@@ -31,7 +31,7 @@ public interface Map {
      * @param dest the coordinates to end it
      * @return true if there are no obstacles between source and dest.
      */
-    boolean clearView(Coordinate source, Coordinate dest, double buffer);
+    boolean isClearPath(Coordinate source, Coordinate dest, double buffer);
 
     /**
      * Add the target to the planning

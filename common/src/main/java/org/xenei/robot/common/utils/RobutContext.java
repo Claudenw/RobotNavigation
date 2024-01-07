@@ -26,7 +26,7 @@ public class RobutContext {
         RIOT.getContext().put(symbol, this);
         this.scaleInfo = scaleInfo;
         this.geometryFactory = new GeometryFactory(scaleInfo.getPrecisionModel());
-        this.geometryUtils = new GeometryUtils(geometryFactory);
+        this.geometryUtils = new GeometryUtils(this);
         this.graphGeomFactory = new GraphGeomFactory(geometryUtils);
         Namespace.init(this);
     }
