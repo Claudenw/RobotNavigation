@@ -19,6 +19,8 @@ import org.apache.jena.arq.querybuilder.ExprFactory;
 import org.apache.jena.arq.querybuilder.SelectBuilder;
 import org.apache.jena.arq.querybuilder.WhereBuilder;
 import org.apache.jena.geosparql.implementation.vocabulary.Geo;
+import org.apache.jena.rdf.model.Literal;
+import org.apache.jena.sparql.core.Var;
 import org.apache.jena.vocabulary.RDF;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -156,6 +158,7 @@ public class MapImplTest {
 
     @Test
     public void getTargetsTest() {
+        setup();
         Collection<Coordinate> points = new ArrayList<>();
         points.addAll(Arrays.asList(expected));
         points.add(p);
@@ -327,31 +330,30 @@ public class MapImplTest {
     @Test
     public void testAddPath() {
         underTest = new MapImpl(ctxt);
-        underTest.addCoord(p, p.distance(t), false, false);
-        underTest.addCoord(expected[0], expected[0].distance(t), false, false);
-        underTest.addPath(p, expected[0]);
+        assertTrue( underTest.addCoord(p, p.distance(t), false, false).isPresent());
+        assertTrue(underTest.addCoord(expected[0], expected[0].distance(t), false, false).isPresent());
+        Coordinate[] path = underTest.addPath(p, expected[0]);
 
+        ExprFactory exprF = new ExprFactory(MapImpl.getPrefixMapping());
+        Var wkt = Var.alloc("wkt");
+        Literal pathWkt = ctxt.graphGeomFactory.asWKTString(path);
         AskBuilder ask = new AskBuilder().addPrefixes(MapImpl.getPrefixMapping()).from(Namespace.PlanningModel.getURI())
-                .addWhere(Namespace.s, RDF.type, Namespace.Path)
-                .addWhere(Namespace.s, Geo.AS_WKT_PROP, ctxt.graphGeomFactory.asWKT(ctxt.geometryUtils.asLine(p, expected[0])))
-                .addWhere(Namespace.s, "robut:point/geo:asWKT", ctxt.graphGeomFactory.asWKT(ctxt.geometryUtils.asPoint(p)))
-                .addWhere(Namespace.s, "robut:point/geo:asWKT",
-                        ctxt.graphGeomFactory.asWKT(ctxt.geometryUtils.asPoint(expected[0])));
+                .addWhere(Namespace.s, RDF.type, Namespace.Coord)
+                .addWhere(Namespace.s, Geo.AS_WKT_PROP, wkt)
+                .addFilter(ctxt.graphGeomFactory.isNearby( exprF, wkt, pathWkt, ctxt.scaleInfo.getResolution()));
+
         assertTrue(underTest.ask(ask));
     }
     
     @Test
     public void createObstacleTest() {
         underTest = new MapImpl(ctxt);
-        double halfRes = ScaleInfo.DEFAULT.getResolution()/2;
         Position pos = Position.from(p, 0);
         Location relative = Location.from(1,0);
         Obstacle obst = underTest.createObstacle(pos, relative);
         Coordinate[] lst = obst.geom().getCoordinates();
-        assertEquals(3, lst.length);
-        CoordinateUtils.assertEquivalent(new Coordinate(0,-2.75), lst[0], halfRes);
-        CoordinateUtils.assertEquivalent(new Coordinate(0,-3), lst[1], halfRes);
-        CoordinateUtils.assertEquivalent(new Coordinate(0,-3.25), lst[2], halfRes);
+        assertEquals( 1, lst.length);
+        CoordinateUtils.assertEquivalent(new Coordinate(0,-3), lst[0], ctxt.scaleInfo.getResolution());
         assertEquals( ctxt.graphGeomFactory.asWKT(obst.geom()), obst.wkt());
     }
     

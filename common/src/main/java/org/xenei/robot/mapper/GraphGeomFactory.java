@@ -46,6 +46,7 @@ public final class GraphGeomFactory {
         return asWKT(geometryUtils.asPoint(point));
     }
 
+    /** TODO rename as Line */
     public Literal asWKTString(Coordinate... points) {
         return asWKT(geometryUtils.asLine(points));
     }
@@ -84,7 +85,7 @@ public final class GraphGeomFactory {
     
     @SuppressWarnings("unchecked")
     public Expr isNearby(ExprFactory exprF, Object geo1, Object geo2, Object distance) {
-        return exprF.call(Namespace.nearbyF, geo1, geo2, distance);
+        return exprF.call(Namespace.nearbyF, exprF.asExpr(geo1), exprF.asExpr(geo2), exprF.asExpr(distance));
     }
 
     public Resource asRDF(Coordinate a, Resource type) {

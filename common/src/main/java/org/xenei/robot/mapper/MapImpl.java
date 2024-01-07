@@ -312,24 +312,10 @@ public class MapImpl implements Map {
         lst.stream().forEach(c -> points[idx[0]++] = c.getCoordinate());
         Literal path = ctxt.graphGeomFactory.asWKTString(points);
         Resource tn = ResourceFactory.createResource();
-        UpdateRequest req = new UpdateRequest();
-        WhereBuilder wb = new WhereBuilder();
         List<Triple> triples = new ArrayList<>();
         triples.add(Triple.create(tn.asNode(), RDF.type.asNode(), Namespace.Path.asNode()));
         triples.add(Triple.create(tn.asNode(), Geo.AS_WKT_PROP.asNode(), path.asNode()));
-        int i = 0;
-        for (MapCoordinate c : lst) {
-            Optional<UpdateBuilder> updt = addBuilder(Namespace.PlanningModel, c, Namespace.Coord,
-                    cell(c.getCoordinate()));
-            if (updt.isPresent()) {
-                req.add(updt.get().build());
-            }
-            Var v = Var.alloc("c" + i++);
-            triples.add(Triple.create(tn.asNode(), Namespace.point.asNode(), v));
-            wb.addWhere(v, Namespace.x, c.getX()).addWhere(v, Namespace.y, c.getY());
-        }
-        req.add(new UpdateBuilder().addInsert(model, triples).addGraph(Namespace.PlanningModel, wb).build());
-        doUpdate(req);
+        doUpdate(new UpdateBuilder().addInsert(model, triples));
         LOG.debug("Path <{} {}>", points[0], points[points.length - 1]);
         return points;
     }
@@ -388,15 +374,15 @@ public class MapImpl implements Map {
     }
 
     public boolean hasPath(Location a, Location b) {
-        Var ra = Var.alloc("a");
-        Var rb = Var.alloc("b");
-        MapCoordinate mapA = new MapCoordinate(a);
-        MapCoordinate mapB = new MapCoordinate(b);
+        Var wkt = Var.alloc("wkt");
+        Literal mapA = ctxt.graphGeomFactory.asWKT(a.getCoordinate());
+        Literal mapB = ctxt.graphGeomFactory.asWKT(b.getCoordinate());
+        
+        WhereBuilder wb = new WhereBuilder().addWhere(Namespace.s, RDF.type, Namespace.Path) //
+                .addWhere(Namespace.s, Geo.AS_WKT_NODE, wkt)
+                .addFilter(ctxt.graphGeomFactory.isNearby(exprF, wkt, mapA, ctxt.scaleInfo.getResolution()))
+                .addFilter(ctxt.graphGeomFactory.isNearby(exprF, wkt, mapB, ctxt.scaleInfo.getResolution()));
 
-        WhereBuilder wb = new WhereBuilder().addWhere(Namespace.s, RDF.type, Namespace.Path)
-                .addWhere(Namespace.s, Namespace.point, ra).addWhere(Namespace.s, Namespace.point, rb)
-                .addWhere(ra, Namespace.x, mapA.getX()).addWhere(ra, Namespace.y, mapA.getY())
-                .addWhere(rb, Namespace.x, mapB.getX()).addWhere(rb, Namespace.y, mapB.getY());
         AskBuilder ask = new AskBuilder().addGraph(Namespace.UnionModel, wb);
         return ask(ask);
     }
