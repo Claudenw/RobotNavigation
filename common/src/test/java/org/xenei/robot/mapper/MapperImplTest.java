@@ -4,12 +4,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -66,6 +68,7 @@ public class MapperImplTest {
         Coordinate mapValue = new Coordinate(5,5);
         Map map = Mockito.mock(Map.class);
         when(map.getContext()).thenReturn(ctxt);
+        when(map.createObstacle(any(),any())).thenReturn(obstacle);
         when(map.addObstacle(any())).thenReturn( Set.of(obstacle));
         when(map.adopt(any())).thenReturn(mapValue);
         Mapper underTest = new MapperImpl(map);
@@ -78,7 +81,7 @@ public class MapperImplTest {
         
         verify(map).updateIsIndirect(coordinateCaptor.capture(), doubleCaptor.capture(), setCaptor.capture());
         assertEquals(1,setCaptor.getValue().size());
-        CoordinateUtils.assertEquivalent(mapValue, setCaptor.getValue().iterator().next());
+        assertEquals(obstacle, setCaptor.getValue().iterator().next());
         
         // verify obstacle was added
         verify(map).addObstacle(obstacleCaptor.capture());
@@ -91,13 +94,16 @@ public class MapperImplTest {
 
         Position currentPosition = Position.from(-1, -3, AngleUtils.RADIANS_90);
         Coordinate target = new Coordinate(-1, 1);
+        Step step = Mockito.mock(Step.class);
         
         Obstacle obstacle = Mockito.mock(Obstacle.class);
         Map map = Mockito.mock(Map.class);
         when(map.getContext()).thenReturn(ctxt);
+        when(map.createObstacle(any(),any())).thenReturn(obstacle);
         when(map.addObstacle(any())).thenReturn( Set.of(obstacle));
         when(map.adopt(any())).thenReturn( new Coordinate(-1, -2));
         when(map.isObstacle(any())).thenReturn( false );
+        when(map.addCoord(any(), anyDouble(), anyBoolean(), anyBoolean())).thenReturn(Optional.of(step));
         Mapper underTest = new MapperImpl(map);
 
         Location[] obstacles = { Location.from(CoordUtils.fromAngle(0, 2)) };
@@ -107,7 +113,7 @@ public class MapperImplTest {
         // verify indirects updated
         verify(map).updateIsIndirect(coordinateCaptor.capture(), doubleCaptor.capture(), setCaptor.capture());
         assertEquals(1,setCaptor.getValue().size());
-        CoordinateUtils.assertEquivalent(new Coordinate(2,0), setCaptor.getValue().iterator().next());
+        assertEquals(obstacle, setCaptor.getValue().iterator().next());
 
         // verify obstacle was added
         verify(map).addObstacle(obstacleCaptor.capture());
@@ -118,7 +124,6 @@ public class MapperImplTest {
         ArgumentCaptor<Boolean> two = ArgumentCaptor.forClass(Boolean.class);
         verify(map).addCoord(coordinateCaptor.capture(), doubleCaptor.capture(), one.capture(), two.capture());
         CoordinateUtils.assertEquivalent(new Coordinate(-1,-2), coordinateCaptor.getValue());
-
     }
     
 //    @Test

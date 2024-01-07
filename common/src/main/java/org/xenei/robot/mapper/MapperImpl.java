@@ -44,9 +44,6 @@ public class MapperImpl implements Mapper {
         List.of(obstacles).forEach(mapper::doMap);
         map.updateIsIndirect(target, buffer, mapper.newObstacles);
         
-        System.out.println(MapReports.dumpObstacleDistance((MapImpl)map));
-        System.out.println(MapReports.dumpModel((MapImpl)map));
-        
         return mapper.coordSet.stream()
                 .map(c -> map.addCoord(c, c.distance(target), false, !map.isClearPath(c, target, buffer)))
                 .flatMap( Optional::stream ).collect(Collectors.toList());
