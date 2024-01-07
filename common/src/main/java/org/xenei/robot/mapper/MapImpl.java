@@ -802,17 +802,12 @@ public class MapImpl implements Map {
 
         @Override
         public int hashCode() {
-            return wkt.hashCode();
+            return Obstacle.hashCode(this);
         }
 
         @Override
         public boolean equals(Object obj) {
-            if (this == obj)
-                return true;
-            if ((obj == null) || (getClass() != obj.getClass()))
-                return false;
-            ObstacleImpl other = (ObstacleImpl) obj;
-            return Objects.equals(wkt, other.wkt);
+            return Obstacle.equalsImpl(this, obj);
         }
         
         @Override
