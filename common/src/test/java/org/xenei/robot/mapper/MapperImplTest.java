@@ -125,30 +125,4 @@ public class MapperImplTest {
         verify(map).addCoord(coordinateCaptor.capture(), doubleCaptor.capture(), one.capture(), two.capture());
         CoordinateUtils.assertEquivalent(new Coordinate(-1,-2), coordinateCaptor.getValue());
     }
-    
-//    @Test
-//    public void processSensorDataTest() {
-//        
-//        Position currentPosition = Position.from(-1, -3, AngleUtils.RADIANS_90);
-//        Coordinate target = new Coordinate(-1, 1);
-//        Map map = new MapImpl(ScaleInfo.DEFAULT);
-//        
-//        Mapper underTest = new MapperImpl(map);
-//        
-//        underTest.processSensorData(currentPosition, 0.5, target, )
-//        
-//        @Override
-//        public List<Step> processSensorData(Position currentPosition, double buffer, Coordinate target,
-//                Location[] obstacles) {
-//
-//            LOG.debug("Sense position: {}", currentPosition);
-//
-//            ObstacleMapper mapper = new ObstacleMapper(currentPosition, buffer, target);
-//            List.of(obstacles).forEach(mapper::doMap);
-//            map.updateIsIndirect(target, buffer, mapper.newObstacles);
-//            return mapper.coordSet.stream()
-//                    .map(c -> map.addCoord(c, c.distance(target), false, !map.clearView(c, target, buffer)))
-//                    .collect(Collectors.toList());
-//        }
-//    }
 }
