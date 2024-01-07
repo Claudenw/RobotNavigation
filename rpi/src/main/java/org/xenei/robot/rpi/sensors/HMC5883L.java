@@ -1,8 +1,6 @@
 package org.xenei.robot.rpi.sensors;
 
-import org.xenei.robot.common.AngleUnits;
-import org.xenei.robot.common.AngleUtils;
-import org.xenei.robot.common.Coordinates;
+import org.xenei.robot.common.utils.AngleUtils;
 
 import com.diozero.api.I2CDevice;
 
@@ -40,7 +38,7 @@ public class HMC5883L {
     private static final int CONTROLLER = 1;
     private static final int ADDRESS = 0x1E;
     private byte gain;
-    private final I2CDevice device = new I2CDevice(1, ADDRESS);
+    private final I2CDevice device = new I2CDevice(CONTROLLER, ADDRESS);
     private float declination;
 
     public class Scaled {
@@ -87,15 +85,25 @@ public class HMC5883L {
         device.writeByteData(Register.MODE.reg, mode.state);
     }
 
-    public void setDeclination(float value, AngleUnits units) {
-        declination = units == AngleUnits.DEGREES ? (float) Math.toRadians(value) : value;
+    /**
+     * Set the declination in radians
+     * 
+     * @param value
+     */
+    public void setDeclination(float value) {
+        declination = value;
     }
 
-    public double getHeading(AngleUnits units) {
+    /**
+     * Gets the headings in radians.
+     * 
+     * @return
+     */
+    public double getHeading() {
         Scaled scaled = new Scaled();
         double heading = Math.atan2(scaled.YAxis, scaled.XAxis);
         heading = AngleUtils.normalize(heading + declination);
-        return (units == AngleUnits.DEGREES) ? Math.toDegrees(heading) : heading;
+        return heading;
 
     }
 

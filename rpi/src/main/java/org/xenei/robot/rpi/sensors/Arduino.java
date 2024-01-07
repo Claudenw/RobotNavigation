@@ -2,10 +2,10 @@ package org.xenei.robot.rpi.sensors;
 
 import java.util.Arrays;
 
-import org.xenei.robot.common.AngleUnits;
-import org.xenei.robot.common.Coordinates;
+import org.xenei.robot.common.Location;
 import org.xenei.robot.common.DistanceSensor;
-import org.xenei.robot.common.TimingUtils;
+import org.xenei.robot.common.utils.CoordUtils;
+import org.xenei.robot.common.utils.TimingUtils;
 
 import com.diozero.api.I2CDevice;
 
@@ -25,14 +25,14 @@ public class Arduino implements DistanceSensor {
     }
 
     @Override
-    public Coordinates[] sense() {
+    public Location[] sense() {
         byte b = device.readByte();
         int dist = 0xFF & b;
-        Coordinates c = Coordinates.fromAngle(0, AngleUnits.DEGREES, dist);
-        return new Coordinates[] { c };
+        Location c = Location.from( CoordUtils.fromAngle(0, dist));
+        return new Location[] { c };
     }
 
-    public static void main(String[] args) throws InterruptedException {
+    public static void main(String[] args) {
         Arduino sensor = new Arduino();
         while (true) {
             Arrays.stream(sensor.sense()).forEach(System.out::println);

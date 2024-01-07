@@ -1,127 +1,153 @@
 package org.xenei.robot.common;
 
-import org.apache.commons.math3.util.Precision;
-import org.xenei.robot.common.utils.PointUtils;
+import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.geom.Point;
+import org.xenei.robot.common.utils.AngleUtils;
+import org.xenei.robot.common.utils.RobutContext;
+import org.xenei.robot.common.utils.CoordUtils;
+import org.xenei.robot.common.utils.DoubleUtils;
+import org.xenei.robot.common.utils.GeometryUtils;
 
-import mil.nga.sf.Point;
+public interface Position extends Location {
 
-public class Position extends Coordinates {
-    public static final double DELTA = 0.0000000001;
+    static Position from(Coordinate c, double head) {
+        return new Position() {
+            double heading = head;
+            UnmodifiableCoordinate coord = UnmodifiableCoordinate.make(c);
 
-    private double heading;
+            @Override
+            public UnmodifiableCoordinate getCoordinate() {
+                return coord;
+            }
 
-    public Position() {
-        this(0.0, 0.0);
+            @Override
+            public double getHeading() {
+                return heading;
+            }
+
+            @Override
+            public String toString() {
+                return String.format("Position[ %s heading:%.4f ]", CoordUtils.toString(this.getCoordinate(), 4),
+                        Math.toDegrees(getHeading()));
+            }
+        };
     }
 
-    public Position(Point point) {
-        this(point, 0.0);
+    /**
+     * Constructs a position from a point with a heading of 0.0.
+     * 
+     * @param point the point to to center the position on.
+     */
+    static Position from(FrontsCoordinate point) {
+        return from(point.getCoordinate(), 0.0);
     }
 
-    public Position(Point point, double heading) {
-        super(point);
-        this.heading = heading;
+    /**
+     * Constructs a position from a point with a heading of 0.0.
+     * 
+     * @param point the point to to center the position on.
+     */
+    static Position from(Coordinate point) {
+        return from(point, 0.0);
     }
 
-    public Position(double x, double y) {
-        this(x, y, 0.0);
+    /**
+     * Constructs a position from a point an a heading.
+     * 
+     * @param point the point ot center the position on.
+     * @param heading the heading in radians.
+     */
+    static Position from(FrontsCoordinate point, double heading) {
+        return from(point.getCoordinate(), heading);
     }
 
-    public Position(double x, double y, double heading) {
-        super(x, y);
-        this.heading = heading;
+    /**
+     * Constructs a position from an X and Y coordinates with a heading of 0.0
+     * 
+     * @param x the x position.
+     * @param y the y position.
+     */
+    static Position from(double x, double y) {
+        return from(new Coordinate(x, y), 0.0);
     }
 
-    @Override
-    public Position quantize() {
-        return isQuantized() ? this : new Position(super.quantize(), heading);
+    /**
+     * Constructs a position from an X and Y coordinates with the specified heading.
+     * 
+     * @param x the x position.
+     * @param y the y position.
+     * @param heading the heading in radians.
+     */
+    static Position from(double x, double y, double heading) {
+        return from(new Coordinate(x, y), heading);
     }
 
-    public double getHeading(AngleUnits units) {
-        return units == AngleUnits.RADIANS ? heading : Math.toDegrees(heading);
+    /**
+     * Gets the heading.
+     * 
+     * @return the heading in radians
+     */
+    double getHeading();
+
+    default double headingTo(Coordinate heading) {
+        return AngleUtils.normalize(Math.atan2(heading.getY() - this.getY(), heading.getX() - this.getX()));
     }
 
-    public void setHeading(double radians) {
-        this.heading = radians;
-    }
-
-    public void setHeading(Point heading) {
-        this.heading = angleTo(heading);
+    default double headingTo(FrontsCoordinate heading) {
+        return headingTo(heading.getCoordinate());
     }
 
     /**
      * Calculates the next position.
+     * <p>
+     * The heading is will be the theta from the relative coordinates.
+     * </p>
      * 
-     * @param cmd The relative coordinates to move to.
-     * @return the new Position with a heading the same as the cmd.
+     * @param relativeCoordinates The coordinates relative to this position to move
+     * to.
+     * @return the new Position centered on the new position with the proper
+     * heading.
      */
-    public Position nextPosition(Coordinates cmd) {
-        if (cmd.getRange() == 0) {
-            return new Position(getX(), getY(), cmd.getTheta(AngleUnits.RADIANS));
+    default Position nextPosition(Location relativeCoordinates) {
+        if (relativeCoordinates.range() == 0) {
+            return this;
         }
-        return new Position(PointUtils.plus(this, cmd), cmd.getTheta(AngleUnits.RADIANS));
+
+        double x = AngleUtils.RADIANS_90;
+        
+        double range = relativeCoordinates.range();
+        double thetar = relativeCoordinates.theta();
+        double thetah = this.getHeading();
+
+        double apime = AngleUtils.normalize(thetah + thetar);
+        //double apime = thetah + thetar;
+
+        //Coordinate c = CoordUtils.fromAngle(apime, range);
+        Coordinate a = this.plus(CoordUtils.fromAngle(apime, range));
+        return Position.from(a, apime);
     }
 
-    /**
-     * Checks if this postion will strike the obstacle within the specified
-     * distance.
-     * 
-     * @param obstacle the obstacle to check.
-     * @param radius the size of the obstacle.
-     * @param distance the maximum distance to check.
-     * @return True if the obstacle will be struck fasle otherwise.
-     */
-    public boolean checkCollision(Point obstacle, double radius, double distance) {
-
-        Coordinates m = Coordinates.fromXY(PointUtils.minus( obstacle, this ));
-
-        if (distance < m.getRange()) {
-            return false;
+    default Location relativeLocation(Coordinate absoluteLocation) {
+        double range = distance(absoluteLocation);
+        if (range == 0) {
+            return Location.ORIGIN;
         }
-        if (m.getRange() < radius) {
-            return true;
-        }
+        // double x = this.getX() - absoluteLocation.getX();
+        // double y = this.getY() - absoluteLocation.getY();
+        double theta = this.headingTo(absoluteLocation) - this.getHeading();
 
-        double sin = Math.sin(heading);
-        double cos = Math.cos(heading);
-        double d = Math.abs(cos * (getY() - obstacle.getY()) - sin * (getX() - obstacle.getX()));
-
-        if (d < radius) {
-            // ensure that it is along our heading
-            return rightDirection(cos, m.getX()) && rightDirection(sin, m.getY());
-        }
-        return false;
+        return Location.from(CoordUtils.fromAngle(theta, range));
     }
 
-    /**
-     * Returns true if the target is not obstructed by the obstacle.
-     * 
-     * @param target
-     * @param obstacle
-     * @param maxDist
-     * @return
-     */
-    public boolean hasClearView(Point target, Point obstacle) {
-        double maxDist = distanceTo(target);
-        boolean td = (distanceTo(obstacle) - Coordinates.POINT_RADIUS) < (maxDist + Coordinates.POINT_RADIUS);
-
-        if (td) {
-            // in range to check
-            return !checkCollision(obstacle, Coordinates.POINT_RADIUS, maxDist);
-        }
-        return true;
+    default boolean checkCollision(RobutContext ctxt, FrontsCoordinate fc, double tolerance) {
+        return checkCollision(ctxt, fc.getCoordinate(), tolerance);
     }
 
-    private boolean rightDirection(double trig, double delta) {
-        if (Precision.equals(trig, 0, 2 * Precision.EPSILON)) {
-            return true;
-        }
-        return (trig < 0) ? delta <= 0 : delta >= 0;
-    }
-
-    @Override
-    public String toString() {
-        return String.format("Position[ %s heading:%.4f ]", PointUtils.toString(this, 4), Math.toDegrees(heading));
+    default boolean checkCollision(RobutContext ctxt, Coordinate c, double tolerance) {
+        Coordinate l = CoordUtils.fromAngle(getHeading(), distance(c));
+        double d = ctxt.geometryUtils.asPath(tolerance, this.getCoordinate(), l).distance(ctxt.geometryUtils.asPoint(c));
+        return DoubleUtils.inRange(d, tolerance/2);
     }
 
 }

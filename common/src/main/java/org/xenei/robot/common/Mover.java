@@ -1,17 +1,19 @@
 package org.xenei.robot.common;
 
-import mil.nga.sf.Point;
-
 public interface Mover {
     /**
      * Move to the specified location
+     * 
      * @param location The relative location to move to.
      * @return the new unquantized absolute position.
      */
-    Position move(Coordinates location);
+    Position move(Location location);
 
     /**
-     * @return the current unquantized absolute position.
+     * @return the current absolute position.
      */
     Position position();
+
+    void setHeading(double heading);
+
 }

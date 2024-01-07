@@ -1,7 +1,7 @@
 package org.xenei.robot.common.testUtils;
 
-import org.xenei.robot.common.CoordinateMap;
-import org.xenei.robot.common.CoordinateMapBuilder;
+import org.xenei.robot.common.mapping.CoordinateMap;
+import org.xenei.robot.common.mapping.CoordinateMapBuilder;
 
 public class MapLibrary {
 
@@ -58,8 +58,8 @@ public class MapLibrary {
     public static CoordinateMap map2(char c) {
         CoordinateMapBuilder b = new CoordinateMapBuilder(1);
 
-        b.border( -5, -5, 9, 9, c );
-        
+        b.border(-5, -5, 9, 9, c);
+
         b.setX(-1, -3, 1, c);
 
         return b.build();
@@ -68,23 +68,23 @@ public class MapLibrary {
     public static CoordinateMap map3(char c) {
         CoordinateMapBuilder b = new CoordinateMapBuilder(1);
 
-        b.border( -5, -5, 9, 9, c );
-        
+        b.border(-5, -5, 9, 9, c);
+
         b.setX(-1, -3, 1, c);
         b.setY(0, 0, 2, c);
 
         return b.build();
     }
-    
+
     public static void main(String[] args) {
-        System.out.println( "MAP 1");
+        System.out.println("MAP 1");
         System.out.println(map1('#'));
         System.out.println();
-        
-        System.out.println( "MAP 2");
+
+        System.out.println("MAP 2");
         System.out.println(map2('#'));
-        
-        System.out.println( "MAP 3");
+
+        System.out.println("MAP 3");
         System.out.println(map3('#'));
     }
 
