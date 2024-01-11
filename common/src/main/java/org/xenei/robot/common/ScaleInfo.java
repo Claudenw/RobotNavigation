@@ -1,5 +1,6 @@
 package org.xenei.robot.common;
 
+import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.PrecisionModel;
 import org.xenei.robot.common.utils.DoubleUtils;
 
@@ -45,7 +46,21 @@ public final class ScaleInfo {
     public PrecisionModel getPrecisionModel() {
         return precisionModel;
     }
+    
+    public double precise(double d) {
+        return DoubleUtils.truncate(d, decimalPlaces);
+    }
+    
+    public Coordinate precise(Coordinate c) {
+        return new Coordinate(precise(c.getX()),precise(c.getY()));
 
+    }
+
+    /**
+     * Puts the value within a cell on a map.
+     * @param value
+     * @return
+     */
     public double scale(double value) {
         long scaledValue = (long) Math.floor((Math.abs(value) * scale * truncationFactor) + (modulusFactor / 2.0));
         scaledValue -= scaledValue % modulusFactor;

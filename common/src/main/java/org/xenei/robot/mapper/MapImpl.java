@@ -3,6 +3,7 @@ package org.xenei.robot.mapper;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -761,6 +762,7 @@ public class MapImpl implements Map {
 
         ObstacleImpl(Position startPostition, Location relativeLocation) {
             Position absoluteObstacle = startPostition.nextPosition(relativeLocation);
+            absoluteObstacle = Position.from( ctxt.scaleInfo.precise(absoluteObstacle.getCoordinate()),absoluteObstacle.getHeading());
             geom = ctxt.geometryUtils.asPoint(absoluteObstacle);
             wkt = ctxt.graphGeomFactory.asWKT(geom);
             uuid = UUID.randomUUID();
@@ -818,22 +820,25 @@ public class MapImpl implements Map {
 
     private class ObstacleHandler {
 
-        private Geometry[] merge(Obstacle obstacle, Collection<? extends Obstacle> others) {
-            LineMerger merger = new LineMerger();
-            merger.add(obstacle.geom());
-            others.stream().map(Obstacle::geom).forEach(merger::add);
-
-            @SuppressWarnings("unchecked")
-            Collection<Geometry> collection = merger.getMergedLineStrings();
-            return collection.toArray(new Geometry[collection.size()]);
-        }
-
         private Geometry makeCloud(Obstacle obstacle, Collection<? extends Obstacle> others) {
             Set<Coordinate> cSet = new HashSet<>();
             Consumer<Obstacle> co = o -> Arrays.stream(o.geom().getCoordinates()).forEach(cSet::add);
             co.accept(obstacle);
             others.forEach(co);
+            
+            Coordinate[] points = null;
+            if (cSet.size() > 2) {
+                PointCloudSorter pcs = new PointCloudSorter(MapImpl.this.getContext(), cSet);
+//                List<LineString> lst = pcs.getResult();
+//                Geometry g = ctxt.geometryFactory.createGeometryCollection(lst.toArray(new LineString[0]));
+//                Geometry g2 = g.union();
+//                return g2.isEmpty() ? g : g2;
+                return pcs.walk();
+            } 
+            points = cSet.toArray(new Coordinate[cSet.size()]);
             return ctxt.geometryFactory.createLineString( cSet.toArray(new Coordinate[cSet.size()]));
+        
+ 
             
            // List<Point> pList = cSet.stream().map(ctxt.geometryFactory::createPoint).collect(Collectors.toList());
             //return ctxt.geometryFactory.buildGeometry(pList).union();
@@ -955,4 +960,5 @@ public class MapImpl implements Map {
             return result;
         }
     }
+
 }
