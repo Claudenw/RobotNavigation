@@ -2,27 +2,41 @@ package org.xenei.robot.rpi.drivers;
 
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
+
+import org.xenei.robot.rpi.utils.DigitalOutputDeviceFactory;
 
 import com.diozero.api.DigitalOutputDevice;
 
 /**
  * Stepper driver for the ULN2003 chip
  */
-public class ULN2003 {
+public class ULN2003 implements AutoCloseable {
     
+    private static DigitalOutputDeviceFactory dodF = i -> new DigitalOutputDevice.Builder(i)
+            .setActiveHigh(true).setInitialValue(false).build();
+
     /**
      * Stride angle for the 28BYJ48 stepper motor.
      */
     public static final double STEPPER_28BYJ48 = 5.625/64;
     
     private final MotorBlock block;
-    private final Timer timer;
+    private final ExecutorService executor;
     private SteppingStatus task;
     private final double revMilliPerStepMin;
     private final double stepsPerRotation;
-    private double taskStarted;
 
+    public static DigitalOutputDeviceFactory setDigitalOutputDeviceFactory(DigitalOutputDeviceFactory factory) {
+        DigitalOutputDeviceFactory old = dodF;
+        dodF = factory;
+        return old;
+    }
+    
     /**
      * 
      * @param mode The Mode of operation.
@@ -34,32 +48,57 @@ public class ULN2003 {
      */
     public ULN2003(Mode mode, double strideAngle, int gpio1, int gpio2, int gpio3, int gpio4) {
         block = new MotorBlock(mode, gpio1, gpio2, gpio3, gpio4);
-        this.timer = new Timer();
+        executor = Executors.newFixedThreadPool(1);;
         // rev/steps * milli/min = revmilli/stepsmin
         double revolutionPerStep = strideAngle/360;
-        double milliPerMin = TimeUnit.MINUTES.convert(1, TimeUnit.MILLISECONDS);
+        double milliPerMin = TimeUnit.MILLISECONDS.convert(1, TimeUnit.MINUTES);
         revMilliPerStepMin = revolutionPerStep * milliPerMin;
-        stepsPerRotation = 306/strideAngle;
+        stepsPerRotation = 360/strideAngle;
     }
 
     private int limit(int value, int min, int max) {
         return (value < min) ? min : (value > max) ? max : value;
     }
 
+    /**
+     * Calculates the number of steps taken from the number of rotations.
+     * @param rotations the number of rotations taken
+     * @return the number of steps taken.
+     */
     public long steps(double rotations) {
         return (long) Math.ceil(rotations*stepsPerRotation);
     }
     
+    /**
+     * Get the number of rotations thus far for this command.
+     * @return the number of rotations.
+     */
     public double rotations() {
         return stepsTaken()/stepsPerRotation;
     }
     
+    /**
+     * Gets the number of steps taken thus far for this command.
+     * @return the number of steps
+     */
     public long stepsTaken() {
         if (task == null) {
             return 0;
         }
         return task.stepsTaken();
     }
+    
+    public boolean active() {
+        return task != null && task.isRunning();
+    }
+    
+
+    @Override
+    public void close() throws Exception {
+        executor.shutdownNow();
+        block.off();
+    }
+
     /**
      * @see https://en.wikipedia.org/wiki/Stepper_motor#/media/File:Drive.png
      */
@@ -74,57 +113,55 @@ public class ULN2003 {
      * 300. Note that high rpm will lead to step loss, so rpm should not be larger
      * than 150.
      */
-    public void run(int steps, int rpm) {
-        if (steps == 0) {
-            stop();
-        }
-        if (task != null) {
-            task.cancel();
-        }
+    public FutureTask<?> run(int steps, int rpm) {
 
-        task = new SteppingStatus(steps);
+        SteppingStatus status = new SteppingStatus(steps);
         
         // revmilli/stepsmin * min/rev = milli/steps (min/rev = 1/rpm)
         long ms_per_step = (long) Math.ceil(revMilliPerStepMin / limit(rpm, 1, 300));
-        
-        timer.schedule(task, 0, ms_per_step);
-    
-        timer.purge();
+        System.out.format( "Scheduling task %s revMilliPerStepMin:%s rpm:%s\n", ms_per_step, revMilliPerStepMin, rpm);
+        FutureTask<SteppingStatus> result = new FutureTask<SteppingStatus>(status);
+        executor.execute(result);
+        return result;
     }
 
     /**
      * Stop a stepper motor.
      */
     private void stop() {
-        if (task != null) {
-            task.cancel();
-        }
-        task = null;
+        executor.shutdownNow();
         block.off();
-        timer.purge();
     }
     
-    private class SteppingStatus extends TimerTask {
-        private int counter[] = {0};
+    private class SteppingStatus implements Callable<SteppingStatus> {
+        private volatile int  count;
         final int initialCounter;
         final boolean fwd;
         
         SteppingStatus(int steps) {
-            initialCounter = limit(Math.abs(steps), -32768, 32767);
-            counter[0] = initialCounter;
+            initialCounter = Math.abs(limit(steps, -32768, 32767));
+            count = initialCounter;
             fwd = steps > 0;
         }
 
         @Override
-        public void run() {
-            block.step(fwd);
-            if (counter[0]-- <= 0) {
-                this.cancel();
+        public SteppingStatus call() {
+            while (count-- >= 0) {
+                block.step(fwd);
             }
+            return this;
         }
         
+        public boolean isRunning() {
+            return count > 0;
+        }
+        
+        /**
+         * Gets the number of steps taken thus far for the command.
+         * @return the number of steps taken.
+         */
         public int stepsTaken() {
-            return initialCounter-counter[0];
+            return initialCounter-count;
         }
     };
 
@@ -177,18 +214,14 @@ public class ULN2003 {
         
         static byte[] map = { 0x8, 0x4, 0x2, 0x1 };
 
-        private static DigitalOutputDevice build(int gpio) {
-            return new DigitalOutputDevice.Builder(gpio).setActiveHigh(true).setInitialValue(false).build();
-        }
-
         public MotorBlock(Mode mode, int gpio1, int gpio2, int gpio3, int gpio4) {
             this.mode = mode;
             this.step = -1;
             this.gpio = new DigitalOutputDevice[4];
-            this.gpio[0] = build(gpio1);
-            this.gpio[1] = build(gpio2);
-            this.gpio[2] = build(gpio3);
-            this.gpio[3] = build(gpio4);
+            this.gpio[0] = dodF.build(gpio1);
+            this.gpio[1] = dodF.build(gpio2);
+            this.gpio[2] = dodF.build(gpio3);
+            this.gpio[3] = dodF.build(gpio4);
         }
 
         public void step(boolean fwd) {
@@ -206,7 +239,7 @@ public class ULN2003 {
             int patternNumber = step / mode.offset();
             byte pattern = steps[patternNumber];
             for (int i = 0; i < 4; i++) {
-                gpio[i].setOn((map[i] & pattern) != 0);
+                gpio[i].setOn((map[i] & pattern) == 0);
             }
         }
 
@@ -216,4 +249,5 @@ public class ULN2003 {
             }
         }
     }
+
 }

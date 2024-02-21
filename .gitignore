@@ -7,4 +7,11 @@ javaImpl/tests.log
 **/.sproject
 **/Release/
 **/*.log
+rpi/build
+rpi/deploy
+rpi/login
+rpi/package
+rpi/send
+**/lib
+
 

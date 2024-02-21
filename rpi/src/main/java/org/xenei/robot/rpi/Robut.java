@@ -17,6 +17,8 @@ import org.xenei.robot.common.mapping.Mapper;
 import org.xenei.robot.common.planning.Solution;
 import org.xenei.robot.common.planning.Step;
 import org.xenei.robot.common.utils.TimingUtils;
+import org.xenei.robot.common.utils.AngleUtils;
+import org.xenei.robot.common.utils.CoordUtils;
 import org.xenei.robot.common.utils.RobutContext;
 import org.xenei.robot.mapper.MapImpl;
 import org.xenei.robot.mapper.MapperImpl;
@@ -27,14 +29,15 @@ import com.diozero.sbc.DeviceFactoryHelper;
 
 
 public class Robut {
-    private Compass compass;
-    private DistanceSensor distSensor;
-    private Map map;
-    private Mapper mapper;
+    private final Compass compass;
+    private final DistanceSensor distSensor;
+    private final Map map;
+    private final Mapper mapper;
     private Position currentPosition;
-    private double buffer =0.5; 
-    private Coordinate target = new Coordinate(500, 500);
-    private Mover mover;
+    private double width = 0.5; // meters
+    private int wheelDiameter = 8; // cm
+    private double maxSpeed = 60; // m/min
+    private final Mover mover;
 
     public Robut(Coordinate origin) {
         compass = new CompassImpl();
@@ -42,11 +45,11 @@ public class Robut {
         map = new MapImpl(new RobutContext(ScaleInfo.DEFAULT));
         mapper = new MapperImpl(map);
         currentPosition = compass.getPosition(origin);
-        
+        mover = new RpiMover(compass, width, wheelDiameter, maxSpeed);
     }
 
     public Collection<Step> readSensors(Coordinate target, Solution solution) {
-        return mapper.processSensorData(currentPosition, buffer, target, distSensor.sense());
+        return mapper.processSensorData(currentPosition, width, target, distSensor.sense());
     }
 
     public void updatePosition() {
@@ -54,32 +57,12 @@ public class Robut {
         System.out.println("Current position: " + currentPosition);
     }
 
-//    public static void main(String[] args) {
-//        Robut r = new Robut(new Coordinate(0, 0));
-//
-//        while (true) {
-//            r.updatePosition();
-//            r.readSensors();
-//            printMap(r);
-//            TimingUtils.delay(500);
-//        }
-//    }
-
-//    private static void printMap(Robut r) {
-//        Set<Location> obstacles = r.map.getObstacles();
-//        double[] max = { Double.MIN_VALUE, Double.MIN_VALUE };
-//        double[] min = { Double.MAX_VALUE, Double.MAX_VALUE };
-//        obstacles.stream().forEach(o -> {
-//            max[0] = Math.max(max[0], o.getX());
-//            max[1] = Math.max(max[1], o.getY());
-//            min[0] = Math.min(min[0], o.getX());
-//            min[1] = Math.min(min[1], o.getY());
-//            System.out.println(o);
-//        });
-//        double scaleX = Math.round((max[0] - min[0]) / 25);
-//        double scaleY = Math.round((max[1] - min[1]) / 80);
-//        CoordinateMap cMap = new CoordinateMap(Math.max(scaleX, scaleY));
-//        cMap.enable(obstacles, '#');
-//        System.out.println(cMap.toString());
-//    }
+    public static void main(String[] args) {
+        System.out.format( "Attempting %s %s\n", args[0], args[1]);
+        Robut r = new Robut(new Coordinate(0, 0));
+        int range = Integer.parseInt(args[1]);
+        double theta = Math.toRadians( Double.parseDouble(args[0]));
+        System.out.format( "%s is the next position", r.mover.move( Location.from(CoordUtils.fromAngle(theta, range))));
+        
+    }
 }
