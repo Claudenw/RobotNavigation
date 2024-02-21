@@ -12,6 +12,6 @@ rpi/deploy
 rpi/login
 rpi/package
 rpi/send
-**/lib
+**/lib/
 
 
