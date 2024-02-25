@@ -20,6 +20,7 @@ unsigned int sonar_readings[SONAR_ITERATIONS];     // Where the ping distances a
 unsigned int current_iteration;                // Keeps track of iteration step.so
 unsigned int sonar_time;
 unsigned long next_trigger;
+short bitcount[] = { 0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4};
 
 NewPing sonar(SONAR_TRIGGER_PIN, SONAR_ECHO_PIN, SONAR_MAX_DISTANCE);  // NewPing setup of pins and maximum distance.
 
@@ -36,7 +37,7 @@ void sonar_cycle_complete() { // All iterations complete, calculate the median.
   unsigned int uS[SONAR_ITERATIONS];
   uint8_t j, it = SONAR_ITERATIONS;
   uS[0] = SONAR_NO_ECHO;
-  //erial.print("Readings: ");
+  //Serial.print("Readings: ");
   for (uint8_t i = 0; i < it; i++) { // Loop through iteration results.
       if (i > 0) {          // Don't start sort till second ping.
         for (j = i; j > 0 && uS[j - 1] < sonar_readings[i]; j--) // Insertion sort loop.
@@ -73,14 +74,29 @@ byte i2c_rcv;  // data received from I2C bus
 //received data handler function
 void i2c_dataRcv(int numBytes) {
   while (Wire.available()) {  // read all bytes received
-    Wire.read();
+    //Serial.print("Read: ");
+    //Serial.println( Wire.read(), HEX );
   }
 }
 
 // requests data handler function
 void i2c_dataRqst() {
 	unsigned int data = sonar_time;
-    Wire.write(data);
+  byte* datap = (byte*) &data;
+  //Serial.print("Sonar: ");
+  //Serial.println( data , HEX );
+  //Serial.print( datap[0], HEX);
+  //Serial.print( " ");
+  //Serial.println(datap[1], HEX);
+  int bits = bitcount[datap[0] & 0xF] + bitcount[(datap[0] >>4) & 0xF]+ bitcount[datap[1] & 0xF] + bitcount[(datap[1] >>4) & 0xF];
+  //Serial.print( "bitcount: ");
+  //Serial.println( bits );
+  datap[1] |= (bits % 2) ? 0x80 : 0x0; 
+  //Serial.print("Sending: ");
+  //Serial.print( data , HEX );
+  //Serial.print(" ");
+  //Serial.println( data  );
+  Wire.write( datap, 2);
 }
 
 void i2c_setup() {
@@ -94,6 +110,7 @@ void i2c_setup() {
   i2c_rcv = 255;
 }
 void setup() {
+
   i2c_setup();
   sonar_setup();
   //Serial.begin(115200);
