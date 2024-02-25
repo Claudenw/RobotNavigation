@@ -1,5 +1,7 @@
 package org.xenei.robot.rpi.sensors;
 
+import java.nio.ByteBuffer;
+import java.nio.ShortBuffer;
 import java.util.Arrays;
 
 import org.xenei.robot.common.Location;
@@ -13,23 +15,32 @@ public class Arduino implements DistanceSensor {
 
     private static final int CONTROLLER = 1;
     private static final int ADDRESS = 0x8;
+    // 343 m/s convert to 2 * m/um (2 x for time out and back)
+    private static final double TIME_TO_M = 58.309;
     private final I2CDevice device;
-
+    private final byte[] buffer;
+    private final ShortBuffer sb;
+    
     public Arduino() {
         device = new I2CDevice(CONTROLLER, ADDRESS);
+        buffer = new byte[2];
+        sb = ByteBuffer.wrap(buffer).asShortBuffer();
     }
 
     @Override
     public double maxRange() {
-        return 200;
+        return 2.0;
     }
 
     @Override
     public Location[] sense() {
-        byte b = device.readByte();
-        int dist = 0xFF & b;
-        Location c = Location.from( CoordUtils.fromAngle(0, dist));
-        return new Location[] { c };
+        device.readBytes(buffer);
+        short timing = sb.get(0);
+        if (timing > 0) {
+            Location c = Location.from( CoordUtils.fromAngle(0, TIME_TO_M / timing));
+            return new Location[] { c };
+        }
+        return new Location[] {};
     }
 
     public static void main(String[] args) {

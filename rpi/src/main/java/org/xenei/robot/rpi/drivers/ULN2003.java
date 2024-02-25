@@ -1,7 +1,5 @@
 package org.xenei.robot.rpi.drivers;
 
-import java.util.Timer;
-import java.util.TimerTask;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -169,17 +167,17 @@ public class ULN2003 implements AutoCloseable {
      * @see https://en.wikipedia.org/wiki/Stepper_motor#/media/File:Drive.png
      */
     public enum Mode {
-        FULL_STEP(2, new byte[] { //
+        FULL_STEP(2, new byte[] { // cycle 8
                 (byte) 0x9, // [1,0,0,1]
                 (byte) 0xC, // [1,1,0,0]
                 (byte) 0x6, // [0,1,1,0]
                 (byte) 0x3, // [0,0,1,1]
-        }), WAVE_DRIVE(3, new byte[] { //
+        }), WAVE_DRIVE(3, new byte[] { // cycle 12
                 (byte) 0x8, // [1,0,0,0]
                 (byte) 0x4, // [0,1,0,0],
                 (byte) 0x2, // [0,0,1,0]
                 (byte) 0x1, // [0,0,0,1]
-        }), HALF_STEP(1, new byte[] { //
+        }), HALF_STEP(1, new byte[] { // cycle 8
                 (byte) 0x9, // [1,0,0,1]
                 (byte) 0x8, // [1,0,0,0]
                 (byte) 0xC, // [1,1,0,0]
@@ -190,56 +188,57 @@ public class ULN2003 implements AutoCloseable {
                 (byte) 0x1, // [0,0,0,1]
         });
 
-        private int offset;
+        /** The number of steps for each pulse */
+        private int pulseLength; 
+        /** the patterns for the motor */
         private byte[] steps;
+        
 
-        Mode(int offset, byte[] steps) {
+        Mode(int pulseLength, byte[] steps) {
             this.steps = steps;
-            this.offset = offset;
+            this.pulseLength = pulseLength;
+        }
+        
+        int adjustPulse(int currentPulse, boolean fwd) {
+            int nextPulse = currentPulse + (fwd ? 1 : -1);
+            int pulsesPerCycle = steps.length * pulseLength;
+            while (nextPulse < 0) {
+                nextPulse += pulsesPerCycle;
+            }
+            return nextPulse % pulsesPerCycle;
+        }
+        
+        int pattern(int pulse) {
+            // number of steps in a complete cycle
+            return steps[(pulse / pulseLength) % steps.length];
         }
 
-        public int offset() {
-            return offset;
-        }
-
-        public byte[] steps() {
-            return steps;
-        }
     };
 
     class MotorBlock {
         private DigitalOutputDevice[] gpio;
-        int step;
-        Mode mode;
+        private int currentPulse;
+        private Mode mode;
         
-        static byte[] map = { 0x8, 0x4, 0x2, 0x1 };
+        private static byte[] map = { 0x8, 0x4, 0x2, 0x1 };
 
         public MotorBlock(Mode mode, int gpio1, int gpio2, int gpio3, int gpio4) {
             this.mode = mode;
-            this.step = -1;
+            this.currentPulse = -1;
             this.gpio = new DigitalOutputDevice[4];
             this.gpio[0] = dodF.build(gpio1);
             this.gpio[1] = dodF.build(gpio2);
             this.gpio[2] = dodF.build(gpio3);
             this.gpio[3] = dodF.build(gpio4);
+            // got to known state.
+            step(true);
         }
 
         public void step(boolean fwd) {
-            byte[] steps = mode.steps();
-            int len = steps.length * mode.offset;
-            if (fwd) {
-                step = Math.floorMod(step + 1, len);
-            } else {
-                step--;
-                if (step<0) {
-                    step = len-1;
-                }
-            }
-            
-            int patternNumber = step / mode.offset();
-            byte pattern = steps[patternNumber];
+            currentPulse = mode.adjustPulse(currentPulse, fwd);
+            int pattern = mode.pattern(currentPulse);
             for (int i = 0; i < 4; i++) {
-                gpio[i].setOn((map[i] & pattern) == 0);
+                gpio[i].setOn((map[i] & pattern) != 0);
             }
         }
 
