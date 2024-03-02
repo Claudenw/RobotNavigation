@@ -4,6 +4,8 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.FutureTask;
 
 import org.locationtech.jts.geom.Coordinate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.xenei.robot.common.Compass;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Mover;
@@ -20,12 +22,14 @@ public class RpiMover implements Mover {
     private double rotationalDistance;
     private int rpm;
     private double r;
+    private static final Logger LOG = LoggerFactory.getLogger(RpiMover.class);
     /**
-     * @param compass the compass implementation to use.
+     * @param compass the compass implementation to use.h
      * @param wheelDiameter the wheel diameter in CM.
      * @param maxSpeed meters / minute.
+     * @throws InterruptedException 
      */
-    RpiMover(Compass compass, double width, int wheelDiameter, double maxSpeed) {
+    RpiMover(Compass compass, double width, int wheelDiameter, double maxSpeed) throws InterruptedException {
         motor[LEFT] = new ULN2003(ULN2003.Mode.FULL_STEP, ULN2003.STEPPER_28BYJ48, 17, 27, 22, 23 );
         motor[RIGHT] = new ULN2003(ULN2003.Mode.FULL_STEP, ULN2003.STEPPER_28BYJ48, 6, 24, 25, 26 );
         position = Position.from(0,0,compass.heading());
@@ -48,14 +52,14 @@ public class RpiMover implements Mover {
         {
             setHeading(nxt.getHeading());
         }
-        
         int rangeSteps = steps(location.range());
+        LOG.debug("Taking {} steps", rangeSteps);
         takeSteps( rangeSteps, rangeSteps );
         return nxt;
     }
     
     private void takeSteps(int left, int right) {
-        System.out.format( "Taking steps %s %s\n", left, right);
+        LOG.debug( String.format("Taking steps %s %s\n", left, right));
         FutureTask<?> leftFuture = motor[LEFT].run(left, rpm);
         FutureTask<?> rightFuture = motor[RIGHT].run(right, rpm);
         try {
@@ -74,7 +78,7 @@ public class RpiMover implements Mover {
 
     @Override
     public Position position() {
-        return position();
+        return position;
     }
 
     @Override
@@ -84,6 +88,9 @@ public class RpiMover implements Mover {
         
         double theta = heading - compass.heading();
         int thetaSteps = steps(theta*r);
+        if (LOG.isDebugEnabled()) {
+            LOG.debug(String.format("Setting heading: %s taking steps: %s %s", Math.toDegrees(heading), -thetaSteps, thetaSteps));
+        }
         takeSteps(-thetaSteps, thetaSteps);
     }
 

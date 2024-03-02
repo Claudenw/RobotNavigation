@@ -12,10 +12,13 @@ import java.util.Stack;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.LineString;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.xenei.robot.common.utils.DoubleUtils;
 import org.xenei.robot.common.utils.RobutContext;
 
 public class PointCloudSorter {
+    private static final Logger LOG = LoggerFactory.getLogger(PointCloudSorter.class);
     RobutContext ctxt;
     List<Coordinate> points = new ArrayList<>();
     DoubleHalfMatrix dMatrix;
@@ -23,7 +26,7 @@ public class PointCloudSorter {
     int[] connections;
     
     public PointCloudSorter(RobutContext ctxt, Set<Coordinate> cSet) {
-        System.out.println("Starting PCS >>>>>>>>>>>>>>>>>>>>>>");
+        LOG.debug("Starting PCS >>>>>>>>>>>>>>>>>>>>>>");
         this.ctxt = ctxt;
         dMatrix = new DoubleHalfMatrix(cSet.size());
         iMatrix = new IntHalfMatrix(cSet.size());
@@ -42,9 +45,9 @@ public class PointCloudSorter {
         
         connections = iMatrix.reduction( IntHalfMatrix.plus );
 
-        System.out.println( dMatrix );
-        System.out.println( iMatrix );
-        System.out.println("PCS created");
+        LOG.debug( dMatrix.toString() );
+        LOG.debug( iMatrix.toString() );
+        LOG.info("PCS created");
     }
     
     public Geometry walk() {
@@ -68,7 +71,7 @@ public class PointCloudSorter {
             if (iMatrix.get(i,j) == 1) {
                 lst.add(points.get(j));
                 iMatrix.subtract(i,j);
-                System.out.format( "(%s,%s)", i,j);
+                LOG.debug( "(%s,%s)", i,j);
                 connections[i]--;
                 connections[j]--;
                 return j;
@@ -102,15 +105,14 @@ public class PointCloudSorter {
             while (i != -1) {
                 i = processEdge(i,lst);
             }
-            System.out.println();
-            System.out.println( iMatrix );
+            LOG.debug( iMatrix.toString() );
             if (lst.size() == 1) {
                 geom.add(ctxt.geometryFactory.createPoint(lst.get(0)));
             }
             else {
                 geom.add(ctxt.geometryFactory.createLineString( lst.toArray(new Coordinate[lst.size()])));
             }
-            System.out.println( geom.get(geom.size()-1));
+            LOG.debug( geom.get(geom.size()-1).toString());
             return true;
         }
         return false;

@@ -14,6 +14,11 @@ public interface Compass {
         return Position.from(location, heading());
     }
 
+    /**
+     * Sets calculates a position (sets the heading) from a location.
+     * @param location the location.
+     * @return the Position
+     */
     default Position getPosition(FrontsCoordinate location) {
         return Position.from(location, heading());
     }

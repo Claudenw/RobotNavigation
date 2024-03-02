@@ -509,12 +509,11 @@ public class MapImpl implements Map {
         exec(query, processor);
 
         if (!builder.isValid(ctxt)) {
-            System.out.println( "Query");
-            System.out.println(MapReports.dumpQuery(MapImpl.this, query));
-            System.out.println(MapReports.dumpDistance(MapImpl.this));
-            System.out.println(MapReports.dumpObstacleDistance(MapImpl.this));
-            MapImpl.this.getObstacles().forEach(System.out::println);
-            System.out.println(MapReports.dumpModel(MapImpl.this));
+            LOG.debug("Query\n"+MapReports.dumpQuery(MapImpl.this, query));
+            LOG.debug("Distance\n"+MapReports.dumpDistance(MapImpl.this));
+            LOG.debug("Obstacles\n"+MapReports.dumpObstacleDistance(MapImpl.this));
+            MapImpl.this.getObstacles().forEach(s -> LOG.debug(s.toString()));
+            LOG.debug("Model\n"+MapReports.dumpModel(MapImpl.this));
             LOG.debug("No Selected map points");
             return Optional.empty();
         }

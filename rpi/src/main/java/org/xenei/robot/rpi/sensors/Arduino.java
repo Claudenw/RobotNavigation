@@ -7,6 +7,8 @@ import java.nio.ShortBuffer;
 import java.util.Arrays;
 
 import org.xenei.robot.common.Location;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.xenei.robot.common.DistanceSensor;
 import org.xenei.robot.common.utils.CoordUtils;
 import org.xenei.robot.common.utils.TimingUtils;
@@ -22,6 +24,8 @@ public class Arduino implements DistanceSensor {
     private final I2CDevice device;
     private final byte[] buffer;
     private final ShortBuffer sb;
+    
+    private static final Logger LOG = LoggerFactory.getLogger(Arduino.class);
     
     public Arduino() {
         device = new I2CDevice(CONTROLLER, ADDRESS);
@@ -46,13 +50,15 @@ public class Arduino implements DistanceSensor {
         boolean parity = Integer.bitCount(timing) % 2 != 0;
         if (parity == parityFlg)
         {
-            System.out.format( "%x %x %d %s%n", buffer[0], buffer[1], timing, timing/TIME_TO_M);
+            LOG.debug( String.format("%x %x %d %s%n", buffer[0], buffer[1], timing, timing/TIME_TO_M));
             if (timing > 0) {
                 Location c = Location.from( CoordUtils.fromAngle(0, timing/TIME_TO_M));
-                return new Location[] { c };
+                if (c.range() < 1.0) {
+                    return new Location[] { c };
+                }
             }
         } else {
-            System.out.println( "PARITY ERROR");
+            LOG.error( "PARITY ERROR");
         }
         
         return new Location[] {};

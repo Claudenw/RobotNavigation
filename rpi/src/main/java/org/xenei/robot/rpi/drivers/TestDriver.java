@@ -8,11 +8,11 @@ import uk.pigpioj.*;
 
 public class TestDriver {
     ULN2003 motor;
-    public TestDriver() {
+    public TestDriver() throws InterruptedException {
         motor = new ULN2003(ULN2003.Mode.WAVE_DRIVE, ULN2003.STEPPER_28BYJ48, 17, 27, 22, 23 );
     }
     
-    public static void main(String[] args) {
+    public static void main(String[] args) throws InterruptedException {
         runDriver();
     }
     
@@ -31,7 +31,7 @@ public class TestDriver {
                 }
     }
     
-    public static void runDriver() {
+    public static void runDriver() throws InterruptedException {
         TestDriver driver = new TestDriver();
 
         driver.motor.run(60000, 100);

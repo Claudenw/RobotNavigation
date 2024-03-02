@@ -2,6 +2,9 @@ package org.xenei.robot.rpi.drivers;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.FutureTask;
+
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -33,15 +36,15 @@ public class ULN2003Tests {
     }
 
     @Test
-    public void constructorTest() {
+    public void constructorTest() throws InterruptedException {
         ULN2003 motor = new ULN2003(Mode.FULL_STEP, ULN2003.STEPPER_28BYJ48, 1, 2, 3, 4);
         assertEquals(0.0, motor.rotations(), 0.001);
         assertEquals(0.0, motor.stepsTaken(), 0.001);
     }
 
     @Test
-    public void runTest() {
-        ULN2003 motor = new ULN2003(Mode.FULL_STEP, ULN2003.STEPPER_28BYJ48, 1, 2, 3, 4);
+    public void runTest() throws InterruptedException {
+        ULN2003 motor = new ULN2003(Mode.FULL_STEP, ULN2003.STEPPER_28BYJ48, 17, 27, 22, 23);
         DeviceListener listener = new DeviceListener() {
 
             @Override
@@ -51,10 +54,15 @@ public class ULN2003Tests {
             }
         };
         factory.getDevices().forEach(d -> d.register(listener));
-        motor.run(5, 1);
-        while (motor.active()) {
-            Thread.yield();
+        try {
+            motor.run(5, 1).get();
+        } catch (InterruptedException | ExecutionException e) {
+            e.printStackTrace();
         }
+        
+//        while (motor.active()) {
+//            Thread.yield();
+//        }
         System.out.println("Finished");
     }
 }
