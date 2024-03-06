@@ -86,16 +86,26 @@ public interface Position extends Location {
     /**
      * Gets the heading.
      * 
-     * @return the heading in radians
+     * @return the heading current heading in radians.
      */
     double getHeading();
 
-    default double headingTo(Coordinate heading) {
-        return AngleUtils.normalize(Math.atan2(heading.getY() - this.getY(), heading.getX() - this.getX()));
+    /**
+     * Calculates the heading required to move from the current absolute position to another absolute coordinate.
+     * @param coordinate the coordinate to calculate the heading to.
+     * @return the heading in radians.
+     */
+    default double headingTo(Coordinate coordinate) {
+        return AngleUtils.normalize(Math.atan2(coordinate.getY() - this.getY(), coordinate.getX() - this.getX()));
     }
 
-    default double headingTo(FrontsCoordinate heading) {
-        return headingTo(heading.getCoordinate());
+    /**
+     * Calculate sthe heading required to move from the current absolute position to another absolute position.
+     * @param position the position to calculate the heading to.
+     * @return the heading in radians.
+     */
+    default double headingTo(FrontsCoordinate coordinate) {
+        return headingTo(coordinate.getCoordinate());
     }
 
     /**

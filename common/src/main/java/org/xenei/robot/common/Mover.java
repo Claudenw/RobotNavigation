@@ -14,6 +14,10 @@ public interface Mover {
      */
     Position position();
 
+    /**
+     * Sets the heading for the mover.
+     * @param heading the absolute heading specified in radians.
+     */
     void setHeading(double heading);
 
 }

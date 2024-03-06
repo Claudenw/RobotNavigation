@@ -4,16 +4,17 @@ import java.util.Collection;
 
 import org.locationtech.jts.geom.Coordinate;
 import org.xenei.robot.common.FrontsCoordinate;
+import org.xenei.robot.common.ListenerContainer;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Position;
 
-public interface Planner {
+public interface Planner extends ListenerContainer {
     /**
      * Gets the current position according to the planner.
      * 
      * @return the current position.
      */
-    Position getCurrentPosition();
+    //Position getCurrentPosition();
 
     /**
      * Gets the coordinates of the target.
@@ -38,17 +39,19 @@ public interface Planner {
      * be cleared and a new plan started.
      * 
      * @param target The coordinates to head toward.
+     * @return the heading to the target.
      */
-    void setTarget(Coordinate target);
+    double setTarget(Coordinate target);
 
     /**
      * Set the target for the planner. Setting the target causes the current plan to
      * be cleared and a new plan started.
      * 
      * @param target The coordinates to head toward.
+     * @return the heading to the target.
      */
-    default void setTarget(FrontsCoordinate target) {
-        setTarget(target.getCoordinate());
+    default double setTarget(FrontsCoordinate target) {
+        return setTarget(target.getCoordinate());
     }
 
     /**
@@ -56,17 +59,19 @@ public interface Planner {
      * only one target is in the planner stack then this method adds a record.
      * 
      * @param target The coordinates to head toward.
+     * @return the heading to the new target.
      */
-    void replaceTarget(Coordinate coordinate);
+    double replaceTarget(Coordinate coordinate);
 
     /**
      * Replaces the current planner target without clearing the current plan. If the
      * only one target is in the planner stack then this method adds a record.
      * 
      * @param target The coordinates to head toward.
+     * @return the heading to the new target.
      */
-    default void replaceTarget(FrontsCoordinate target) {
-        replaceTarget(target.getCoordinate());
+    default double replaceTarget(FrontsCoordinate target) {
+        return replaceTarget(target.getCoordinate());
     }
 
     /**
@@ -86,24 +91,9 @@ public interface Planner {
     Diff selectTarget();
 
     /**
-     * Sets the current position and adds to the solution.
-     * 
-     * @param position the position to reset to.
+     * Sets the registers the current position as part of the solution.
      */
-    void changeCurrentPosition(Position position);
-
-    /**
-     * Add a planner listener. The listener will be called when a planning move is
-     * completed.
-     * 
-     * @param listener the listener to notify.
-     */
-    void addListener(Listener listener);
-
-    /**
-     * Notify listeners to reprocess data.
-     */
-    void notifyListeners();
+    void registerPositionChange();
 
     void recalculateCosts();
 
@@ -112,7 +102,7 @@ public interface Planner {
      * 
      * @param start the new starting position.
      */
-    void restart(Location start);
+   // void restart(Location start);
 
     /**
      * Convenience method to get the steps from the underlying map. Equivalent to
@@ -129,14 +119,6 @@ public interface Planner {
      * @return the Diff associated with this planner.
      */
     Diff getDiff();
-
-    /**
-     * A functional interface that defines a listener to update.
-     */
-    @FunctionalInterface
-    interface Listener {
-        void update();
-    }
 
     interface Diff {
 

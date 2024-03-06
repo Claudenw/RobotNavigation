@@ -23,7 +23,7 @@ public class DoubleUtils {
     }
 
     public static boolean inRange(double a, double tolerance) {
-        return eq(Math.abs(a), 0, tolerance + Precision.EPSILON);
+        return eq(Math.abs(a), 0, tolerance);
     }
 
     public static boolean eq(double a, double b, double tolerance) {

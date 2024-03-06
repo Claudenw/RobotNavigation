@@ -1,13 +1,18 @@
 package org.xenei.robot.rpi.drivers;
 
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import org.apache.commons.cli.CommandLine;
@@ -18,6 +23,10 @@ import org.apache.commons.cli.ParseException;
 import org.apache.commons.cli.HelpFormatter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.xenei.robot.common.Listener;
+import org.xenei.robot.common.ListenerContainer;
+import org.xenei.robot.common.ListenerContainerImpl;
+import org.xenei.robot.common.planning.Planner;
 import org.xenei.robot.rpi.RpiMover;
 import org.xenei.robot.rpi.drivers.ULN2003.Mode;
 import org.xenei.robot.rpi.utils.DigitalOutputDeviceFactory;
@@ -40,10 +49,9 @@ public class ULN2003 implements AutoCloseable {
     public static final double STEPPER_28BYJ48 = 5.625/64;
     
     private final MotorBlock block;
-    private final ExecutorService executor;
     private SteppingStatus task;
     private final double revMilliPerStepMin;
-    private final double stepsPerRotation;
+    public final double stepsPerRotation;
     
     private static Options getOptions() {
         
@@ -60,34 +68,35 @@ public class ULN2003 implements AutoCloseable {
                 .addOption(Option.builder("reverse").build())
                 ;
     }
+    
     public static void main(String[] args) throws InterruptedException, ParseException {
         try {
-        CommandLine commandLine = DefaultParser.builder().build().parse(getOptions(), args);
-        if (commandLine.hasOption("?")) {
-            new HelpFormatter().printHelp(ULN2003.class.getCanonicalName(), getOptions());
-            return;
-        }
-        int steps = commandLine.getParsedOptionValue("s");
-        int rpm = commandLine.getParsedOptionValue("r");
-        
-        List<Integer> gpin = commandLine.getParsedOptionValues("g");
-        Mode mode = commandLine.getParsedOptionValue("m");
-        boolean fwd = !commandLine.hasOption("reverse");
-        
-        if (commandLine.hasOption("m")) {
-            MotorBlock block = new MotorBlock(mode, gpin.get(0), gpin.get(1), gpin.get(2), gpin.get(3));
-            for (int i=0;i<steps;i++) {
-                block.step(fwd);
+            CommandLine commandLine = DefaultParser.builder().build().parse(getOptions(), args);
+            if (commandLine.hasOption("?")) {
+                new HelpFormatter().printHelp(ULN2003.class.getCanonicalName(), getOptions());
+                return;
             }
-        } else {
-            int direction = fwd ? 1 : -1;
-            try(ULN2003 motor = new ULN2003(mode, ULN2003.STEPPER_28BYJ48, gpin.get(0), gpin.get(1), gpin.get(2), gpin.get(3))) {
-                motor.run(steps*direction, rpm).get();
-                LOG.info("Finished");
-            } catch (Exception e) {
-                LOG.error("failed", e);
+            int steps = commandLine.getParsedOptionValue("s");
+            int rpm = commandLine.getParsedOptionValue("r");
+            
+            List<Integer> gpin = commandLine.getParsedOptionValues("g");
+            Mode mode = commandLine.getParsedOptionValue("m");
+            boolean fwd = !commandLine.hasOption("reverse");
+            
+            if (commandLine.hasOption("M")) {
+                MotorBlock block = new MotorBlock(mode, gpin.get(0), gpin.get(1), gpin.get(2), gpin.get(3));
+                for (int i=0;i<steps;i++) {
+                    block.step(fwd,150);
+                }
+            } else {
+                int direction = fwd ? 1 : -1;
+                try(ULN2003 motor = new ULN2003(mode, ULN2003.STEPPER_28BYJ48, gpin.get(0), gpin.get(1), gpin.get(2), gpin.get(3))) {
+                    motor.prepareRun(steps*direction, rpm).call();
+                    LOG.info("Finished");
+                } catch (Exception e) {
+                    LOG.error("failed", e);
+                }
             }
-        }
         } catch (Exception e) {
             new HelpFormatter().printHelp(ULN2003.class.getCanonicalName(), getOptions());
         }
@@ -111,7 +120,6 @@ public class ULN2003 implements AutoCloseable {
      */
     public ULN2003(Mode mode, double strideAngle, int gpio1, int gpio2, int gpio3, int gpio4) throws InterruptedException {
         block = new MotorBlock(mode, gpio1, gpio2, gpio3, gpio4);
-        executor = Executors.newFixedThreadPool(1);
         // rev/steps * milli/min = revmilli/stepsmin
         double revolutionPerStep = strideAngle/360;
         double milliPerMin = TimeUnit.MILLISECONDS.convert(1, TimeUnit.MINUTES);
@@ -119,7 +127,8 @@ public class ULN2003 implements AutoCloseable {
         stepsPerRotation = 360/strideAngle;
         LOG.debug("Created instance {}: {}", this.hashCode(), toString());
     }
-    
+
+    @Override
     public String toString() {
         return new StringBuilder("ULN2003 ").append(hashCode()).append(":\n  " )
         .append( block.toString()).append( String.format("\n  stepsPerRotation: %s", stepsPerRotation)).toString();
@@ -129,42 +138,12 @@ public class ULN2003 implements AutoCloseable {
         return (value < min) ? min : (value > max) ? max : value;
     }
 
-    /**
-     * Calculates the number of steps taken from the number of rotations.
-     * @param rotations the number of rotations taken
-     * @return the number of steps taken.
-     */
-    public long steps(double rotations) {
-        return (long) Math.ceil(rotations*stepsPerRotation);
-    }
-    
-    /**
-     * Get the number of rotations thus far for this command.
-     * @return the number of rotations.
-     */
-    public double rotations() {
-        return stepsTaken()/stepsPerRotation;
-    }
-    
-    /**
-     * Gets the number of steps taken thus far for this command.
-     * @return the number of steps
-     */
-    public long stepsTaken() {
-        if (task == null) {
-            return 0;
-        }
-        return task.stepsTaken();
-    }
-    
     public boolean active() {
         return task != null && task.isRunning();
     }
-    
 
     @Override
     public void close() throws Exception {
-        executor.shutdownNow();
         block.stop();
     }
 
@@ -182,43 +161,46 @@ public class ULN2003 implements AutoCloseable {
      * 300. Note that high rpm will lead to step loss, so rpm should not be larger
      * than 150.
      */
-    public FutureTask<?> run(int steps, int rpm) {
-
-        SteppingStatus status = new SteppingStatus(steps);
-        
+    public SteppingStatus prepareRun(int steps, int rpm) {
         // revmilli/stepsmin * min/rev = milli/steps (min/rev = 1/rpm)
-        long ms_per_step = (long) Math.ceil(revMilliPerStepMin / limit(rpm, 1, 300));
-        LOG.debug(String.format( "Scheduling task %s revMilliPerStepMin:%s rpm:%s\n", ms_per_step, revMilliPerStepMin, rpm));
-        FutureTask<SteppingStatus> result = new FutureTask<SteppingStatus>(status);
-        executor.execute(result);
+        long msPerStep = (long) Math.ceil(revMilliPerStepMin / limit(rpm, 1, 300));
+        
+        SteppingStatus result = new SteppingStatus(steps, msPerStep);
+        
+        LOG.debug("Preparing task {} steps:{} rpm:{}", this, steps, rpm);
+
         return result;
     }
+
 
     /**
      * Stop a stepper motor.
      */
-    private void stop() {
-        executor.shutdownNow();
+    public void stop() {
         block.off();
     }
     
-    private class SteppingStatus implements Callable<SteppingStatus> {
+
+    public class SteppingStatus implements Callable<SteppingStatus> {
         private volatile int  count;
-        final int initialCounter;
-        final boolean fwd;
+        private final int initialCounter;
+        private final boolean fwd;
+        private final long msPerStep;
         
-        SteppingStatus(int steps) {
+        SteppingStatus(int steps, long msPerStep) {
             initialCounter = Math.abs(limit(steps, -32768, 32767));
             count = initialCounter;
-            fwd = steps > 0;
+            fwd = steps >= 0;
+            this.msPerStep = msPerStep;
             LOG.debug("SteppingStatus created for %s steps", count);
         }
 
         @Override
         public SteppingStatus call() throws InterruptedException {
-            while (count-- >= 0) {
-                block.step(fwd);
+            while (count-- > 0) {
+                block.step(fwd, msPerStep);
             }
+            LOG.info("SteppingStatus complete.  count:{} initial counter:{}", count, initialCounter);
             return this;
         }
         
@@ -227,13 +209,22 @@ public class ULN2003 implements AutoCloseable {
         }
         
         /**
-         * Gets the number of steps taken thus far for the command.
-         * @return the number of steps taken.
+         * Gets the number of steps taken in a forward direction.
+         * @return the number of steps taken, negative for reverse travel.
          */
-        public int stepsTaken() {
-            return initialCounter-count;
+        public int fwdSteps() {
+            return (initialCounter-count) * (fwd ? 1 : -1);
         }
-    };
+        
+        public double fwdRotation() {
+            return fwdSteps() / stepsPerRotation; 
+        }
+
+        @Override
+        public String toString() {
+            return String.format( "SteppingStatus %s steps:%s rotation:%s", this.hashCode(), fwdSteps(), fwdRotation());
+        }
+    }
 
     /**
      * @see https://en.wikipedia.org/wiki/Stepper_motor#/media/File:Drive.png
@@ -292,7 +283,6 @@ public class ULN2003 implements AutoCloseable {
         private int currentPulse;
         private Mode mode;
         
-        private static final long delay = 1500;
         private static byte[] map = { 0x8, 0x4, 0x2, 0x1 };
 
         public MotorBlock(Mode mode, int gpio1, int gpio2, int gpio3, int gpio4) throws InterruptedException {
@@ -304,15 +294,16 @@ public class ULN2003 implements AutoCloseable {
             this.gpio[2] = dodF.build(gpio3);
             this.gpio[3] = dodF.build(gpio4);
             // got to known state.
-            step(true);
+            step(true, 0);
         }
         
+        @Override
         public String toString() {
             return String.format( "Motor Block: %s on pins %s %s %s %s", mode, gpio[0].getGpio(),
                     gpio[1].getGpio(), gpio[2].getGpio(), gpio[3].getGpio());
         }
 
-        public void step(boolean fwd) throws InterruptedException {
+        public void step(boolean fwd, long delay) throws InterruptedException {
             currentPulse = mode.adjustPulse(currentPulse, fwd);
             int pattern = mode.pattern(currentPulse);
             if (LOG.isDebugEnabled()) {
@@ -321,7 +312,7 @@ public class ULN2003 implements AutoCloseable {
             for (int i = 0; i < 4; i++) {
                 gpio[i].setOn((map[i] & pattern) == 0);
             }
-            TimeUnit.MICROSECONDS.sleep(delay);
+            TimeUnit.MILLISECONDS.sleep(delay);
         }
 
         private void setAll(boolean state) {

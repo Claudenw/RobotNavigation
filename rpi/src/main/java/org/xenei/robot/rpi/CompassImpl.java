@@ -5,9 +5,12 @@ import java.util.TimerTask;
 import java.util.concurrent.Executors;
 import java.util.concurrent.locks.ReentrantLock;
 
+import javax.swing.text.Position;
+
 import org.locationtech.jts.geom.Coordinate;
 import org.xenei.robot.common.Compass;
 import org.xenei.robot.common.Location;
+import org.xenei.robot.common.utils.AngleUtils;
 import org.xenei.robot.common.utils.DoubleUtils;
 import org.xenei.robot.rpi.sensors.MMC3416xPJ;
 import org.xenei.robot.rpi.sensors.MMC3416xPJ.Axis;
@@ -35,7 +38,7 @@ public class CompassImpl implements Compass {
             }
             position = Math.floorMod(position+1, limit);
         }};
-    
+
     public CompassImpl() {
         lock = new ReentrantLock();
         samples = new MMC3416xPJ.Values[limit];
@@ -47,9 +50,8 @@ public class CompassImpl implements Compass {
         position = 0;
         timer = new Timer();
         timer.schedule(task, 0, 250);
-        
     }
-    
+
     @Override
     public double heading() {
         float x;
@@ -65,10 +67,17 @@ public class CompassImpl implements Compass {
         return DoubleUtils.truncate(heading.theta(), 2);
     }
     
+    @Override
+    public double instantHeading() {
+        MMC3416xPJ.Values values = compass.getHeading();
+        return Location.from(values.getAxisValue(Axis.X), values.getAxisValue(Axis.Y)).theta();
+    }
+    
     public static void main(String[] args) throws InterruptedException {
         Compass c = new CompassImpl();
         while (true) {
-            System.out.format( "Heading: %s\n", c.heading());
+            double h = c.heading();
+            System.out.format( "Heading: %s %s degrees\n", h, Math.toDegrees(h));
             Thread.sleep(500);
         }
     }

@@ -45,7 +45,7 @@ public class Robut {
     private final Map map;
     private final Mapper mapper;
     private Position currentPosition;
-    private double width = 0.5; // meters
+    private double width = 0.24; // meters
     private double buffer = width / 2.0;
     private int wheelDiameter = 8; // cm
     private double maxSpeed = 60; // m/min
@@ -55,14 +55,18 @@ public class Robut {
     private static final Logger LOG = LoggerFactory.getLogger(Robut.class);
     
     public Robut(Coordinate origin) throws InterruptedException {
-        ctxt = new RobutContext(ScaleInfo.DEFAULT);
         compass = new CompassImpl();
+        ctxt = new RobutContext(ScaleInfo.DEFAULT);
         distSensor = new Arduino();
         map = new MapImpl(new RobutContext(ScaleInfo.DEFAULT));
         mapper = new MapperImpl(map);
         currentPosition = compass.getPosition(origin);
-        mover = new RpiMover(compass, width, wheelDiameter, maxSpeed);
-        planner = new PlannerImpl(map, mover.position(), buffer);
+        LOG.debug("Initial position: ()", currentPosition);
+        mover = new RpiMover(compass, currentPosition.getCoordinate(), width, wheelDiameter, maxSpeed);
+        planner = new PlannerImpl(map, currentPosition, buffer);
+        double d = compass.instantHeading();
+        LOG.debug("{} {} degrees compas {} {} degrees", currentPosition, Math.toDegrees(currentPosition.getHeading()),
+                d, Math.toDegrees(d));
     }
 
     public Collection<Step> readSensors(Coordinate target, Solution solution) {
@@ -135,7 +139,6 @@ public class Robut {
         return mapper.isClearPath(planner.getCurrentPosition(), planner.getTarget(), buffer);
     }
 
-    
     public void executeMovement() {
         processSensor();
 
@@ -216,7 +219,8 @@ public class Robut {
             double theta = Math.toRadians(angle);
             Location relativeLocation = Location.from(CoordUtils.fromAngle(theta, range));
             Position target = r.currentPosition.nextPosition(relativeLocation);
-            r.planner.setTarget(target);
+            Position orientation = r.planner.setTarget(target);
+            r.mover.setHeading(orientation.getHeading());
             r.executeMovement();
             r.status();
         }

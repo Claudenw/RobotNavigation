@@ -24,9 +24,17 @@ public interface Compass {
     }
 
     /**
-     * the current heading.
+     * the current heading.  This may be an averaged value over several readings and may 
+     * differ slightly from the current absolute heading reading.
      * 
      * @return the current heading
      */
     double heading();
+    
+    /**
+     * The heading read from the device at this instant.  This may differ from the {@code heading()} 
+     * results as this is an instantaneous value and that one may be averaged.
+     * @return the instantaneous heading measurement.
+     */
+    double instantHeading();
 }
