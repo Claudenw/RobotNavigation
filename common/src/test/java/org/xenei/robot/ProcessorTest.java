@@ -60,16 +60,15 @@ public class ProcessorTest {
         //map = new MapImpl(ScaleInfo.builder().setResolution(.3).build());
         mapViz = new MapViz(100, map, () -> planner.getSolution());
         mapper = new MapperImpl(map);
-        mover = new FakeMover(Location.from(-1, -3), 1);
+        //mover = new FakeMover(Location.from(-1, -3), 1);
         buffer = 0.25;
-        planner = new PlannerImpl(map, () -> mover.position(), buffer);
-        sensor = new FakeDistanceSensor2(MapLibrary.map2('#'), AngleUtils.RADIANS_45);
-        planner.addListener(() -> sensor.setPosition(mover.position()));
+        //planner = new PlannerImpl(map, () -> mover.position(), buffer);
+        //sensor = new FakeDistanceSensor2(MapLibrary.map2('#'), AngleUtils.RADIANS_45);
+        //planner.addListener(() -> sensor.setPosition(mover.position()));
     }
 
     private Collection<Step> processSensor() {
-        sensor.setPosition(mover.position());
-        return mapper.processSensorData(mover.position(), buffer, planner.getRootTarget(), sensor.sense());
+       return mapper.processSensorData(mover.position(), buffer, planner.getRootTarget(), sensor.sense());
     }
 
     public boolean checkTarget() {
@@ -127,7 +126,6 @@ public class ProcessorTest {
         mover = new FakeMover(Location.from(startCoord), 1);
         planner = new PlannerImpl(map, () -> mover.position(), buffer, finalCoord);
         mover.setHeading(mover.position().getHeading());
-        planner.addListener(() -> sensor.setPosition(mover.position()));
         planner.addListener(() -> mapViz.redraw(planner.getTarget()));
 
         processSensor();
@@ -176,7 +174,7 @@ public class ProcessorTest {
 
     @Test
     public void stepTestMap2() {
-        sensor = new FakeDistanceSensor1(MapLibrary.map2('#'));
+        sensor = new FakeDistanceSensor1(MapLibrary.map2('#'), () -> mover.position());
         map.clear(Namespace.UnionModel.getURI());
 
         Location finalCoord = Location.from(-1, 1);
@@ -187,7 +185,7 @@ public class ProcessorTest {
     @Test
     @Disabled
     public void stepTestMap3() {
-        sensor = new FakeDistanceSensor2(MapLibrary.map3('#'), AngleUtils.RADIANS_45);
+        sensor = new FakeDistanceSensor2(MapLibrary.map3('#'), AngleUtils.RADIANS_45, () -> mover.position());
         map.clear(Namespace.UnionModel.getURI());
 
         Location finalCoord = Location.from(-1, 1);

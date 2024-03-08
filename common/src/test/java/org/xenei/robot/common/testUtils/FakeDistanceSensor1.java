@@ -1,5 +1,7 @@
 package org.xenei.robot.common.testUtils;
 
+import java.util.function.Supplier;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xenei.robot.common.Location;
@@ -13,11 +15,11 @@ public class FakeDistanceSensor1 implements FakeDistanceSensor {
     private static final double RADIANS = Math.toRadians(360.0 / BLOCKSIZE);
     private final CoordinateMap map;
     private static final double MAX_RANGE = 350;
-
-    private Position position;
-
-    public FakeDistanceSensor1(CoordinateMap map) {
+    private final Supplier<Position> positionSupplier;
+    
+    public FakeDistanceSensor1(CoordinateMap map, Supplier<Position> positionSupplier) {
         this.map = map;
+        this.positionSupplier = positionSupplier;
     }
 
     @Override
@@ -26,14 +28,9 @@ public class FakeDistanceSensor1 implements FakeDistanceSensor {
     }
 
     @Override
-    public void setPosition(Position position) {
-        this.position = position;
-    }
-
-    @Override
     public Location[] sense() {
         Location[] result = new Location[BLOCKSIZE];
-
+        Position position = positionSupplier.get();
         for (int i = 0; i < BLOCKSIZE; i++) {
             double h = position.getHeading() + (RADIANS * i);
             Location nxt = look(position, position.getHeading() + (RADIANS * i));

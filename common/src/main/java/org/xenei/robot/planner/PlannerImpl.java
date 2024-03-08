@@ -67,9 +67,9 @@ public class PlannerImpl implements Planner {
             setTarget(target.getCoordinate());
             distance = currentPosition.distance(getRootTarget());
             isIndirect = !map.isClearPath(currentPosition.getCoordinate(), getRootTarget(), buffer);
-            if (!isIndirect) {
-                solution.add(getRootTarget());
-            }
+//            if (!isIndirect) {
+//                solution.add(getRootTarget());
+//            }
         }
         map.addCoord(currentPosition.getCoordinate(), distance, true, isIndirect);
         LOG.debug( "Constructor: target arg:{}, {}", target, currentPosition);

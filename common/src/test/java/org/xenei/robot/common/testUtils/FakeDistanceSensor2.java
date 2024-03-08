@@ -1,5 +1,7 @@
 package org.xenei.robot.common.testUtils;
 
+import java.util.function.Supplier;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xenei.robot.common.Location;
@@ -12,12 +14,13 @@ public class FakeDistanceSensor2 implements FakeDistanceSensor {
     private final CoordinateMap map;
     private final double angle;
     private static final double MAX_RANGE = 350;
+    private final Supplier<Position> positionSupplier;
+    
 
-    private Position position;
-
-    public FakeDistanceSensor2(CoordinateMap map, double angle) {
+    public FakeDistanceSensor2(CoordinateMap map, double angle, Supplier<Position> positionSupplier) {
         this.map = map;
         this.angle = angle;
+        this.positionSupplier = positionSupplier;
     }
 
     @Override
@@ -25,18 +28,15 @@ public class FakeDistanceSensor2 implements FakeDistanceSensor {
         return map;
     }
 
-    @Override
-    public void setPosition(Position position) {
-        this.position = position;
-    }
 
     @Override
     public Location[] sense() {
+        Position pos = positionSupplier.get();
         Location[] result = new Location[3];
 
-        result[0] = Location.from(look(position, position.getHeading() - angle).minus(position));
-        result[1] = Location.from(look(position, position.getHeading()).minus(position));
-        result[2] = Location.from(look(position, position.getHeading() + angle).minus(position));
+        result[0] = Location.from(look(pos, pos.getHeading() - angle).minus(pos));
+        result[1] = Location.from(look(pos, pos.getHeading()).minus(pos));
+        result[2] = Location.from(look(pos, pos.getHeading() + angle).minus(pos));
 
         return result;
     }
