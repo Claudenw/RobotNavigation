@@ -15,7 +15,6 @@ import static org.mockito.Mockito.when;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.Test;
@@ -34,13 +33,15 @@ import org.xenei.robot.common.planning.Planner.Diff;
 import org.xenei.robot.common.planning.Solution;
 import org.xenei.robot.common.planning.Step;
 import org.xenei.robot.common.testUtils.CoordinateUtils;
+import org.xenei.robot.common.testUtils.TestChassisInfo;
+import org.xenei.robot.common.testUtils.TestingPositionSupplier;
 import org.xenei.robot.common.utils.AngleUtils;
 import org.xenei.robot.common.utils.RobutContext;
 
 public class PlannerTest {
-    private RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT);
+    private RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT, TestChassisInfo.DEFAULT);
     private Planner underTest;
-    private final double buffer = 0.5;
+
 
     private ArgumentCaptor<Coordinate> coordinateCaptor = ArgumentCaptor.forClass(Coordinate.class);
     // private ArgumentCaptor<Step> stepCaptor =
@@ -52,12 +53,12 @@ public class PlannerTest {
         FrontsCoordinate fc = FrontsCoordinateTest.make(1, 1);
         Map map = Mockito.mock(Map.class);
 
-        PositionSupplier supplier = new PositionSupplier(Position.from(Location.ORIGIN));
-        underTest = new PlannerImpl(map, supplier, buffer);
+        TestingPositionSupplier supplier = new TestingPositionSupplier(Position.from(Location.ORIGIN));
+        underTest = new PlannerImpl(map, supplier);
         
         assertEquals(AngleUtils.RADIANS_45, underTest.setTarget(fc));
         assertEquals(fc.getCoordinate(), underTest.getTarget());
-        verify(map).recalculate(coordinateCaptor.capture(), anyDouble());
+        verify(map).recalculate(coordinateCaptor.capture());
         assertEquals(fc.getCoordinate(), coordinateCaptor.getValue());
         Solution solution = underTest.getSolution();
         assertEquals(0, solution.stepCount());
@@ -74,8 +75,8 @@ public class PlannerTest {
 
         Location finalCoord = Location.from(-1, 1);
         Position initial = Position.from(-1, -3);
-        PositionSupplier supplier = new PositionSupplier(initial);
-        underTest = new PlannerImpl(map, supplier, buffer, finalCoord);
+        TestingPositionSupplier supplier = new TestingPositionSupplier(initial);
+        underTest = new PlannerImpl(map, supplier, finalCoord);
         Diff diff = underTest.getDiff();
         assertFalse(diff.didChange());
         Position second = Position.from(1, 1);
@@ -108,8 +109,8 @@ public class PlannerTest {
         when(map.addCoord(any(Coordinate.class), anyDouble(), anyBoolean(), anyBoolean())).thenReturn(Optional.of(step));
 
         Location finalCoord = Location.from(-1, 1);
-        PositionSupplier supplier = new PositionSupplier(Position.from(-1, -3));
-        underTest = new PlannerImpl(map, supplier, buffer, finalCoord);
+        TestingPositionSupplier supplier = new TestingPositionSupplier(Position.from(-1, -3));
+        underTest = new PlannerImpl(map, supplier, finalCoord);
         Diff diff = underTest.getDiff();
         assertFalse(diff.didChange());
 
@@ -118,7 +119,7 @@ public class PlannerTest {
         assertTrue(supplier.position.equals2D(coordinateCaptor.getValue()));
 
         // verify recalculate called
-        verify(map).recalculate(coordinateCaptor.capture(), anyDouble());
+        verify(map).recalculate(coordinateCaptor.capture());
         assertTrue(finalCoord.equals2D(coordinateCaptor.getValue()));
 
         // verify solution has 1 item
@@ -136,8 +137,8 @@ public class PlannerTest {
         Location finalCoord = Location.from(-1, 1);
         Coordinate newTarget = new Coordinate(4, 4);
         Position initial = Position.from(-1, -3);
-        PositionSupplier supplier = new PositionSupplier(initial);
-        underTest = new PlannerImpl(map, supplier, buffer, finalCoord);
+        TestingPositionSupplier supplier = new TestingPositionSupplier(initial);
+        underTest = new PlannerImpl(map, supplier, finalCoord);
         // this should make 2 targets
         underTest.replaceTarget(newTarget);
         Diff diff = underTest.getDiff();
@@ -168,12 +169,12 @@ public class PlannerTest {
         Map map = Mockito.mock(Map.class);
 
         Location finalCoord = Location.from(-1, 1);
-        PositionSupplier supplier = new PositionSupplier(Position.from(-1, -3));
-        underTest = new PlannerImpl(map, supplier, buffer, finalCoord);
+        TestingPositionSupplier supplier = new TestingPositionSupplier(Position.from(-1, -3));
+        underTest = new PlannerImpl(map, supplier, finalCoord);
         underTest.addListener(() -> result[0]++);
         underTest.notifyListeners();
         assertEquals(1, result[0]);
-        verify(map).recalculate(coordinateCaptor.capture(), anyDouble());
+        verify(map).recalculate(coordinateCaptor.capture());
         assertTrue(finalCoord.equals2D(coordinateCaptor.getValue()));
     }
 
@@ -183,23 +184,22 @@ public class PlannerTest {
 
         Location finalCoord = Location.from(-1, 1);
         Position initial = Position.from(-1, -3);
-        PositionSupplier supplier = new PositionSupplier(initial);
-        underTest = new PlannerImpl(map, supplier, buffer, finalCoord);
+        TestingPositionSupplier supplier = new TestingPositionSupplier(initial);
+        underTest = new PlannerImpl(map, supplier, finalCoord);
         Coordinate newTarget = new Coordinate(4, 4);
         underTest.replaceTarget(newTarget);
         underTest.recalculateCosts();
 
         // verify recalculate was called once for each target
-        verify(map, times(2)).recalculate(coordinateCaptor.capture(), anyDouble());
+        verify(map, times(2)).recalculate(coordinateCaptor.capture());
         List<Coordinate> lst = coordinateCaptor.getAllValues();
         assertTrue(finalCoord.equals2D(lst.get(0)));
         assertTrue(newTarget.equals2D(lst.get(1)));
 
         // verify setTemporaryCost was called once
-        verify(map, times(2)).recalculate(coordinateCaptor.capture(), doubleCaptor.capture());
+        verify(map, times(2)).recalculate(coordinateCaptor.capture());
         assertTrue(newTarget.equals2D(coordinateCaptor.getValue()));
-        assertEquals(buffer, doubleCaptor.getValue());
-
+        
         // verify solution has 1 item
         Solution solution = underTest.getSolution();
         List<Coordinate> sol = solution.stream().collect(Collectors.toList());
@@ -247,8 +247,8 @@ public class PlannerTest {
         when(map.getTargets()).thenReturn(Collections.emptyList());
 
         Location finalCoord = Location.from(-1, 1);
-        PositionSupplier supplier = new PositionSupplier(Position.from(-1, -3));
-        underTest = new PlannerImpl(map, supplier, buffer, finalCoord);
+        TestingPositionSupplier supplier = new TestingPositionSupplier(Position.from(-1, -3));
+        underTest = new PlannerImpl(map, supplier, finalCoord);
         underTest.getPlanRecords();
 
         // verify we got them from the map
@@ -267,10 +267,10 @@ public class PlannerTest {
         when(map.getContext()).thenReturn(ctxt);
         when(map.addCoord(any(Coordinate.class), anyDouble(), anyBoolean(), anyBoolean())).thenReturn(Optional.of(step));
 
-        when(map.getBestStep(any(), anyDouble())).thenReturn(Optional.of(step)).thenReturn(Optional.empty());
+        when(map.getBestStep(any())).thenReturn(Optional.of(step)).thenReturn(Optional.empty());
         Position initial = Position.from(-1, -3);
-        PositionSupplier supplier = new PositionSupplier(initial);
-        underTest = new PlannerImpl(map, supplier, buffer, finalCoord);;
+        TestingPositionSupplier supplier = new TestingPositionSupplier(initial);
+        underTest = new PlannerImpl(map, supplier, finalCoord);;
 
         // first target (step)
         Diff diff = underTest.selectTarget();
@@ -317,18 +317,5 @@ public class PlannerTest {
         CoordinateUtils.assertEquivalent(initial, solution.start());
         CoordinateUtils.assertEquivalent(finalCoord, solution.end());
         assertEquals(2, solution.stepCount());
-    }
-
-    private class PositionSupplier implements Supplier<Position> {
-        Position position;
-        
-        PositionSupplier(Position initial) {
-            position = initial;
-        }
-
-        @Override
-        public Position get() {
-            return position;
-        }
     }
 }

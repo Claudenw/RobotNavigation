@@ -35,17 +35,17 @@ public class MapperImpl implements Mapper {
     }
 
     @Override
-    public List<Step> processSensorData(Position currentPosition, double buffer, Coordinate target,
+    public List<Step> processSensorData(Position currentPosition, Coordinate target,
             Location[] obstacles) {
 
         LOG.debug("Sense position: {}", currentPosition);
 
-        ObstacleMapper mapper = new ObstacleMapper(currentPosition, buffer);
+        ObstacleMapper mapper = new ObstacleMapper(currentPosition);
         List.of(obstacles).forEach(mapper::doMap);
-        map.updateIsIndirect(target, buffer, mapper.newObstacles);
+        map.updateIsIndirect(target, mapper.newObstacles);
         
         return mapper.coordSet.stream()
-                .map(c -> map.addCoord(c, c.distance(target), false, !map.isClearPath(c, target, buffer)))
+                .map(c -> map.addCoord(c, c.distance(target), false, !map.isClearPath(c, target)))
                 .flatMap( Optional::stream ).collect(Collectors.toList());
     }
 
@@ -55,8 +55,8 @@ public class MapperImpl implements Mapper {
     }
 
     @Override
-    public boolean isClearPath(Position currentPosition, Coordinate target, double buffer) {
-        return map.isClearPath(currentPosition.getCoordinate(), target, buffer);
+    public boolean isClearPath(Position currentPosition, Coordinate target) {
+        return map.isClearPath(currentPosition.getCoordinate(), target);
     }
 
     class ObstacleMapper {
@@ -65,9 +65,9 @@ public class MapperImpl implements Mapper {
         final Set<Obstacle> newObstacles;
         final Set<Coordinate> coordSet;
 
-        ObstacleMapper(Position currentPosition, double buffer) {
+        ObstacleMapper(Position currentPosition) {
             this.currentPosition = currentPosition;
-            this.buffer = buffer + map.getContext().scaleInfo.getResolution();
+            this.buffer =  + map.getContext().getScaledRadius();
             this.newObstacles = new HashSet<>();
             this.coordSet = new HashSet<Coordinate>();
         }

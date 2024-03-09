@@ -16,16 +16,15 @@ public interface Mapper {
      * detected.
      * 
      * @param currentPosition The current position.
-     * @param buffer the buffer around the currentPosition.
      * @param target the final target
      * @param obstacles the list of obstacles.
      * @return the location of an non-obstacle when heading toward the target.
      * (shortest non collision position)
      */
-    Collection<Step> processSensorData(Position currentPosition, double buffer, Coordinate target,
+    Collection<Step> processSensorData(Position currentPosition, Coordinate target,
             Location[] obstacles);
 
-    boolean isClearPath(Position currentPosition, Coordinate target, double buffer);
+    boolean isClearPath(Position currentPosition, Coordinate target);
 
     boolean equivalent(FrontsCoordinate position, Coordinate target);
 }

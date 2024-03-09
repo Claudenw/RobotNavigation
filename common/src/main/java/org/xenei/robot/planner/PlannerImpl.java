@@ -28,10 +28,8 @@ public class PlannerImpl implements Planner {
     private final Map map;
     private final ListenerContainer listeners;
     private final Supplier<Position> positionSupplier;
-    //private Position currentPosition;
     private Solution solution;
     private final DiffImpl diff;
-    private final double buffer;
 
     /**
      * Constructs a planner.
@@ -39,8 +37,8 @@ public class PlannerImpl implements Planner {
      * @param sensor the sensor to sense environment.
      * @param startPosition the starting position.
      */
-    public PlannerImpl(Map map, Supplier<Position> positionSupplier, double buffer) {
-        this(map, positionSupplier, buffer, null);
+    public PlannerImpl(Map map, Supplier<Position> positionSupplier) {
+        this(map, positionSupplier, null);
     }
 
     /**
@@ -50,9 +48,8 @@ public class PlannerImpl implements Planner {
      * @param startPosition the starting position.
      * @param target the coordinates of the target to reach.
      */
-    public PlannerImpl(Map map, Supplier<Position> positionSupplier, double buffer, Location target) {
+    public PlannerImpl(Map map, Supplier<Position> positionSupplier, Location target) {
         this.map = map;
-        this.buffer = buffer;
         this.listeners = new ListenerContainerImpl();
         this.target = new TargetStack();
         this.positionSupplier = positionSupplier;
@@ -66,7 +63,7 @@ public class PlannerImpl implements Planner {
         if (target != null) {
             setTarget(target.getCoordinate());
             distance = currentPosition.distance(getRootTarget());
-            isIndirect = !map.isClearPath(currentPosition.getCoordinate(), getRootTarget(), buffer);
+            isIndirect = !map.isClearPath(currentPosition.getCoordinate(), getRootTarget());
 //            if (!isIndirect) {
 //                solution.add(getRootTarget());
 //            }
@@ -94,7 +91,7 @@ public class PlannerImpl implements Planner {
     public void registerPositionChange() {
         Position pos = positionSupplier.get();
         Optional<Step> step = map.addCoord(pos.getCoordinate(), pos.distance(getRootTarget()), true,
-                !map.isClearPath(pos.getCoordinate(), getRootTarget(), buffer));
+                !map.isClearPath(pos.getCoordinate(), getRootTarget()));
         step.ifPresent(s ->solution.add(s.getCoordinate()));
     }
 
@@ -157,7 +154,7 @@ public class PlannerImpl implements Planner {
             }
 
         } else {
-            Optional<Step> selected = map.getBestStep(pos.getCoordinate(), buffer);
+            Optional<Step> selected = map.getBestStep(pos.getCoordinate());
             if (selected.isPresent()) {
                 if (LOG.isDebugEnabled()) {
                     LOG.debug("Selected target: " + selected.get());
@@ -176,7 +173,7 @@ public class PlannerImpl implements Planner {
     @Override
     public void recalculateCosts() {
         // recalculate the distances
-        map.recalculate(target.peek(), buffer);
+        map.recalculate(target.peek());
     }
 
     @Override
@@ -186,7 +183,7 @@ public class PlannerImpl implements Planner {
         this.target.clear();
         this.target.push(target);
         double heading = CoordUtils.calcHeading(pos.getCoordinate(), getTarget());
-        map.recalculate(target, buffer);
+        map.recalculate(target);
         solution = new Solution();
         solution.add(pos);;
         return heading;
@@ -197,7 +194,7 @@ public class PlannerImpl implements Planner {
         Position pos = positionSupplier.get();
         if (this.target.size() != 1) {
             LOG.info("Replacing target to {} with {} while at {}", getTarget(), target, pos);
-            if (this.target.get(0).equals2D(target, buffer)) {
+            if (this.target.get(0).equals2D(target)) {
                 this.target.clear();
                 this.target.push(target);
             } else {
@@ -260,7 +257,7 @@ public class PlannerImpl implements Planner {
         }
 
         private boolean didPositionChange(Position pos) {
-            return !lastPosition.equals2D(pos.getCoordinate(), buffer);
+            return !lastPosition.equals2D(pos.getCoordinate());
         }
         
         
@@ -276,7 +273,7 @@ public class PlannerImpl implements Planner {
 
         @Override
         public boolean didTargetChange() {
-            return getTarget() == null || !target.equals2D(getTarget(), buffer);
+            return getTarget() == null || !target.equals2D(getTarget());
         }
     }
     

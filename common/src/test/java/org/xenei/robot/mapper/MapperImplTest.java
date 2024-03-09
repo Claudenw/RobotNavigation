@@ -26,6 +26,7 @@ import org.xenei.robot.common.mapping.Mapper;
 import org.xenei.robot.common.mapping.Obstacle;
 import org.xenei.robot.common.planning.Step;
 import org.xenei.robot.common.testUtils.CoordinateUtils;
+import org.xenei.robot.common.testUtils.TestChassisInfo;
 import org.xenei.robot.common.utils.AngleUtils;
 import org.xenei.robot.common.utils.CoordUtils;
 import org.xenei.robot.common.utils.RobutContext;
@@ -39,8 +40,7 @@ public class MapperImplTest {
     private ArgumentCaptor<Set<Obstacle>> obstacleSetCaptor = ArgumentCaptor.forClass(Set.class);
     private ArgumentCaptor<Obstacle> obstacleCaptor = ArgumentCaptor.forClass(Obstacle.class);
 
-    private double buffer = .5;
-    private RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT);
+    private RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT, TestChassisInfo.DEFAULT);
 
     @Test
     public void processSensorDataTest_TooClose() {
@@ -58,11 +58,11 @@ public class MapperImplTest {
 
         // an obstacle one unit away is too close so no target generated.
         Location[] obstacles = { Location.from(CoordUtils.fromAngle(0, 1)) };
-        Collection<Step> result = underTest.processSensorData(currentPosition, buffer, target, obstacles);
+        Collection<Step> result = underTest.processSensorData(currentPosition, target, obstacles);
         // should not look at result here.
         assertTrue(result.isEmpty());
 
-        verify(map).updateIsIndirect(coordinateCaptor.capture(), doubleCaptor.capture(), setCaptor.capture());
+        verify(map).updateIsIndirect(coordinateCaptor.capture(), setCaptor.capture());
         assertEquals(1, setCaptor.getValue().size());
         assertEquals(obstacle, setCaptor.getValue().iterator().next());
 
@@ -90,11 +90,11 @@ public class MapperImplTest {
         Mapper underTest = new MapperImpl(map);
 
         Location[] obstacles = { Location.from(CoordUtils.fromAngle(0, 2)) };
-        Collection<Step> result = underTest.processSensorData(currentPosition, buffer, target, obstacles);
+        Collection<Step> result = underTest.processSensorData(currentPosition, target, obstacles);
         assertFalse(result.isEmpty());
 
         // verify indirects updated
-        verify(map).updateIsIndirect(coordinateCaptor.capture(), doubleCaptor.capture(), setCaptor.capture());
+        verify(map).updateIsIndirect(coordinateCaptor.capture(), setCaptor.capture());
         assertEquals(1, setCaptor.getValue().size());
         assertEquals(obstacle, setCaptor.getValue().iterator().next());
 

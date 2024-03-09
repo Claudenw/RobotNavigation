@@ -1,12 +1,13 @@
 package org.xenei.robot.common.testUtils;
 
+import org.xenei.robot.common.ChassisInfo;
 import org.xenei.robot.common.mapping.CoordinateMap;
 import org.xenei.robot.common.mapping.CoordinateMapBuilder;
 
 public class MapLibrary {
 
     public static CoordinateMap map1(char c) {
-        CoordinateMapBuilder b = new CoordinateMapBuilder(1);
+        CoordinateMapBuilder b = new CoordinateMapBuilder(1, TestChassisInfo.DEFAULT);
 
         b.setX(-1, -1, 14, c);
         b.setX(16, -1, 14, c);
@@ -56,7 +57,7 @@ public class MapLibrary {
     }
 
     public static CoordinateMap map2(char c) {
-        CoordinateMapBuilder b = new CoordinateMapBuilder(1);
+        CoordinateMapBuilder b = new CoordinateMapBuilder(1, TestChassisInfo.DEFAULT);
 
         b.border(-5, -5, 9, 9, c);
 
@@ -66,7 +67,7 @@ public class MapLibrary {
     }
 
     public static CoordinateMap map3(char c) {
-        CoordinateMapBuilder b = new CoordinateMapBuilder(1);
+        CoordinateMapBuilder b = new CoordinateMapBuilder(1, TestChassisInfo.DEFAULT);
 
         b.border(-5, -5, 9, 9, c);
 

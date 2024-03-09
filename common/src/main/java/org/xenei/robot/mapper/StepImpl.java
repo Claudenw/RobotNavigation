@@ -56,13 +56,13 @@ public class StepImpl implements Step {
         }
         
         public boolean isValid(RobutContext ctxt) {
-            return isValid(ctxt,false);
+            return isValid(ctxt, false);
         }
         
         public boolean isValid(RobutContext ctxt, boolean throwExceptions) {
             if (coord == null) {
                 if (throwExceptions) {
-            Objects.requireNonNull(coord, "Coordinates may not be null");
+                    Objects.requireNonNull(coord, "Coordinates may not be null");
                 }
                 return false;
             }
@@ -97,7 +97,7 @@ public class StepImpl implements Step {
         }
         
         public Step build(RobutContext ctxt) {
-            isValid(ctxt, true);
+            isValid(ctxt, true); //throws exception on not valid.
             return new StepImpl(coord, cost, distance, geom);
         }
     }

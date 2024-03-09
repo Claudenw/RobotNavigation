@@ -1,6 +1,7 @@
 package org.xenei.robot.common.mapping;
 
 import org.locationtech.jts.geom.Coordinate;
+import org.xenei.robot.common.ChassisInfo;
 import org.xenei.robot.common.mapping.CoordinateMap.Coord;
 
 public class CoordinateMapBuilder {
@@ -8,8 +9,8 @@ public class CoordinateMapBuilder {
     private CoordinateMap map;
     private double offset;
 
-    public CoordinateMapBuilder(double scale) {
-        map = new CoordinateMap(scale);
+    public CoordinateMapBuilder(double scale, ChassisInfo chassisInfo) {
+        map = new CoordinateMap(scale, chassisInfo);
         offset = scale/2;
     }
 

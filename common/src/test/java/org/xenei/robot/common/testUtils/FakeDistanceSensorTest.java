@@ -20,10 +20,12 @@ public class FakeDistanceSensorTest {
     @Test
     @Disabled
     public void map1Test() {
-        underTest = new FakeDistanceSensor1(MapLibrary.map1('#'));
+        TestingPositionSupplier positionSupplier = new TestingPositionSupplier(null);
+        underTest = new FakeDistanceSensor1(MapLibrary.map1('#'), positionSupplier);
         double x = 13.5;
         double y = 15.5;
         int h = 0;
+
 
         List<Polygon> obstacles = underTest.map().getObstacles().collect(Collectors.toList());
         Location[] expected = { Location.from(0.5000, 0.0000), Location.from(0.5000, 0.0000),
@@ -32,12 +34,12 @@ public class FakeDistanceSensorTest {
                 Location.from(-2.5000, 0.5000), Location.from(-2.5000, -0.5000), Location.from(-1.000, -0.5000),
                 Location.from(-0.5000, -0.5000), Location.from(-1.5000, -4.5000), Location.from(0.5000, -5.5000),
                 Location.from(0.5000, -1.0000), Location.from(0.5000, -0.5000), Location.from(0.5000, 0.0000) };
-        Position position = Position.from(Location.from(x, y), Math.toRadians(h));
-        underTest.setPosition(position);
+        positionSupplier.position = Position.from(Location.from(x, y), Math.toRadians(h));
+
         Location[] actual = underTest.sense();
         CoordinateUtils.assertEquivalent(expected, actual, 0.000001);
         for (Location l : actual) {
-            assertCoordinateInObstacles(obstacles, position.nextPosition(l));
+            assertCoordinateInObstacles(obstacles, positionSupplier.get().nextPosition(l));
         }
 
         expected = new Location[] { Location.from(13.5000, 0.0000), Location.from(1.5000, 0.5000),
@@ -46,20 +48,20 @@ public class FakeDistanceSensorTest {
                 Location.from(-0.5000, 0.000), Location.from(-0.5000, 0.0000), Location.from(-0.5000, -0.5000), 
                 Location.from(-0.5000, -0.5000), Location.from(0.000, -0.5000), Location.from(0.0000, -0.5000),
                 Location.from(0.0000, -0.5000), Location.from(0.5000, -0.5000), Location.from(1.5000, -0.5000) };
-        position = Position.from(position, Math.PI);
-        underTest.setPosition(position);
+        positionSupplier.position = Position.from(positionSupplier.get(), Math.PI);
+
         actual = underTest.sense();
         CoordinateUtils.assertEquivalent(expected, actual, 0.000001);
         for (Location l : actual) {
-            assertCoordinateInObstacles(obstacles, position.nextPosition(l));
+            assertCoordinateInObstacles(obstacles, positionSupplier.get().nextPosition(l));
         }
     }
 
     @Test
     public void map2Test() {
-        underTest = new FakeDistanceSensor1(MapLibrary.map2('#'));
         Position position = Position.from(0.5, 0.5);
-        underTest.setPosition(position);
+        underTest = new FakeDistanceSensor1(MapLibrary.map2('#'), () -> position);
+
         List<Polygon> obstacles = underTest.map().getObstacles().collect(Collectors.toList());
         Location[] actual = underTest.sense();
         for (Location l : actual) {

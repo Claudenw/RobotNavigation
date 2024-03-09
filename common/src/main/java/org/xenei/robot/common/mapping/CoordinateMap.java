@@ -14,6 +14,7 @@ import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
+import org.xenei.robot.common.ChassisInfo;
 import org.xenei.robot.common.FrontsCoordinate;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.ScaleInfo;
@@ -32,10 +33,10 @@ public class CoordinateMap {
         return x > Integer.MAX_VALUE ? Integer.MAX_VALUE : (x < Integer.MIN_VALUE ? Integer.MIN_VALUE : x);
     }
 
-    public CoordinateMap(double scale) {
+    public CoordinateMap(double scale, ChassisInfo chassisInfo) {
         this.points = new TreeSet<Coord>();
         this.scale = scale;
-        this.ctxt = new RobutContext(ScaleInfo.builder().setResolution(0.5).build());
+        this.ctxt = new RobutContext(ScaleInfo.builder().setResolution(0.5).build(), chassisInfo);
     }
 
     public double scale() {

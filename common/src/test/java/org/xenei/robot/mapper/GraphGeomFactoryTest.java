@@ -18,13 +18,14 @@ import org.apache.jena.vocabulary.RDF;
 import org.junit.jupiter.api.Test;
 import org.locationtech.jts.geom.Coordinate;
 import org.xenei.robot.common.ScaleInfo;
+import org.xenei.robot.common.testUtils.TestChassisInfo;
 import org.xenei.robot.common.utils.RobutContext;
 import org.xenei.robot.common.utils.GeometryUtils;
 import org.xenei.robot.mapper.rdf.Namespace;
 
 public class GraphGeomFactoryTest {
 
-    private static RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT);
+    private static RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT, TestChassisInfo.DEFAULT);
     
     private Dataset createDataset(Model m) {
         Dataset ds = DatasetFactory.create(m);

@@ -39,6 +39,7 @@ import org.xenei.robot.common.mapping.Obstacle;
 import org.xenei.robot.common.planning.Step;
 import org.xenei.robot.common.testUtils.CoordinateUtils;
 import org.xenei.robot.common.testUtils.MapLibrary;
+import org.xenei.robot.common.testUtils.TestChassisInfo;
 import org.xenei.robot.common.utils.AngleUtils;
 import org.xenei.robot.common.utils.RobutContext;
 import org.xenei.robot.common.utils.CoordUtils;
@@ -47,10 +48,8 @@ import org.xenei.robot.common.utils.GeometryUtils;
 import org.xenei.robot.mapper.rdf.Namespace;
 
 public class MapImplTest {
-
-    private final double buffer = 0.5;
     
-    private static RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT);
+    private static RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT, TestChassisInfo.DEFAULT);
 
     private MapImpl underTest;
 
@@ -85,7 +84,7 @@ public class MapImplTest {
         }
 
     private void setup() {
-        cMap = new CoordinateMap(1);
+        cMap = new CoordinateMap(1, TestChassisInfo.DEFAULT);
         underTest = new MapImpl(ctxt);
         underTest.addCoord(p, p.distance(t), false, true);
         cMap.enable(p, 'p');
@@ -107,7 +106,7 @@ public class MapImplTest {
     @Test
     public void getBestTargetTest() {
         setup();
-        Optional<Step> pr = underTest.getBestStep(p, buffer);
+        Optional<Step> pr = underTest.getBestStep(p);
         assertTrue(pr.isPresent());
         Coordinate p2 = new Coordinate(-1, -2);
         assertEquals(StepImpl.builder().setCoordinate(p2).setCost(9).setDistance(2).build(ctxt), pr.get());
@@ -228,7 +227,7 @@ public class MapImplTest {
         assertFalse( underTest.ask(ask), () ->"Should not have any direct points" );
 
         Location newTarget = Location.from(-4, 1);
-        underTest.recalculate(newTarget.getCoordinate(), buffer);
+        underTest.recalculate(newTarget.getCoordinate());
         
         Step after = underTest.getStep(c).get();
         assertNotEquals(before.cost(), after.cost());
@@ -298,9 +297,9 @@ public class MapImplTest {
         Coordinate a = new Coordinate(-3, -4);
         Coordinate b = new Coordinate(-3, -2);
 
-        assertFalse(underTest.isClearPath(a, b, buffer));
+        assertFalse(underTest.isClearPath(a, b));
         b = new Coordinate(-4, -4);
-        assertTrue(underTest.isClearPath(a, b, buffer));
+        assertTrue(underTest.isClearPath(a, b));
     }
 
     @Test

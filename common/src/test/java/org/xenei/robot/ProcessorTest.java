@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.xenei.robot.common.ChassisInfo;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Mover;
 import org.xenei.robot.common.Position;
@@ -31,6 +32,7 @@ import org.xenei.robot.common.testUtils.FakeDistanceSensor1;
 import org.xenei.robot.common.testUtils.FakeDistanceSensor2;
 import org.xenei.robot.common.testUtils.FakeMover;
 import org.xenei.robot.common.testUtils.MapLibrary;
+import org.xenei.robot.common.testUtils.TestChassisInfo;
 import org.xenei.robot.common.utils.AngleUtils;
 import org.xenei.robot.common.utils.RobutContext;
 import org.xenei.robot.common.utils.DoubleUtils;
@@ -52,36 +54,36 @@ public class ProcessorTest {
     private final Mapper mapper;
     private FakeDistanceSensor sensor;
     private Mover mover;
-    private final double buffer;
+
 
     ProcessorTest() {
-        ctxt = new RobutContext(ScaleInfo.DEFAULT);
+
+        ctxt = new RobutContext(ScaleInfo.DEFAULT, TestChassisInfo.DEFAULT);
         map = new MapImpl(ctxt);
         //map = new MapImpl(ScaleInfo.builder().setResolution(.3).build());
         mapViz = new MapViz(100, map, () -> planner.getSolution());
         mapper = new MapperImpl(map);
         //mover = new FakeMover(Location.from(-1, -3), 1);
-        buffer = 0.25;
         //planner = new PlannerImpl(map, () -> mover.position(), buffer);
         //sensor = new FakeDistanceSensor2(MapLibrary.map2('#'), AngleUtils.RADIANS_45);
         //planner.addListener(() -> sensor.setPosition(mover.position()));
     }
 
     private Collection<Step> processSensor() {
-       return mapper.processSensorData(mover.position(), buffer, planner.getRootTarget(), sensor.sense());
+       return mapper.processSensorData(mover.position(), planner.getRootTarget(), sensor.sense());
     }
 
     public boolean checkTarget() {
         if (!mapper.equivalent(mover.position(), planner.getRootTarget())) {
             // if we can see the final target go that way.
-            if (mapper.isClearPath(mover.position(), planner.getRootTarget(), buffer)) {
+            if (mapper.isClearPath(mover.position(), planner.getRootTarget())) {
                 double newHeading = mover.position().headingTo(planner.getRootTarget());
                 boolean cont = DoubleUtils.eq(newHeading, mover.position().getHeading());
                 if (!cont) {
                     // heading is different so reset the heading, scan, and check again.
                     mover.setHeading(mover.position().headingTo(planner.getRootTarget()));
                     processSensor();
-                    cont = mapper.isClearPath(mover.position(), planner.getRootTarget(), buffer);
+                    cont = mapper.isClearPath(mover.position(), planner.getRootTarget());
                     if (!cont) {
                         // can't see the position really so reset the heading.
                         mover.setHeading(mover.position().getHeading());
@@ -90,7 +92,7 @@ public class ProcessorTest {
                 if (cont) {
                     // we can really see the final position.
                     LOG.info("can see {} from {}", planner.getRootTarget(), mover.position());
-                    Literal pathWkt = ctxt.graphGeomFactory.asWKTPath(buffer, planner.getRootTarget(), 
+                    Literal pathWkt = ctxt.graphGeomFactory.asWKTPath(ctxt.chassisInfo.radius, planner.getRootTarget(), 
                             mover.position().getCoordinate());
                     Var wkt = Var.alloc("wkt");
 
@@ -119,12 +121,12 @@ public class ProcessorTest {
             }
         }
         // if we can not see the target replan.
-        return mapper.isClearPath(mover.position(), planner.getTarget(), buffer);
+        return mapper.isClearPath(mover.position(), planner.getTarget());
     }
 
     private void doTest(Location startCoord, Location finalCoord) {
         mover = new FakeMover(Location.from(startCoord), 1);
-        planner = new PlannerImpl(map, () -> mover.position(), buffer, finalCoord);
+        planner = new PlannerImpl(map, () -> mover.position(), finalCoord);
         mover.setHeading(mover.position().getHeading());
         planner.addListener(() -> mapViz.redraw(planner.getTarget()));
 
@@ -160,13 +162,13 @@ public class ProcessorTest {
         }
         planner.notifyListeners();
         Solution solution = planner.getSolution();
-        CoordinateUtils.assertEquivalent(startCoord, solution.start(), buffer);
-        CoordinateUtils.assertEquivalent(startCoord, solution.start(), buffer);
+        CoordinateUtils.assertEquivalent(startCoord, solution.start(), ctxt.chassisInfo.radius);
+        CoordinateUtils.assertEquivalent(startCoord, solution.start(), ctxt.chassisInfo.radius);
         System.out.println( MapReports.dumpDistance((MapImpl)map) );
         System.out.println("Solution");
         solution.stream().forEach(System.out::println);
         System.out.println( "SUCCESS");
-        solution.simplify( (a,b) -> map.isClearPath(a, b, buffer));
+        solution.simplify( (a,b) -> map.isClearPath(a, b));
         System.out.println("Solution 2");
         solution.stream().forEach(System.out::println);
         

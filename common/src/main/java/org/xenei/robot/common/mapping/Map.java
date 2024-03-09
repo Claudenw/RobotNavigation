@@ -31,7 +31,7 @@ public interface Map {
      * @param dest the coordinates to end it
      * @return true if there are no obstacles between source and dest.
      */
-    boolean isClearPath(Coordinate source, Coordinate dest, double buffer);
+    boolean isClearPath(Coordinate source, Coordinate dest);
 
     /**
      * Add the target to the planning
@@ -63,16 +63,15 @@ public interface Map {
      * 
      * @param target the new target.
      */
-    Coordinate recalculate(Coordinate target, double buffer);
+    Coordinate recalculate(Coordinate target);
 
     /**
      * Find the best targets based on the costs in the graph.
      * 
      * @param currentCoords the current coordinates to search from.
-     * @param buffer the buffer required around object. (size of objects / 2 )
      * @return An optional step as the best solution empty if there is none.
      */
-    Optional<Step> getBestStep(Coordinate currentCoords, double buffer);
+    Optional<Step> getBestStep(Coordinate currentCoords);
 
     /**
      * Returns true if the coordinate is within an obstacle.
@@ -107,9 +106,9 @@ public interface Map {
     /**
      * Write the path specified by the solution in the the base model.
      * 
-     * @param solution the soluiton containing the path.
+     * @param solution the solution containing the path.
      */
-    void recordSolution(Solution solution, double buffer);
+    void recordSolution(Solution solution);
 
     /**
      * Get the context info for this map.
@@ -142,10 +141,9 @@ public interface Map {
      * blocked by newObstacle is marked as indirect.
      * 
      * @param target The final target
-     * @param buffer the buffer
      * @param newObstacles the set of new obstacles.
      */
-    void updateIsIndirect(Coordinate target, double buffer, Set<Obstacle> newObstacles);
+    void updateIsIndirect(Coordinate target, Set<Obstacle> newObstacles);
     
     /**
      * Create an Obstacle.
