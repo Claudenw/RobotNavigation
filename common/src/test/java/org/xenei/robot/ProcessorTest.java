@@ -47,7 +47,7 @@ import org.xenei.robot.planner.PlannerImpl;
 public class ProcessorTest {
     private static final Logger LOG = LoggerFactory.getLogger(ProcessorTest.class);
 
-    private final MapViz mapViz;
+    private MapViz mapViz;
     private final Map map;
     private final RobutContext ctxt;
     private Planner planner;
@@ -57,11 +57,10 @@ public class ProcessorTest {
 
 
     ProcessorTest() {
-
         ctxt = new RobutContext(ScaleInfo.DEFAULT, TestChassisInfo.DEFAULT);
         map = new MapImpl(ctxt);
         //map = new MapImpl(ScaleInfo.builder().setResolution(.3).build());
-        mapViz = new MapViz(100, map, () -> planner.getSolution());
+
         mapper = new MapperImpl(map);
         //mover = new FakeMover(Location.from(-1, -3), 1);
         //planner = new PlannerImpl(map, () -> mover.position(), buffer);
@@ -126,11 +125,12 @@ public class ProcessorTest {
 
     private void doTest(Location startCoord, Location finalCoord) {
         mover = new FakeMover(Location.from(startCoord), 1);
+        mapViz = new MapViz(100, map, () -> planner.getSolution(), () -> mover.position());
         planner = new PlannerImpl(map, () -> mover.position(), finalCoord);
-        mover.setHeading(mover.position().getHeading());
         planner.addListener(() -> mapViz.redraw(planner.getTarget()));
 
         processSensor();
+        System.out.println(MapReports.dumpModel((MapImpl)map));
 
         int stepCount = 0;
         int maxLoops = 100;
@@ -154,7 +154,7 @@ public class ProcessorTest {
                     fail("Did not find solution in " + maxLoops + " steps");
                 }
                 planner.notifyListeners();
-                System.out.println( MapReports.dumpDistance((MapImpl)map) );
+                System.out.println( MapReports.dumpDistance((MapImpl)map, mover.position().getCoordinate()) );
                 System.out.println( MapReports.dumpObstacles((MapImpl)map));
                 System.out.println( MapReports.dumpObstacleDistance((MapImpl)map));
                 diff.reset();
@@ -164,7 +164,7 @@ public class ProcessorTest {
         Solution solution = planner.getSolution();
         CoordinateUtils.assertEquivalent(startCoord, solution.start(), ctxt.chassisInfo.radius);
         CoordinateUtils.assertEquivalent(startCoord, solution.start(), ctxt.chassisInfo.radius);
-        System.out.println( MapReports.dumpDistance((MapImpl)map) );
+        System.out.println( MapReports.dumpDistance((MapImpl)map, mover.position().getCoordinate()));
         System.out.println("Solution");
         solution.stream().forEach(System.out::println);
         System.out.println( "SUCCESS");

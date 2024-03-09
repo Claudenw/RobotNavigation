@@ -9,12 +9,6 @@ import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Position;
 
 public interface Planner extends ListenerContainer {
-    /**
-     * Gets the current position according to the planner.
-     * 
-     * @return the current position.
-     */
-    //Position getCurrentPosition();
 
     /**
      * Gets the coordinates of the target.
@@ -96,22 +90,6 @@ public interface Planner extends ListenerContainer {
     void registerPositionChange();
 
     void recalculateCosts();
-
-    /**
-     * Restart from the new location using the current map.
-     * 
-     * @param start the new starting position.
-     */
-   // void restart(Location start);
-
-    /**
-     * Convenience method to get the steps from the underlying map. Equivalent to
-     * map.getTargets();
-     * 
-     * @return the collection of targets from the map.
-     * @see Map#getTargets
-     */
-    Collection<Step> getPlanRecords();
 
     /**
      * Gets the Diff associatd with this planner.

@@ -46,11 +46,21 @@ public final class ScaleInfo {
     public PrecisionModel getPrecisionModel() {
         return precisionModel;
     }
-    
+
+    /**
+     * Rounds the double to the number of specified decimal places.
+     * @param d the number to truncate.
+     * @return The truncated value.
+     */
     public double precise(double d) {
-        return DoubleUtils.truncate(d, decimalPlaces);
+        return DoubleUtils.round(d, decimalPlaces);
     }
-    
+
+    /**
+     * Rounds the coordinates to the specified decimal places.
+     * @param c the original coordinate
+     * @return the coordinate with truncated positions.
+     */
     public Coordinate precise(Coordinate c) {
         return new Coordinate(precise(c.getX()),precise(c.getY()));
 
@@ -67,7 +77,7 @@ public final class ScaleInfo {
         if (value < 0) {
             scaledValue *= -1;
         }
-        return DoubleUtils.truncate(scaledValue / truncationFactor, decimalPlaces);
+        return DoubleUtils.round(scaledValue / truncationFactor, decimalPlaces);
     }
 
     public static class Builder {

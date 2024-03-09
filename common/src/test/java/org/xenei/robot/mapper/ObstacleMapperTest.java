@@ -42,7 +42,7 @@ public class ObstacleMapperTest {
         List<Arguments> args = new ArrayList<>();
 
         args.add(Arguments.of(Position.from(-1, -3, AngleUtils.RADIANS_90), Location.from(.5, 3),
-                new Coordinate(-4.0, -2.5), new Coordinate(-3, -2.5)));
+                new Coordinate(-4.0, -2.5), new Coordinate(-3.5, -2.5)));
 
         return args.stream();
     }

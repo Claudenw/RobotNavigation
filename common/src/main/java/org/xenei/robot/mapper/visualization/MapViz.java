@@ -18,7 +18,10 @@ import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.MultiLineString;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
+import org.xenei.robot.common.Location;
+import org.xenei.robot.common.Position;
 import org.xenei.robot.common.mapping.Map;
+import org.xenei.robot.common.mapping.MapCoord;
 import org.xenei.robot.common.mapping.Obstacle;
 import org.xenei.robot.common.planning.Solution;
 import org.xenei.robot.common.planning.Step;
@@ -27,16 +30,19 @@ import org.xenei.robot.common.utils.DoubleUtils;
 import org.xenei.robot.common.utils.GeometryUtils;
 
 public class MapViz {
-    private final Supplier<Solution> solution;
+    private final Supplier<Solution> solutionSupplier;
+    private final Supplier<Position> positionSupplier;
     private final Map map;
     private final JTSPanel panel;
     private final int scale;
     private final int buffer;
 
-    public MapViz(int scale, Map map, Supplier<Solution> solution) {
+
+    public MapViz(int scale, Map map, Supplier<Solution> solutionSupplier, Supplier<Position> positionSupplier) {
         this.map = map;
         this.panel = new JTSPanel();
-        this.solution = solution;
+        this.solutionSupplier = solutionSupplier;
+        this.positionSupplier = positionSupplier;
         this.scale = scale;
         this.buffer = (int) (map.getContext().scaleInfo.getResolution() * scale) / 2;
 
@@ -95,13 +101,13 @@ public class MapViz {
             cmds.add(getPoly(obst.geom(), Color.RED));
         }
         sb.append( ""+cmds.size()+" after Obstacles\n");
-
-        for (Step targ : map.getTargets()) {
-            cmds.add(getPoly(targ.getGeometry(), Color.CYAN));
+        
+        for (MapCoord mapCoord : map.getCoords()) {
+            cmds.add(getPoly(mapCoord.geometry, mapCoord.isDirect ? Color.CYAN : Color.BLUE));
         }
         sb.append( ""+cmds.size()+" after Targets\n");
 
-        List<Coordinate> lst = solution.get().stream().collect(Collectors.toList());
+        List<Coordinate> lst = solutionSupplier.get().stream().collect(Collectors.toList());
         if (lst.size() > 1) {
             cmds.add(getPoly(geometryUtils.asPath(0.25, lst.toArray(new Coordinate[lst.size()])), Color.WHITE));
         } else {

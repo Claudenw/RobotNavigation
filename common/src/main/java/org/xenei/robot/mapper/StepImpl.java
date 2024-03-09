@@ -66,27 +66,15 @@ public class StepImpl implements Step {
                 }
                 return false;
             }
-//            if (cost <= UNSET) {
-//                cost = distance;
-//            }
-//            if (distance <= UNSET) {
-//                distance = cost;
-//            }
-//            if (cost <= UNSET) {
-//                if (throwExceptions) {
-//                throw new RuntimeException( "'cost' or 'distance' must be set");
-//                } 
-//                return false;
-//            }
-            if (cost <= 0) {
+            if (cost <= 0 && distance != 0) {
                 if (throwExceptions) {
                 throw new RuntimeException("'cost' must be greater than 0");
                 }
                 return false;
             }
-            if (distance <= 0) {
+            if (distance < 0) {
                 if (throwExceptions) {
-                throw new RuntimeException("'distance' must be greater than 0");
+                throw new RuntimeException("'distance' may not be less 0");
                 }
                 return false;
             }

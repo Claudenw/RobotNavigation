@@ -35,8 +35,7 @@ public class MapperImpl implements Mapper {
     }
 
     @Override
-    public List<Step> processSensorData(Position currentPosition, Coordinate target,
-            Location[] obstacles) {
+    public List<Step> processSensorData(Position currentPosition, Coordinate target, Location[] obstacles) {
 
         LOG.debug("Sense position: {}", currentPosition);
 
@@ -61,13 +60,13 @@ public class MapperImpl implements Mapper {
 
     class ObstacleMapper {
         final Position currentPosition;
-        final double buffer;
+        final double tolerance;
         final Set<Obstacle> newObstacles;
         final Set<Coordinate> coordSet;
 
         ObstacleMapper(Position currentPosition) {
             this.currentPosition = currentPosition;
-            this.buffer =  + map.getContext().getScaledRadius();
+            this.tolerance = map.getContext().getScaledRadius();
             this.newObstacles = new HashSet<>();
             this.coordSet = new HashSet<Coordinate>();
         }
@@ -78,16 +77,18 @@ public class MapperImpl implements Mapper {
             return currentPosition.nextPosition(adjustedRelative);
         }
 
+        /**
+         * Addes the relative obstacle to the map and potentially adds values to the coordSet.
+         * @param relativeObstacle the relative location to the obstacle.
+         */
         void doMap(Location relativeObstacle) {
             /* create absolute coordinates
              * relativeObstacle is always a point on an edge of an obstacle. so add 1/2 map resolution to 
              * the relative distance to place the obstacle within a cell.
              */
 
-            newObstacles.addAll(map.addObstacle(map.createObstacle(currentPosition,  relativeObstacle)));
-
-            // filter out any range < 1.0
-            if (!DoubleUtils.inRange(relativeObstacle.range(), buffer)) {
+            newObstacles.addAll(map.addObstacle(map.createObstacle(currentPosition, relativeObstacle)));
+            if (!DoubleUtils.inRange(relativeObstacle.range(), tolerance)) {
                 Optional<Coordinate> possibleCoord = findCoordinateNear(relativeObstacle);
                 if (possibleCoord.isPresent()) {
                     coordSet.add(possibleCoord.get());
@@ -103,8 +104,8 @@ public class MapperImpl implements Mapper {
          * @return
          */
         Optional<Coordinate> findCoordinateNear(Location relativeObstacle) {
-             double d = relativeObstacle.range() - buffer;
-            if (d < buffer) {
+            double d = relativeObstacle.range() - tolerance;
+            if (d < tolerance) {
                 return Optional.empty();
             }
             Location relativeCoord = Location.from(CoordUtils.fromAngle(relativeObstacle.theta(), d));
@@ -112,7 +113,7 @@ public class MapperImpl implements Mapper {
             Coordinate newCoord = map.adopt(candidate.getCoordinate());
             if (map.isObstacle(newCoord)) {
                 d -= map.getContext().scaleInfo.getResolution();
-                if (d < buffer) {
+                if (d < tolerance) {
                     return Optional.empty();
                 }
                 relativeCoord = Location.from(CoordUtils.fromAngle(relativeObstacle.theta(), d));
@@ -122,7 +123,7 @@ public class MapperImpl implements Mapper {
                     return Optional.empty();
                 }
             }
-            return Optional.ofNullable(currentPosition.distance(newCoord) < buffer ? null : newCoord);
+            return Optional.ofNullable(currentPosition.distance(newCoord) < tolerance ? null : newCoord);
         }
     }
 }

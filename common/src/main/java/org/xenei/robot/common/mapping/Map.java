@@ -45,11 +45,20 @@ public interface Map {
     Optional<Step> addCoord(Coordinate target, double distance, boolean visited, boolean isIndirect);
 
     /**
-     * Gets the collection of all targets in the planning graph
+     * Gets the collection of all steps in the planning graph that are reachable from
+     * the current position.
      * 
-     * @return the collection of all targets in the planning graph.
+     * @param position the coordinates of the current position.
+     * @return the collection of all steps in the planning graph.
      */
-    Collection<Step> getTargets();
+    Collection<Step> getSteps(Coordinate position);
+
+    /**
+     * Gets the collection of all coordinates in the planning graph.
+     * 
+     * @return the collection of all coordinates in the planning graph.
+     */
+    Collection<MapCoord> getCoords();
 
     /**
      * Adds a path to the planning graph.
@@ -152,5 +161,4 @@ public interface Map {
      * @return An obstacle.
      */
     Obstacle createObstacle(Position startPosition, Location relativeLocation);
-
 }

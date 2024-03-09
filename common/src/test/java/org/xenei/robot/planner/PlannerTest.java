@@ -207,54 +207,6 @@ public class PlannerTest {
         assertTrue(initial.equals2D(sol.get(0)));
     }
 
-//    @Test
-//    public void restartTest() {
-//        Step step = Mockito.mock(Step.class);
-//        Map map = Mockito.mock(Map.class);
-//        when(map.getContext()).thenReturn(ctxt);
-//        when(map.addCoord(any(Coordinate.class), anyDouble(), anyBoolean(), anyBoolean())).thenReturn(Optional.of(step));
-//        // .thenAnswer(i -> new StepImpl( (Coordinate)i.getArguments()[0],
-//        // (double)(i.getArguments()[1])));
-//
-//        Location finalCoord = Location.from(-1, 1);
-//        Location nextStart = Location.from(4, 4);
-//        PositionSupplier supplier = new PositionSupplier(Position.from(-1, -3));
-//        underTest = new PlannerImpl(map, supplier, buffer, finalCoord);
-//        underTest.restart(nextStart);
-//        Diff diff = underTest.getDiff();
-//        assertFalse(diff.didChange());
-//
-//        // verify current position changed
-//        assertTrue(nextStart.equals2D(underTest.getCurrentPosition()));
-//
-//        // verify addTarget called
-//        verify(map, times(2)).addCoord(coordinateCaptor.capture(), doubleCaptor.capture(), anyBoolean(), anyBoolean());
-//        List<Coordinate> coords = coordinateCaptor.getAllValues();
-//        assertTrue(startCoord.equals2D(coords.get(0)));
-//        assertTrue(nextStart.equals2D(coords.get(1)));
-//
-//        // verify solution has 1 item
-//        Solution solution = underTest.getSolution();
-//        List<Coordinate> sol = solution.stream().collect(Collectors.toList());
-//        assertEquals(1, sol.size());
-//        assertTrue(nextStart.equals2D(sol.get(0)));
-//    }
-
-    @Test
-    public void getPlanRecordsTest() {
-        Map map = Mockito.mock(Map.class);
-        when(map.getContext()).thenReturn(ctxt);
-        when(map.getTargets()).thenReturn(Collections.emptyList());
-
-        Location finalCoord = Location.from(-1, 1);
-        TestingPositionSupplier supplier = new TestingPositionSupplier(Position.from(-1, -3));
-        underTest = new PlannerImpl(map, supplier, finalCoord);
-        underTest.getPlanRecords();
-
-        // verify we got them from the map
-        verify(map).getTargets();
-    }
-
     @Test
     public void selectTargetTest() {
         Location finalCoord = Location.from(-1, 1);

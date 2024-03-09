@@ -35,6 +35,7 @@ import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Position;
 import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.common.mapping.CoordinateMap;
+import org.xenei.robot.common.mapping.MapCoord;
 import org.xenei.robot.common.mapping.Obstacle;
 import org.xenei.robot.common.planning.Step;
 import org.xenei.robot.common.testUtils.CoordinateUtils;
@@ -53,7 +54,20 @@ public class MapImplTest {
 
     private MapImpl underTest;
 
-    public static final Coordinate[] expected = { new Coordinate(-4, -4), new Coordinate(-4, -3),
+    // Map is as follows: O = obstacle X = coord
+    // neg  | pos
+    // 543210123
+    //     t     1 pos
+    //           0 --
+    // OXOOOOOXO 1
+    //    XXX    2 n
+    // OX  p  XO 3 e
+    // OX XXX XO 4 g
+    //   OOOOO   5
+    
+    // it is the bottom half of map 2 with partial detection.
+
+    public static final Coordinate[] coordinates = { new Coordinate(-4, -4), new Coordinate(-4, -3),
             new Coordinate(-4, -1), new Coordinate(-2, -4), new Coordinate(-2, -2), new Coordinate(-1, -4),
             new Coordinate(-1, -2), new Coordinate(0, -4), new Coordinate(0, -2), new Coordinate(2, -4),
             new Coordinate(2, -3), new Coordinate(2, -1) };
@@ -78,7 +92,7 @@ public class MapImplTest {
 
         @BeforeAll
         public static void setupPaths() {
-            for (Coordinate e : expected) {
+            for (Coordinate e : coordinates) {
                 paths.add(new Coordinate[] { p, e });
             }
         }
@@ -89,8 +103,9 @@ public class MapImplTest {
         underTest.addCoord(p, p.distance(t), false, true);
         cMap.enable(p, 'p');
         cMap.enable(t, 't');
-        for (Coordinate e : expected) {
-            underTest.addCoord(e, e.distance(t), false, true);
+        for (Coordinate e : coordinates) {
+            System.out.println("adding "+e);
+            Optional<Step> result = underTest.addCoord(e, e.distance(t), false, true);
             cMap.enable(e, 'e');
         }
         Position pos = Position.from(p, 0);
@@ -109,7 +124,7 @@ public class MapImplTest {
         Optional<Step> pr = underTest.getBestStep(p);
         assertTrue(pr.isPresent());
         Coordinate p2 = new Coordinate(-1, -2);
-        assertEquals(StepImpl.builder().setCoordinate(p2).setCost(9).setDistance(2).build(ctxt), pr.get());
+        assertEquals(StepImpl.builder().setCoordinate(p2).setCost(7).setDistance(1).build(ctxt), pr.get());
     }
 
     /**
@@ -133,46 +148,61 @@ public class MapImplTest {
     @Test
     public void getStepTest() {
         setup();
-        Optional<Step> pr = underTest.getStep(Location.from(p));
+        Optional<Step> pr = underTest.getStep(0.0, Location.from(p));
         assertTrue(pr.isPresent());
         assertEquals(0, CoordUtils.XYCompr.compare(p, pr.get().getCoordinate()));
         assertEquals(p.distance(t), pr.get().distance());
         // p can not see t so cost should be 2x distance
         assertEquals(pr.get().distance()*2, pr.get().cost());
 
-        pr = underTest.getStep(Location.from(t));
+        pr = underTest.getStep(0.0, Location.from(t));
         assertTrue(pr.isEmpty());
 
-        for (Coordinate e : expected) {
-            pr = underTest.getStep(Location.from(e));
+        for (Coordinate e : coordinates) {
+            pr = underTest.getStep(0.0, Location.from(e));
             assertTrue(pr.isPresent());
             assertEquals(0, CoordUtils.XYCompr.compare(e, pr.get().getCoordinate()));
             assertEquals(e.distance(t), pr.get().distance());
         }
         for (Coordinate o : obstacles) {
-            pr = underTest.getStep(Location.from(o));
+            pr = underTest.getStep(0.0, Location.from(o));
             assertTrue(pr.isEmpty());
         }
     }
 
     @Test
-    public void getTargetsTest() {
+    public void getStepsTest() {
         setup();
-        Collection<Coordinate> points = new ArrayList<>();
-        points.addAll(Arrays.asList(expected));
-        points.add(p);
+        Collection<Coordinate> expected = List.of( new Coordinate(-4,-1), new Coordinate(2,-1));
+        underTest.addObstacle(underTest.new ObstacleImpl(new Coordinate(-3,-1), new Coordinate(1,-1)));
+
+        // looking from the target we should only see -4,-1 and 2,-1
+        Collection<Step> records = underTest.getSteps(t);
+        assertEquals(expected.size(), records.size());
         BiPredicate<Collection<Coordinate>, Step> contains = (c, t) -> c.stream()
                 .filter(p -> CoordUtils.XYCompr.compare(p, t.getCoordinate()) == 0).findFirst().isPresent();
+        for (Step step : records) {
+            assertTrue(contains.test(expected, step));
+        }
 
-        Collection<Step> records = underTest.getTargets();
-        assertEquals(points.size(), records.size());
+    }
 
-        for (Step pr : records) {
-            assertTrue(contains.test(points, pr), () -> "Unexpected Target " + pr);
-            assertFalse(Double.isNaN(pr.cost()), () -> pr.toString() + " has NaN cost");
+    @Test
+    public void getCoordsTest() {
+        setup();
+        Collection<Coordinate> expected = new ArrayList<>();
+        expected.addAll(Arrays.asList(coordinates));
+        expected.add(p);
+        
+        Collection<MapCoord> records = underTest.getCoords();
+        assertEquals(expected.size(), records.size());
+
+        for (MapCoord pr : records) {
+            assertTrue(expected.contains(pr.location.getCoordinate()), () -> "Unexpected Target " + pr);
         }
     }
 
+    
     @Test
     public void isEmptyTest() {
         assertTrue(new MapImpl(ctxt).isEmpty());
@@ -181,8 +211,8 @@ public class MapImplTest {
     @Test
     public void addPathTest() {
         setup();
-        Location a = Location.from(expected[0]);
-        Location b = Location.from(expected[1]);
+        Location a = Location.from(coordinates[0]);
+        Location b = Location.from(coordinates[1]);
 
         assertFalse(underTest.hasPath(a, b), () -> "Should not have path");
 
@@ -198,7 +228,7 @@ public class MapImplTest {
     public void hasPathTest() {
         setup();
         Location a = Location.from(p);
-        Location b = Location.from(expected[0]);
+        Location b = Location.from(coordinates[0]);
         Location c = Location.from(t);
         underTest.addCoord(t, 1, false, false);
 
@@ -222,14 +252,14 @@ public class MapImplTest {
         .addOptional(Namespace.s, Namespace.isIndirect, Namespace.o)
                 .addFilter( exprF.not( exprF.bound(Namespace.o)));
         
-        Location c = Location.from(expected[0]);
-        Step before = underTest.getStep(c).get();
+        Location c = Location.from(coordinates[0]);
+        Step before = underTest.getStep(0.0, c).get();
         assertFalse( underTest.ask(ask), () ->"Should not have any direct points" );
 
         Location newTarget = Location.from(-4, 1);
         underTest.recalculate(newTarget.getCoordinate());
         
-        Step after = underTest.getStep(c).get();
+        Step after = underTest.getStep(0.0, c).get();
         assertNotEquals(before.cost(), after.cost());
         assertTrue(underTest.ask(ask), ()->"Should have some indirect points");
     }
@@ -266,10 +296,10 @@ public class MapImplTest {
         assertTrue(underTest.ask(ask));
 
         
-        c = Location.from(expected[0]);
+        c = Location.from(coordinates[0]);
         assertTrue(underTest.ask(ask));
 
-        Step before = underTest.getStep(c).get();
+        Step before = underTest.getStep(0.0, c).get();
         underTest.updateCoordinate(Namespace.PlanningModel, Namespace.Coord, c.getCoordinate(), Namespace.distance,
                 before.distance() + 5);
 
@@ -284,7 +314,7 @@ public class MapImplTest {
         });
         assertEquals(1, count[0]);
 
-        Step after = underTest.getStep(c).get();
+        Step after = underTest.getStep(0.0, c).get();
         assertEquals(before.distance() + 5, after.distance());
     }
 
@@ -330,8 +360,8 @@ public class MapImplTest {
     public void testAddPath() {
         underTest = new MapImpl(ctxt);
         assertTrue( underTest.addCoord(p, p.distance(t), false, false).isPresent());
-        assertTrue(underTest.addCoord(expected[0], expected[0].distance(t), false, false).isPresent());
-        Coordinate[] path = underTest.addPath(p, expected[0]);
+        assertTrue(underTest.addCoord(coordinates[0], coordinates[0].distance(t), false, false).isPresent());
+        Coordinate[] path = underTest.addPath(p, coordinates[0]);
 
         ExprFactory exprF = new ExprFactory(MapImpl.getPrefixMapping());
         Var wkt = Var.alloc("wkt");

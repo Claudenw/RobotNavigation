@@ -23,6 +23,7 @@ import org.apache.jena.sparql.expr.Expr;
 import org.apache.jena.vocabulary.RDF;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Point;
+import org.xenei.robot.common.Position;
 import org.xenei.robot.common.mapping.CoordinateMap;
 import org.xenei.robot.common.mapping.CoordinateMap.Coord;
 import org.xenei.robot.common.mapping.Obstacle;
@@ -87,9 +88,9 @@ public class MapReports {
         return builder.toString();
     }
 
-    public static String dumpDistance(MapImpl map) {
+    public static String dumpDistance(MapImpl map, Coordinate currentPosition) {
         StringBuilder builder = new StringBuilder().append("'x','y','cost','dist'\n");
-        map.getTargets().forEach( step -> 
+        map.getSteps(currentPosition).forEach( step -> 
             builder.append(String.format("%s,%s,%s,%s\n", //
                     step.getX(),
                     step.getY(),

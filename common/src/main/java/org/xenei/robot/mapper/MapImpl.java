@@ -48,6 +48,7 @@ import org.apache.jena.shared.Lock;
 import org.apache.jena.shared.PrefixMapping;
 import org.apache.jena.sparql.core.Var;
 import org.apache.jena.sparql.expr.Expr;
+import org.apache.jena.sparql.expr.NodeValue;
 import org.apache.jena.update.UpdateExecutionFactory;
 import org.apache.jena.update.UpdateRequest;
 import org.apache.jena.vocabulary.RDF;
@@ -67,6 +68,7 @@ import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Position;
 import org.xenei.robot.common.UnmodifiableCoordinate;
 import org.xenei.robot.common.mapping.Map;
+import org.xenei.robot.common.mapping.MapCoord;
 import org.xenei.robot.common.mapping.Obstacle;
 import org.xenei.robot.common.planning.Solution;
 import org.xenei.robot.common.planning.Step;
@@ -173,6 +175,12 @@ public class MapImpl implements Map {
         }
     }
 
+    /**
+     * executes the select query and processes the result with the processor.
+     * Processing stops when processor returns false.
+     * @param select the SelectBuilder to execute.
+     * @param processor the processor to run to handle the results.
+     */
     void exec(SelectBuilder select, Predicate<QuerySolution> processor) {
         try (LockHandler lh = new LockHandler(Lock.READ);
                 QueryExecution qexec = QueryExecutionFactory.create(select.build(), data)) {
@@ -256,7 +264,7 @@ public class MapImpl implements Map {
      * @param location The location to get the Step for
      * @return the Step for the location.
      */
-    public Optional<Step> getStep(FrontsCoordinate location) {
+    public Optional<Step> getStep(double distance, FrontsCoordinate location) {
         MapCoordinate coordinate = new MapCoordinate(location.getCoordinate());
 
         Var geom = Var.alloc("geom");
@@ -272,7 +280,7 @@ public class MapImpl implements Map {
                 .addWhere(Namespace.s, Namespace.y, coordinate.getY()) //
                 .addWhere(Namespace.s, Geo.AS_WKT_PROP, geom) //
                 .addOptional(Namespace.s, Namespace.isIndirect, indirect) //
-                .addBind(SPARQL.indirectCalc(dist, indirect), cost);
+                .addBind(SPARQL.costCalc(distance, dist, indirect), cost);
 
         StepImpl.Builder builder = StepImpl.builder();
 
@@ -350,15 +358,6 @@ public class MapImpl implements Map {
                 : Optional.empty();
     }
 
-//    private boolean add(Resource model, MapCoordinate coordinate, Resource type, Geometry geometry) {
-//        Optional<UpdateBuilder> builder = addBuilder(model, coordinate, type, geometry);
-//        if (builder.isPresent()) {
-//            doUpdate(builder.get());
-//            return true;
-//        }
-//        return false;
-//    }
-
     public void cutPath(Resource model, Coordinate a, Coordinate b) {
         Var ra = Var.alloc("a");
         Var rb = Var.alloc("b");
@@ -430,7 +429,6 @@ public class MapImpl implements Map {
             LOG.info("coordinate {} of type {} is not on the map",
                     CoordUtils.toString(coordinate, ctxt.scaleInfo.decimalPlaces()), type);
         }
-
     }
 
     /**
@@ -474,10 +472,11 @@ public class MapImpl implements Map {
                 .addOptional(other, Namespace.visited, visited) //
                 .addFilter(exprF.and(exprF.ne(other, Namespace.s), exprF.not(exprF.bound(visited)))) //
                 .addBind(ctxt.graphGeomFactory.calcDistance(exprF, otherWkt, wkt), dist) //
-                .addBind(exprF.add(otherDist, SPARQL.indirectCalc(otherDist, indirect)), cost) //
+                .addBind(SPARQL.costCalc(dist, otherDist, indirect), cost) //
                 .addOrderBy(cost, Order.ASCENDING);
 
         // skip coords that are within the tolerance range of visited coords
+        // returns true if the position has been visited.
         AskBuilder checkVisited = new AskBuilder() //
                 .addWhere(other2, Namespace.visited, "?ignore") //
                 .addWhere(other2, RDF.type, Namespace.Coord)//
@@ -493,7 +492,7 @@ public class MapImpl implements Map {
             for (Coordinate candidate : geom.getCoordinates()) {
                 Literal candidateWkt = ctxt.graphGeomFactory.asWKT(candidate);
                 checkVisited.setVar(otherWkt, candidateWkt);
-
+                // if not visited and has a clear path
                 if (!ask(checkVisited) && isClearPath(currentCoords, candidate)) {
                     builder.setCoordinate(candidate).setCost(soln.getLiteral(cost.getName()).getDouble())
                             .setDistance(soln.getLiteral(dist.getName()).getDouble()).setGeometry(geom);
@@ -510,7 +509,7 @@ public class MapImpl implements Map {
         if (!builder.isValid(ctxt)) {
             if (LOG.isDebugEnabled()) {
                 LOG.debug("Query\n"+MapReports.dumpQuery(MapImpl.this, query));
-                LOG.debug("Distance\n"+MapReports.dumpDistance(MapImpl.this));
+                LOG.debug("Distance\n"+MapReports.dumpDistance(MapImpl.this, currentCoords));
                 LOG.debug("Obstacles\n"+MapReports.dumpObstacleDistance(MapImpl.this));
                 MapImpl.this.getObstacles().forEach(s -> LOG.debug(s.toString()));
                 LOG.debug("Model\n"+MapReports.dumpModel(MapImpl.this));
@@ -588,36 +587,78 @@ public class MapImpl implements Map {
     }
 
     @Override
-    public Collection<Step> getTargets() {
+    public Collection<MapCoord> getCoords() {
+        Var x = Var.alloc("x");
+        Var y = Var.alloc("y");
+        Var wkt = Var.alloc("wkt");
+        Var indirect = Var.alloc("indirect");
+
+        SelectBuilder sb = new SelectBuilder().addVar(x).addVar(y).addVar(indirect).addVar(wkt) //
+                .from(Namespace.PlanningModel.getURI()) //
+                .addWhere(Namespace.s, RDF.type, Namespace.Coord) //
+                .addOptional(Namespace.s, Namespace.isIndirect, indirect) //
+                .addWhere(Namespace.s, Geo.AS_WKT_PROP, wkt) //
+                .addWhere(Namespace.s, Namespace.x, x) //
+                .addWhere(Namespace.s, Namespace.y, y);
+        
+        List<MapCoord> result = new ArrayList<>();
+
+        Predicate<QuerySolution> processor = soln -> {
+            Geometry geom = ctxt.graphGeomFactory.fromWkt(soln.getLiteral(wkt.getName()));
+            Literal litIndirect = soln.getLiteral(indirect.getName());
+            result.add(new MapCoord( //
+                    soln.getLiteral(x.getName()).getDouble(), //
+                    soln.getLiteral(y.getName()).getDouble(), //
+                    litIndirect == null ? false : litIndirect.getBoolean(),
+                    geom)); 
+            return true;
+        };
+
+        exec(sb, processor);
+        return result;
+    }
+    
+    @Override
+    public Collection<Step> getSteps(Coordinate currentPosition) {
         Var distance = Var.alloc("distance");
         Var wkt = Var.alloc("wkt");
         Var cost = Var.alloc("cost");
         Var x = Var.alloc("x");
         Var y = Var.alloc("y");
         Var indirect = Var.alloc("indirect");
+        Var distToPos = Var.alloc("distToPos");
+        
+        Literal positionWKT = ctxt.graphGeomFactory.asWKT(currentPosition);
+
 
         SelectBuilder sb = new SelectBuilder().addVar(cost).addVar(wkt).addVar(x).addVar(y).addVar(distance) //
-                .from(Namespace.PlanningModel.getURI()).addWhere(Namespace.s, RDF.type, Namespace.Coord) //
+                .from(Namespace.PlanningModel.getURI()) //
+                .addWhere(Namespace.s, RDF.type, Namespace.Coord) //
                 .addOptional(Namespace.s, Namespace.isIndirect, indirect) //
                 .addWhere(Namespace.s, Namespace.distance, distance) //
                 .addWhere(Namespace.s, Geo.AS_WKT_PROP, wkt) //
                 .addWhere(Namespace.s, Namespace.x, x).addWhere(Namespace.s, Namespace.y, y)
-                .addBind(SPARQL.indirectCalc(distance, indirect), cost).addOrderBy(cost, Order.ASCENDING);
+                .addBind(ctxt.graphGeomFactory.calcDistance(exprF, positionWKT,wkt), distToPos)
+                .addBind(SPARQL.costCalc(distToPos, distance, indirect), cost)
+                .addOrderBy(cost, Order.ASCENDING);
 
-        SortedSet<Step> candidates = new TreeSet<Step>();
+        SortedSet<Step> result = new TreeSet<Step>();
 
         Predicate<QuerySolution> processor = soln -> {
-            Geometry geom = ctxt.graphGeomFactory.fromWkt(soln.getLiteral(wkt.getName()));
-            candidates.add(StepImpl.builder().setCoordinate(new Coordinate( //
+            Coordinate stepPos = new Coordinate( //
                     soln.getLiteral(x.getName()).getDouble(), //
-                    soln.getLiteral(y.getName()).getDouble())) //
-                    .setCost(soln.getLiteral(cost.getName()).getDouble()) //
-                    .setDistance(soln.getLiteral(distance.getName()).getDouble()).setGeometry(geom).build(ctxt));
+                    soln.getLiteral(y.getName()).getDouble());
+            if (isClearPath(currentPosition, stepPos)) {
+                Geometry geom = ctxt.graphGeomFactory.fromWkt(soln.getLiteral(wkt.getName()));
+                result.add(StepImpl.builder().setCoordinate(stepPos) //
+                        .setCost(soln.getLiteral(cost.getName()).getDouble()) //
+                        .setDistance(soln.getLiteral(distance.getName()).getDouble()).setGeometry(geom).build(ctxt));
+            }
             return true;
         };
 
         exec(sb, processor);
-        return candidates;
+        return result;
     }
 
     @Override
@@ -663,9 +704,6 @@ public class MapImpl implements Map {
         };
 
         this.exec(sb, processor);
-
-        // List<Point> newObst = newObstacles.stream().map(c ->
-        // ctxt.geometryUtils.asPoint(c)).collect(Collectors.toList());
 
         List<Literal> updateCoords = new ArrayList<>();
 
@@ -730,14 +768,44 @@ public class MapImpl implements Map {
 
     private class SPARQL {
 
-        static Expr indirectCalc(Var distance, Var indirect) {
+        /**
+         * Calculate the cost from a position to the target
+         * @param posDistToTarget distance from position to target
+         * @param indirect true if there is an obstacle in the way.
+         * @return the expression to calculate the distance.
+         */
+        static Expr indirectCalc(Object posDistToTarget, Object indirect) {
             ExprFactory exprF = new ExprFactory(getPrefixes());
-            return exprF.add(exprF.cond(exprF.bound(indirect), exprF.asExpr(distance), exprF.asExpr(0)), distance);
-
+            return exprF.add(exprF.cond(exprF.bound(indirect), exprF.asExpr(posDistToTarget), exprF.asExpr(0)), posDistToTarget);
+        }
+        
+//        /**
+//         * Calculates the cost to the target via the position.
+//         * @param distToPos the distance to the position.
+//         * @param posDistToTarget the distance from the position to the target
+//         * @param indirect true if there is an obstacle in the way.
+//         * @return the expression to calcualte the cost.
+//         */
+//        static Expr costCalc(Var distToPos, Var posDistToTarget, Var indirect) {
+//            ExprFactory exprF = new ExprFactory(getPrefixes());
+//            return exprF.add(distToPos, SPARQL.indirectCalc(posDistToTarget, indirect));
+//        }
+//        
+        /**
+         * Calculates the cost to the target via the position.
+         * @param distToPos the distance to the position.
+         * @param posDistToTarget the distance from the position to the target
+         * @param indirect true if there is an obstacle in the way.
+         * @return the expression to calcualte the cost.
+         */
+        static Expr costCalc(Object distToPos, Var posDistToTarget, Var indirect) {
+            ExprFactory exprF = new ExprFactory(getPrefixes());
+            return exprF.add(distToPos, SPARQL.indirectCalc(posDistToTarget, indirect));
         }
     }
 
-    private class ObstacleImpl implements Obstacle {
+    // package private for testing.
+    class ObstacleImpl implements Obstacle {
         private final Literal wkt;
         private final Geometry geom;
         private final UUID uuid;
@@ -760,6 +828,21 @@ public class MapImpl implements Map {
             this.wkt = wkt;
         }
 
+        ObstacleImpl(Coordinate start, Coordinate end) {
+            double d = start.distance(end);
+            int parts = (int)(d / ctxt.scaleInfo.getHalfResolution());
+            double xIncr = (end.x-start.x)/(parts+1);
+            double yIncr = (end.y-start.y)/(parts+1);
+            Coordinate[] part = new Coordinate[parts+1];
+            part[0] = start;
+            for (int i=1;i<parts;i++) {
+                part[i] = new Coordinate( part[i-1].x+xIncr, part[i-1].y+yIncr);
+            }
+            part[parts] = end;
+            geom = ctxt.geometryUtils.asLine(part);
+            wkt = ctxt.graphGeomFactory.asWKT(geom);
+            uuid = UUID.randomUUID();
+        }
         ObstacleImpl(Position startPostition, Location relativeLocation) {
             Position absoluteObstacle = startPostition.nextPosition(relativeLocation);
             absoluteObstacle = Position.from( ctxt.scaleInfo.precise(absoluteObstacle.getCoordinate()),absoluteObstacle.getHeading());

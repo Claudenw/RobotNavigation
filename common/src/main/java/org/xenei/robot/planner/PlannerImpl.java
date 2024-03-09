@@ -64,9 +64,6 @@ public class PlannerImpl implements Planner {
             setTarget(target.getCoordinate());
             distance = currentPosition.distance(getRootTarget());
             isIndirect = !map.isClearPath(currentPosition.getCoordinate(), getRootTarget());
-//            if (!isIndirect) {
-//                solution.add(getRootTarget());
-//            }
         }
         map.addCoord(currentPosition.getCoordinate(), distance, true, isIndirect);
         LOG.debug( "Constructor: target arg:{}, {}", target, currentPosition);
@@ -95,53 +92,10 @@ public class PlannerImpl implements Planner {
         step.ifPresent(s ->solution.add(s.getCoordinate()));
     }
 
-//    private Position newPosition(Coordinate start) {
-//        return Position.from(start, CoordUtils.calcHeading(start, getTarget()));
-//    }
-
-    /**
-     * Restart from the new location using the current map.
-     * 
-     * @param start the new starting position.
-     */
-//    @Override
-//    public void restart(Location start) {
-//        double distance = Double.NaN;
-//
-//        boolean isIndirect = false;
-//        if (getTarget() != null) {
-//            currentPosition = newPosition(start.getCoordinate());
-//            distance = start.distance(getRootTarget());
-//            isIndirect = !map.isClearPath(currentPosition.getCoordinate(), getRootTarget(), buffer);
-//        } else {
-//            currentPosition = Position.from(start, 0);
-//        }
-//        diff.reset();
-//        map.addCoord(currentPosition.getCoordinate(), distance, true, isIndirect);
-//        resetSolution();
-//    }
-
-//    private void resetSolution() {
-//        solution = new Solution();
-//        if (currentPosition != null) {
-//            solution.add(currentPosition);
-//        }
-//    }
-
-    @Override
-    public Collection<Step> getPlanRecords() {
-        return map.getTargets();
-    }
-
     @Override
     public Solution getSolution() {
         return solution;
     }
-
-//    @Override
-//    public Position getCurrentPosition() {
-//        return currentPosition;
-//    }
 
     @Override
     public Diff selectTarget() {
