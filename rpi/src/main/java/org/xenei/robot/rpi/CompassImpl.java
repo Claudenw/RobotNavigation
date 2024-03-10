@@ -64,7 +64,7 @@ public class CompassImpl implements Compass {
             lock.unlock();
         }
         Location heading = Location.from(x,y);
-        return DoubleUtils.truncate(heading.theta(), 2);
+        return DoubleUtils.round(heading.theta(), 2);
     }
     
     @Override

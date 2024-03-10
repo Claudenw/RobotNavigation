@@ -1,8 +1,10 @@
 package org.xenei.robot;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.fail;
 
 import java.util.Collection;
+import java.util.function.Supplier;
 
 import org.apache.jena.arq.querybuilder.AskBuilder;
 import org.apache.jena.arq.querybuilder.ExprFactory;
@@ -15,9 +17,13 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.xenei.robot.Processor.AbortTest;
+import org.xenei.robot.common.AbortedException;
 import org.xenei.robot.common.ChassisInfo;
+import org.xenei.robot.common.DistanceSensor;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Mover;
+import org.xenei.robot.common.NavigationSnapshot;
 import org.xenei.robot.common.Position;
 import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.common.mapping.Map;
@@ -47,151 +53,63 @@ import org.xenei.robot.planner.PlannerImpl;
 public class ProcessorTest {
     private static final Logger LOG = LoggerFactory.getLogger(ProcessorTest.class);
 
-    private MapViz mapViz;
-    private final Map map;
+//    private MapViz mapViz;
+//    private Processor underTest;
+//    private final Map map;
     private final RobutContext ctxt;
-    private Planner planner;
-    private final Mapper mapper;
-    private FakeDistanceSensor sensor;
-    private Mover mover;
+//    private Planner planner;
+//    private final Mapper mapper;
+//    private FakeDistanceSensor sensor;
+//    private Mover mover;
 
 
     ProcessorTest() {
         ctxt = new RobutContext(ScaleInfo.DEFAULT, TestChassisInfo.DEFAULT);
-        map = new MapImpl(ctxt);
-        //map = new MapImpl(ScaleInfo.builder().setResolution(.3).build());
-
-        mapper = new MapperImpl(map);
-        //mover = new FakeMover(Location.from(-1, -3), 1);
-        //planner = new PlannerImpl(map, () -> mover.position(), buffer);
-        //sensor = new FakeDistanceSensor2(MapLibrary.map2('#'), AngleUtils.RADIANS_45);
-        //planner.addListener(() -> sensor.setPosition(mover.position()));
+//        map = new MapImpl(ctxt);
+//        mapper = new MapperImpl(map);
+//        // public Processor(RobutContext ctxt, Mover mover, Supplier<Position> positionSupplier, DistanceSensor sensor, Mapper.Visualization visualization) {
+//        
+//        underTest = new Processor(ctxt, )
     }
 
-    private Collection<Step> processSensor() {
-       return mapper.processSensorData(mover.position(), planner.getRootTarget(), sensor.sense());
-    }
-
-    public boolean checkTarget() {
-        if (!mapper.equivalent(mover.position(), planner.getRootTarget())) {
-            // if we can see the final target go that way.
-            if (mapper.isClearPath(mover.position(), planner.getRootTarget())) {
-                double newHeading = mover.position().headingTo(planner.getRootTarget());
-                boolean cont = DoubleUtils.eq(newHeading, mover.position().getHeading());
-                if (!cont) {
-                    // heading is different so reset the heading, scan, and check again.
-                    mover.setHeading(mover.position().headingTo(planner.getRootTarget()));
-                    processSensor();
-                    cont = mapper.isClearPath(mover.position(), planner.getRootTarget());
-                    if (!cont) {
-                        // can't see the position really so reset the heading.
-                        mover.setHeading(mover.position().getHeading());
-                    }
-                }
-                if (cont) {
-                    // we can really see the final position.
-                    LOG.info("can see {} from {}", planner.getRootTarget(), mover.position());
-                    Literal pathWkt = ctxt.graphGeomFactory.asWKTPath(ctxt.chassisInfo.radius, planner.getRootTarget(), 
-                            mover.position().getCoordinate());
-                    Var wkt = Var.alloc("wkt");
-
-                    ExprFactory exprF = new ExprFactory();
-                    System.out.println(MapReports.dumpQuery((MapImpl) map, new SelectBuilder() //
-                            .from(Namespace.UnionModel.getURI()) //
-                            .addWhere(Namespace.s, RDF.type, Namespace.Obst) //
-                            .addWhere(Namespace.s, Geo.AS_WKT_PROP, wkt)
-                            .addBind(ctxt.graphGeomFactory.calcDistance(exprF, pathWkt, wkt), "?dist")
-                            .addBind(exprF.eq(ctxt.graphGeomFactory.calcDistance(exprF, pathWkt, wkt), 0), "?le")
-                            ));
-
-                    AskBuilder ask = new AskBuilder().from(Namespace.UnionModel.getURI()) //
-                            .addWhere(Namespace.s, RDF.type, Namespace.Obst) //
-                            .addWhere(Namespace.s, Geo.AS_WKT_PROP, wkt)
-                            .addFilter(exprF.eq(ctxt.graphGeomFactory.calcDistance(exprF, pathWkt, wkt), 0));
-                    System.out.println( ((MapImpl)map).ask(ask));
-                    System.out.println(MapReports.dumpQuery((MapImpl) map,
-                            new SelectBuilder().from(Namespace.UnionModel.getURI())
-                                    .addWhere(Namespace.s, Namespace.p, Namespace.o)
-                                    .addWhere(Namespace.s, RDF.type, Namespace.Obst)));
-                    planner.replaceTarget(planner.getRootTarget());
-                    planner.notifyListeners();
-                    return true;
-                }
-            }
-        }
-        // if we can not see the target replan.
-        return mapper.isClearPath(mover.position(), planner.getTarget());
-    }
-
-    private void doTest(Location startCoord, Location finalCoord) {
-        mover = new FakeMover(Location.from(startCoord), 1);
-        mapViz = new MapViz(100, map, () -> planner.getSolution(), () -> mover.position());
-        planner = new PlannerImpl(map, () -> mover.position(), finalCoord);
-        planner.addListener(() -> mapViz.redraw(planner.getTarget()));
-
-        processSensor();
-        System.out.println(MapReports.dumpModel((MapImpl)map));
-
-        int stepCount = 0;
-        int maxLoops = 100;
-        while (planner.getTarget() != null) {
-            Diff diff = planner.selectTarget();
-            if (planner.getTarget() != null) {
-                if (diff.didChange()) {
-                    // look where we are heading.
-                    processSensor();
-                    planner.notifyListeners();
-                }
-                // can we still see the target
-                if (checkTarget()) {
-                    // move
-                    Location relativeLoc = mover.position().relativeLocation(planner.getTarget());
-                    map.setVisited(mover.move(relativeLoc).getCoordinate());
-                    planner.registerPositionChange();
-                    processSensor();
-                }
-                if (maxLoops < stepCount++) {
-                    fail("Did not find solution in " + maxLoops + " steps");
-                }
-                planner.notifyListeners();
-              //  System.out.println( MapReports.dumpDistance((MapImpl)map, mover.position().getCoordinate()) );
-              //  System.out.println( MapReports.dumpObstacles((MapImpl)map));
-              //  System.out.println( MapReports.dumpObstacleDistance((MapImpl)map));
-                diff.reset();
-            }
-        }
-        planner.notifyListeners();
-        Solution solution = planner.getSolution();
-        CoordinateUtils.assertEquivalent(startCoord, solution.start(), ctxt.chassisInfo.radius);
-        CoordinateUtils.assertEquivalent(startCoord, solution.start(), ctxt.chassisInfo.radius);
-        System.out.println( MapReports.dumpDistance((MapImpl)map, mover.position().getCoordinate()));
-        System.out.println("Solution");
-        solution.stream().forEach(System.out::println);
-        System.out.println( "SUCCESS");
-        solution.simplify( (a,b) -> map.isClearPath(a, b));
-        System.out.println("Solution 2");
-        solution.stream().forEach(System.out::println);
-        
+    
+    private void doTest(Location startCoord, Location finalCoord, Mover mover, DistanceSensor sensor) throws AbortedException {
+        Supplier<Position> positionSupplier = mover::position;
+ 
+        Processor underTest = new Processor(ctxt, mover, positionSupplier, sensor);
+        MapViz mapViz = new MapViz(100, underTest.map, underTest.planner::getSolution, positionSupplier);
+        underTest.add(mapViz);
+        underTest.moveTo(finalCoord, new StepTracker());
     }
 
     @Test
-    public void stepTestMap2() {
-        sensor = new FakeDistanceSensor1(MapLibrary.map2('#'), () -> mover.position());
-        map.clear(Namespace.UnionModel.getURI());
-
-        Location finalCoord = Location.from(-1, 1);
+    public void stepTestMap2() throws AbortedException {
         Location startCoord = Location.from(-1, -3);
-        doTest(startCoord, finalCoord);
+        Mover mover = new FakeMover(Location.from(startCoord), 1);
+        DistanceSensor sensor = new FakeDistanceSensor1(MapLibrary.map2('#'), mover::position);
+        Location finalCoord = Location.from(-1, 1);
+        doTest(startCoord, finalCoord, mover, sensor);
     }
 
     @Test
     @Disabled
-    public void stepTestMap3() {
-        sensor = new FakeDistanceSensor2(MapLibrary.map3('#'), AngleUtils.RADIANS_45, () -> mover.position());
-        map.clear(Namespace.UnionModel.getURI());
-
-        Location finalCoord = Location.from(-1, 1);
+    public void stepTestMap3() throws AbortedException {
         Location startCoord = Location.from(-1, -3);
-        doTest(startCoord, finalCoord);
+        Mover mover = new FakeMover(Location.from(startCoord), 1);
+        DistanceSensor sensor = new FakeDistanceSensor2(MapLibrary.map3('#'), AngleUtils.RADIANS_45, mover::position);
+        Location finalCoord = Location.from(-1, 1);
+        doTest(startCoord, finalCoord, mover, sensor);
+    }
+    
+    private class StepTracker implements AbortTest {
+        private int stepCount = 0;
+        private int maxLoops = 100;
+    
+        @Override
+        public void check(Processor processor) throws AbortedException {
+            if (maxLoops < stepCount++) {
+              throw new AbortedException("Did not find solution in " + maxLoops + " steps");
+            }
+        }
     }
 }

@@ -5,6 +5,7 @@ import java.util.Optional;
 import java.util.Set;
 
 import org.apache.jena.rdf.model.Literal;
+import org.apache.jena.rdf.model.Resource;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.xenei.robot.common.Location;
@@ -66,6 +67,13 @@ public interface Map {
      * @param coords the coordinates of the path.
      */
     Coordinate[] addPath(Coordinate... coords);
+    
+    /**
+     * Adds a path to the specified graph.
+     * @param model the name of the graph to add the path to.
+     * @param coords the coordinates of the path.
+     */
+    Coordinate[] addPath(Resource model, Coordinate... coords);
 
     /**
      * Update the planning model with new distances based on the new target

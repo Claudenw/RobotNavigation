@@ -23,6 +23,7 @@ public class Namespace {
     
     public static final Resource UnionModel = ResourceFactory.createResource("urn:x-arq:UnionGraph");
     public static final Resource BaseModel = ResourceFactory.createResource(MODEL_URI+ "BaseModel");
+    public static final Resource KnownModel = ResourceFactory.createResource(MODEL_URI+ "KnownModel");
     public static final Resource PlanningModel = ResourceFactory.createResource(MODEL_URI + "PlanningModel");
     
     public static final Resource Coord = ResourceFactory.createResource(URI + "Coord");

@@ -22,6 +22,7 @@ import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Position;
 import org.xenei.robot.common.mapping.Map;
 import org.xenei.robot.common.mapping.MapCoord;
+import org.xenei.robot.common.mapping.Mapper;
 import org.xenei.robot.common.mapping.Obstacle;
 import org.xenei.robot.common.planning.Solution;
 import org.xenei.robot.common.planning.Step;
@@ -29,7 +30,7 @@ import org.xenei.robot.common.utils.RobutContext;
 import org.xenei.robot.common.utils.DoubleUtils;
 import org.xenei.robot.common.utils.GeometryUtils;
 
-public class MapViz {
+public class MapViz implements Mapper.Visualization {
     private final Supplier<Solution> solutionSupplier;
     private final Supplier<Position> positionSupplier;
     private final Map map;

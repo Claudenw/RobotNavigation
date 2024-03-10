@@ -19,6 +19,7 @@ import org.locationtech.jts.geom.Geometry;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import org.xenei.robot.common.Location;
+import org.xenei.robot.common.NavigationSnapshot;
 import org.xenei.robot.common.Position;
 import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.common.mapping.Map;
@@ -58,7 +59,8 @@ public class MapperImplTest {
 
         // an obstacle one unit away is too close so no target generated.
         Location[] obstacles = { Location.from(CoordUtils.fromAngle(0, 1)) };
-        Collection<Step> result = underTest.processSensorData(currentPosition, target, obstacles);
+        NavigationSnapshot snapshot = new NavigationSnapshot(currentPosition, target);
+        Collection<Step> result = underTest.processSensorData(snapshot, obstacles);
         // should not look at result here.
         assertTrue(result.isEmpty());
 
@@ -90,7 +92,8 @@ public class MapperImplTest {
         Mapper underTest = new MapperImpl(map);
 
         Location[] obstacles = { Location.from(CoordUtils.fromAngle(0, 2)) };
-        Collection<Step> result = underTest.processSensorData(currentPosition, target, obstacles);
+        NavigationSnapshot snapshot = new NavigationSnapshot(currentPosition, target);
+        Collection<Step> result = underTest.processSensorData(snapshot, obstacles);
         assertFalse(result.isEmpty());
 
         // verify indirects updated

@@ -6,6 +6,7 @@ import java.util.Optional;
 import java.util.Stack;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 import org.locationtech.jts.geom.Coordinate;
 import org.slf4j.Logger;
@@ -14,6 +15,7 @@ import org.xenei.robot.common.Listener;
 import org.xenei.robot.common.ListenerContainer;
 import org.xenei.robot.common.ListenerContainerImpl;
 import org.xenei.robot.common.Location;
+import org.xenei.robot.common.NavigationSnapshot;
 import org.xenei.robot.common.Position;
 import org.xenei.robot.common.mapping.Map;
 import org.xenei.robot.common.planning.Planner;
@@ -177,6 +179,16 @@ public class PlannerImpl implements Planner {
         return Collections.unmodifiableCollection(target);
     }
 
+    @Override
+    public void recordSolution() {
+        Solution solution = this.solution;
+        this.solution = new Solution();
+        solution.simplify((a, b) -> map.isClearPath(a, b));
+        if (solution.stepCount() > 0) {
+            Coordinate[] coords = solution.stream().collect(Collectors.toList()).toArray(new Coordinate[0]);
+            map.addPath(Namespace.KnownModel,coords);
+        }
+    }
     /**
      * For testing only
      * 
@@ -185,20 +197,19 @@ public class PlannerImpl implements Planner {
     public Map getMap() {
         return map;
     }
+    
+    
 
     private class DiffImpl implements Planner.Diff {
-        private Position lastPosition;
-        private Coordinate target;
+        NavigationSnapshot snapshot;
         
         DiffImpl(Position initial, Coordinate target) {
-            lastPosition = initial;
-            this.target = target;
+            snapshot = new NavigationSnapshot(initial, target);
         }
 
         @Override
         public void reset() {
-            this.lastPosition = positionSupplier.get();
-            this.target = getTarget();
+            snapshot = new NavigationSnapshot(positionSupplier.get(),getTarget());
         }
         
         @Override
@@ -208,11 +219,11 @@ public class PlannerImpl implements Planner {
         }
 
         private boolean didHeadingChange(Position pos) {
-            return !DoubleUtils.eq(lastPosition.getHeading(), pos.getHeading());
+            return !DoubleUtils.eq(snapshot.heading(), pos.getHeading());
         }
 
         private boolean didPositionChange(Position pos) {
-            return !lastPosition.equals2D(pos.getCoordinate());
+            return !snapshot.currentPosition.equals2D(pos.getCoordinate());
         }
         
         
@@ -228,7 +239,11 @@ public class PlannerImpl implements Planner {
 
         @Override
         public boolean didTargetChange() {
-            return getTarget() == null || !target.equals2D(getTarget());
+            Coordinate newTarget = getTarget();
+            if (snapshot.target == null) {
+                return (newTarget != null);
+            }
+            return !snapshot.target.equals(newTarget);
         }
     }
     

@@ -75,6 +75,8 @@ public interface Planner extends ListenerContainer {
      */
     Solution getSolution();
 
+    void recordSolution();
+    
     /**
      * Plans a step. Returns the best location to move to based on the current
      * position. The target position may be updated. The best position to head for

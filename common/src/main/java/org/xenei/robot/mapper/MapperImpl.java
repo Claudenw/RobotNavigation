@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xenei.robot.common.FrontsCoordinate;
 import org.xenei.robot.common.Location;
+import org.xenei.robot.common.NavigationSnapshot;
 import org.xenei.robot.common.Position;
 import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.common.mapping.Map;
@@ -35,16 +36,16 @@ public class MapperImpl implements Mapper {
     }
 
     @Override
-    public List<Step> processSensorData(Position currentPosition, Coordinate target, Location[] obstacles) {
+    public List<Step> processSensorData(NavigationSnapshot snapshot, Location[] obstacles) {
 
-        LOG.debug("Sense position: {}", currentPosition);
+        LOG.debug("Sense position: {}", snapshot.currentPosition);
 
-        ObstacleMapper mapper = new ObstacleMapper(currentPosition);
+        ObstacleMapper mapper = new ObstacleMapper(snapshot.currentPosition);
         List.of(obstacles).forEach(mapper::doMap);
-        map.updateIsIndirect(target, mapper.newObstacles);
-        
+        map.updateIsIndirect(snapshot.target, mapper.newObstacles);
+   
         return mapper.coordSet.stream()
-                .map(c -> map.addCoord(c, c.distance(target), false, !map.isClearPath(c, target)))
+                .map(c -> map.addCoord(c, c.distance(snapshot.target), false, !map.isClearPath(c, snapshot.target)))
                 .flatMap( Optional::stream ).collect(Collectors.toList());
     }
 

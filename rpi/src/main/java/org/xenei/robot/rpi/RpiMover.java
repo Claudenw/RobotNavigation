@@ -18,14 +18,17 @@ import org.apache.commons.cli.Options;
 import org.locationtech.jts.geom.Coordinate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.xenei.robot.common.ChassisInfo;
 import org.xenei.robot.common.Compass;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Mover;
 import org.xenei.robot.common.Position;
+import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.common.UnmodifiableCoordinate;
 import org.xenei.robot.common.utils.AngleUtils;
 import org.xenei.robot.common.utils.CoordUtils;
 import org.xenei.robot.common.utils.DoubleUtils;
+import org.xenei.robot.common.utils.RobutContext;
 import org.xenei.robot.rpi.drivers.ULN2003;
 import org.xenei.robot.rpi.drivers.ULN2003.Mode;
 import org.xenei.robot.rpi.drivers.ULN2003.SteppingStatus;
@@ -37,15 +40,17 @@ public class RpiMover implements Mover, AutoCloseable {
     private static final int RIGHT = 1;
     private Coordinate coordinates;
     private Compass compass;
+    private final RobutContext ctxt;
     private final ExecutorService executor;
     /**
      * Meters traveled in one rotation.
      */
     private double rotationalDistance;
     private int rpm;
-    private double r;
+    //private double r;
     private static final Logger LOG = LoggerFactory.getLogger(RpiMover.class);
     /**
+     * @param ctxt The context for the robut.
      * @param compass the compass implementation to use.
      * @param coords the initial coordinates.
      * @param width The width of the mover in CM.
@@ -53,16 +58,17 @@ public class RpiMover implements Mover, AutoCloseable {
      * @param maxSpeed meters / minute (min 1, max 150).
      * @throws InterruptedException 
      */
-    RpiMover(Compass compass, Coordinate coords, double width, int wheelDiameter, double maxSpeed) throws InterruptedException {
+    RpiMover(RobutContext ctxt, Compass compass, Coordinate coords) throws InterruptedException {
+        this.ctxt = ctxt;
         motor[LEFT] = new ULN2003(Mode.FULL_STEP, ULN2003.STEPPER_28BYJ48, 17, 27, 22, 23 );
         motor[RIGHT] = new ULN2003(Mode.FULL_STEP, ULN2003.STEPPER_28BYJ48, 6, 24, 25, 26 );
         this.coordinates = coords;
         this.compass = compass;
-        this.rotationalDistance = Math.PI * wheelDiameter / 100; // in meters
+        this.rotationalDistance = Math.PI * ctxt.chassisInfo.wheelDiameter / 100; // in meters
         this.executor = Executors.newFixedThreadPool(3);
-        this.r = width/2.0; // in cm
+        //this.r = width/2.0; // in cm
         // meterminute / meterrotation = meterrotation/meter/minute = r/m
-        this.rpm =limit((long) Math.ceil( maxSpeed / rotationalDistance), 1, MAX_RPM);
+        this.rpm =limit((long) Math.ceil( ctxt.chassisInfo.maxSpeed / rotationalDistance), 1, MAX_RPM);
         LOG.debug("RpiMover: {}", position());
     }
     
@@ -84,12 +90,12 @@ public class RpiMover implements Mover, AutoCloseable {
             }
             double speed = commandLine.getParsedOptionValue("s", 60);
             //
-            
+            RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT, new ChassisInfo(0.24, 8, speed));
             Compass compass = new CompassImpl();
-            try (RpiMover mover = new RpiMover(compass, new Coordinate(0,0), 0.24, 8, speed))
+            try (RpiMover mover = new RpiMover(ctxt, compass, new Coordinate(0,0)))
             {
                 if (commandLine.hasOption('a')) {
-                    doAnalyze(mover);
+                    //doAnalyze(mover);
                 } else {
                     double heading = Math.toRadians(commandLine.getParsedOptionValue("h"));
                     double theta = compass.heading();
@@ -115,13 +121,13 @@ public class RpiMover implements Mover, AutoCloseable {
         
         double originalHeading = mover.position().getHeading();
         double arc = AngleUtils.normalize(theta - originalHeading);
-        double d = arc * mover.r;
+        double d = arc * mover.ctxt.chassisInfo.radius;
         
         mover.setHeading(theta);
         
         double actual = mover.position().getHeading();
         double aarc = AngleUtils.normalize(actual - originalHeading );
-        double ad = aarc * mover.r;
+        double ad = aarc * mover.ctxt.chassisInfo.radius;
 
         double newR = ad / arc; 
                 
@@ -130,20 +136,20 @@ public class RpiMover implements Mover, AutoCloseable {
 
         double limit = Math.toRadians(1.0); 
         while (err > limit) {
-            LOG.info( "target {} actual {} err {} r:{} -> new r: {}", theta, actual, err, mover.r, newR);
-            mover.r = newR;
+            LOG.info( "target {} actual {} err {} r:{} -> new r: {}", theta, actual, err, mover.ctxt.chassisInfo.radius, newR);
+//            mover.ctxt.chassisInfo.radius = newR;
             head = random.nextInt(-180, 180);
             theta = Math.toRadians(head);
             
             originalHeading = mover.position().getHeading();
             arc = AngleUtils.normalize(theta - originalHeading);
-            d = arc * mover.r;
+            d = arc * mover.ctxt.chassisInfo.radius;
             
             mover.setHeading(theta);
             
             actual = mover.position().getHeading();
             aarc = AngleUtils.normalize(actual - originalHeading );
-            ad = aarc * mover.r;
+            ad = aarc * mover.ctxt.chassisInfo.radius;
 
             newR = ad / arc; 
                     
@@ -209,7 +215,7 @@ public class RpiMover implements Mover, AutoCloseable {
         // theta r is the distance the wheel has to move to pass through the arc from
         // to make the direction change.
         double theta = AngleUtils.normalize(heading - compass.heading());
-        int thetaSteps = steps(theta*r);
+        int thetaSteps = steps(theta*ctxt.chassisInfo.radius);
         if (LOG.isDebugEnabled()) {
             LOG.debug(String.format("Setting heading: %s degrees sweeping through %s degrees of arc", 
                     Math.toDegrees(heading), Math.toDegrees(theta)));

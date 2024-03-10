@@ -92,10 +92,9 @@ public class MapImpl implements Map {
         this.ctxt = ctxt;
         data = DatasetFactory.create();
         data.getDefaultModel().setNsPrefixes(getPrefixes());
-        // data.getDefaultModel().add(GraphModFactory.asRDF(new Coordinate(0,0), null,
-        // null).getModel());
         data.addNamedModel(Namespace.BaseModel, defaultModel());
         data.addNamedModel(Namespace.PlanningModel, defaultModel());
+        data.addNamedModel(Namespace.KnownModel, defaultModel());
         exprF = new ExprFactory(data.getPrefixMapping());
 
         try {
@@ -309,6 +308,17 @@ public class MapImpl implements Map {
 
     /**
      * Add the plan record to the map
+     * 
+     * @param records the coordinates of the path.
+     * @return true if the record updated the map, false otherwise.
+     */
+    @Override
+    public Coordinate[] addPath(Resource model, Coordinate... coords) {
+        return addPath(model, Arrays.stream(coords).map(MapCoordinate::new));
+    }
+    
+    /**
+     * Add a stream of coordinates as a path.
      * 
      * @param record the plan record to add
      * @return true if the record updated the map, false otherwise.
@@ -555,42 +565,49 @@ public class MapImpl implements Map {
                                 .addWhere(Namespace.s, Geo.AS_WKT_PROP, wkt) //
                                 .addBind(ctxt.graphGeomFactory.calcDistance(exprF, targ, wkt), distance))
                         .build());
+
+         UpdateBuilder ub = new UpdateBuilder();
+         getCoords().stream()
+                 .filter(mc -> !isClearPath(mc.location.getCoordinate(), target))
+                 .map( mc -> mc.resource)
+                 .forEach( r -> ub.addInsert(Namespace.PlanningModel, r, Namespace.isIndirect, true)); //
+         req.add(ub.build());
         doUpdate(req);
 
-        // check each item that has a distance and see if there is a path to the target,
-        // if not then add the distance
-        // to the adjustment.
-        req = new UpdateRequest();
-        Var candidate = Var.alloc("candidate");
-        SelectBuilder sb = new SelectBuilder().from(Namespace.PlanningModel.getURI()) //
-                .addVar(distance).addVar(candidate).addVar(wkt) //
-                .addWhere(candidate, RDF.type, Namespace.Coord) //
-                .addWhere(candidate, Geo.AS_WKT_PROP, wkt) //
-                .addWhere(candidate, Namespace.distance, distance);
-
-        List<Triple> insertRow = new ArrayList<>();
-
-        Predicate<QuerySolution> processor = soln -> {
-            Geometry g = ctxt.graphGeomFactory.fromWkt(soln.getLiteral(wkt.getName()));
-            boolean clearView = false;
-            for (Coordinate c : g.getCoordinates()) {
-                if (isClearPath(c, target)) {
-                    clearView = true;
-                    break;
-                }
-            }
-            if (!clearView) {
-                insertRow.add(Triple.create(soln.getResource(candidate.getName()).asNode(),
-                        Namespace.isIndirect.asNode(), sb.makeNode(Boolean.TRUE)));
-            }
-            return true;
-        };
-
-        exec(sb, processor);
-
-        if (!insertRow.isEmpty()) {
-            doUpdate(new UpdateBuilder().addInsert(Namespace.PlanningModel, insertRow));
-        }
+//        // check each item that has a distance and see if there is a path to the target,
+//        // if not then add the distance
+//        // to the adjustment.
+//        req = new UpdateRequest();
+//        Var candidate = Var.alloc("candidate");
+//        SelectBuilder sb = new SelectBuilder().from(Namespace.PlanningModel.getURI()) //
+//                .addVar(distance).addVar(candidate).addVar(wkt) //
+//                .addWhere(candidate, RDF.type, Namespace.Coord) //
+//                .addWhere(candidate, Geo.AS_WKT_PROP, wkt) //
+//                .addWhere(candidate, Namespace.distance, distance);
+//
+//        List<Triple> insertRow = new ArrayList<>();
+//
+//        Predicate<QuerySolution> processor = soln -> {
+//            Geometry g = ctxt.graphGeomFactory.fromWkt(soln.getLiteral(wkt.getName()));
+//            boolean clearView = false;
+//            for (Coordinate c : g.getCoordinates()) {
+//                if (isClearPath(c, target)) {
+//                    clearView = true;
+//                    break;
+//                }
+//            }
+//            if (!clearView) {
+//                insertRow.add(Triple.create(soln.getResource(candidate.getName()).asNode(),
+//                        Namespace.isIndirect.asNode(), sb.makeNode(Boolean.TRUE)));
+//            }
+//            return true;
+//        };
+//
+//        exec(sb, processor);
+//
+//        if (!insertRow.isEmpty()) {
+//            doUpdate(new UpdateBuilder().addInsert(Namespace.PlanningModel, insertRow));
+//        }
         return result.getCoordinate();
     }
 
@@ -601,7 +618,7 @@ public class MapImpl implements Map {
         Var wkt = Var.alloc("wkt");
         Var indirect = Var.alloc("indirect");
 
-        SelectBuilder sb = new SelectBuilder().addVar(x).addVar(y).addVar(indirect).addVar(wkt) //
+        SelectBuilder sb = new SelectBuilder().addVar(Namespace.s).addVar(x).addVar(y).addVar(indirect).addVar(wkt) //
                 .from(Namespace.PlanningModel.getURI()) //
                 .addWhere(Namespace.s, RDF.type, Namespace.Coord) //
                 .addOptional(Namespace.s, Namespace.isIndirect, indirect) //
@@ -615,6 +632,7 @@ public class MapImpl implements Map {
             Geometry geom = ctxt.graphGeomFactory.fromWkt(soln.getLiteral(wkt.getName()));
             Literal litIndirect = soln.getLiteral(indirect.getName());
             result.add(new MapCoord( //
+                    soln.getResource(Namespace.s.getName()),
                     soln.getLiteral(x.getName()).getDouble(), //
                     soln.getLiteral(y.getName()).getDouble(), //
                     litIndirect == null ? false : litIndirect.getBoolean(),
@@ -786,19 +804,7 @@ public class MapImpl implements Map {
             ExprFactory exprF = new ExprFactory(getPrefixes());
             return exprF.add(exprF.cond(exprF.bound(indirect), exprF.asExpr(posDistToTarget), exprF.asExpr(0)), posDistToTarget);
         }
-        
-//        /**
-//         * Calculates the cost to the target via the position.
-//         * @param distToPos the distance to the position.
-//         * @param posDistToTarget the distance from the position to the target
-//         * @param indirect true if there is an obstacle in the way.
-//         * @return the expression to calcualte the cost.
-//         */
-//        static Expr costCalc(Var distToPos, Var posDistToTarget, Var indirect) {
-//            ExprFactory exprF = new ExprFactory(getPrefixes());
-//            return exprF.add(distToPos, SPARQL.indirectCalc(posDistToTarget, indirect));
-//        }
-//        
+
         /**
          * Calculates the cost to the target via the position.
          * @param distToPos the distance to the position.
