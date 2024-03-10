@@ -161,4 +161,10 @@ public interface Map {
      * @return An obstacle.
      */
     Obstacle createObstacle(Position startPosition, Location relativeLocation);
+    
+    /**
+     * Sets the coordinate as visited in the map.
+     * @param coord the coordinate to mark as visited.
+     */
+    void setVisited(Coordinate coord);
 }

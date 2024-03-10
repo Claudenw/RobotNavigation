@@ -146,7 +146,7 @@ public class ProcessorTest {
                 if (checkTarget()) {
                     // move
                     Location relativeLoc = mover.position().relativeLocation(planner.getTarget());
-                    mover.move(relativeLoc);
+                    map.setVisited(mover.move(relativeLoc).getCoordinate());
                     planner.registerPositionChange();
                     processSensor();
                 }
@@ -154,9 +154,9 @@ public class ProcessorTest {
                     fail("Did not find solution in " + maxLoops + " steps");
                 }
                 planner.notifyListeners();
-                System.out.println( MapReports.dumpDistance((MapImpl)map, mover.position().getCoordinate()) );
-                System.out.println( MapReports.dumpObstacles((MapImpl)map));
-                System.out.println( MapReports.dumpObstacleDistance((MapImpl)map));
+              //  System.out.println( MapReports.dumpDistance((MapImpl)map, mover.position().getCoordinate()) );
+              //  System.out.println( MapReports.dumpObstacles((MapImpl)map));
+              //  System.out.println( MapReports.dumpObstacleDistance((MapImpl)map));
                 diff.reset();
             }
         }

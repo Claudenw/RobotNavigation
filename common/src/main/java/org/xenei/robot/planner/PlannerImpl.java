@@ -21,6 +21,7 @@ import org.xenei.robot.common.planning.Solution;
 import org.xenei.robot.common.planning.Step;
 import org.xenei.robot.common.utils.CoordUtils;
 import org.xenei.robot.common.utils.DoubleUtils;
+import org.xenei.robot.mapper.rdf.Namespace;
 
 public class PlannerImpl implements Planner {
     private static final Logger LOG = LoggerFactory.getLogger(PlannerImpl.class);
@@ -102,7 +103,7 @@ public class PlannerImpl implements Planner {
         Position pos = positionSupplier.get();
         if (pos.equals2D(getTarget(), map.getContext().scaleInfo.getResolution())) {
             LOG.debug("Reached intermediate target");
-            target.pop();
+            map.setVisited(target.pop());
             if (target.isEmpty()) {
                 LOG.debug("Reached final target");
             }
@@ -238,6 +239,9 @@ public class PlannerImpl implements Planner {
 
         @Override
         public Coordinate push(Coordinate item) {
+            if (this.size() == 2) {
+                this.pop();
+            }
             if (this.contains(item)) {
                 while (item != this.pop()) {
                     // all activity in the while statement

@@ -458,12 +458,13 @@ public class MapImpl implements Map {
         // distance from other to target
         Var otherDist = Var.alloc("otherDist");
 
+        Var indirectFlg = Var.alloc("indirectFlg");
         Var indirect = Var.alloc("indirect");
         Var visited = Var.alloc("visited");
         Var other2 = Var.alloc("other2");
         Var other2Wkt = Var.alloc("other2Wkt");
 
-        SelectBuilder query = new SelectBuilder().addVar(cost).addVar(otherWkt).addVar(other).addVar(dist) //
+        SelectBuilder query = new SelectBuilder().addVar(indirectFlg).addVar(cost).addVar(otherWkt).addVar(other).addVar(dist) //
                 .from(Namespace.UnionModel.getURI()).addWhere(Namespace.s, RDF.type, Namespace.Coord) //
                 .addWhere(Namespace.s, Geo.AS_WKT_PROP, wkt).addWhere(other, RDF.type, Namespace.Coord) //
                 .addOptional(other, Namespace.isIndirect, indirect) //
@@ -473,8 +474,11 @@ public class MapImpl implements Map {
                 .addFilter(exprF.and(exprF.ne(other, Namespace.s), exprF.not(exprF.bound(visited)))) //
                 .addBind(ctxt.graphGeomFactory.calcDistance(exprF, otherWkt, wkt), dist) //
                 .addBind(SPARQL.costCalc(dist, otherDist, indirect), cost) //
-                .addOrderBy(cost, Order.ASCENDING);
+                .addBind(exprF.cond(exprF.bound(indirect), exprF.asExpr(indirect), exprF.asExpr(false)), indirectFlg)
 
+                .addOrderBy(indirectFlg, Order.ASCENDING)
+                .addOrderBy(cost, Order.ASCENDING);
+        
         // skip coords that are within the tolerance range of visited coords
         // returns true if the position has been visited.
         AskBuilder checkVisited = new AskBuilder() //
@@ -518,9 +522,13 @@ public class MapImpl implements Map {
             return Optional.empty();
         }
         Step step = builder.build(ctxt);
-        updateCoordinate(Namespace.PlanningModel, Namespace.Coord, step.getCoordinate(), Namespace.visited,
-                Boolean.TRUE);
         return Optional.of(step);
+    }
+    
+    @Override
+    public void setVisited(Coordinate coord) {
+        updateCoordinate(Namespace.PlanningModel, Namespace.Coord, coord, Namespace.visited,
+                Boolean.TRUE);
     }
 
     @Override
