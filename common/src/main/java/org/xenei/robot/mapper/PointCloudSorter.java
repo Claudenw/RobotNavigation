@@ -20,9 +20,13 @@ import org.xenei.robot.common.utils.RobutContext;
 public class PointCloudSorter {
     private static final Logger LOG = LoggerFactory.getLogger(PointCloudSorter.class);
     RobutContext ctxt;
+    /** The coordinates in the cloud */
     List<Coordinate> points = new ArrayList<>();
+    /** matrix of distances */
     DoubleHalfMatrix dMatrix;
+    /** matrix of flags for the shortest distances */
     IntHalfMatrix iMatrix;
+    /** array of how many connections there are to each coordinate */
     int[] connections;
     
     public PointCloudSorter(RobutContext ctxt, Set<Coordinate> cSet) {
@@ -38,16 +42,17 @@ public class PointCloudSorter {
                 double d = ctxt.scaleInfo.precise(pi.distance(pj));
                 dMatrix.set(i, j, d);
                 if (d <= ctxt.scaleInfo.getResolution()) {
-                    iMatrix.add(i, j);
+                    iMatrix.increment(i, j);
                 }
             }
         }
         
         connections = iMatrix.reduction( IntHalfMatrix.plus );
-
-        LOG.debug( dMatrix.toString() );
-        LOG.debug( iMatrix.toString() );
-        LOG.info("PCS created");
+        if (LOG.isDebugEnabled()) {
+            LOG.debug( "dMatrix\n{}", dMatrix );
+            LOG.debug( "iMatrix\n{}", iMatrix );
+            LOG.debug("PCS created: connections:{}", connections.length);
+        }
     }
     
     public Geometry walk() {
@@ -60,18 +65,25 @@ public class PointCloudSorter {
             throw new IllegalStateException();
         }
         if (geoms.size() == 1) {
+            LOG.debug("walk() returned one result");
             return geoms.get(0);
         }
-        
+        LOG.info("walk() returned a collection of {} results", geoms.size());
         return ctxt.geometryFactory.createGeometryCollection( geoms.toArray(new Geometry[geoms.size()]));
     }
     
+    /**
+     * Process the edge
+     * @param i The index of the point we are processing
+     * @param lst the list of coordinates that we are building.
+     * @return the index of the next point or -1 if there are none.
+     */
     private int processEdge(int i, List<Coordinate> lst) {
         for (int j=0;j<iMatrix.size();j++) {
             if (iMatrix.get(i,j) == 1) {
                 lst.add(points.get(j));
-                iMatrix.subtract(i,j);
-                LOG.debug( "(%s,%s)", i,j);
+                iMatrix.decrement(i,j);
+                LOG.debug( "({},{})", i,j);
                 connections[i]--;
                 connections[j]--;
                 return j;
@@ -81,6 +93,7 @@ public class PointCloudSorter {
     }
     
     private boolean walk(List<Geometry> geom) {
+        // filter to find the minimum value greater than 0 for each row.
         IntHalfMatrix.Reducer filter = new IntHalfMatrix.Reducer() {
             int min = Integer.MAX_VALUE;
             int pos = 0;
@@ -98,12 +111,15 @@ public class PointCloudSorter {
                 pos++;
                 return previousValue;
             }};
+        // the list of coordinates t
         List<Coordinate> lst = new ArrayList<Coordinate>();
-        int i = IntHalfMatrix.arrayReducer(connections, filter);
-        if (i != -1){
-            lst.add(points.get(i));
-            while (i != -1) {
-                i = processEdge(i,lst);
+        
+        // get the row with the lowest number of connections. -1 if no intersections were found
+        int pointIdx = IntHalfMatrix.arrayReducer(connections, filter);
+        if (pointIdx != -1){
+            lst.add(points.get(pointIdx));
+            while (pointIdx != -1) {
+                pointIdx = processEdge(pointIdx,lst);
             }
             LOG.debug( iMatrix.toString() );
             if (lst.size() == 1) {

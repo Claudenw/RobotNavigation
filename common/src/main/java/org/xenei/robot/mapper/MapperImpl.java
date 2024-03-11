@@ -36,13 +36,15 @@ public class MapperImpl implements Mapper {
     }
 
     @Override
-    public List<Step> processSensorData(NavigationSnapshot snapshot, Location[] obstacles) {
+    public List<Step> processSensorData(Coordinate finalTarget, NavigationSnapshot snapshot, Location[] obstacles) {
 
         LOG.debug("Sense position: {}", snapshot.currentPosition);
 
         ObstacleMapper mapper = new ObstacleMapper(snapshot.currentPosition);
         List.of(obstacles).forEach(mapper::doMap);
-        map.updateIsIndirect(snapshot.target, mapper.newObstacles);
+        if (finalTarget != null) {
+            map.updateIsIndirect(finalTarget, mapper.newObstacles);
+        }
    
         return mapper.coordSet.stream()
                 .map(c -> map.addCoord(c, c.distance(snapshot.target), false, !map.isClearPath(c, snapshot.target)))

@@ -60,7 +60,7 @@ public class MapperImplTest {
         // an obstacle one unit away is too close so no target generated.
         Location[] obstacles = { Location.from(CoordUtils.fromAngle(0, 1)) };
         NavigationSnapshot snapshot = new NavigationSnapshot(currentPosition, target);
-        Collection<Step> result = underTest.processSensorData(snapshot, obstacles);
+        Collection<Step> result = underTest.processSensorData(target, snapshot, obstacles);
         // should not look at result here.
         assertTrue(result.isEmpty());
 
@@ -93,7 +93,7 @@ public class MapperImplTest {
 
         Location[] obstacles = { Location.from(CoordUtils.fromAngle(0, 2)) };
         NavigationSnapshot snapshot = new NavigationSnapshot(currentPosition, target);
-        Collection<Step> result = underTest.processSensorData(snapshot, obstacles);
+        Collection<Step> result = underTest.processSensorData(target, snapshot, obstacles);
         assertFalse(result.isEmpty());
 
         // verify indirects updated

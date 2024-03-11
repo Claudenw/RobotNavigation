@@ -72,7 +72,7 @@ public class Processor {
                 if (!cont) {
                     // heading is different so reset the heading, scan, and check again.
                     mover.setHeading(snapshot.currentPosition.headingTo(planner.getRootTarget()));
-                    mapper.processSensorData(snapshot, sensor.sense());
+                    mapper.processSensorData(planner.getRootTarget(), snapshot, sensor.sense());
                     cont = mapper.isClearPath(snapshot.currentPosition, planner.getRootTarget());
                     if (!cont) {
                         // can't see the position really so reset the heading.
@@ -123,7 +123,7 @@ public class Processor {
     
     public void moveTo(Location finalCoord, AbortTest abortTest) throws AbortedException {
         NavigationSnapshot snapshot = new NavigationSnapshot(positionSupplier.get(), finalCoord.getCoordinate());
-        mapper.processSensorData(snapshot, sensor.sense());
+        mapper.processSensorData(planner.getRootTarget(), snapshot, sensor.sense());
         planner.setTarget(snapshot.target);
         while (planner.getTarget() != null) {
             Diff diff = planner.selectTarget();
@@ -131,17 +131,17 @@ public class Processor {
                 if (diff.didChange()) {
                     snapshot = newSnapshot();
                     // look where we are heading.
-                    mapper.processSensorData(snapshot, sensor.sense());
+                    mapper.processSensorData(planner.getRootTarget(), snapshot, sensor.sense());
                     planner.notifyListeners();
                 }
                 // can we still see the target
                 if (checkTarget(snapshot)) {
                     // move
                     Location relativeLoc = mover.position().relativeLocation(planner.getTarget());
-                    map.setVisited(mover.move(relativeLoc).getCoordinate());
+                    map.setVisited(planner.getRootTarget(), mover.move(relativeLoc).getCoordinate());
                     snapshot = newSnapshot();
                     planner.registerPositionChange();
-                    mapper.processSensorData(snapshot, sensor.sense());
+                    mapper.processSensorData(planner.getRootTarget(), snapshot, sensor.sense());
                 }
                 // should we abort
                 abortTest.check(this);

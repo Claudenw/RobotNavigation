@@ -17,12 +17,12 @@ public interface Mapper {
      * detected.
      * 
      * @param currentPosition The current position.
-     * @param target the final target
+     * @param snapshot The current NavigationSnapshot.
      * @param obstacles the list of obstacles.
      * @return the location of an non-obstacle when heading toward the target.
      * (shortest non collision position)
      */
-    Collection<Step> processSensorData(NavigationSnapshot snapshot,
+    Collection<Step> processSensorData(Coordinate finalTarget, NavigationSnapshot snapshot,
             Location[] obstacles);
 
     boolean isClearPath(Position currentPosition, Coordinate target);

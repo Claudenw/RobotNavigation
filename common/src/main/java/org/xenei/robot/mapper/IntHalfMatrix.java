@@ -15,8 +15,13 @@ public class IntHalfMatrix {
     public int size() {
         return matrix[0].length;
     }
-    
-    public IntHalfMatrix add(int i, int j) {
+    /**
+     * Increment the count for intersection i,j
+     * @param i the first index.
+     * @param j the second index
+     * @return this IntHalfMatrix.
+     */
+    public IntHalfMatrix increment(int i, int j) {
         int idx1 = i < j ? i : j;
         int idx2 = i < j ? j : i;
         idx2 -= idx1;
@@ -24,7 +29,13 @@ public class IntHalfMatrix {
         return this;
     }
     
-    public IntHalfMatrix subtract(int i, int j) {
+    /**
+     * Decrement the count for intersection i,j
+     * @param i the first index 
+     * @param j the second index
+     * @return this IntHalfMatrix.
+     */
+    public IntHalfMatrix decrement(int i, int j) {
         int idx1 = i < j ? i : j;
         int idx2 = i < j ? j : i;
         idx2 -= idx1;

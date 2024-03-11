@@ -105,7 +105,8 @@ public class PlannerImpl implements Planner {
         Position pos = positionSupplier.get();
         if (pos.equals2D(getTarget(), map.getContext().scaleInfo.getResolution())) {
             LOG.debug("Reached intermediate target");
-            map.setVisited(target.pop());
+
+            map.setVisited(getRootTarget(), target.pop());
             if (target.isEmpty()) {
                 LOG.debug("Reached final target");
             }

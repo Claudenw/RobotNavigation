@@ -8,9 +8,11 @@ import org.apache.jena.rdf.model.Literal;
 import org.apache.jena.rdf.model.Resource;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
+import org.xenei.robot.common.FrontsCoordinate;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Position;
 import org.xenei.robot.common.ScaleInfo;
+import org.xenei.robot.common.UnmodifiableCoordinate;
 import org.xenei.robot.common.planning.Solution;
 import org.xenei.robot.common.planning.Step;
 import org.xenei.robot.common.utils.RobutContext;
@@ -157,10 +159,10 @@ public interface Map {
      * Update the map so that any Coord that was previously not indirect but is now
      * blocked by newObstacle is marked as indirect.
      * 
-     * @param target The final target
+     * @param finalTarget The final target
      * @param newObstacles the set of new obstacles.
      */
-    void updateIsIndirect(Coordinate target, Set<Obstacle> newObstacles);
+    void updateIsIndirect(Coordinate finalTarget, Set<Obstacle> newObstacles);
     
     /**
      * Create an Obstacle.
@@ -172,7 +174,9 @@ public interface Map {
     
     /**
      * Sets the coordinate as visited in the map.
+     * @param finalTarget the final target we are headed to.
      * @param coord the coordinate to mark as visited.
+     * @return 
      */
-    void setVisited(Coordinate coord);
+    void setVisited(Coordinate finalTarget, Coordinate coord);
 }
