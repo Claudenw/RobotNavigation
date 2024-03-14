@@ -11,13 +11,14 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.function.BiPredicate;
+import java.util.function.Predicate;
 
 import org.apache.jena.arq.querybuilder.AskBuilder;
 import org.apache.jena.arq.querybuilder.ExprFactory;
 import org.apache.jena.arq.querybuilder.SelectBuilder;
 import org.apache.jena.arq.querybuilder.WhereBuilder;
 import org.apache.jena.geosparql.implementation.vocabulary.Geo;
+import org.apache.jena.query.QuerySolution;
 import org.apache.jena.rdf.model.Literal;
 import org.apache.jena.sparql.core.Var;
 import org.apache.jena.vocabulary.RDF;
@@ -25,14 +26,18 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Position;
 import org.xenei.robot.common.ScaleInfo;
-import org.xenei.robot.common.mapping.CoordinateMap;
 import org.xenei.robot.common.mapping.MapCoord;
 import org.xenei.robot.common.mapping.Obstacle;
+import org.xenei.robot.common.planning.Solution;
 import org.xenei.robot.common.planning.Step;
 import org.xenei.robot.common.testUtils.CoordinateUtils;
+import org.xenei.robot.common.testUtils.DebugViz;
+import org.xenei.robot.common.testUtils.MapLibrary;
 import org.xenei.robot.common.testUtils.TestChassisInfo;
 import org.xenei.robot.common.utils.AngleUtils;
 import org.xenei.robot.common.utils.CoordUtils;
@@ -41,22 +46,11 @@ import org.xenei.robot.mapper.rdf.Namespace;
 
 public class MapImplTest {
 
+    private static final Logger LOG = LoggerFactory.getLogger(MapImplTest.class);
+
     private static RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT, TestChassisInfo.DEFAULT);
 
     private MapImpl underTest;
-
-    // Map is as follows: O = obstacle X = coord
-    // neg | pos
-    // 543210123
-    // t 1 pos
-    // 0 --
-    // OXOOOOOXO 1
-    // XXX 2 n
-    // OX p XO 3 e
-    // OX XXX XO 4 g
-    // OOOOO 5
-
-    // it is the bottom half of map 2 with partial detection.
 
     public static final Coordinate[] coordinates = { new Coordinate(-4, -4), new Coordinate(-4, -3),
             new Coordinate(-4, -1), new Coordinate(-2, -4), new Coordinate(-2, -2), new Coordinate(-1, -4),
@@ -71,11 +65,13 @@ public class MapImplTest {
 
     static List<Coordinate[]> paths = new ArrayList<>();
 
-    static Coordinate p = new Coordinate(-1, -3);
+    static final Coordinate p = new Coordinate(-1, -3);
 
-    static Coordinate t = new Coordinate(-1, 1);
+    static final Coordinate t = new Coordinate(-1, 1);
 
-    CoordinateMap cMap;
+    DebugViz cMap;
+
+    Solution solution;
 
     public static List<Coordinate> obstacleList() {
         return Arrays.asList(obstacles);
@@ -89,33 +85,38 @@ public class MapImplTest {
     }
 
     private void setup() {
-        cMap = new CoordinateMap(1, TestChassisInfo.DEFAULT);
         underTest = new MapImpl(ctxt);
-        underTest.addCoord(p, p.distance(t), false, true);
-        cMap.enable(p, 'p');
-        cMap.enable(t, 't');
-        for (Coordinate e : coordinates) {
-            System.out.println("adding " + e);
-            Optional<Step> result = underTest.addCoord(e, e.distance(t), false, true);
-            cMap.enable(e, 'e');
-        }
-        Position pos = Position.from(p, 0);
-        for (Coordinate o : obstacles) {
-            underTest.addObstacle(underTest.createObstacle(pos, pos.relativeLocation(o)));
-            cMap.enable(o, '#');
-        }
-        for (Coordinate[] l : paths) {
-            underTest.addPath(l[0], l[1]);
-        }
+        MapLibrary.map2(underTest);
+        solution = new Solution();
+        solution.add(p);
+        cMap = new DebugViz(.5, underTest, () -> solution, () -> Position.from(p));
+
+        underTest.addCoord(p, p.distance(t), false, underTest.isClearPath(p, t));
+        Arrays.stream(coordinates)
+                .forEach(c -> underTest.addCoord(c, c.distance(t), false, !underTest.isClearPath(c, t)));
     }
 
     @Test
     public void getBestTargetTest() {
         setup();
+        List<Coordinate> solutions = List.of( new Coordinate(2, -1), new Coordinate(-4,-1));
         Optional<Step> pr = underTest.getBestStep(p);
         assertTrue(pr.isPresent());
-        Coordinate p2 = new Coordinate(-1, -2);
-        assertEquals(StepImpl.builder().setCoordinate(p2).setCost(7).setDistance(1).build(ctxt), pr.get());
+        Step step = pr.get();
+        assertTrue( solutions.contains( step.getCoordinate()));
+        
+        // remove the 2 possible solutions.
+        solutions.forEach(c -> underTest.setVisited(t, c));
+        
+        pr = underTest.getBestStep(p);
+        assertTrue(pr.isPresent());
+        step = pr.get();
+        assertEquals(new Coordinate(-1,-2), step.getCoordinate());
+        
+        // remove all the solutions
+        underTest.getCoords().forEach(c -> underTest.setVisited(t,  c.location.getCoordinate()));
+        pr = underTest.getBestStep(p);
+        assertFalse(pr.isPresent());
     }
 
     /**
@@ -164,18 +165,21 @@ public class MapImplTest {
     @Test
     public void getStepsTest() {
         setup();
-        Collection<Coordinate> expected = List.of(new Coordinate(-4, -1), new Coordinate(2, -1));
-        underTest.addObstacle(underTest.new ObstacleImpl(new Coordinate(-3, -1), new Coordinate(1, -1)));
 
+        Solution solution = new Solution();
+        solution.add(p);
+        // Supplier<Position> positionSupplier = () -> Position.from( p );
+        cMap.redraw(t);
         // looking from the target we should only see -4,-1 and 2,-1
-        Collection<Step> records = underTest.getSteps(t);
-        assertEquals(expected.size(), records.size());
-        BiPredicate<Collection<Coordinate>, Step> contains = (c, t) -> c.stream()
-                .filter(p -> CoordUtils.XYCompr.compare(p, t.getCoordinate()) == 0).findFirst().isPresent();
-        for (Step step : records) {
-            assertTrue(contains.test(expected, step));
-        }
+        Collection<Step> records = underTest.getSteps(p);
+        cMap.redraw(t);
+        assertEquals(12, records.size());
 
+        Coordinate nxt = records.iterator().next().getCoordinate();
+        underTest.setVisited(t, nxt);
+        records = underTest.getSteps(p);
+        cMap.redraw(t);
+        assertEquals(11, records.size());
     }
 
     @Test
@@ -217,10 +221,13 @@ public class MapImplTest {
     @Test
     public void hasPathTest() {
         setup();
+        for (Coordinate[] l : paths) {
+            underTest.addPath(l[0], l[1]);
+        }
         Location a = Location.from(p);
         Location b = Location.from(coordinates[0]);
         Location c = Location.from(t);
-        underTest.addCoord(t, 1, false, false);
+        underTest.addCoord(t, 0, false, false);
 
         assertTrue(underTest.hasPath(a, b));
         assertFalse(underTest.hasPath(b, c));
@@ -230,28 +237,64 @@ public class MapImplTest {
 
         assertTrue(underTest.hasPath(a, b));
         assertTrue(underTest.hasPath(b, c));
-        // FIXME assertTrue(underTest.hasPath(a, c));
+        // assertTrue(underTest.hasPath(a, c));
     }
 
     @Test
     public void recalculateTest() {
         setup();
-        AskBuilder ask = new AskBuilder();
-        ExprFactory exprF = ask.getExprFactory();
-        ask.from(Namespace.UnionModel.getURI()).addWhere(Namespace.s, RDF.type, Namespace.Coord)
-                .addOptional(Namespace.s, Namespace.isIndirect, Namespace.o)
-                .addFilter(exprF.not(exprF.bound(Namespace.o)));
+        SelectBuilder select = new SelectBuilder();
+        ExprFactory exprF = select.getExprFactory();
+        select.addVar("Count(*)", "?count").from(Namespace.UnionModel.getURI()) //
+                .addWhere(Namespace.s, RDF.type, Namespace.Coord) //
+                .addOptional(Namespace.s, Namespace.isIndirect, "?indFlg") //
+                .addBind(exprF.cond(exprF.bound("?indFlg"), exprF.asExpr("?indFlg"), exprF.asExpr(false)),
+                        "?isIndirect")
+                .addFilter(exprF.not("?isIndirect"));
+
+        SelectBuilder report = new SelectBuilder();
+        if (LOG.isDebugEnabled()) {
+            report.addVar("?wkt").from(Namespace.UnionModel.getURI()) //
+                    .addWhere(Namespace.s, RDF.type, Namespace.Coord) //
+                    .addWhere(Namespace.s, Geo.AS_WKT_PROP, "?wkt")
+                    .addOptional(Namespace.s, Namespace.isIndirect, "?indFlg") //
+                    .addBind(exprF.cond(exprF.bound("?indFlg"), exprF.asExpr("?indFlg"), exprF.asExpr(false)),
+                            "?isIndirect")
+                    .addFilter(exprF.not("?isIndirect"));
+
+            LOG.debug("\n{}", MapReports.dumpQuery(underTest, report));
+        }
+
+        int count[] = { 0 };
+        Predicate<QuerySolution> pred = soln -> {
+            count[0] = soln.getLiteral("count").getInt();
+            return false;
+        };
+        underTest.exec(select, pred);
+        assertEquals(3, count[0], () -> "Should have 3 direct points");
+
+        cMap.redraw(t);
 
         Location c = Location.from(coordinates[0]);
-        Step before = underTest.getStep(0.0, c).get();
-        assertFalse(underTest.ask(ask), () -> "Should not have any direct points");
 
+        Step before = underTest.getStep(0.0, c).get();
         Location newTarget = Location.from(-4, 1);
         underTest.recalculate(newTarget.getCoordinate());
 
+        solution.add(newTarget);
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("\n{}", MapReports.dumpQuery(underTest, report));
+        }
+        cMap.redraw(newTarget.getCoordinate());
+
         Step after = underTest.getStep(0.0, c).get();
         assertNotEquals(before.cost(), after.cost());
-        assertTrue(underTest.ask(ask), () -> "Should have some indirect points");
+
+        count[0] = 0;
+        underTest.exec(select, pred);
+
+        assertEquals(5, count[0], () -> "Should have 5 direct points");
+        System.out.println(MapReports.dumpModel(underTest));
     }
 
     @Test
@@ -414,6 +457,17 @@ public class MapImplTest {
             assertTrue(underTest.isObstacle(c), () -> "Did not find c");
         for (Coordinate c : obst3.geom().getCoordinates())
             assertTrue(underTest.isObstacle(c), () -> "Did not find c");
+    }
+
+    @Test
+    public void isClearPathTest() {
+        setup();
+        cMap.redraw(t);
+
+        assertFalse(underTest.isClearPath(p, t));
+        assertFalse(underTest.isClearPath(new Coordinate(-2, -2), t));
+        assertTrue(underTest.isClearPath(new Coordinate(-2, -2), p));
+        assertFalse(underTest.isClearPath(new Coordinate(2, -1), new Coordinate(-4, -1)));
     }
 //    
 //    @ParameterizedTest(name = "{index} {1}")

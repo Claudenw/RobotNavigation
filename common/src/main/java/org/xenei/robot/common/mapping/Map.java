@@ -179,4 +179,14 @@ public interface Map {
      * @return 
      */
     void setVisited(Coordinate finalTarget, Coordinate coord);
+    
+    /**
+     * Look in the given direction for the maximum range.  if there is an obstacle
+     * report the location.  otherwise return and empty optional.
+     * @param location the position on the map to look from.
+     * @param heading the direction to look.
+     * @param maxRange the maximum range to look.
+     * @return the located object or an empty Optional.
+     */
+    Optional<Location> look(Location location, double heading, int maxRange);
 }

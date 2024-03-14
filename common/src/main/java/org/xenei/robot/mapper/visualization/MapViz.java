@@ -94,6 +94,7 @@ public class MapViz implements Mapper.Visualization {
         };
     }
 
+    @Override
     public void redraw(Coordinate target) {
         GeometryUtils geometryUtils = map.getContext().geometryUtils;
         List<AbstractDrawingCommand> cmds = new ArrayList<>();
@@ -111,13 +112,13 @@ public class MapViz implements Mapper.Visualization {
         }
         
         for (MapCoord mapCoord : map.getCoords()) {
-            cmds.add(getPoly(mapCoord.geometry, mapCoord.isDirect ? Color.CYAN : Color.BLUE));
+            cmds.add(getPoly(mapCoord.geometry, mapCoord.isIndirect ? Color.CYAN : Color.BLUE));
         }
         
         List<Coordinate> lst = solutionSupplier.get().stream().collect(Collectors.toList());
         if (lst.size() > 1) {
             cmds.add(getPoly(geometryUtils.asPath(0.25, lst.toArray(new Coordinate[lst.size()])), Color.WHITE));
-        } else {
+        } else if (lst.size() == 1){
             cmds.add(getPoly(geometryUtils.asPolygon(lst.get(0), .25), Color.WHITE));
         }
         

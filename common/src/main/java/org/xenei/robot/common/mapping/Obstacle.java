@@ -4,9 +4,13 @@ import java.util.Comparator;
 import java.util.Objects;
 import java.util.UUID;
 
+import org.apache.jena.geosparql.implementation.vocabulary.Geo;
 import org.apache.jena.rdf.model.Literal;
+import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.Resource;
+import org.apache.jena.rdf.model.ResourceFactory;
 import org.locationtech.jts.geom.Geometry;
+import org.xenei.robot.mapper.rdf.Namespace;
 
 /**
  * Hashcode should be implemented as wkt().hashCode()
@@ -28,11 +32,19 @@ public interface Obstacle {
         return Objects.equals(left.wkt().getLexicalForm(), ((Obstacle)right).wkt().getLexicalForm());
     }
    
-    Literal wkt();
-    
     Geometry geom();
     
     UUID uuid();
+
+    Literal wkt();
+
+    default Resource rdf() {
+        return ResourceFactory.createResource("urn:uuid:" + uuid().toString());
+    }
     
-    Resource rdf();
+    default Resource in(Model model) {
+        Resource result = model.createResource(rdf().getURI(), Namespace.Obst);
+        result.addLiteral(Geo.AS_WKT_PROP, wkt());
+        return result;
+    }
 }

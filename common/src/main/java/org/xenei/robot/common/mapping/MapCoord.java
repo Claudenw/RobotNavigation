@@ -1,19 +1,16 @@
 package org.xenei.robot.common.mapping;
 
-import org.apache.jena.rdf.model.Resource;
 import org.locationtech.jts.geom.Geometry;
 import org.xenei.robot.common.Location;
 
 public class MapCoord {
-    public final Resource resource;
     public final Location location;
-    public final boolean isDirect; 
+    public final boolean isIndirect; 
     public final Geometry geometry;
     
-    public MapCoord(Resource resource, double x, double y, boolean isDirect, Geometry geometry) {
-        this.resource = resource;
+    public MapCoord(double x, double y, boolean isIndirect, Geometry geometry) {
         location = Location.from(x,y);
-        this.isDirect = isDirect;
+        this.isIndirect = isIndirect;
         this.geometry = geometry;
     }
 
