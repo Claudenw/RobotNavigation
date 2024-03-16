@@ -33,11 +33,7 @@ public class FakeDistanceSensor1 implements FakeDistanceSensor {
         Location[] result = new Location[BLOCKSIZE];
         Position position = positionSupplier.get();
         for (int i = 0; i < BLOCKSIZE; i++) {
-            double h = position.getHeading() + (RADIANS * i);
-            Location nxt = look(position, position.getHeading() + (RADIANS * i));
-            double heading = position.headingTo(nxt) - position.getHeading();
-            double d = position.distance(nxt);
-            result[i] = Location.from(CoordUtils.fromAngle(heading, d));
+            result[i] = look(position, position.getHeading() + (RADIANS * i));
             if (LOG.isDebugEnabled()) {
                 LOG.debug("Reading {}: {}", i, result[i]);
             }

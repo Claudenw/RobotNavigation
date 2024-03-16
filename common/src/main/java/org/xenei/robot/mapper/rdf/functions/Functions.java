@@ -20,6 +20,7 @@ public class Functions implements FunctionFactory {
         add( Namespace.intersectsF , new FF2((x, y) -> NodeValue.makeBoolean(x.intersects(y))));
         add( Namespace.touchesF, new FF2((x, y) -> NodeValue.makeBoolean(x.touches(y))));
         add( Namespace.distanceF, new FF2((x, y) -> NodeValue.makeDouble(x.distance(y))));
+        add( Namespace.intersectDistF, new FF_IntersectionDistance());
         add( Namespace.nearbyF, new FF_Nearby() );
     }
     

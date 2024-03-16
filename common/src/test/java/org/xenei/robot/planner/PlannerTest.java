@@ -24,12 +24,12 @@ import org.mockito.Mockito;
 import org.xenei.robot.common.FrontsCoordinate;
 import org.xenei.robot.common.FrontsCoordinateTest;
 import org.xenei.robot.common.Location;
+import org.xenei.robot.common.NavigationSnapshot;
 import org.xenei.robot.common.Position;
 import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.common.UnmodifiableCoordinate;
 import org.xenei.robot.common.mapping.Map;
 import org.xenei.robot.common.planning.Planner;
-import org.xenei.robot.common.planning.Planner.Diff;
 import org.xenei.robot.common.planning.Solution;
 import org.xenei.robot.common.planning.Step;
 import org.xenei.robot.common.testUtils.CoordinateUtils;
@@ -73,21 +73,19 @@ public class PlannerTest {
         when(map.getContext()).thenReturn(ctxt);
         when(map.addCoord(any(Coordinate.class), anyDouble(), anyBoolean(), anyBoolean())).thenReturn(Optional.of(step));
 
-        Location finalCoord = Location.from(-1, 1);
+        Location finalLocation = Location.from(-1, 1);
         Position initial = Position.from(-1, -3);
-        TestingPositionSupplier supplier = new TestingPositionSupplier(initial);
-        underTest = new PlannerImpl(map, supplier, finalCoord);
-        Diff diff = underTest.getDiff();
-        assertFalse(diff.didChange());
-        Position second = Position.from(1, 1);
-        supplier.position = second;
         
-        // since there is only one target this will add a position to the target stack
-        underTest.registerPositionChange();
-        assertTrue(diff.didChange());
-        assertTrue(diff.didPositionChange());
+        TestingPositionSupplier supplier = new TestingPositionSupplier(initial);
+        underTest = new PlannerImpl(map, supplier, finalLocation);
+        NavigationSnapshot lastSnapshot = new NavigationSnapshot( initial, finalLocation.getCoordinate());
+        Position second = Position.from(1, 1);
 
-        // map.addTarget(p.getCoordinate(), p.distance(underTest.getTarget()));
+        NavigationSnapshot snapshot = new NavigationSnapshot( second, finalLocation.getCoordinate());
+        // since there is only one target this will add a position to the target stack
+        underTest.registerPositionChange(snapshot);
+        assertTrue(lastSnapshot.didChange(snapshot));
+       
         verify(map, times(2)).addCoord(coordinateCaptor.capture(), doubleCaptor.capture(), anyBoolean(), anyBoolean());
         List<Coordinate> lst = coordinateCaptor.getAllValues();
         assertTrue(initial.equals2D(lst.get(0)));
@@ -108,11 +106,14 @@ public class PlannerTest {
         when(map.getContext()).thenReturn(ctxt);
         when(map.addCoord(any(Coordinate.class), anyDouble(), anyBoolean(), anyBoolean())).thenReturn(Optional.of(step));
 
-        Location finalCoord = Location.from(-1, 1);
-        TestingPositionSupplier supplier = new TestingPositionSupplier(Position.from(-1, -3));
-        underTest = new PlannerImpl(map, supplier, finalCoord);
-        Diff diff = underTest.getDiff();
-        assertFalse(diff.didChange());
+        Location finalLocation = Location.from(-1, 1);
+        Position initial = Position.from(-1, -3);
+        TestingPositionSupplier supplier = new TestingPositionSupplier(initial);
+        NavigationSnapshot initialSnapshot = new NavigationSnapshot( initial, finalLocation.getCoordinate());
+        
+        underTest = new PlannerImpl(map, supplier, finalLocation);
+        NavigationSnapshot snapshot = underTest.getSnapshot();
+        assertFalse(snapshot.didChange(initialSnapshot));
 
         // verify addTarget called
         verify(map, times(1)).addCoord(coordinateCaptor.capture(), doubleCaptor.capture(), anyBoolean(), anyBoolean());
@@ -120,7 +121,7 @@ public class PlannerTest {
 
         // verify recalculate called
         verify(map).recalculate(coordinateCaptor.capture());
-        assertTrue(finalCoord.equals2D(coordinateCaptor.getValue()));
+        assertTrue(finalLocation.equals2D(coordinateCaptor.getValue()));
 
         // verify solution has 1 item
         Solution solution = underTest.getSolution();
@@ -130,31 +131,38 @@ public class PlannerTest {
     }
 
     @Test
-    public void targetTest() {
+    public void replaceTargetTest() {
         Map map = Mockito.mock(Map.class);
         when(map.getContext()).thenReturn(ctxt);
 
-        Location finalCoord = Location.from(-1, 1);
+        Location finalLocation = Location.from(-1, 1);
         Coordinate newTarget = new Coordinate(4, 4);
         Position initial = Position.from(-1, -3);
         TestingPositionSupplier supplier = new TestingPositionSupplier(initial);
-        underTest = new PlannerImpl(map, supplier, finalCoord);
-        // this should make 2 targets
+        NavigationSnapshot initialSnapshot = new NavigationSnapshot( initial, finalLocation.getCoordinate());
+        
+        underTest = new PlannerImpl(map, supplier, finalLocation);
+        NavigationSnapshot snapshot = underTest.getSnapshot();
+        assertFalse(initialSnapshot.didChange(snapshot));
+
         underTest.replaceTarget(newTarget);
-        Diff diff = underTest.getDiff();
-        assertTrue(diff.didChange());
-        assertTrue(diff.didTargetChange());
+        snapshot = underTest.getSnapshot();
+        assertTrue(initialSnapshot.didTargetChange(snapshot));
         assertTrue(newTarget.equals2D(underTest.getTarget()));
         assertEquals(2, underTest.getTargets().size());
-        assertTrue(finalCoord.equals2D(underTest.getRootTarget()));
+        assertTrue(finalLocation.equals2D(underTest.getFinalTarget()));
 
         // this should continue with 2 targets
         newTarget = new Coordinate(5, 5);
+        initialSnapshot = snapshot;
         // this should make 2 targets
         underTest.replaceTarget(newTarget);
+        snapshot =  underTest.getSnapshot();
+         /// END OF EDIT
+        
         assertTrue(newTarget.equals2D(underTest.getTarget()));
         assertEquals(2, underTest.getTargets().size());
-        assertTrue(finalCoord.equals2D(underTest.getRootTarget()));
+        assertTrue(finalLocation.equals2D(underTest.getFinalTarget()));
 
         // verify solution has 1 item
         Solution solution = underTest.getSolution();
@@ -209,7 +217,7 @@ public class PlannerTest {
 
     @Test
     public void selectTargetTest() {
-        Location finalCoord = Location.from(-1, 1);
+        Location finalLocation = Location.from(-1, 1);
         Location stepLocation = Location.from(3, 3);
         Step step = mock(Step.class);
         when(step.getCoordinate()).thenReturn(stepLocation.getCoordinate());
@@ -222,13 +230,14 @@ public class PlannerTest {
         when(map.getBestStep(any())).thenReturn(Optional.of(step)).thenReturn(Optional.empty());
         Position initial = Position.from(-1, -3);
         TestingPositionSupplier supplier = new TestingPositionSupplier(initial);
-        underTest = new PlannerImpl(map, supplier, finalCoord);;
+        NavigationSnapshot snapshot = new NavigationSnapshot( initial, finalLocation.getCoordinate() );
+        underTest = new PlannerImpl(map, supplier, finalLocation);;
 
         // first target (step)
-        Diff diff = underTest.selectTarget();
+        NavigationSnapshot newSnapshot = underTest.selectTarget();
 
-        assertTrue(diff.didChange());
-        assertTrue(diff.didTargetChange());
+        assertTrue(snapshot.didChange(newSnapshot));
+        assertTrue(snapshot.didTargetChange(newSnapshot));
 
         CoordinateUtils.assertEquivalent(step, underTest.getTarget());
         Solution solution = underTest.getSolution();
@@ -237,9 +246,10 @@ public class PlannerTest {
         assertEquals(0, solution.stepCount());
 
         // second target (empty)
-        diff.reset();
-        diff = underTest.selectTarget();
-        assertFalse(diff.didChange());
+        snapshot = newSnapshot;
+        
+        newSnapshot = underTest.selectTarget();
+        assertFalse(snapshot.didChange(newSnapshot));
         CoordinateUtils.assertEquivalent(step, underTest.getTarget());
         solution = underTest.getSolution();
         CoordinateUtils.assertEquivalent(initial, solution.start());
@@ -247,27 +257,33 @@ public class PlannerTest {
         assertEquals(0, solution.stepCount());
 
         // change the position to current target location.
+        // Should add to solution but not change snapshot.
         supplier.position = Position.from(step);
-        underTest.registerPositionChange();
-        diff.reset();
-        diff = underTest.selectTarget();
-        assertTrue(diff.didChange());
-        CoordinateUtils.assertEquivalent(finalCoord, underTest.getTarget());
+        snapshot = new NavigationSnapshot( supplier.position, finalLocation.getCoordinate() );
+        underTest.registerPositionChange(snapshot);
+
+        newSnapshot = underTest.selectTarget();
+        assertFalse(snapshot.didChange(newSnapshot));
+        CoordinateUtils.assertEquivalent(finalLocation, underTest.getTarget());
         solution = underTest.getSolution();
         CoordinateUtils.assertEquivalent(initial, solution.start());
         CoordinateUtils.assertEquivalent(stepLocation, solution.end());
         assertEquals(1, solution.stepCount());
 
-        // chhange the position to the end location
-        supplier.position = Position.from(finalCoord);
-        underTest.registerPositionChange();
-        diff.reset();
-        diff = underTest.selectTarget();
-        assertTrue(diff.didChange());
+        // change the position to the end location
+        // should not change snapshot
+        // solution should have one more entry
+        // target should be null
+        supplier.position = Position.from(finalLocation);
+        snapshot = new NavigationSnapshot( supplier.position, finalLocation.getCoordinate() );
+        
+        underTest.registerPositionChange(snapshot);
+        newSnapshot = underTest.selectTarget();
+        assertTrue(snapshot.didChange(newSnapshot));
         assertNull(underTest.getTarget());
         solution = underTest.getSolution();
         CoordinateUtils.assertEquivalent(initial, solution.start());
-        CoordinateUtils.assertEquivalent(finalCoord, solution.end());
+        CoordinateUtils.assertEquivalent(finalLocation, solution.end());
         assertEquals(2, solution.stepCount());
     }
 }

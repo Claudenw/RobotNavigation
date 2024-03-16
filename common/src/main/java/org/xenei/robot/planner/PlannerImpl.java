@@ -32,7 +32,7 @@ public class PlannerImpl implements Planner {
     private final ListenerContainer listeners;
     private final Supplier<Position> positionSupplier;
     private Solution solution;
-    private final DiffImpl diff;
+    private NavigationSnapshot snapshot;
 
     /**
      * Constructs a planner.
@@ -58,23 +58,22 @@ public class PlannerImpl implements Planner {
         this.positionSupplier = positionSupplier;
         this.solution = new Solution();
 
-        Position currentPosition = positionSupplier.get();
-        this.diff = new DiffImpl(currentPosition, target == null ? null : target.getCoordinate());
+        this.snapshot = new NavigationSnapshot(positionSupplier.get(), target == null ? null : target.getCoordinate());
         boolean isIndirect = false;
         double distance = Double.NaN;
-        solution.add(currentPosition);
-        if (target != null) {
-            setTarget(target.getCoordinate());
-            distance = currentPosition.distance(getRootTarget());
-            isIndirect = !map.isClearPath(currentPosition.getCoordinate(), getRootTarget());
+        solution.add(snapshot.position);
+        if (snapshot.target != null) {
+            setTarget(snapshot.target);
+            distance = snapshot.position.distance(getFinalTarget());
+            isIndirect = !map.isClearPath(snapshot.position.getCoordinate(), getFinalTarget());
         }
-        map.addCoord(currentPosition.getCoordinate(), distance, true, isIndirect);
-        LOG.debug( "Constructor: target arg:{}, {}", target, currentPosition);
+        map.addCoord(snapshot.position.getCoordinate(), distance, true, isIndirect);
+        LOG.debug( "PlannerImpl: {}", snapshot);
     }
 
     @Override
-    public Diff getDiff() {
-        return diff;
+    public NavigationSnapshot getSnapshot() {
+        return snapshot;
     }
 
     @Override
@@ -88,10 +87,9 @@ public class PlannerImpl implements Planner {
     }
 
     @Override
-    public void registerPositionChange() {
-        Position pos = positionSupplier.get();
-        Optional<Step> step = map.addCoord(pos.getCoordinate(), pos.distance(getRootTarget()), true,
-                !map.isClearPath(pos.getCoordinate(), getRootTarget()));
+    public void registerPositionChange(NavigationSnapshot snapshot) {
+        Optional<Step> step = map.addCoord(snapshot.position.getCoordinate(), snapshot.position.distance(getFinalTarget()), true,
+                !map.isClearPath(snapshot.position.getCoordinate(), getFinalTarget()));
         step.ifPresent(s ->solution.add(s.getCoordinate()));
     }
 
@@ -101,31 +99,32 @@ public class PlannerImpl implements Planner {
     }
 
     @Override
-    public Diff selectTarget() {
+    public NavigationSnapshot selectTarget() {
         Position pos = positionSupplier.get();
         if (pos.equals2D(getTarget(), map.getContext().scaleInfo.getResolution())) {
             LOG.debug("Reached intermediate target");
-
-            map.setVisited(getRootTarget(), target.pop());
+            // TODO use thread for set visited
+            map.setVisited(getFinalTarget(), target.pop());
             if (target.isEmpty()) {
                 LOG.debug("Reached final target");
             }
-
         } else {
             Optional<Step> selected = map.getBestStep(pos.getCoordinate());
             if (selected.isPresent()) {
-                if (LOG.isDebugEnabled()) {
-                    LOG.debug("Selected target: " + selected.get());
-                }
                 if (!map.areEquivalent(selected.get().getCoordinate(), getTarget())) {
                     target.push(selected.get().getCoordinate());
+                    if (LOG.isDebugEnabled()) {
+                        LOG.debug("New target registered: " + selected.get());
+                    }
                 }
             }
         }
-        if (diff.didChange()) {
-            solution.add(pos);
+        NavigationSnapshot newSnapshot = new NavigationSnapshot(pos, getTarget());
+        if (snapshot.didChange(newSnapshot)) {
+            solution.add(newSnapshot.position);
         }
-        return diff;
+        snapshot = newSnapshot;
+        return snapshot;
     }
 
     @Override
@@ -162,6 +161,7 @@ public class PlannerImpl implements Planner {
             LOG.info("Adding target to {} to {}", target, getTarget());
         }
         this.target.push(target);
+        this.snapshot = new NavigationSnapshot(snapshot.position, target);
         return CoordUtils.calcHeading(pos.getCoordinate(), getTarget());
     }
 
@@ -171,7 +171,7 @@ public class PlannerImpl implements Planner {
     }
 
     @Override
-    public Coordinate getRootTarget() {
+    public Coordinate getFinalTarget() {
         return target.isEmpty() ? null : target.get(0);
     }
 
@@ -198,56 +198,7 @@ public class PlannerImpl implements Planner {
     public Map getMap() {
         return map;
     }
-    
-    
 
-    private class DiffImpl implements Planner.Diff {
-        NavigationSnapshot snapshot;
-        
-        DiffImpl(Position initial, Coordinate target) {
-            snapshot = new NavigationSnapshot(initial, target);
-        }
-
-        @Override
-        public void reset() {
-            snapshot = new NavigationSnapshot(positionSupplier.get(),getTarget());
-        }
-        
-        @Override
-        public boolean didChange() {
-            Position pos = positionSupplier.get();
-            return didHeadingChange(pos) || didPositionChange(pos) || didTargetChange();
-        }
-
-        private boolean didHeadingChange(Position pos) {
-            return !DoubleUtils.eq(snapshot.heading(), pos.getHeading());
-        }
-
-        private boolean didPositionChange(Position pos) {
-            return !snapshot.currentPosition.equals2D(pos.getCoordinate());
-        }
-        
-        
-        @Override
-        public boolean didHeadingChange() {
-            return didHeadingChange(positionSupplier.get());
-        }
-
-        @Override
-        public boolean didPositionChange() {
-            return didPositionChange(positionSupplier.get());
-        }
-
-        @Override
-        public boolean didTargetChange() {
-            Coordinate newTarget = getTarget();
-            if (snapshot.target == null) {
-                return (newTarget != null);
-            }
-            return !snapshot.target.equals(newTarget);
-        }
-    }
-    
     private class TargetStack extends Stack<Coordinate> {
         TargetStack() {
             super();

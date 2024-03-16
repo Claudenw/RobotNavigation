@@ -8,6 +8,7 @@ import java.util.function.Supplier;
 
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Position;
@@ -65,21 +66,20 @@ public class FakeDistanceSensorTest {
 
     @Test
     public void map2Test() {
-        Position position = Position.from(0.5, 0.5);
+        Position position = Position.from(-1, -3);
         Map map = new MapImpl(new RobutContext(ScaleInfo.DEFAULT, TestChassisInfo.DEFAULT));
         underTest = new FakeDistanceSensor1(MapLibrary.map2(map), () -> position);
-        
-        System.out.println(MapReports.dumpModel((MapImpl)map));
+
         Solution solution = new Solution();
         solution.add(position);
-        TextViz textViz = new TextViz(0.5, map, () -> solution, () -> position);
-        textViz.redraw(null);
+        DebugViz debugViz = new DebugViz(1, map, () -> solution, () -> position);
+        debugViz.redraw(null);
+        
         Set<Obstacle> obstacles = underTest.map().getObstacles();
         Location[] actual = underTest.sense();
         for (Location l : actual) {
             assertCoordinateInObstacles(obstacles, position.nextPosition(l));
         }
-        obstacles.forEach(System.out::println);
     }
 
     /**
@@ -97,8 +97,7 @@ public class FakeDistanceSensorTest {
                 break;
             }
         }
-        System.out.format( "%s %s\n", actual, found );
-        //assertTrue(found, () -> "Missing coordinate " + actual);
+        assertTrue(found, () -> "Missing coordinate " + actual);
     }
 
 }

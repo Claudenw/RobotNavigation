@@ -5,8 +5,7 @@ import java.util.Collection;
 import org.locationtech.jts.geom.Coordinate;
 import org.xenei.robot.common.FrontsCoordinate;
 import org.xenei.robot.common.ListenerContainer;
-import org.xenei.robot.common.Location;
-import org.xenei.robot.common.Position;
+import org.xenei.robot.common.NavigationSnapshot;
 
 public interface Planner extends ListenerContainer {
 
@@ -17,7 +16,12 @@ public interface Planner extends ListenerContainer {
      */
     Coordinate getTarget();
 
-    Coordinate getRootTarget();
+    /**
+     * Gets the final target that this planner is working toward.
+     * 
+     * @return the Final target.
+     */
+    Coordinate getFinalTarget();
 
     /**
      * Gets the planning targets. This is a stack of targets where bottom of the
@@ -75,43 +79,35 @@ public interface Planner extends ListenerContainer {
      */
     Solution getSolution();
 
+    /**
+     * Records the current solution on the map.
+     */
     void recordSolution();
-    
+
     /**
      * Plans a step. Returns the best location to move to based on the current
      * position. The target position may be updated. The best position to head for
      * is in the target.
      * 
-     * @return true if the target has changed.
+     * @return The snapshot from the target selecton.
      */
-    Diff selectTarget();
+    NavigationSnapshot selectTarget();
 
     /**
      * Sets the registers the current position as part of the solution.
      */
-    void registerPositionChange();
+    void registerPositionChange(NavigationSnapshot snapshot);
 
+    /**
+     * Recalculate all the costs for movement.
+     */
     void recalculateCosts();
 
     /**
-     * Gets the Diff associatd with this planner.
+     * Gets the current NavigationSnapshot the planner is working with.
      * 
-     * @return the Diff associated with this planner.
+     * @return the NavigationSnapshot the planner is working with.
      */
-    Diff getDiff();
+    NavigationSnapshot getSnapshot();
 
-    interface Diff {
-
-        void reset();
-
-        default boolean didChange() {
-            return didHeadingChange() || didPositionChange() || didTargetChange();
-        }
-
-        boolean didHeadingChange();
-
-        boolean didPositionChange();
-
-        boolean didTargetChange();
-    }
 }

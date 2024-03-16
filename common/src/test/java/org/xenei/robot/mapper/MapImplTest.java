@@ -227,7 +227,7 @@ public class MapImplTest {
         Location a = Location.from(p);
         Location b = Location.from(coordinates[0]);
         Location c = Location.from(t);
-        underTest.addCoord(t, 0, false, false);
+        underTest.addCoord(t, 0.0, false, false);
 
         assertTrue(underTest.hasPath(a, b));
         assertFalse(underTest.hasPath(b, c));
@@ -294,7 +294,6 @@ public class MapImplTest {
         underTest.exec(select, pred);
 
         assertEquals(5, count[0], () -> "Should have 5 direct points");
-        System.out.println(MapReports.dumpModel(underTest));
     }
 
     @Test
@@ -315,7 +314,7 @@ public class MapImplTest {
         assertFalse(underTest.ask(ask));
 
         // add the coordinate with a distance of 1.
-        underTest.addCoord(c.getCoordinate(), 1, false, false);
+        underTest.addCoord(c.getCoordinate(), 1.0, false, false);
         assertFalse(underTest.ask(ask));
         // now update it to 5 and verify that it is there.
         underTest.updateCoordinate(Namespace.PlanningModel, c.getCoordinate(), Namespace.distance, 5);
@@ -367,7 +366,7 @@ public class MapImplTest {
     @Test
     public void testAddTarget() {
         underTest = new MapImpl(ctxt);
-        Step step = underTest.addCoord(p, 11, false, false).get();
+        Step step = underTest.addCoord(p, 11.0, false, false).get();
         assertEquals(11, step.cost());
 
         AskBuilder ask = new AskBuilder().addGraph(Namespace.PlanningModel, new WhereBuilder() //
@@ -383,7 +382,7 @@ public class MapImplTest {
         double incr = ctxt.scaleInfo.getHalfResolution();
         Coordinate c = new Coordinate(p.getX() + incr, p.getY() + incr);
         // -3 + (scale.getResolution() / 2) + (scale.getResolution() / 10));
-        step = underTest.addCoord(c, 11, false, false).get();
+        step = underTest.addCoord(c, 11.0, false, false).get();
         assertTrue(underTest.ask(ask));
         assertEquals(11, step.cost());
     }
@@ -426,15 +425,14 @@ public class MapImplTest {
         Set<Obstacle> result = underTest.addObstacle(obst);
         assertEquals(1, result.size());
         assertEquals(obst, result.iterator().next());
-        System.out.println(MapReports.dumpModel(underTest));
+
         relative = Location.from(0, ctxt.scaleInfo.getResolution());
         Obstacle obst2 = underTest.createObstacle(pos, relative);
         result = underTest.addObstacle(obst2);
         relative = Location.from(ctxt.scaleInfo.getHalfResolution(), ctxt.scaleInfo.getHalfResolution());
         Obstacle obst3 = underTest.createObstacle(pos, relative);
         result = underTest.addObstacle(obst3);
-        System.out.println(MapReports.dumpModel(underTest));
-        System.out.println(obst2.wkt());
+
         assertEquals(1, underTest.getObstacles().size());
     }
 
@@ -469,36 +467,60 @@ public class MapImplTest {
         assertTrue(underTest.isClearPath(new Coordinate(-2, -2), p));
         assertFalse(underTest.isClearPath(new Coordinate(2, -1), new Coordinate(-4, -1)));
     }
-//    
-//    @ParameterizedTest(name = "{index} {1}")
-//    @MethodSource("loadObstaclesTestParameters")
-//    public void loadObstaclesTest(MapImpl underTest, Coordinate c) {
-//        assertTrue( underTest.isObstacle(c));
-//    }
-//    
-//    private static void listFail(Geometry geom, Coordinate c) {
-//        if (!geom.intersects(ctxt.geometryUtils.asPoint(c))) {
-//            System.out.format( "%s %s failed\n", geom, c);
-//        }
-//    }
-//    private static Stream<Arguments> loadObstaclesTestParameters() {
-//        CoordinateMap cMap =  MapLibrary.map2('#');
-//        MapImpl underTest= new MapImpl(ScaleInfo.DEFAULT);
-//        List<Coordinate> lst = new ArrayList<>();
-//        
-//        cMap.getObstacles().forEach( g -> {
-//            Point p = g.getCentroid();
-//            Coordinate c = new Coordinate( p.getX(), p.getY());
-//            lst.add(c);
-//            underTest.addObstacle(c);
-//            listFail(g, c );
-//            Arrays.stream(g.getCoordinates()).forEach( c2 -> {lst.add(c2);
-//            listFail(g,c2);
-//          
-//            });  
-//        });
-//        
-//        return lst.stream().map( c -> Arguments.of( underTest, c));
-//    }
+    
+    @Test
+    public void lookTest() {
+        double delta = 0.0001;
+        setup();
+        cMap.redraw(t);
 
+        Optional<Location> result = underTest.look(Location.from(p), 0, 250);
+        assertTrue(result.isPresent());
+        Location loc = result.get();
+        assertEquals(4, loc.getX(), delta);
+        assertEquals(0, loc.getY(), delta);
+
+        result = underTest.look(Location.from(p), AngleUtils.RADIANS_45, 250);
+        assertTrue(result.isPresent());
+        loc = result.get();
+        assertEquals(4, loc.getX(), delta);
+        assertEquals(4, loc.getY(), delta);
+        
+        result = underTest.look(Location.from(p), AngleUtils.RADIANS_90, 250);
+        assertTrue(result.isPresent());
+        loc = result.get();
+        assertEquals(0, loc.getX(), delta);
+        assertEquals(2, loc.getY(), delta);
+        
+        result = underTest.look(Location.from(p), AngleUtils.RADIANS_135, 250);
+        assertTrue(result.isPresent());
+        loc = result.get();
+        assertEquals(-2, loc.getX(), delta);
+        assertEquals(2, loc.getY(), delta);
+        
+        result = underTest.look(Location.from(p), AngleUtils.RADIANS_180, 250);
+        assertTrue(result.isPresent());
+        loc = result.get();
+        assertEquals(-4, loc.getX(), delta);
+        assertEquals(0, loc.getY(), delta);
+        
+        result = underTest.look(Location.from(p), AngleUtils.RADIANS_225, 250);
+        assertTrue(result.isPresent());
+        loc = result.get();
+        assertEquals(-2, loc.getX(), delta);
+        assertEquals(-2, loc.getY(), delta);
+        
+        result = underTest.look(Location.from(p), AngleUtils.RADIANS_270, 250);
+        assertTrue(result.isPresent());
+        loc = result.get();
+        assertEquals(0, loc.getX(), delta);
+        assertEquals(-2, loc.getY(), delta);
+        
+        result = underTest.look(Location.from(p), AngleUtils.RADIANS_315, 250);
+        assertTrue(result.isPresent());
+        loc = result.get();
+        System.out.println(loc);
+        assertEquals(2, loc.getX(), delta);
+        assertEquals(-2, loc.getY(), delta);
+    }
 }

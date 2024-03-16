@@ -40,8 +40,8 @@ public class StepImpl implements Step {
             return this;
         }
         
-        public Builder setDistance(double cost) {
-            this.distance = cost;
+        public Builder setDistance(double distance) {
+            this.distance = distance;
             return this;
         }
         

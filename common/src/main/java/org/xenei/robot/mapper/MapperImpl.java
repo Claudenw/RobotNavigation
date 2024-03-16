@@ -1,5 +1,6 @@
 package org.xenei.robot.mapper;
 
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -13,15 +14,12 @@ import org.xenei.robot.common.FrontsCoordinate;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.NavigationSnapshot;
 import org.xenei.robot.common.Position;
-import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.common.mapping.Map;
 import org.xenei.robot.common.mapping.Mapper;
 import org.xenei.robot.common.mapping.Obstacle;
 import org.xenei.robot.common.planning.Step;
-import org.xenei.robot.common.utils.AngleUtils;
 import org.xenei.robot.common.utils.CoordUtils;
 import org.xenei.robot.common.utils.DoubleUtils;
-import org.xenei.robot.common.utils.GeometryUtils;
 
 public class MapperImpl implements Mapper {
     private static final Logger LOG = LoggerFactory.getLogger(MapperImpl.class);
@@ -38,17 +36,17 @@ public class MapperImpl implements Mapper {
     @Override
     public List<Step> processSensorData(Coordinate finalTarget, NavigationSnapshot snapshot, Location[] obstacles) {
 
-        LOG.debug("Sense position: {}", snapshot.currentPosition);
+        LOG.debug("Sense position: {}", snapshot.position);
 
-        ObstacleMapper mapper = new ObstacleMapper(snapshot.currentPosition);
+        ObstacleMapper mapper = new ObstacleMapper(snapshot.position);
         List.of(obstacles).forEach(mapper::doMap);
         if (finalTarget != null) {
             map.updateIsIndirect(finalTarget, mapper.newObstacles);
         }
-   
         return mapper.coordSet.stream()
-                .map(c -> map.addCoord(c, c.distance(snapshot.target), false, !map.isClearPath(c, snapshot.target)))
-                .flatMap( Optional::stream ).collect(Collectors.toList());
+                .map(c -> map.addCoord(c, finalTarget == null ? null : c.distance(finalTarget), false,
+                        finalTarget == null ? null : !map.isClearPath(c, finalTarget)))
+                .flatMap(Optional::stream).collect(Collectors.toList());
     }
 
     @Override
@@ -64,7 +62,9 @@ public class MapperImpl implements Mapper {
     class ObstacleMapper {
         final Position currentPosition;
         final double tolerance;
+        /** the set of new obstacles */
         final Set<Obstacle> newObstacles;
+        /** a set of coordinates that represent new coords */
         final Set<Coordinate> coordSet;
 
         ObstacleMapper(Position currentPosition) {
@@ -74,14 +74,10 @@ public class MapperImpl implements Mapper {
             this.coordSet = new HashSet<Coordinate>();
         }
 
-        private Position adjustPosition(Location relative, double adjustment) {
-            Location adjustedRelative = Location
-                    .from(CoordUtils.fromAngle(relative.theta(), relative.range() + adjustment));
-            return currentPosition.nextPosition(adjustedRelative);
-        }
-
         /**
-         * Addes the relative obstacle to the map and potentially adds values to the coordSet.
+         * Adds the relative obstacle to the map and potentially adds values to the
+         * coordSet.
+         * 
          * @param relativeObstacle the relative location to the obstacle.
          */
         void doMap(Location relativeObstacle) {
@@ -89,7 +85,6 @@ public class MapperImpl implements Mapper {
              * relativeObstacle is always a point on an edge of an obstacle. so add 1/2 map resolution to 
              * the relative distance to place the obstacle within a cell.
              */
-
             newObstacles.addAll(map.addObstacle(map.createObstacle(currentPosition, relativeObstacle)));
             if (!DoubleUtils.inRange(relativeObstacle.range(), tolerance)) {
                 Optional<Coordinate> possibleCoord = findCoordinateNear(relativeObstacle);

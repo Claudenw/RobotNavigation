@@ -18,7 +18,7 @@ public interface Mapper {
      * 
      * @param currentPosition The current position.
      * @param snapshot The current NavigationSnapshot.
-     * @param obstacles the list of obstacles.
+     * @param obstacles the relative location of obstacles.
      * @return the location of an non-obstacle when heading toward the target.
      * (shortest non collision position)
      */

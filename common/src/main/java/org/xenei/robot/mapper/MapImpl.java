@@ -186,18 +186,20 @@ public class MapImpl implements Map {
     }
 
     @Override
-    public Optional<Step> addCoord(Coordinate coord, double distance, boolean visited, boolean isIndirect) {
+    public Optional<Step> addCoord(Coordinate coord, Double distance, boolean visited, Boolean isIndirect) {
         MapCoordinate mapCoord = new MapCoordinate(coord);
         UpdateRequest req = new UpdateRequest();
         if (exists(mapCoord, Namespace.Coord)) {
             WhereBuilder where = new WhereBuilder().addWhere(Namespace.s, RDF.type, Namespace.Coord)
                     .addWhere(Namespace.s, Geo.AS_WKT_PROP, ctxt.graphGeomFactory.asWKT(mapCoord.getCoordinate()));
-            UpdateBuilder newDat = new UpdateBuilder()
-                    .addInsert(Namespace.PlanningModel, Namespace.s, Namespace.distance, distance).addWhere(where);
+            UpdateBuilder newDat = new UpdateBuilder().addWhere(where);
+            if (distance != null) {
+                newDat.addInsert(Namespace.PlanningModel, Namespace.s, Namespace.distance, distance);
+            }
             if (visited) {
                 newDat.addInsert(Namespace.PlanningModel, Namespace.s, Namespace.visited, visited);
             }
-            if (isIndirect) {
+            if (isIndirect != null && isIndirect) {
                 newDat.addInsert(Namespace.PlanningModel, Namespace.s, Namespace.isIndirect, isIndirect);
             }
             // clear and set existing value
@@ -207,11 +209,13 @@ public class MapImpl implements Map {
         } else {
             // no existing record
             Resource qA = ctxt.graphGeomFactory.asRDF(mapCoord, Namespace.Coord);
-            qA.addLiteral(Namespace.distance, distance);
+            if (distance != null) {
+                qA.addLiteral(Namespace.distance, distance);
+            }
             if (visited) {
                 qA.addLiteral(Namespace.visited, visited);
             }
-            if (isIndirect) {
+            if (isIndirect != null && isIndirect) {
                 qA.addLiteral(Namespace.isIndirect, isIndirect);
             }
             req.add(new UpdateBuilder().addInsert(Namespace.PlanningModel, qA.getModel()).build());
@@ -219,9 +223,9 @@ public class MapImpl implements Map {
 
         doUpdate(req);
         LOG.debug("Added {} for {}", mapCoord, coord);
-        return Optional.ofNullable(distance <= 0 ? null
+        return Optional.ofNullable(distance == null || distance <= 0 ? null
                 : StepImpl.builder().setCoordinate(mapCoord).setDistance(distance)
-                        .setCost(isIndirect ? distance * 2 : distance).build(ctxt));
+                        .setCost(isIndirect != null && isIndirect ? distance * 2 : distance).build(ctxt));
     }
 
     @SuppressWarnings("unchecked")
@@ -637,17 +641,18 @@ public class MapImpl implements Map {
 
         Coordinate target = from.plus(CoordUtils.fromAngle(heading, maxRange));
 
-        Literal pathWkt = ctxt.graphGeomFactory.asWKTPath(ctxt.chassisInfo.radius, from.getCoordinate(), target);
+       // Literal pathWkt = ctxt.graphGeomFactory.asWKTPath(ctxt.chassisInfo.radius, from.getCoordinate(), target);
+        Literal pathWkt = ctxt.graphGeomFactory.asWKTString(from.getCoordinate(), target);
         Var wkt = Var.alloc("wkt");
         Var dist = Var.alloc("dist");
         Literal fromWkt = ctxt.graphGeomFactory.asWKT(from.getCoordinate());
         SelectBuilder look = new SelectBuilder().addVar(dist).from(Namespace.UnionModel.getURI()) //
                 .addWhere(Namespace.s, RDF.type, Namespace.Obst) //
                 .addWhere(Namespace.s, Geo.AS_WKT_PROP, wkt)
-                .addBind(ctxt.graphGeomFactory.calcDistance(exprF, fromWkt, wkt), dist)
-                .addFilter(exprF.eq(ctxt.graphGeomFactory.calcDistance(exprF, pathWkt, wkt), 0))
+                .addBind(ctxt.graphGeomFactory.calcIntersectionDistance(exprF, fromWkt, pathWkt, wkt), dist)
+                .addFilter(ctxt.graphGeomFactory.intersects(exprF, pathWkt, wkt))
                 .addFilter(exprF.lt(dist, maxRange)).addOrderBy(dist, Order.ASCENDING).setLimit(1);
-
+        
         double range[] = { -1 };
 
         Predicate<QuerySolution> processor = soln -> {
@@ -656,11 +661,12 @@ public class MapImpl implements Map {
         };
 
         exec(look, processor);
+        
+        Optional<Location> result = range[0] > -1 ? Optional.of(Location.from(CoordUtils.fromAngle(heading, range[0])))
+                : Optional.empty();
 
-        if (range[0] > -1) {
-            return Optional.of(Location.from(from.plus(CoordUtils.fromAngle(heading, range[0]))));
-        }
-        return Optional.empty();
+        LOG.debug("Looking {} from {} returned {}", heading, from, result);
+        return result;
     }
 
     private class MapCoordinate implements FrontsCoordinate {

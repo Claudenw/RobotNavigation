@@ -38,14 +38,18 @@ public interface Map {
 
     /**
      * Add the target to the planning
-     * 
+     *
+     * If the distance is null, then the result will be empty as there can be no
+     * steps to a non-declared target.
+     *
      * @param target the target to add.
-     * @param distance the distance to the final target
+     * @param distance the distance to the final target.
      * @param visited true if the target has been visited.
      * @param isIndirect true if the target can not see the final target.
-     * @return the Step comprising the mapped target locaton and the distance value.
+     * @return the Step comprising the mapped target location and the distance value.
      */
-    Optional<Step> addCoord(Coordinate target, double distance, boolean visited, boolean isIndirect);
+    Optional<Step> addCoord(Coordinate target, Double distance, boolean visited, Boolean isIndirect);
+   
 
     /**
      * Gets the collection of all steps in the planning graph that are reachable from
@@ -182,11 +186,11 @@ public interface Map {
     
     /**
      * Look in the given direction for the maximum range.  if there is an obstacle
-     * report the location.  otherwise return and empty optional.
+     * report the relative location.  otherwise return and empty optional.
      * @param location the position on the map to look from.
      * @param heading the direction to look.
      * @param maxRange the maximum range to look.
-     * @return the located object or an empty Optional.
+     * @return the relative location of a located obstacle or an empty Optional.
      */
     Optional<Location> look(Location location, double heading, int maxRange);
 }

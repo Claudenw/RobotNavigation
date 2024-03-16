@@ -15,7 +15,6 @@ import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 import org.locationtech.jts.geom.Coordinate;
-import org.locationtech.jts.geom.Geometry;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import org.xenei.robot.common.Location;

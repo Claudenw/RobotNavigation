@@ -1,7 +1,5 @@
 package org.xenei.robot;
 
-import java.util.Collection;
-import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 import org.apache.jena.arq.querybuilder.AskBuilder;
@@ -19,21 +17,15 @@ import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Mover;
 import org.xenei.robot.common.NavigationSnapshot;
 import org.xenei.robot.common.Position;
-import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.common.mapping.Map;
 import org.xenei.robot.common.mapping.Mapper;
 import org.xenei.robot.common.planning.Planner;
-import org.xenei.robot.common.planning.Solution;
-import org.xenei.robot.common.planning.Step;
-import org.xenei.robot.common.planning.Planner.Diff;
-import org.xenei.robot.common.utils.AngleUtils;
 import org.xenei.robot.common.utils.DoubleUtils;
 import org.xenei.robot.common.utils.RobutContext;
 import org.xenei.robot.mapper.MapImpl;
 import org.xenei.robot.mapper.MapReports;
 import org.xenei.robot.mapper.MapperImpl;
 import org.xenei.robot.mapper.rdf.Namespace;
-import org.xenei.robot.mapper.visualization.MapViz;
 import org.xenei.robot.planner.PlannerImpl;
 
 public class Processor {
@@ -57,33 +49,36 @@ public class Processor {
         LOG.debug("Initial position: ()", positionSupplier.get());
         planner = new PlannerImpl(map, positionSupplier);
     }
-    
+
     public void add(Mapper.Visualization visualization) {
         planner.addListener(() -> visualization.redraw(planner.getTarget()));
     }
 
-
     private boolean checkTarget(NavigationSnapshot snapshot) {
-        if (!mapper.equivalent(snapshot.currentPosition, planner.getRootTarget())) {
+        if (!mapper.equivalent(snapshot.position, planner.getFinalTarget())) {
             // if we can see the final target go that way.
-            if (mapper.isClearPath(snapshot.currentPosition, planner.getRootTarget())) {
-                double newHeading = snapshot.currentPosition.headingTo(planner.getRootTarget());
-                boolean cont = DoubleUtils.eq(newHeading, snapshot.currentPosition.getHeading());
+            if (mapper.isClearPath(snapshot.position, planner.getFinalTarget())) {
+                double newHeading = snapshot.position.headingTo(planner.getFinalTarget());
+                boolean cont = DoubleUtils.eq(newHeading, snapshot.position.getHeading());
                 if (!cont) {
                     // heading is different so reset the heading, scan, and check again.
-                    mover.setHeading(snapshot.currentPosition.headingTo(planner.getRootTarget()));
-                    mapper.processSensorData(planner.getRootTarget(), snapshot, sensor.sense());
-                    cont = mapper.isClearPath(snapshot.currentPosition, planner.getRootTarget());
+                    //mover.setHeading(snapshot.currentPosition.headingTo(planner.getRootTarget()));
+                    mover.setHeading(newHeading);
+                    NavigationSnapshot testingSnapshot = new NavigationSnapshot(mover.position(), 
+                            planner.getFinalTarget());
+                    mapper.processSensorData(planner.getFinalTarget(), testingSnapshot, sensor.sense());
+                    planner.notifyListeners();
+                    cont = mapper.isClearPath(testingSnapshot.position, planner.getFinalTarget());
                     if (!cont) {
                         // can't see the position really so reset the heading.
-                        mover.setHeading(snapshot.currentPosition.getHeading());
+                        mover.setHeading(snapshot.position.getHeading());
                     }
                 }
                 if (cont) {
                     // we can really see the final position.
-                    LOG.info("can see {} from {}", planner.getRootTarget(), snapshot.currentPosition);
-                    Literal pathWkt = ctxt.graphGeomFactory.asWKTPath(ctxt.chassisInfo.radius, planner.getRootTarget(),
-                            snapshot.currentPosition.getCoordinate());
+                    LOG.info("can see {} from {}", planner.getFinalTarget(), snapshot.position);
+                    Literal pathWkt = ctxt.graphGeomFactory.asWKTPath(ctxt.chassisInfo.radius, planner.getFinalTarget(),
+                            snapshot.position.getCoordinate());
                     Var wkt = Var.alloc("wkt");
 
                     ExprFactory exprF = new ExprFactory();
@@ -103,56 +98,59 @@ public class Processor {
                             new SelectBuilder().from(Namespace.UnionModel.getURI())
                                     .addWhere(Namespace.s, Namespace.p, Namespace.o)
                                     .addWhere(Namespace.s, RDF.type, Namespace.Obst)));
-                    planner.replaceTarget(planner.getRootTarget());
+                    planner.replaceTarget(planner.getFinalTarget());
                     planner.notifyListeners();
                     return true;
                 }
             }
         }
         // if we can not see the target replan.
-        return mapper.isClearPath(snapshot.currentPosition, planner.getTarget());
+        return mapper.isClearPath(snapshot.position, planner.getTarget());
     }
-    
+
     private NavigationSnapshot newSnapshot() {
         return new NavigationSnapshot(positionSupplier.get(), planner.getTarget());
     }
 
     public void moveTo(Location finalCoord) throws AbortedException {
-        moveTo(finalCoord, p -> {});
+        moveTo(finalCoord, p -> {
+        });
     }
-    
+
     public void moveTo(Location finalCoord, AbortTest abortTest) throws AbortedException {
         NavigationSnapshot snapshot = new NavigationSnapshot(positionSupplier.get(), finalCoord.getCoordinate());
-        mapper.processSensorData(planner.getRootTarget(), snapshot, sensor.sense());
+        mapper.processSensorData(planner.getFinalTarget(), snapshot, sensor.sense());
         planner.setTarget(snapshot.target);
         while (planner.getTarget() != null) {
-            Diff diff = planner.selectTarget();
+            NavigationSnapshot newSnapshot = planner.selectTarget();
             if (planner.getTarget() != null) {
-                if (diff.didChange()) {
-                    snapshot = newSnapshot();
+                if (snapshot.didChange(newSnapshot)) {
+                    if (snapshot.didHeadingChange(newSnapshot)) {
+                        mover.setHeading(newSnapshot.heading());
+                    }
+                    snapshot = newSnapshot;
                     // look where we are heading.
-                    mapper.processSensorData(planner.getRootTarget(), snapshot, sensor.sense());
+                    mapper.processSensorData(planner.getFinalTarget(), snapshot, sensor.sense());
                     planner.notifyListeners();
                 }
                 // can we still see the target
                 if (checkTarget(snapshot)) {
                     // move
-                    Location relativeLoc = mover.position().relativeLocation(planner.getTarget());
-                    map.setVisited(planner.getRootTarget(), mover.move(relativeLoc).getCoordinate());
+                    Location relativeLoc = mover.position().relativeLocation(snapshot.target);
+                    map.setVisited(planner.getFinalTarget(), mover.move(relativeLoc).getCoordinate());
                     snapshot = newSnapshot();
-                    planner.registerPositionChange();
-                    mapper.processSensorData(planner.getRootTarget(), snapshot, sensor.sense());
+                    planner.registerPositionChange(snapshot);
+                    mapper.processSensorData(planner.getFinalTarget(), snapshot, sensor.sense());
                 }
                 // should we abort
                 abortTest.check(this);
                 planner.notifyListeners();
-                diff.reset();
             }
         }
         planner.notifyListeners();
         planner.recordSolution();
     }
-    
+
     @FunctionalInterface
     interface AbortTest {
         void check(Processor processor) throws AbortedException;
