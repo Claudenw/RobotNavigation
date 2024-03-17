@@ -8,8 +8,6 @@ import org.apache.jena.riot.RIOT;
 import org.apache.jena.sparql.util.Symbol;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.GeometryFactory;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.xenei.robot.common.ChassisInfo;
 import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.mapper.GraphGeomFactory;
@@ -17,26 +15,13 @@ import org.xenei.robot.mapper.rdf.Namespace;
 
 public class RobutContext {
 
-    private static final Logger LOG = LoggerFactory.getLogger(RobutContext.class);
-
     public static final Symbol symbol = Symbol.create(RobutContext.class.getName());
     public final ChassisInfo chassisInfo;
     public final ScaleInfo scaleInfo;
     public final GeometryFactory geometryFactory;
     public final GeometryUtils geometryUtils;
     public final GraphGeomFactory graphGeomFactory;
-    public final Map<String, Geometry> cache = Collections.synchronizedMap(new LRUMap<String, Geometry>(500) {
-        @Override
-        public Geometry get(Object key) {
-            Geometry result = super.get(key);
-            if (result == null) {
-                LOG.debug("miss: {}", key);
-            } else {
-                LOG.debug("hit: {}", key);
-            }
-            return result;
-        }
-    });
+    public final Map<String, Geometry> cache = Collections.synchronizedMap(new LRUMap<String, Geometry>(500));
 
     /**
      * Constructor
