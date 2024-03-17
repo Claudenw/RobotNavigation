@@ -4,7 +4,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Optional;
 import java.util.Stack;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -22,7 +21,6 @@ import org.xenei.robot.common.planning.Planner;
 import org.xenei.robot.common.planning.Solution;
 import org.xenei.robot.common.planning.Step;
 import org.xenei.robot.common.utils.CoordUtils;
-import org.xenei.robot.common.utils.DoubleUtils;
 import org.xenei.robot.mapper.rdf.Namespace;
 
 public class PlannerImpl implements Planner {
@@ -68,7 +66,7 @@ public class PlannerImpl implements Planner {
             isIndirect = !map.isClearPath(snapshot.position.getCoordinate(), getFinalTarget());
         }
         map.addCoord(snapshot.position.getCoordinate(), distance, true, isIndirect);
-        LOG.debug( "PlannerImpl: {}", snapshot);
+        LOG.debug("PlannerImpl: {}", snapshot);
     }
 
     @Override
@@ -88,9 +86,10 @@ public class PlannerImpl implements Planner {
 
     @Override
     public void registerPositionChange(NavigationSnapshot snapshot) {
-        Optional<Step> step = map.addCoord(snapshot.position.getCoordinate(), snapshot.position.distance(getFinalTarget()), true,
+        Optional<Step> step = map.addCoord(snapshot.position.getCoordinate(),
+                snapshot.position.distance(getFinalTarget()), true,
                 !map.isClearPath(snapshot.position.getCoordinate(), getFinalTarget()));
-        step.ifPresent(s ->solution.add(s.getCoordinate()));
+        step.ifPresent(s -> solution.add(s.getCoordinate()));
     }
 
     @Override
@@ -109,7 +108,7 @@ public class PlannerImpl implements Planner {
                 LOG.debug("Reached final target");
                 return Optional.empty();
             }
-        } 
+        }
         Optional<Step> selected = map.getBestStep(pos.getCoordinate());
         if (selected.isPresent()) {
             if (!map.areEquivalent(selected.get().getCoordinate(), getTarget())) {
@@ -137,7 +136,8 @@ public class PlannerImpl implements Planner {
         double heading = CoordUtils.calcHeading(pos.getCoordinate(), getTarget());
         map.recalculate(target);
         solution = new Solution();
-        solution.add(pos);;
+        solution.add(pos);
+        ;
         return heading;
     }
 
@@ -182,9 +182,10 @@ public class PlannerImpl implements Planner {
         solution.simplify((a, b) -> map.isClearPath(a, b));
         if (solution.stepCount() > 0) {
             Coordinate[] coords = solution.stream().collect(Collectors.toList()).toArray(new Coordinate[0]);
-            map.addPath(Namespace.KnownModel,coords);
+            map.addPath(Namespace.KnownModel, coords);
         }
     }
+
     /**
      * For testing only
      * 
@@ -205,7 +206,7 @@ public class PlannerImpl implements Planner {
                 this.pop();
             }
             if (this.contains(item)) {
-                while (item != this.pop()) {
+                while (!item.equals2D(this.pop())) {
                     // all activity in the while statement
                 }
             }

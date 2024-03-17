@@ -78,7 +78,6 @@ public class WktDataType extends BaseDatatype {
         if (geometry instanceof Geometry) {
             Geometry geom = (Geometry) geometry;
             String result = geom.toText();
-            String other = geom.toString();
             if (cache != null) {
                 cache.put(result, geom);
             }
@@ -338,10 +337,12 @@ public class WktDataType extends BaseDatatype {
             }
         }
 
+        @SuppressWarnings("unused")
         public String getWktText() {
             return wktText;
         }
 
+        @SuppressWarnings("unused")
         public String getSrsURI() {
             return srsURI;
         }

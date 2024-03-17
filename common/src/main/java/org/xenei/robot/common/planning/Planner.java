@@ -90,7 +90,7 @@ public interface Planner extends ListenerContainer {
      * position. The target position may be updated. The best position to head for
      * is in the target.
      * 
-     * @return The snapshot from the target selecton.
+     * @return The step toward the target selecton.
      */
     Optional<Step> selectTarget();
 

@@ -119,12 +119,34 @@ public class Processor {
         moveTo(finalCoord, p -> {
         });
     }
+    
+    private void processSensorData(NavigationSnapshot snapshot) {
+        mapper.processSensorData(planner.getFinalTarget(), snapshot, sensor.sense());
+        planner.notifyListeners();
+    }
+
+    private NavigationSnapshot setHeading(double heading) {
+     // adjust the heading 
+        mover.setHeading(heading);
+        NavigationSnapshot snapshot = newSnapshot();
+        // look where we are heading.
+        processSensorData(snapshot);
+        return snapshot;
+    }
+    
+    private NavigationSnapshot move(Step step) {
+        Location relativeLoc = mover.position().relativeLocation(step.getCoordinate());
+        map.setVisited(planner.getFinalTarget(), mover.move(relativeLoc).getCoordinate());
+        NavigationSnapshot snapshot = newSnapshot();
+        planner.registerPositionChange(snapshot);
+        processSensorData(snapshot);
+        return snapshot;
+    }
 
     public void moveTo(Location finalLocation, AbortTest abortTest) throws AbortedException {
         map.addCoord(finalLocation.getCoordinate(), null, false, null);
         NavigationSnapshot snapshot = new NavigationSnapshot(positionSupplier.get(), finalLocation.getCoordinate());
-        mapper.processSensorData(planner.getFinalTarget(), snapshot, sensor.sense());
-        planner.notifyListeners();
+        processSensorData(snapshot);
         planner.setTarget(snapshot.target);
         while (planner.getTarget() != null) {
             Optional<Step> opStep = planner.selectTarget();
@@ -135,22 +157,11 @@ public class Processor {
                 Step step = opStep.get();
                 Position nextPosition = step.nextPosition(snapshot.position);
                 if (snapshot.didHeadingChange(nextPosition)) {
-                    // adjust the heading 
-                    mover.setHeading(nextPosition.getHeading());
-                    snapshot = newSnapshot();
-                    // look where we are heading.
-                    mapper.processSensorData(planner.getFinalTarget(), snapshot, sensor.sense());
-                    planner.notifyListeners();
+                    snapshot = setHeading(nextPosition.getHeading());
                 }
                 // can we still see the target
                 if (checkTarget(snapshot)) {
-                    // move
-                    Location relativeLoc = mover.position().relativeLocation(step.getCoordinate());
-                    map.setVisited(planner.getFinalTarget(), mover.move(relativeLoc).getCoordinate());
-                    snapshot = newSnapshot();
-                    planner.registerPositionChange(snapshot);
-                    mapper.processSensorData(planner.getFinalTarget(), snapshot, sensor.sense());
-                    planner.notifyListeners();
+                    snapshot = move(step);
                 }
                 // should we abort
                 abortTest.check(this);

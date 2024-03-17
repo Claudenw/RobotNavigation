@@ -641,17 +641,18 @@ public class MapImpl implements Map {
 
         Coordinate target = from.plus(CoordUtils.fromAngle(heading, maxRange));
 
-       // Literal pathWkt = ctxt.graphGeomFactory.asWKTPath(ctxt.chassisInfo.radius, from.getCoordinate(), target);
         Literal pathWkt = ctxt.graphGeomFactory.asWKTString(from.getCoordinate(), target);
         Var wkt = Var.alloc("wkt");
         Var dist = Var.alloc("dist");
         Literal fromWkt = ctxt.graphGeomFactory.asWKT(from.getCoordinate());
         SelectBuilder look = new SelectBuilder().addVar(dist).from(Namespace.UnionModel.getURI()) //
                 .addWhere(Namespace.s, RDF.type, Namespace.Obst) //
-                .addWhere(Namespace.s, Geo.AS_WKT_PROP, wkt)
-                .addBind(ctxt.graphGeomFactory.calcIntersectionDistance(exprF, fromWkt, pathWkt, wkt), dist)
-                .addFilter(ctxt.graphGeomFactory.intersects(exprF, pathWkt, wkt))
-                .addFilter(exprF.lt(dist, maxRange)).addOrderBy(dist, Order.ASCENDING).setLimit(1);
+                .addWhere(Namespace.s, Geo.AS_WKT_PROP, wkt) //
+                .addBind(ctxt.graphGeomFactory.calcIntersectionDistance(exprF, fromWkt, pathWkt, wkt), dist) //
+                .addFilter(ctxt.graphGeomFactory.intersects(exprF, pathWkt, wkt)) //
+                .addFilter(exprF.lt(dist, maxRange)) //
+                .addOrderBy(dist, Order.ASCENDING) //
+                .setLimit(1);
         
         double range[] = { -1 };
 

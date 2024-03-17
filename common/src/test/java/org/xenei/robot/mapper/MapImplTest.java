@@ -24,8 +24,6 @@ import org.apache.jena.sparql.core.Var;
 import org.apache.jena.vocabulary.RDF;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.MethodSource;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.slf4j.Logger;
@@ -101,22 +99,22 @@ public class MapImplTest {
     @Test
     public void getBestTargetTest() {
         setup();
-        List<Coordinate> solutions = List.of( new Coordinate(2, -1), new Coordinate(-4,-1));
+        List<Coordinate> solutions = List.of(new Coordinate(2, -1), new Coordinate(-4, -1));
         Optional<Step> pr = underTest.getBestStep(p);
         assertTrue(pr.isPresent());
         Step step = pr.get();
-        assertTrue( solutions.contains( step.getCoordinate()));
-        
+        assertTrue(solutions.contains(step.getCoordinate()));
+
         // remove the 2 possible solutions.
         solutions.forEach(c -> underTest.setVisited(t, c));
-        
+
         pr = underTest.getBestStep(p);
         assertTrue(pr.isPresent());
         step = pr.get();
-        assertEquals(new Coordinate(-1,-2), step.getCoordinate());
-        
+        assertEquals(new Coordinate(-1, -2), step.getCoordinate());
+
         // remove all the solutions
-        underTest.getCoords().forEach(c -> underTest.setVisited(t,  c.location.getCoordinate()));
+        underTest.getCoords().forEach(c -> underTest.setVisited(t, c.location.getCoordinate()));
         pr = underTest.getBestStep(p);
         assertFalse(pr.isPresent());
     }
@@ -469,7 +467,7 @@ public class MapImplTest {
         assertTrue(underTest.isClearPath(new Coordinate(-2, -2), p));
         assertFalse(underTest.isClearPath(new Coordinate(2, -1), new Coordinate(-4, -1)));
     }
-    
+
     @Test
     public void lookTest() {
         double delta = 0.0001;
@@ -481,44 +479,45 @@ public class MapImplTest {
         assertTrue(result.isPresent());
         Location loc = result.get();
         assertEquals(4, loc.getX(), delta);
-        assertEquals(0, loc.getY(), delta);
 
+        assertEquals(0, loc.getY(), delta);
+        cMap.redraw(t);
         result = underTest.look(pos, AngleUtils.RADIANS_45, 250);
         assertTrue(result.isPresent());
         loc = result.get();
         assertEquals(4, loc.getX(), delta);
         assertEquals(4, loc.getY(), delta);
-        
+
         result = underTest.look(pos, AngleUtils.RADIANS_90, 250);
         assertTrue(result.isPresent());
         loc = result.get();
         assertEquals(0, loc.getX(), delta);
         assertEquals(2, loc.getY(), delta);
-        
+
         result = underTest.look(pos, AngleUtils.RADIANS_135, 250);
         assertTrue(result.isPresent());
         loc = result.get();
         assertEquals(-2, loc.getX(), delta);
         assertEquals(2, loc.getY(), delta);
-        
+
         result = underTest.look(pos, AngleUtils.RADIANS_180, 250);
         assertTrue(result.isPresent());
         loc = result.get();
         assertEquals(-4, loc.getX(), delta);
         assertEquals(0, loc.getY(), delta);
-        
+
         result = underTest.look(pos, AngleUtils.RADIANS_225, 250);
         assertTrue(result.isPresent());
         loc = result.get();
         assertEquals(-2, loc.getX(), delta);
         assertEquals(-2, loc.getY(), delta);
-        
+
         result = underTest.look(pos, AngleUtils.RADIANS_270, 250);
         assertTrue(result.isPresent());
         loc = result.get();
         assertEquals(0, loc.getX(), delta);
         assertEquals(-2, loc.getY(), delta);
-        
+
         result = underTest.look(pos, AngleUtils.RADIANS_315, 250);
         assertTrue(result.isPresent());
         loc = result.get();

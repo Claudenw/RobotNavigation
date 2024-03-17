@@ -26,8 +26,4 @@ public class ChassisInfo {
     public double width() {
         return radius * 2.0;
     }
-    
-    public class Builder {
-        
-    }
 }
