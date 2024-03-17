@@ -24,6 +24,8 @@ import org.apache.jena.sparql.core.Var;
 import org.apache.jena.vocabulary.RDF;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.slf4j.Logger;
@@ -473,50 +475,51 @@ public class MapImplTest {
         double delta = 0.0001;
         setup();
         cMap.redraw(t);
+        Position pos = Position.from(p);
 
-        Optional<Location> result = underTest.look(Location.from(p), 0, 250);
+        Optional<Location> result = underTest.look(pos, 0, 250);
         assertTrue(result.isPresent());
         Location loc = result.get();
         assertEquals(4, loc.getX(), delta);
         assertEquals(0, loc.getY(), delta);
 
-        result = underTest.look(Location.from(p), AngleUtils.RADIANS_45, 250);
+        result = underTest.look(pos, AngleUtils.RADIANS_45, 250);
         assertTrue(result.isPresent());
         loc = result.get();
         assertEquals(4, loc.getX(), delta);
         assertEquals(4, loc.getY(), delta);
         
-        result = underTest.look(Location.from(p), AngleUtils.RADIANS_90, 250);
+        result = underTest.look(pos, AngleUtils.RADIANS_90, 250);
         assertTrue(result.isPresent());
         loc = result.get();
         assertEquals(0, loc.getX(), delta);
         assertEquals(2, loc.getY(), delta);
         
-        result = underTest.look(Location.from(p), AngleUtils.RADIANS_135, 250);
+        result = underTest.look(pos, AngleUtils.RADIANS_135, 250);
         assertTrue(result.isPresent());
         loc = result.get();
         assertEquals(-2, loc.getX(), delta);
         assertEquals(2, loc.getY(), delta);
         
-        result = underTest.look(Location.from(p), AngleUtils.RADIANS_180, 250);
+        result = underTest.look(pos, AngleUtils.RADIANS_180, 250);
         assertTrue(result.isPresent());
         loc = result.get();
         assertEquals(-4, loc.getX(), delta);
         assertEquals(0, loc.getY(), delta);
         
-        result = underTest.look(Location.from(p), AngleUtils.RADIANS_225, 250);
+        result = underTest.look(pos, AngleUtils.RADIANS_225, 250);
         assertTrue(result.isPresent());
         loc = result.get();
         assertEquals(-2, loc.getX(), delta);
         assertEquals(-2, loc.getY(), delta);
         
-        result = underTest.look(Location.from(p), AngleUtils.RADIANS_270, 250);
+        result = underTest.look(pos, AngleUtils.RADIANS_270, 250);
         assertTrue(result.isPresent());
         loc = result.get();
         assertEquals(0, loc.getX(), delta);
         assertEquals(-2, loc.getY(), delta);
         
-        result = underTest.look(Location.from(p), AngleUtils.RADIANS_315, 250);
+        result = underTest.look(pos, AngleUtils.RADIANS_315, 250);
         assertTrue(result.isPresent());
         loc = result.get();
         System.out.println(loc);

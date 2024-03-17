@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyDouble;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -99,6 +100,42 @@ public class MapperImplTest {
         verify(map).updateIsIndirect(coordinateCaptor.capture(), setCaptor.capture());
         assertEquals(1, setCaptor.getValue().size());
         assertEquals(obstacle, setCaptor.getValue().iterator().next());
+
+        // verify obstacle was added
+        verify(map).addObstacle(obstacleCaptor.capture());
+        assertEquals(obstacle, obstacleCaptor.getValue());
+
+        // verify coord was added
+        ArgumentCaptor<Boolean> one = ArgumentCaptor.forClass(Boolean.class);
+        ArgumentCaptor<Boolean> two = ArgumentCaptor.forClass(Boolean.class);
+        verify(map).addCoord(coordinateCaptor.capture(), doubleCaptor.capture(), one.capture(), two.capture());
+        CoordinateUtils.assertEquivalent(new Coordinate(-1, -2), coordinateCaptor.getValue());
+    }
+    
+    @Test
+    public void processSensorDataTest_NoTarget() {
+
+        Position currentPosition = Position.from(-1, -3, AngleUtils.RADIANS_90);
+        Coordinate target = new Coordinate(-1, 1);
+        Step step = Mockito.mock(Step.class);
+
+        Obstacle obstacle = Mockito.mock(Obstacle.class);
+        Map map = Mockito.mock(Map.class);
+        when(map.getContext()).thenReturn(ctxt);
+        when(map.createObstacle(any(), any())).thenReturn(obstacle);
+        when(map.addObstacle(any())).thenReturn(Set.of(obstacle));
+        when(map.adopt(any())).thenReturn(new Coordinate(-1, -2));
+        when(map.isObstacle(any())).thenReturn(false);
+        when(map.addCoord(any(), anyDouble(), anyBoolean(), anyBoolean())).thenReturn(Optional.of(step));
+        Mapper underTest = new MapperImpl(map);
+
+        Location[] obstacles = { Location.from(CoordUtils.fromAngle(0, 2)) };
+        NavigationSnapshot snapshot = new NavigationSnapshot(currentPosition, null);
+        Collection<Step> result = underTest.processSensorData(null, snapshot, obstacles);
+        assertTrue(result.isEmpty());
+
+        // verify no indirects updated
+        verify(map, times(0)).updateIsIndirect(coordinateCaptor.capture(), setCaptor.capture());
 
         // verify obstacle was added
         verify(map).addObstacle(obstacleCaptor.capture());

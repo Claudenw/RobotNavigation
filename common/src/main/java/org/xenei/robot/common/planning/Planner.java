@@ -1,6 +1,7 @@
 package org.xenei.robot.common.planning;
 
 import java.util.Collection;
+import java.util.Optional;
 
 import org.locationtech.jts.geom.Coordinate;
 import org.xenei.robot.common.FrontsCoordinate;
@@ -91,7 +92,7 @@ public interface Planner extends ListenerContainer {
      * 
      * @return The snapshot from the target selecton.
      */
-    NavigationSnapshot selectTarget();
+    Optional<Step> selectTarget();
 
     /**
      * Sets the registers the current position as part of the solution.

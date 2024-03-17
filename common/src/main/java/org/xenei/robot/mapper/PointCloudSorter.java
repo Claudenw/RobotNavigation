@@ -42,8 +42,6 @@ public class PointCloudSorter {
 
         connections = iMatrix.reduction(IntHalfMatrix.plus);
         if (LOG.isDebugEnabled()) {
-            // LOG.debug( "dMatrix\n{}", dMatrix );
-            // LOG.debug( "iMatrix\n{}", iMatrix );
             LOG.debug("PCS created: connections:{}", connections.length);
         }
     }
@@ -77,7 +75,6 @@ public class PointCloudSorter {
             if (iMatrix.get(i, j) == 1) {
                 lst.add(points.get(j));
                 iMatrix.decrement(i, j);
-                LOG.debug("({},{})", i, j);
                 connections[i]--;
                 connections[j]--;
                 return j;
@@ -118,7 +115,6 @@ public class PointCloudSorter {
             while (pointIdx != -1) {
                 pointIdx = processEdge(pointIdx, lst);
             }
-            // LOG.debug( iMatrix.toString() );
             if (lst.size() == 1) {
                 geom.add(ctxt.geometryFactory.createPoint(lst.get(0)));
             } else {

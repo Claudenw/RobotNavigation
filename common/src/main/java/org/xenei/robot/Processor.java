@@ -1,5 +1,7 @@
 package org.xenei.robot;
 
+import java.util.Collection;
+import java.util.Optional;
 import java.util.function.Supplier;
 
 import org.apache.jena.arq.querybuilder.AskBuilder;
@@ -20,6 +22,7 @@ import org.xenei.robot.common.Position;
 import org.xenei.robot.common.mapping.Map;
 import org.xenei.robot.common.mapping.Mapper;
 import org.xenei.robot.common.planning.Planner;
+import org.xenei.robot.common.planning.Step;
 import org.xenei.robot.common.utils.DoubleUtils;
 import org.xenei.robot.common.utils.RobutContext;
 import org.xenei.robot.mapper.MapImpl;
@@ -117,18 +120,24 @@ public class Processor {
         });
     }
 
-    public void moveTo(Location finalCoord, AbortTest abortTest) throws AbortedException {
-        NavigationSnapshot snapshot = new NavigationSnapshot(positionSupplier.get(), finalCoord.getCoordinate());
+    public void moveTo(Location finalLocation, AbortTest abortTest) throws AbortedException {
+        map.addCoord(finalLocation.getCoordinate(), null, false, null);
+        NavigationSnapshot snapshot = new NavigationSnapshot(positionSupplier.get(), finalLocation.getCoordinate());
         mapper.processSensorData(planner.getFinalTarget(), snapshot, sensor.sense());
+        planner.notifyListeners();
         planner.setTarget(snapshot.target);
         while (planner.getTarget() != null) {
-            NavigationSnapshot newSnapshot = planner.selectTarget();
-            if (planner.getTarget() != null) {
-                if (snapshot.didChange(newSnapshot)) {
-                    if (snapshot.didHeadingChange(newSnapshot)) {
-                        mover.setHeading(newSnapshot.heading());
-                    }
-                    snapshot = newSnapshot;
+            Optional<Step> opStep = planner.selectTarget();
+            if (planner.getTarget() == null) {
+                break;
+            }
+            if (opStep.isPresent()) {
+                Step step = opStep.get();
+                Position nextPosition = step.nextPosition(snapshot.position);
+                if (snapshot.didHeadingChange(nextPosition)) {
+                    // adjust the heading 
+                    mover.setHeading(nextPosition.getHeading());
+                    snapshot = newSnapshot();
                     // look where we are heading.
                     mapper.processSensorData(planner.getFinalTarget(), snapshot, sensor.sense());
                     planner.notifyListeners();
@@ -136,15 +145,18 @@ public class Processor {
                 // can we still see the target
                 if (checkTarget(snapshot)) {
                     // move
-                    Location relativeLoc = mover.position().relativeLocation(snapshot.target);
+                    Location relativeLoc = mover.position().relativeLocation(step.getCoordinate());
                     map.setVisited(planner.getFinalTarget(), mover.move(relativeLoc).getCoordinate());
                     snapshot = newSnapshot();
                     planner.registerPositionChange(snapshot);
                     mapper.processSensorData(planner.getFinalTarget(), snapshot, sensor.sense());
+                    planner.notifyListeners();
                 }
                 // should we abort
                 abortTest.check(this);
-                planner.notifyListeners();
+            } else {
+                LOG.error("NO STEP SELECTED");
+                break;
             }
         }
         planner.notifyListeners();

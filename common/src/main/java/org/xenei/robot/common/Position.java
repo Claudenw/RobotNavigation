@@ -1,5 +1,7 @@
 package org.xenei.robot.common;
 
+import java.util.Comparator;
+
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.Point;
@@ -33,6 +35,14 @@ public interface Position extends Location {
             }
         };
     }
+    
+    /**
+     * Compares Coordinates by angle and then range.
+     */
+    Comparator<Position> Compr = (one, two) -> {
+        int x = Location.ThetaCompr.compare(one, two);
+        return x == 0 ? Double.compare(one.getHeading(), two.getHeading()) : x;
+    };
 
     /**
      * Constructs a position from a point with a heading of 0.0.

@@ -26,23 +26,11 @@ import org.xenei.robot.mapper.visualization.MapViz;
 
 public class ProcessorTest {
     private static final Logger LOG = LoggerFactory.getLogger(ProcessorTest.class);
-
-//    private MapViz mapViz;
-//    private Processor underTest;
-//    private final Map map;
     private final RobutContext ctxt;
-//    private Planner planner;
-//    private final Mapper mapper;
-//    private FakeDistanceSensor sensor;
-//    private Mover mover;
+
 
     ProcessorTest() {
         ctxt = new RobutContext(ScaleInfo.DEFAULT, TestChassisInfo.DEFAULT);
-//        map = new MapImpl(ctxt);
-//        mapper = new MapperImpl(map);
-//        // public Processor(RobutContext ctxt, Mover mover, Supplier<Position> positionSupplier, DistanceSensor sensor, Mapper.Visualization visualization) {
-//        
-//        underTest = new Processor(ctxt, )
     }
 
     private void doTest(Location startCoord, Location finalCoord, Mover mover, DistanceSensor sensor)

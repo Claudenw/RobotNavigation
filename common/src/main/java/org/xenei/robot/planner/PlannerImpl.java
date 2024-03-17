@@ -99,7 +99,7 @@ public class PlannerImpl implements Planner {
     }
 
     @Override
-    public NavigationSnapshot selectTarget() {
+    public Optional<Step> selectTarget() {
         Position pos = positionSupplier.get();
         if (pos.equals2D(getTarget(), map.getContext().scaleInfo.getResolution())) {
             LOG.debug("Reached intermediate target");
@@ -107,24 +107,19 @@ public class PlannerImpl implements Planner {
             map.setVisited(getFinalTarget(), target.pop());
             if (target.isEmpty()) {
                 LOG.debug("Reached final target");
+                return Optional.empty();
             }
-        } else {
-            Optional<Step> selected = map.getBestStep(pos.getCoordinate());
-            if (selected.isPresent()) {
-                if (!map.areEquivalent(selected.get().getCoordinate(), getTarget())) {
-                    target.push(selected.get().getCoordinate());
-                    if (LOG.isDebugEnabled()) {
-                        LOG.debug("New target registered: " + selected.get());
-                    }
+        } 
+        Optional<Step> selected = map.getBestStep(pos.getCoordinate());
+        if (selected.isPresent()) {
+            if (!map.areEquivalent(selected.get().getCoordinate(), getTarget())) {
+                target.push(selected.get().getCoordinate());
+                if (LOG.isDebugEnabled()) {
+                    LOG.debug("New target registered: " + selected.get());
                 }
             }
         }
-        NavigationSnapshot newSnapshot = new NavigationSnapshot(pos, getTarget());
-        if (snapshot.didChange(newSnapshot)) {
-            solution.add(newSnapshot.position);
-        }
-        snapshot = newSnapshot;
-        return snapshot;
+        return selected;
     }
 
     @Override

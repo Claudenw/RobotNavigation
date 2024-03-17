@@ -637,7 +637,7 @@ public class MapImpl implements Map {
     }
 
     @Override
-    public Optional<Location> look(Location from, double heading, int maxRange) {
+    public Optional<Location> look(Position from, double heading, int maxRange) {
 
         Coordinate target = from.plus(CoordUtils.fromAngle(heading, maxRange));
 
@@ -661,12 +661,16 @@ public class MapImpl implements Map {
         };
 
         exec(look, processor);
+       
+        Location result = null;
         
-        Optional<Location> result = range[0] > -1 ? Optional.of(Location.from(CoordUtils.fromAngle(heading, range[0])))
-                : Optional.empty();
-
-        LOG.debug("Looking {} from {} returned {}", heading, from, result);
-        return result;
+        if (range[0] > -1) {
+            result = Location.from(CoordUtils.fromAngle(heading - from.getHeading(), range[0]));
+        }
+        if ( LOG.isDebugEnabled()) {
+            LOG.debug("Looking {} ({}) from {} returned {}", heading, Math.toDegrees(heading), from, result);
+        }
+        return Optional.ofNullable(result);
     }
 
     private class MapCoordinate implements FrontsCoordinate {

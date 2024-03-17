@@ -46,14 +46,15 @@ public interface Location extends FrontsCoordinate {
     /**
      * Compares Coordinates by angle and then range.
      */
-    Comparator<Location> ThetaCompr = (one, two) -> {
+    static Comparator<Location> ThetaCompr = (one, two) -> {
         int x = Double.compare(one.theta(), two.theta());
         return x == 0 ? Double.compare(one.range(), two.range()) : x;
     };
+
     /**
      * Compares Coordinates by range and then angle.
      */
-    Comparator<Location> RangeCompr = (one, two) -> {
+    static Comparator<Location> RangeCompr = (one, two) -> {
         int x = Double.compare(one.range(), two.range());
         return x == 0 ? Double.compare(one.theta(), two.theta()) : x;
     };

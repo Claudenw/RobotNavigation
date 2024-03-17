@@ -234,8 +234,10 @@ public class PlannerTest {
         underTest = new PlannerImpl(map, supplier, finalLocation);;
 
         // first target (step)
-        NavigationSnapshot newSnapshot = underTest.selectTarget();
-
+        Optional<Step> opStep = underTest.selectTarget();
+        assertTrue(opStep.isPresent());
+        assertEquals(step, opStep.get());
+        NavigationSnapshot newSnapshot = new NavigationSnapshot( step.nextPosition(initial), underTest.getTarget());
         assertTrue(snapshot.didChange(newSnapshot));
         assertTrue(snapshot.didTargetChange(newSnapshot));
 

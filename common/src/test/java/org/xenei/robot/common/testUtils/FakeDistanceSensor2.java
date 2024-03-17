@@ -42,7 +42,7 @@ public class FakeDistanceSensor2 implements FakeDistanceSensor {
         return result;
     }
 
-    private Location look(Location position, double heading) {
+    private Location look(Position position, double heading) {
         if (LOG.isDebugEnabled()) {
             LOG.debug("Scanning heading: {} {}", heading, Math.toDegrees(heading));
         }

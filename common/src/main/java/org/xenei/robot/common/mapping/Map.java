@@ -187,10 +187,10 @@ public interface Map {
     /**
      * Look in the given direction for the maximum range.  if there is an obstacle
      * report the relative location.  otherwise return and empty optional.
-     * @param location the position on the map to look from.
+     * @param position the position on the map to look from.
      * @param heading the direction to look.
      * @param maxRange the maximum range to look.
      * @return the relative location of a located obstacle or an empty Optional.
      */
-    Optional<Location> look(Location location, double heading, int maxRange);
+    Optional<Location> look(Position position, double heading, int maxRange);
 }
