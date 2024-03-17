@@ -1,47 +1,48 @@
 package org.xenei.robot.common.testUtils;
 
+import java.util.function.Supplier;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Position;
-import org.xenei.robot.common.mapping.CoordinateMap;
+import org.xenei.robot.common.mapping.Map;
 import org.xenei.robot.common.utils.CoordUtils;
+import org.xenei.robot.mapper.visualization.TextViz;
 
 public class FakeDistanceSensor2 implements FakeDistanceSensor {
     private static final Logger LOG = LoggerFactory.getLogger(FakeDistanceSensor2.class);
-    private final CoordinateMap map;
+    private final Map map;
     private final double angle;
     private static final double MAX_RANGE = 350;
+    private final Supplier<Position> positionSupplier;
+    
 
-    private Position position;
-
-    public FakeDistanceSensor2(CoordinateMap map, double angle) {
+    public FakeDistanceSensor2(Map map, double angle, Supplier<Position> positionSupplier) {
         this.map = map;
         this.angle = angle;
+        this.positionSupplier = positionSupplier;
     }
 
     @Override
-    public CoordinateMap map() {
+    public Map map() {
         return map;
     }
 
-    @Override
-    public void setPosition(Position position) {
-        this.position = position;
-    }
 
     @Override
     public Location[] sense() {
+        Position pos = positionSupplier.get();
         Location[] result = new Location[3];
 
-        result[0] = Location.from(look(position, position.getHeading() - angle).minus(position));
-        result[1] = Location.from(look(position, position.getHeading()).minus(position));
-        result[2] = Location.from(look(position, position.getHeading() + angle).minus(position));
+        result[0] = Location.from(look(pos, pos.getHeading() - angle).minus(pos));
+        result[1] = Location.from(look(pos, pos.getHeading()).minus(pos));
+        result[2] = Location.from(look(pos, pos.getHeading() + angle).minus(pos));
 
         return result;
     }
 
-    private Location look(Location position, double heading) {
+    private Location look(Position position, double heading) {
         if (LOG.isDebugEnabled()) {
             LOG.debug("Scanning heading: {} {}", heading, Math.toDegrees(heading));
         }

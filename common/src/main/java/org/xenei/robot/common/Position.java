@@ -1,5 +1,7 @@
 package org.xenei.robot.common;
 
+import java.util.Comparator;
+
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.Point;
@@ -33,6 +35,14 @@ public interface Position extends Location {
             }
         };
     }
+    
+    /**
+     * Compares Coordinates by angle and then range.
+     */
+    Comparator<Position> Compr = (one, two) -> {
+        int x = Location.ThetaCompr.compare(one, two);
+        return x == 0 ? Double.compare(one.getHeading(), two.getHeading()) : x;
+    };
 
     /**
      * Constructs a position from a point with a heading of 0.0.
@@ -86,16 +96,26 @@ public interface Position extends Location {
     /**
      * Gets the heading.
      * 
-     * @return the heading in radians
+     * @return the heading current heading in radians.
      */
     double getHeading();
 
-    default double headingTo(Coordinate heading) {
-        return AngleUtils.normalize(Math.atan2(heading.getY() - this.getY(), heading.getX() - this.getX()));
+    /**
+     * Calculates the heading required to move from the current absolute position to another absolute coordinate.
+     * @param coordinate the coordinate to calculate the heading to.
+     * @return the heading in radians.
+     */
+    default double headingTo(Coordinate coordinate) {
+        return AngleUtils.normalize(Math.atan2(coordinate.getY() - this.getY(), coordinate.getX() - this.getX()));
     }
 
-    default double headingTo(FrontsCoordinate heading) {
-        return headingTo(heading.getCoordinate());
+    /**
+     * Calculate sthe heading required to move from the current absolute position to another absolute position.
+     * @param position the position to calculate the heading to.
+     * @return the heading in radians.
+     */
+    default double headingTo(FrontsCoordinate coordinate) {
+        return headingTo(coordinate.getCoordinate());
     }
 
     /**

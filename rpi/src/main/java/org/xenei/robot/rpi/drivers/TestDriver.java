@@ -1,6 +1,12 @@
 package org.xenei.robot.rpi.drivers;
 
 
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+
+import org.xenei.robot.rpi.drivers.ULN2003.SteppingStatus;
+
 import com.diozero.internal.spi.NativeDeviceFactoryInterface;
 import com.diozero.sbc.DeviceFactoryHelper;
 import com.diozero.util.Diozero;
@@ -8,11 +14,11 @@ import uk.pigpioj.*;
 
 public class TestDriver {
     ULN2003 motor;
-    public TestDriver() {
+    public TestDriver() throws InterruptedException {
         motor = new ULN2003(ULN2003.Mode.WAVE_DRIVE, ULN2003.STEPPER_28BYJ48, 17, 27, 22, 23 );
     }
     
-    public static void main(String[] args) {
+    public static void main(String[] args) throws InterruptedException {
         runDriver();
     }
     
@@ -31,13 +37,14 @@ public class TestDriver {
                 }
     }
     
-    public static void runDriver() {
+    public static void runDriver() throws InterruptedException {
         TestDriver driver = new TestDriver();
-
-        driver.motor.run(60000, 100);
-        while (driver.motor.active()) {
+        SteppingStatus status = driver.motor.prepareRun(60000, 100);
+        ExecutorService executor = Executors.newFixedThreadPool(1);
+        Future<SteppingStatus> future = executor.submit(status);
+        while (!future.isDone()) {
             System.out.println( String.format( "s:%s r:%s ", 
-                    driver.motor.stepsTaken(), driver.motor.rotations()));
+                    status.fwdSteps(), status.fwdRotation()));
         }
         System.out.println( "done");
         try {

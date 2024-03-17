@@ -23,7 +23,7 @@ public class DoubleUtils {
     }
 
     public static boolean inRange(double a, double tolerance) {
-        return eq(Math.abs(a), 0, tolerance + Precision.EPSILON);
+        return eq(Math.abs(a), 0, tolerance);
     }
 
     public static boolean eq(double a, double b, double tolerance) {
@@ -34,7 +34,13 @@ public class DoubleUtils {
         return eq(a, b, 0.0);
     }
 
-    public static double truncate(double value, int decimalPlaces) {
+    /**
+     * Rounds the value to the number of decimal places
+     * @param value the value to round
+     * @param decimalPlaces the number of decimal places
+     * @return the double with the specified number of decimal places.
+     */
+    public static double round(double value, int decimalPlaces) {
         return new BigDecimal(String.valueOf(value)).setScale(decimalPlaces, RoundingMode.HALF_UP).doubleValue();
     }
 

@@ -1,68 +1,80 @@
 package org.xenei.robot.rpi;
 
-import java.util.Collection;
-import java.util.Optional;
-import java.util.Set;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.Scanner;
+import java.util.function.Supplier;
 
 import org.locationtech.jts.geom.Coordinate;
-import org.xenei.robot.common.Compass;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.xenei.robot.Processor;
+import org.xenei.robot.common.AbortedException;
+import org.xenei.robot.common.ChassisInfo;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Mover;
-import org.xenei.robot.common.DistanceSensor;
 import org.xenei.robot.common.Position;
 import org.xenei.robot.common.ScaleInfo;
-import org.xenei.robot.common.mapping.CoordinateMap;
-import org.xenei.robot.common.mapping.Map;
-import org.xenei.robot.common.mapping.Mapper;
-import org.xenei.robot.common.planning.Solution;
-import org.xenei.robot.common.planning.Step;
-import org.xenei.robot.common.utils.TimingUtils;
-import org.xenei.robot.common.utils.AngleUtils;
 import org.xenei.robot.common.utils.CoordUtils;
 import org.xenei.robot.common.utils.RobutContext;
-import org.xenei.robot.mapper.MapImpl;
-import org.xenei.robot.mapper.MapperImpl;
 import org.xenei.robot.rpi.sensors.Arduino;
 
-import com.diozero.sbc.BoardInfo;
-import com.diozero.sbc.DeviceFactoryHelper;
-
-
 public class Robut {
-    private final Compass compass;
-    private final DistanceSensor distSensor;
-    private final Map map;
-    private final Mapper mapper;
-    private Position currentPosition;
-    private double width = 0.5; // meters
-    private int wheelDiameter = 8; // cm
-    private double maxSpeed = 60; // m/min
-    private final Mover mover;
 
-    public Robut(Coordinate origin) {
-        compass = new CompassImpl();
-        distSensor = new Arduino();
-        map = new MapImpl(new RobutContext(ScaleInfo.DEFAULT));
-        mapper = new MapperImpl(map);
-        currentPosition = compass.getPosition(origin);
-        mover = new RpiMover(compass, width, wheelDiameter, maxSpeed);
+    private final Supplier<Position> positionSupplier;
+    private final Processor processor;
+
+    private static final Logger LOG = LoggerFactory.getLogger(Robut.class);
+
+    public Robut(Coordinate origin) throws InterruptedException {
+        RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT, new ChassisInfo(0.24, 8, 60));
+        Mover mover = new RpiMover(ctxt, new CompassImpl(), origin);
+        positionSupplier = mover::position;
+        this.processor = new Processor(ctxt, mover, positionSupplier, new Arduino());
     }
 
-    public Collection<Step> readSensors(Coordinate target, Solution solution) {
-        return mapper.processSensorData(currentPosition, width, target, distSensor.sense());
+    public void moveTo(Location relativeLocation) throws AbortedException {
+        Location nextCoord = positionSupplier.get().nextPosition(relativeLocation);
+        processor.moveTo(nextCoord);
     }
 
-    public void updatePosition() {
-        currentPosition = compass.getPosition(currentPosition);
-        System.out.println("Current position: " + currentPosition);
+    static BufferedReader BUFFER;
+
+    private static void checkContinue() {
+        try {
+            System.out.print("Continue: ");
+            String line = BUFFER.readLine();
+            if (line.toLowerCase().startsWith("y")) {
+                return;
+            }
+        } catch (IOException e) {
+            throw new RuntimeException("Input error", e);
+        }
+        throw new RuntimeException("Stop requested");
     }
 
-    public static void main(String[] args) {
-        System.out.format( "Attempting %s %s\n", args[0], args[1]);
-        Robut r = new Robut(new Coordinate(0, 0));
-        int range = Integer.parseInt(args[1]);
-        double theta = Math.toRadians( Double.parseDouble(args[0]));
-        System.out.format( "%s is the next position", r.mover.move( Location.from(CoordUtils.fromAngle(theta, range))));
-        
+    public static void main(String[] args) throws Exception {
+
+        BUFFER = new BufferedReader(new InputStreamReader(System.in));
+
+        Robut robut = new Robut(new Coordinate(0, 0));
+
+        while (true) {
+            System.out.print("Target (theta, range): ");
+            String line = BUFFER.readLine();
+            System.out.format("Read: %s\n", line);
+            if (line == null || line.length() == 0) {
+                return;
+            }
+            Scanner in = new Scanner(line);
+            double angle = in.nextDouble();
+            double range = in.nextDouble();
+            LOG.debug(String.format("Attempting %s %s\n", angle, range));
+            double theta = Math.toRadians(angle);
+            Location relativeLocation = Location.from(CoordUtils.fromAngle(theta, range));
+            robut.moveTo(relativeLocation);
+        }
     }
+
 }

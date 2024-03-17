@@ -4,6 +4,7 @@ import java.util.Comparator;
 
 import org.locationtech.jts.geom.Geometry;
 import org.xenei.robot.common.FrontsCoordinate;
+import org.xenei.robot.common.Position;
 import org.xenei.robot.common.utils.CoordUtils;
 
 public interface Step extends FrontsCoordinate, Comparable<Step> {
@@ -33,5 +34,10 @@ public interface Step extends FrontsCoordinate, Comparable<Step> {
      * @return
      */
     public Geometry getGeometry();
+    
+    default public Position nextPosition(Position currentPosition) {
+        double heading = currentPosition.headingTo(this);
+        return Position.from(getCoordinate(), heading);
+    }
 
 }

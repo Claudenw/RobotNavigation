@@ -24,6 +24,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.locationtech.jts.geom.Coordinate;
 import org.xenei.robot.common.testUtils.CoordinateUtils;
+import org.xenei.robot.common.testUtils.TestChassisInfo;
 import org.xenei.robot.common.utils.AngleUtils;
 import org.xenei.robot.common.utils.RobutContext;
 import org.xenei.robot.common.utils.CoordUtils;
@@ -37,8 +38,7 @@ public class PositionTest {
             RADIANS_315 };
 
     private Position initial;
-    private static double buffer = 0.5;
-    private static RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT);
+    private static RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT, TestChassisInfo.DEFAULT);
 
     @BeforeEach
     public void setup() {
@@ -90,10 +90,10 @@ public class PositionTest {
     @MethodSource("collisionParameters")
     public void collisionTest(String name, boolean state, Position pos, Coordinate target) {
         if (state) {
-            assertTrue(pos.checkCollision(ctxt,target, buffer),
+            assertTrue(pos.checkCollision(ctxt,target, ctxt.chassisInfo.radius),
                     () -> String.format("Did not collide with %s/%s", target.getX(), target.getY()));
         } else {
-            assertFalse(pos.checkCollision(ctxt,target, buffer),
+            assertFalse(pos.checkCollision(ctxt,target, ctxt.chassisInfo.radius),
                     () -> String.format("Did collide with %s/%s", target.getX(), target.getY()));
         }
     }

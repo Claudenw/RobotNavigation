@@ -10,7 +10,7 @@ import org.xenei.robot.common.utils.CoordUtils;
 
 public class FakeMover implements Mover {
     private static final Logger LOG = LoggerFactory.getLogger(FakeMover.class);
-    private Position position;
+    Position position;
     private int speed;
 
     public FakeMover(FrontsCoordinate initial, int speed) {
@@ -20,6 +20,7 @@ public class FakeMover implements Mover {
         }
         this.speed = speed;
     }
+    
 
     @Override
     public Position move(Location move) {

@@ -40,8 +40,8 @@ public class StepImpl implements Step {
             return this;
         }
         
-        public Builder setDistance(double cost) {
-            this.distance = cost;
+        public Builder setDistance(double distance) {
+            this.distance = distance;
             return this;
         }
         
@@ -56,37 +56,25 @@ public class StepImpl implements Step {
         }
         
         public boolean isValid(RobutContext ctxt) {
-            return isValid(ctxt,false);
+            return isValid(ctxt, false);
         }
         
         public boolean isValid(RobutContext ctxt, boolean throwExceptions) {
             if (coord == null) {
                 if (throwExceptions) {
-            Objects.requireNonNull(coord, "Coordinates may not be null");
+                    Objects.requireNonNull(coord, "Coordinates may not be null");
                 }
                 return false;
             }
-//            if (cost <= UNSET) {
-//                cost = distance;
-//            }
-//            if (distance <= UNSET) {
-//                distance = cost;
-//            }
-//            if (cost <= UNSET) {
-//                if (throwExceptions) {
-//                throw new RuntimeException( "'cost' or 'distance' must be set");
-//                } 
-//                return false;
-//            }
-            if (cost <= 0) {
+            if (cost <= 0 && distance != 0) {
                 if (throwExceptions) {
                 throw new RuntimeException("'cost' must be greater than 0");
                 }
                 return false;
             }
-            if (distance <= 0) {
+            if (distance < 0) {
                 if (throwExceptions) {
-                throw new RuntimeException("'distance' must be greater than 0");
+                throw new RuntimeException("'distance' may not be less 0");
                 }
                 return false;
             }
@@ -97,7 +85,7 @@ public class StepImpl implements Step {
         }
         
         public Step build(RobutContext ctxt) {
-            isValid(ctxt, true);
+            isValid(ctxt, true); //throws exception on not valid.
             return new StepImpl(coord, cost, distance, geom);
         }
     }

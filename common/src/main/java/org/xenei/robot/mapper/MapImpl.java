@@ -3,18 +3,13 @@ package org.xenei.robot.mapper;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import java.util.SortedSet;
-import java.util.TreeSet;
 import java.util.UUID;
 import java.util.function.Consumer;
-import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -51,15 +46,8 @@ import org.apache.jena.sparql.expr.Expr;
 import org.apache.jena.update.UpdateExecutionFactory;
 import org.apache.jena.update.UpdateRequest;
 import org.apache.jena.vocabulary.RDF;
-import org.locationtech.jts.algorithm.hull.ConcaveHull;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
-import org.locationtech.jts.geom.GeometryCollection;
-import org.locationtech.jts.geom.GeometryFactory;
-import org.locationtech.jts.geom.LineString;
-import org.locationtech.jts.geom.MultiPoint;
-import org.locationtech.jts.geom.Point;
-import org.locationtech.jts.operation.linemerge.LineMerger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xenei.robot.common.FrontsCoordinate;
@@ -67,11 +55,12 @@ import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Position;
 import org.xenei.robot.common.UnmodifiableCoordinate;
 import org.xenei.robot.common.mapping.Map;
+import org.xenei.robot.common.mapping.MapCoord;
 import org.xenei.robot.common.mapping.Obstacle;
 import org.xenei.robot.common.planning.Solution;
 import org.xenei.robot.common.planning.Step;
-import org.xenei.robot.common.utils.RobutContext;
 import org.xenei.robot.common.utils.CoordUtils;
+import org.xenei.robot.common.utils.RobutContext;
 import org.xenei.robot.mapper.rdf.Namespace;
 
 public class MapImpl implements Map {
@@ -80,7 +69,6 @@ public class MapImpl implements Map {
     private final Dataset data;
     private final ExprFactory exprF;
     private final ObstacleHandler obstacleHandler;
-    private final double buffer = 0.25; // FIXME
 
     public static PrefixMapping getPrefixes() {
         return PrefixMapping.Factory.create().setNsPrefixes(GeoSPARQL_URI.getPrefixes())
@@ -91,10 +79,9 @@ public class MapImpl implements Map {
         this.ctxt = ctxt;
         data = DatasetFactory.create();
         data.getDefaultModel().setNsPrefixes(getPrefixes());
-        // data.getDefaultModel().add(GraphModFactory.asRDF(new Coordinate(0,0), null,
-        // null).getModel());
         data.addNamedModel(Namespace.BaseModel, defaultModel());
         data.addNamedModel(Namespace.PlanningModel, defaultModel());
+        data.addNamedModel(Namespace.KnownModel, defaultModel());
         exprF = new ExprFactory(data.getPrefixMapping());
 
         try {
@@ -174,6 +161,13 @@ public class MapImpl implements Map {
         }
     }
 
+    /**
+     * executes the select query and processes the result with the processor.
+     * Processing stops when processor returns false.
+     * 
+     * @param select the SelectBuilder to execute.
+     * @param processor the processor to run to handle the results.
+     */
     void exec(SelectBuilder select, Predicate<QuerySolution> processor) {
         try (LockHandler lh = new LockHandler(Lock.READ);
                 QueryExecution qexec = QueryExecutionFactory.create(select.build(), data)) {
@@ -192,18 +186,20 @@ public class MapImpl implements Map {
     }
 
     @Override
-    public Optional<Step> addCoord(Coordinate target, double distance, boolean visited, boolean isIndirect) {
-        MapCoordinate mapCoord = new MapCoordinate(target);
+    public Optional<Step> addCoord(Coordinate coord, Double distance, boolean visited, Boolean isIndirect) {
+        MapCoordinate mapCoord = new MapCoordinate(coord);
         UpdateRequest req = new UpdateRequest();
         if (exists(mapCoord, Namespace.Coord)) {
             WhereBuilder where = new WhereBuilder().addWhere(Namespace.s, RDF.type, Namespace.Coord)
                     .addWhere(Namespace.s, Geo.AS_WKT_PROP, ctxt.graphGeomFactory.asWKT(mapCoord.getCoordinate()));
-            UpdateBuilder newDat = new UpdateBuilder()
-                    .addInsert(Namespace.PlanningModel, Namespace.s, Namespace.distance, distance).addWhere(where);
+            UpdateBuilder newDat = new UpdateBuilder().addWhere(where);
+            if (distance != null) {
+                newDat.addInsert(Namespace.PlanningModel, Namespace.s, Namespace.distance, distance);
+            }
             if (visited) {
                 newDat.addInsert(Namespace.PlanningModel, Namespace.s, Namespace.visited, visited);
             }
-            if (isIndirect) {
+            if (isIndirect != null && isIndirect) {
                 newDat.addInsert(Namespace.PlanningModel, Namespace.s, Namespace.isIndirect, isIndirect);
             }
             // clear and set existing value
@@ -213,26 +209,23 @@ public class MapImpl implements Map {
         } else {
             // no existing record
             Resource qA = ctxt.graphGeomFactory.asRDF(mapCoord, Namespace.Coord);
-            qA.addLiteral(Namespace.distance, distance);
+            if (distance != null) {
+                qA.addLiteral(Namespace.distance, distance);
+            }
             if (visited) {
                 qA.addLiteral(Namespace.visited, visited);
             }
-            if (isIndirect) {
+            if (isIndirect != null && isIndirect) {
                 qA.addLiteral(Namespace.isIndirect, isIndirect);
             }
             req.add(new UpdateBuilder().addInsert(Namespace.PlanningModel, qA.getModel()).build());
         }
 
         doUpdate(req);
-        LOG.debug("Added {} for {}", mapCoord, target);
-        return Optional.ofNullable(distance<=0 ? null :
-         StepImpl.builder().setCoordinate(mapCoord).setDistance(distance)
-                .setCost(isIndirect ? distance * 2 : distance).build(ctxt));
-    }
-
-    private Geometry cell(Coordinate point) {
-        return ctxt.geometryUtils.asPolygon(point, ctxt.scaleInfo.getResolution() / 2, 4);
-
+        LOG.debug("Added {} for {}", mapCoord, coord);
+        return Optional.ofNullable(distance == null || distance <= 0 ? null
+                : StepImpl.builder().setCoordinate(mapCoord).setDistance(distance)
+                        .setCost(isIndirect != null && isIndirect ? distance * 2 : distance).build(ctxt));
     }
 
     @SuppressWarnings("unchecked")
@@ -257,12 +250,13 @@ public class MapImpl implements Map {
      * @param location The location to get the Step for
      * @return the Step for the location.
      */
-    public Optional<Step> getStep(FrontsCoordinate location) {
+    public Optional<Step> getStep(double distance, FrontsCoordinate location) {
         MapCoordinate coordinate = new MapCoordinate(location.getCoordinate());
 
         Var geom = Var.alloc("geom");
         Var dist = Var.alloc("dist");
         Var indirect = Var.alloc("indirect");
+        Var indirectFlg = Var.alloc("indirectFlg");
         Var cost = Var.alloc("cost");
 
         SelectBuilder sb = new SelectBuilder().addVar(cost).addVar(dist).addVar(geom) //
@@ -273,7 +267,9 @@ public class MapImpl implements Map {
                 .addWhere(Namespace.s, Namespace.y, coordinate.getY()) //
                 .addWhere(Namespace.s, Geo.AS_WKT_PROP, geom) //
                 .addOptional(Namespace.s, Namespace.isIndirect, indirect) //
-                .addBind(SPARQL.indirectCalc(dist, indirect), cost);
+                .addBind(exprF.cond(exprF.bound(indirect), exprF.asExpr(indirect), exprF.asExpr(false)),
+                        indirectFlg)
+                .addBind(SPARQL.costCalc(distance, dist, indirectFlg), cost);
 
         StepImpl.Builder builder = StepImpl.builder();
 
@@ -302,6 +298,17 @@ public class MapImpl implements Map {
 
     /**
      * Add the plan record to the map
+     * 
+     * @param records the coordinates of the path.
+     * @return true if the record updated the map, false otherwise.
+     */
+    @Override
+    public Coordinate[] addPath(Resource model, Coordinate... coords) {
+        return addPath(model, Arrays.stream(coords).map(MapCoordinate::new));
+    }
+
+    /**
+     * Add a stream of coordinates as a path.
      * 
      * @param record the plan record to add
      * @return true if the record updated the map, false otherwise.
@@ -334,32 +341,6 @@ public class MapImpl implements Map {
         return ask(ask);
     }
 
-    /**
-     * Creates a builder for the coordinate if it does not exist.
-     * 
-     * @param model the name of the model to build the RDF data in/
-     * @param coordinate the coordinate that the data exists at.
-     * @param type Type of object
-     * @param geometry the Geometry of the object
-     * @return an optional containing the UpdateBuilder or and empty optional.
-     */
-    private Optional<UpdateBuilder> addBuilder(Resource model, MapCoordinate coordinate, Resource type,
-            Geometry geometry) {
-        return (!exists(coordinate, type))
-                ? Optional.of(new UpdateBuilder().addInsert(model,
-                        ctxt.graphGeomFactory.asRDF(coordinate.getCoordinate(), type, geometry).getModel()))
-                : Optional.empty();
-    }
-
-//    private boolean add(Resource model, MapCoordinate coordinate, Resource type, Geometry geometry) {
-//        Optional<UpdateBuilder> builder = addBuilder(model, coordinate, type, geometry);
-//        if (builder.isPresent()) {
-//            doUpdate(builder.get());
-//            return true;
-//        }
-//        return false;
-//    }
-
     public void cutPath(Resource model, Coordinate a, Coordinate b) {
         Var ra = Var.alloc("a");
         Var rb = Var.alloc("b");
@@ -378,7 +359,7 @@ public class MapImpl implements Map {
         Var wkt = Var.alloc("wkt");
         Literal mapA = ctxt.graphGeomFactory.asWKT(a.getCoordinate());
         Literal mapB = ctxt.graphGeomFactory.asWKT(b.getCoordinate());
-        
+
         WhereBuilder wb = new WhereBuilder().addWhere(Namespace.s, RDF.type, Namespace.Path) //
                 .addWhere(Namespace.s, Geo.AS_WKT_NODE, wkt)
                 .addFilter(ctxt.graphGeomFactory.isNearby(exprF, wkt, mapA, ctxt.scaleInfo.getResolution()))
@@ -389,9 +370,9 @@ public class MapImpl implements Map {
     }
 
     @Override
-    public boolean isClearPath(Coordinate from, Coordinate target, double buffer) {
+    public boolean isClearPath(Coordinate from, Coordinate target) {
         LOG.debug("checking clearView from {} to {} ", from, target);
-        Literal pathWkt = ctxt.graphGeomFactory.asWKTPath(buffer, from, target);
+        Literal pathWkt = ctxt.graphGeomFactory.asWKTPath(ctxt.chassisInfo.radius, from, target);
         Var wkt = Var.alloc("wkt");
         AskBuilder ask = new AskBuilder().from(Namespace.UnionModel.getURI()) //
                 .addWhere(Namespace.s, RDF.type, Namespace.Obst) //
@@ -406,32 +387,35 @@ public class MapImpl implements Map {
      * 
      * 
      * @param model The model to update.
-     * @param type The type of the node to update.
      * @param coordinate the node to update
      * @param property the property to update
      * @param value the value to set the property to.
+     * @return true if the node was update, false if the node did not exist.
      */
-    void updateCoordinate(Resource model, Resource type, Coordinate coordinate, Property property, Object value) {
+    boolean updateCoordinate(Resource model, Coordinate coordinate, Property property, Object value) {
         LOG.debug("updatating {} {} {} to {}", model.getLocalName(), CoordUtils.toString(coordinate, 1),
                 property.getLocalName(), value);
         MapCoordinate mapCoord = new MapCoordinate(coordinate);
-        if (exists(mapCoord, type)) {
-            doUpdate(new UpdateRequest().add(new UpdateBuilder().addDelete(model, Namespace.s, property, Namespace.o)
-                    .addGraph(Namespace.UnionModel, new WhereBuilder().addWhere(Namespace.s, property, Namespace.o)
-                            .addWhere(Namespace.s, RDF.type, type).addWhere(Namespace.s, Namespace.x, mapCoord.getX())
-                            .addWhere(Namespace.s, Namespace.y, mapCoord.getY()))
+
+        if (exists(mapCoord, Namespace.Coord)) {
+            UpdateRequest req = new UpdateRequest();
+            req.add(new UpdateBuilder().addDelete(model, Namespace.s, property, Namespace.o)
+                    .addGraph(Namespace.UnionModel,
+                            new WhereBuilder().addWhere(Namespace.s, property, Namespace.o)
+                                    .addWhere(Namespace.s, RDF.type, Namespace.Coord) //
+                                    .addWhere(Namespace.s, Namespace.x, mapCoord.getX())
+                                    .addWhere(Namespace.s, Namespace.y, mapCoord.getY()))
                     .build())
                     .add(new UpdateBuilder().addInsert(model, Namespace.s, property, value)
                             .addGraph(Namespace.UnionModel,
-                                    new WhereBuilder().addWhere(Namespace.s, RDF.type, type)
+                                    new WhereBuilder().addWhere(Namespace.s, RDF.type, Namespace.Coord)
                                             .addWhere(Namespace.s, Namespace.x, mapCoord.getX())
                                             .addWhere(Namespace.s, Namespace.y, mapCoord.getY()))
-                            .build()));
-        } else {
-            LOG.info("coordinate {} of type {} is not on the map",
-                    CoordUtils.toString(coordinate, ctxt.scaleInfo.decimalPlaces()), type);
+                            .build());
+            doUpdate(req);
+            return true;
         }
-
+        return false;
     }
 
     /**
@@ -442,90 +426,56 @@ public class MapImpl implements Map {
      * position, or empty if none found.
      */
     @Override
-    public Optional<Step> getBestStep(Coordinate currentCoords, double buffer) {
+    public Optional<Step> getBestStep(Coordinate currentCoords) {
         if (data.isEmpty()) {
             LOG.debug("No map points");
             return Optional.empty();
         }
-        MapCoordinate mapCoords = new MapCoordinate(currentCoords);
-        Literal wkt = ctxt.graphGeomFactory.asWKT(mapCoords.getCoordinate());
-        // cost of trip.
-        Var cost = Var.alloc("cost");
 
-        // distance current to other
-        Var dist = Var.alloc("dist");
+        StepImpl.Builder[] builder = { null };
 
-        Var other = Var.alloc("other");
-        // wkt of other
-        Var otherWkt = Var.alloc("otherWkt");
-        // distance from other to target
-        Var otherDist = Var.alloc("otherDist");
+        StepQuery stepQuery = new StepQuery(currentCoords, (b) -> {
+            LOG.debug("getBest() -> {}", b);
+            builder[0] = b;
+            return false;
+        });
 
-        Var indirect = Var.alloc("indirect");
-        Var visited = Var.alloc("visited");
-        Var other2 = Var.alloc("other2");
-        Var other2Wkt = Var.alloc("other2Wkt");
-
-        SelectBuilder query = new SelectBuilder().addVar(cost).addVar(otherWkt).addVar(other).addVar(dist) //
-                .from(Namespace.UnionModel.getURI()).addWhere(Namespace.s, RDF.type, Namespace.Coord) //
-                .addWhere(Namespace.s, Geo.AS_WKT_PROP, wkt).addWhere(other, RDF.type, Namespace.Coord) //
-                .addOptional(other, Namespace.isIndirect, indirect) //
-                .addWhere(other, Geo.AS_WKT_PROP, otherWkt) //
-                .addWhere(other, Namespace.distance, otherDist) //
-                .addOptional(other, Namespace.visited, visited) //
-                .addFilter(exprF.and(exprF.ne(other, Namespace.s), exprF.not(exprF.bound(visited)))) //
-                .addBind(ctxt.graphGeomFactory.calcDistance(exprF, otherWkt, wkt), dist) //
-                .addBind(exprF.add(otherDist, SPARQL.indirectCalc(otherDist, indirect)), cost) //
-                .addOrderBy(cost, Order.ASCENDING);
-
-        // skip coords that are within the tolerance range of visited coords
-        AskBuilder ask = new AskBuilder() //
-                .addWhere(other2, Namespace.visited, "?ignore") //
-                .addWhere(other2, RDF.type, Namespace.Coord)//
-                .addWhere(other2, Geo.AS_WKT_PROP, other2Wkt) //
-                .addFilter(exprF.le(ctxt.graphGeomFactory.calcDistance(exprF, otherWkt, other2Wkt), buffer)) //
-        ;
-
-        StepImpl.Builder builder = StepImpl.builder();
-
-        Predicate<QuerySolution> processor = soln -> {
-
-            Geometry geom = ctxt.graphGeomFactory.fromWkt(soln.getLiteral(otherWkt.getName()));
-            for (Coordinate candidate : geom.getCoordinates()) {
-                Literal candidateWkt = ctxt.graphGeomFactory.asWKT(candidate);
-                ask.setVar(otherWkt, candidateWkt);
-
-                if (!ask(ask) && isClearPath(currentCoords, candidate, buffer)) {
-                    builder.setCoordinate(candidate).setCost(soln.getLiteral(cost.getName()).getDouble())
-                            .setDistance(soln.getLiteral(dist.getName()).getDouble()).setGeometry(geom);
-
-                    LOG.debug("getBest() -> {}", builder);
-                    return false;
-                }
-            }
-            return true;
-        };
-
-        exec(query, processor);
-
-        if (!builder.isValid(ctxt)) {
-            System.out.println( "Query");
-            System.out.println(MapReports.dumpQuery(MapImpl.this, query));
-            System.out.println(MapReports.dumpDistance(MapImpl.this));
-            System.out.println(MapReports.dumpObstacleDistance(MapImpl.this));
-            MapImpl.this.getObstacles().forEach(System.out::println);
-            System.out.println(MapReports.dumpModel(MapImpl.this));
-            LOG.debug("No Selected map points");
+        stepQuery.execute();
+        if (builder[0] == null) {
             return Optional.empty();
         }
-        Step step = builder.build(ctxt);
-        updateCoordinate(Namespace.PlanningModel, Namespace.Coord, step.getCoordinate(), Namespace.visited,
-                Boolean.TRUE);
-        return Optional.of(step);
+
+        if (!builder[0].isValid(ctxt)) {
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("Query\n" + MapReports.dumpQuery(MapImpl.this, stepQuery.query));
+                LOG.debug("Distance\n" + MapReports.dumpDistance(MapImpl.this, currentCoords));
+                LOG.debug("Obstacles\n" + MapReports.dumpObstacleDistance(MapImpl.this));
+                MapImpl.this.getObstacles().forEach(s -> LOG.debug(s.toString()));
+                LOG.debug("Model\n" + MapReports.dumpModel(MapImpl.this));
+                LOG.debug("No Selected map points");
+            }
+            return Optional.empty();
+        }
+        return Optional.of(builder[0].build(ctxt));
     }
 
     @Override
-    public Coordinate recalculate(Coordinate target, double buffer) {
+    public void setVisited(Coordinate finalTarget, Coordinate coord) {
+        if (!updateCoordinate(Namespace.PlanningModel, coord, Namespace.visited, Boolean.TRUE)) {
+            MapCoordinate mapCoord = new MapCoordinate(coord);
+            UpdateRequest req = new UpdateRequest();
+            Resource qA = ctxt.graphGeomFactory.asRDF(mapCoord, Namespace.Coord);
+            req.add(new UpdateBuilder().addInsert(Namespace.PlanningModel, qA.getModel()) //
+                    .addInsert(Namespace.PlanningModel, qA.asResource(), Namespace.visited, true) //
+                    .addInsert(Namespace.PlanningModel, qA.asResource(), Namespace.distance,
+                            mapCoord.distance(finalTarget)) //
+                    .build());
+            doUpdate(req);
+        }
+    }
+
+    @Override
+    public Coordinate recalculate(Coordinate target) {
         LOG.debug("recalculate: {}", target);
         Var distance = Var.alloc("distance");
         Var wkt = Var.alloc("wkt");
@@ -548,81 +498,65 @@ public class MapImpl implements Map {
                                 .addWhere(Namespace.s, Geo.AS_WKT_PROP, wkt) //
                                 .addBind(ctxt.graphGeomFactory.calcDistance(exprF, targ, wkt), distance))
                         .build());
+
+        getCoords().stream().filter(mc -> !isClearPath(mc.location.getCoordinate(), target))
+                .forEach(mc -> req.add(new UpdateBuilder() //
+                        .addInsert(Namespace.PlanningModel, Namespace.s, Namespace.isIndirect, true) //
+                        .addGraph(Namespace.UnionModel, new WhereBuilder() //
+                                .addWhere(Namespace.s, Geo.AS_WKT_PROP, ctxt.graphGeomFactory.asWKT(mc.geometry))) //
+                        .build()));
+
         doUpdate(req);
 
-        // check each item that has a distance and see if there is a path to the target,
-        // if not then add the distance
-        // to the adjustment.
-        req = new UpdateRequest();
-        Var candidate = Var.alloc("candidate");
-        SelectBuilder sb = new SelectBuilder().from(Namespace.PlanningModel.getURI()) //
-                .addVar(distance).addVar(candidate).addVar(wkt) //
-                .addWhere(candidate, RDF.type, Namespace.Coord) //
-                .addWhere(candidate, Geo.AS_WKT_PROP, wkt) //
-                .addWhere(candidate, Namespace.distance, distance);
-
-        List<Triple> insertRow = new ArrayList<>();
-
-        Predicate<QuerySolution> processor = soln -> {
-            Geometry g = ctxt.graphGeomFactory.fromWkt(soln.getLiteral(wkt.getName()));
-            boolean clearView = false;
-            for (Coordinate c : g.getCoordinates()) {
-                if (isClearPath(c, target, buffer)) {
-                    clearView = true;
-                    break;
-                }
-            }
-            if (!clearView) {
-                insertRow.add(Triple.create(soln.getResource(candidate.getName()).asNode(),
-                        Namespace.isIndirect.asNode(), sb.makeNode(Boolean.TRUE)));
-            }
-            return true;
-        };
-
-        exec(sb, processor);
-
-        if (!insertRow.isEmpty()) {
-            doUpdate(new UpdateBuilder().addInsert(Namespace.PlanningModel, insertRow));
-        }
         return result.getCoordinate();
     }
 
     @Override
-    public Collection<Step> getTargets() {
-        Var distance = Var.alloc("distance");
-        Var wkt = Var.alloc("wkt");
-        Var cost = Var.alloc("cost");
+    public Collection<MapCoord> getCoords() {
         Var x = Var.alloc("x");
         Var y = Var.alloc("y");
+        Var wkt = Var.alloc("wkt");
         Var indirect = Var.alloc("indirect");
 
-        SelectBuilder sb = new SelectBuilder().addVar(cost).addVar(wkt).addVar(x).addVar(y).addVar(distance) //
-                .from(Namespace.PlanningModel.getURI()).addWhere(Namespace.s, RDF.type, Namespace.Coord) //
+        SelectBuilder sb = new SelectBuilder().addVar(x).addVar(y).addVar(indirect).addVar(wkt) //
+                .from(Namespace.PlanningModel.getURI()) //
+                .addWhere(Namespace.s, RDF.type, Namespace.Coord) //
                 .addOptional(Namespace.s, Namespace.isIndirect, indirect) //
-                .addWhere(Namespace.s, Namespace.distance, distance) //
                 .addWhere(Namespace.s, Geo.AS_WKT_PROP, wkt) //
-                .addWhere(Namespace.s, Namespace.x, x).addWhere(Namespace.s, Namespace.y, y)
-                .addBind(SPARQL.indirectCalc(distance, indirect), cost).addOrderBy(cost, Order.ASCENDING);
+                .addWhere(Namespace.s, Namespace.x, x) //
+                .addWhere(Namespace.s, Namespace.y, y);
 
-        SortedSet<Step> candidates = new TreeSet<Step>();
+        List<MapCoord> result = new ArrayList<>();
 
         Predicate<QuerySolution> processor = soln -> {
             Geometry geom = ctxt.graphGeomFactory.fromWkt(soln.getLiteral(wkt.getName()));
-            candidates.add(StepImpl.builder().setCoordinate(new Coordinate( //
+            Literal litIndirect = soln.getLiteral(indirect.getName());
+            result.add(new MapCoord( //
                     soln.getLiteral(x.getName()).getDouble(), //
-                    soln.getLiteral(y.getName()).getDouble())) //
-                    .setCost(soln.getLiteral(cost.getName()).getDouble()) //
-                    .setDistance(soln.getLiteral(distance.getName()).getDouble()).setGeometry(geom).build(ctxt));
+                    soln.getLiteral(y.getName()).getDouble(), //
+                    litIndirect == null ? false : litIndirect.getBoolean(), geom));
             return true;
         };
 
         exec(sb, processor);
-        return candidates;
+        return result;
     }
 
     @Override
-    public void recordSolution(Solution solution, double buffer) {
-        solution.simplify((x, y) -> this.isClearPath(x, y, buffer));
+    public Collection<Step> getSteps(Coordinate currentPosition) {
+        List<Step> result = new ArrayList<>();
+
+        new StepQuery(currentPosition, (b) -> {
+            result.add(b.build(ctxt));
+            return true;
+        }).execute();
+
+        return result;
+    }
+
+    @Override
+    public void recordSolution(Solution solution) {
+        solution.simplify((x, y) -> this.isClearPath(x, y));
         addPath(Namespace.BaseModel, solution.stream().map(c -> new MapCoordinate(c)));
     }
 
@@ -635,12 +569,8 @@ public class MapImpl implements Map {
         return data.getUnionModel();
     }
 
-    public void doClustering(Resource type, double eps, int minCount) {
-        // new Clusterer(type,eps,minCount).run();
-    }
-
     @Override
-    public void updateIsIndirect(Coordinate target, double buffer, Set<Obstacle> newObstacles) {
+    public void updateIsIndirect(Coordinate finalTarget, Set<Obstacle> newObstacles) {
         Var isIndirect = Var.alloc("isIndirect");
         Var wkt = Var.alloc("wkt");
         Var x = Var.alloc("x");
@@ -664,20 +594,18 @@ public class MapImpl implements Map {
 
         this.exec(sb, processor);
 
-        // List<Point> newObst = newObstacles.stream().map(c ->
-        // ctxt.geometryUtils.asPoint(c)).collect(Collectors.toList());
-
         List<Literal> updateCoords = new ArrayList<>();
 
         for (Coordinate c : candidates) {
-            LineString ls = ctxt.geometryUtils.asLine(c, target);
+            Geometry path = ctxt.geometryUtils.asPath(ctxt.chassisInfo.radius, c, finalTarget);
             for (Obstacle obst : newObstacles) {
-                if (ls.distance(obst.geom()) < buffer) {
+                if (path.distance(obst.geom()) == 0) {
                     updateCoords.add(ctxt.graphGeomFactory.asWKT(c));
                     break;
                 }
             }
         }
+
         if (!updateCoords.isEmpty()) {
             UpdateBuilder ub = new UpdateBuilder()
                     .addInsert(Namespace.PlanningModel, Namespace.s, Namespace.isIndirect, Boolean.TRUE) //
@@ -706,19 +634,51 @@ public class MapImpl implements Map {
         public void close() {
             lock.leaveCriticalSection();
         }
-
     }
 
-    class MapCoordinate implements FrontsCoordinate {
+    @Override
+    public Optional<Location> look(Position from, double heading, int maxRange) {
+
+        Coordinate target = from.plus(CoordUtils.fromAngle(heading, maxRange));
+
+       // Literal pathWkt = ctxt.graphGeomFactory.asWKTPath(ctxt.chassisInfo.radius, from.getCoordinate(), target);
+        Literal pathWkt = ctxt.graphGeomFactory.asWKTString(from.getCoordinate(), target);
+        Var wkt = Var.alloc("wkt");
+        Var dist = Var.alloc("dist");
+        Literal fromWkt = ctxt.graphGeomFactory.asWKT(from.getCoordinate());
+        SelectBuilder look = new SelectBuilder().addVar(dist).from(Namespace.UnionModel.getURI()) //
+                .addWhere(Namespace.s, RDF.type, Namespace.Obst) //
+                .addWhere(Namespace.s, Geo.AS_WKT_PROP, wkt)
+                .addBind(ctxt.graphGeomFactory.calcIntersectionDistance(exprF, fromWkt, pathWkt, wkt), dist)
+                .addFilter(ctxt.graphGeomFactory.intersects(exprF, pathWkt, wkt))
+                .addFilter(exprF.lt(dist, maxRange)).addOrderBy(dist, Order.ASCENDING).setLimit(1);
+        
+        double range[] = { -1 };
+
+        Predicate<QuerySolution> processor = soln -> {
+            range[0] = soln.getLiteral(dist.getName()).getDouble();
+            return false;
+        };
+
+        exec(look, processor);
+       
+        Location result = null;
+        
+        if (range[0] > -1) {
+            result = Location.from(CoordUtils.fromAngle(heading - from.getHeading(), range[0]));
+        }
+        if ( LOG.isDebugEnabled()) {
+            LOG.debug("Looking {} ({}) from {} returned {}", heading, Math.toDegrees(heading), from, result);
+        }
+        return Optional.ofNullable(result);
+    }
+
+    private class MapCoordinate implements FrontsCoordinate {
 
         UnmodifiableCoordinate coord;
 
-        public MapCoordinate(Coordinate coordinate) {
+        MapCoordinate(Coordinate coordinate) {
             coord = UnmodifiableCoordinate.make(adopt(coordinate));
-        }
-
-        protected MapCoordinate(FrontsCoordinate coordinate) {
-            this(coordinate.getCoordinate());
         }
 
         @Override
@@ -730,14 +690,111 @@ public class MapImpl implements Map {
 
     private class SPARQL {
 
-        static Expr indirectCalc(Var distance, Var indirect) {
+        /**
+         * Calculate the cost from a position to the target
+         * 
+         * @param posDistToTarget distance from position to target
+         * @param indirect true if there is an obstacle in the way.
+         * @return the expression to calculate the distance.
+         */
+        static Expr indirectCalc(Object posDistToTarget, Object indirect) {
             ExprFactory exprF = new ExprFactory(getPrefixes());
-            return exprF.add(exprF.cond(exprF.bound(indirect), exprF.asExpr(distance), exprF.asExpr(0)), distance);
+            return exprF.add(exprF.cond(exprF.bound(indirect), exprF.asExpr(posDistToTarget), exprF.asExpr(0)),
+                    posDistToTarget);
+        }
 
+        /**
+         * Calculates the cost to the target via the position.
+         * 
+         * @param distToPos the distance to the position.
+         * @param posDistToTarget the distance from the position to the target
+         * @param indirect true if there is an obstacle in the way.
+         * @return the expression to calcualte the cost.
+         */
+        static Expr costCalc(Object distToPos, Var posDistToTarget, Var indirect) {
+            ExprFactory exprF = new ExprFactory(getPrefixes());
+            return exprF.add(distToPos, SPARQL.indirectCalc(posDistToTarget, indirect));
         }
     }
 
-    private class ObstacleImpl implements Obstacle {
+    public class StepQuery {
+        Literal wkt;
+
+        Var cost = Var.alloc("cost");
+
+        // distance current to other
+        Var dist = Var.alloc("dist");
+
+        Var other = Var.alloc("other");
+        // wkt of other
+        Var otherWkt = Var.alloc("otherWkt");
+        Var indirectFlg = Var.alloc("indirectFlg");
+        // distance from other to target
+        Var otherDist = Var.alloc("otherDist");
+
+        Var indirect = Var.alloc("indirect");
+        Var visited = Var.alloc("visited");
+        Var other2 = Var.alloc("other2");
+        Var other2Wkt = Var.alloc("other2Wkt");
+
+        final SelectBuilder query;
+        final AskBuilder checkVisited;
+        final Predicate<QuerySolution> processor;
+
+        StepQuery(Coordinate currentCoords, Predicate<StepImpl.Builder> builderPred) {
+            MapCoordinate mapCoords = new MapCoordinate(currentCoords);
+            wkt = ctxt.graphGeomFactory.asWKT(mapCoords.getCoordinate());
+
+            query = new SelectBuilder().addVar(indirectFlg).addVar(cost).addVar(otherWkt).addVar(other).addVar(dist) //
+                    .from(Namespace.UnionModel.getURI()) //
+                    .addWhere(Namespace.s, RDF.type, Namespace.Coord) //
+                    .addWhere(Namespace.s, Geo.AS_WKT_PROP, wkt).addWhere(other, RDF.type, Namespace.Coord) //
+                    .addOptional(other, Namespace.isIndirect, indirect) //
+                    .addWhere(other, Geo.AS_WKT_PROP, otherWkt) //
+                    .addWhere(other, Namespace.distance, otherDist) //
+                    .addOptional(other, Namespace.visited, visited) //
+                    .addFilter(exprF.and(exprF.ne(other, Namespace.s), exprF.not(exprF.bound(visited)))) //
+                    .addBind(ctxt.graphGeomFactory.calcDistance(exprF, otherWkt, wkt), dist) //
+                    .addBind(SPARQL.costCalc(dist, otherDist, indirect), cost) //
+                    .addBind(exprF.cond(exprF.bound(indirect), exprF.asExpr(indirect), exprF.asExpr(false)),
+                            indirectFlg)
+                    .addOrderBy(indirectFlg, Order.ASCENDING).addOrderBy(cost, Order.ASCENDING)
+                    ;
+
+            // skip coords that are within the tolerance range of visited coords
+            // returns true if the position has been visited.
+            checkVisited = new AskBuilder() //
+                    .addWhere(other2, Namespace.visited, "?ignore") //
+                    .addWhere(other2, RDF.type, Namespace.Coord)//
+                    .addWhere(other2, Geo.AS_WKT_PROP, other2Wkt) //
+                    .addFilter(exprF.le(ctxt.graphGeomFactory.calcDistance(exprF, otherWkt, other2Wkt),
+                            ctxt.chassisInfo.radius)) //
+            ;
+
+            processor = soln -> {
+                Geometry geom = ctxt.graphGeomFactory.fromWkt(soln.getLiteral(otherWkt.getName()));
+                for (Coordinate candidate : geom.getCoordinates()) {
+                    Literal candidateWkt = ctxt.graphGeomFactory.asWKT(candidate);
+                    checkVisited.setVar(otherWkt, candidateWkt);
+                    // if not visited and has a clear path
+                    if (!ask(checkVisited) && isClearPath(currentCoords, candidate)) {
+                        StepImpl.Builder builder = StepImpl.builder().setCoordinate(candidate)
+                                .setCost(soln.getLiteral(cost.getName()).getDouble())
+                                .setDistance(soln.getLiteral(dist.getName()).getDouble()).setGeometry(geom);
+                        return builderPred.test(builder);
+                    }
+                }
+                return true;
+            };
+        }
+
+        public void execute() {
+            exec(query, processor);
+        }
+    }
+
+    // package private for testing.
+    class ObstacleImpl implements Obstacle {
         private final Literal wkt;
         private final Geometry geom;
         private final UUID uuid;
@@ -760,9 +817,26 @@ public class MapImpl implements Map {
             this.wkt = wkt;
         }
 
+        ObstacleImpl(Coordinate start, Coordinate end) {
+            double d = start.distance(end);
+            int parts = (int) (d / ctxt.scaleInfo.getHalfResolution());
+            double xIncr = (end.x - start.x) / (parts + 1);
+            double yIncr = (end.y - start.y) / (parts + 1);
+            Coordinate[] part = new Coordinate[parts + 1];
+            part[0] = start;
+            for (int i = 1; i < parts; i++) {
+                part[i] = new Coordinate(part[i - 1].x + xIncr, part[i - 1].y + yIncr);
+            }
+            part[parts] = end;
+            geom = ctxt.geometryUtils.asLine(part);
+            wkt = ctxt.graphGeomFactory.asWKT(geom);
+            uuid = UUID.randomUUID();
+        }
+
         ObstacleImpl(Position startPostition, Location relativeLocation) {
             Position absoluteObstacle = startPostition.nextPosition(relativeLocation);
-            absoluteObstacle = Position.from( ctxt.scaleInfo.precise(absoluteObstacle.getCoordinate()),absoluteObstacle.getHeading());
+            absoluteObstacle = Position.from(ctxt.scaleInfo.precise(absoluteObstacle.getCoordinate()),
+                    absoluteObstacle.getHeading());
             geom = ctxt.geometryUtils.asPoint(absoluteObstacle);
             wkt = ctxt.graphGeomFactory.asWKT(geom);
             uuid = UUID.randomUUID();
@@ -796,12 +870,6 @@ public class MapImpl implements Map {
             return result;
         }
 
-        Resource in(Model m) {
-            Resource result = m.createResource(rdf().getURI(), Namespace.Obst);
-            result.addLiteral(Geo.AS_WKT_PROP, wkt());
-            return result;
-        }
-
         @Override
         public int hashCode() {
             return Obstacle.hashCode(this);
@@ -811,7 +879,7 @@ public class MapImpl implements Map {
         public boolean equals(Object obj) {
             return Obstacle.equalsImpl(this, obj);
         }
-        
+
         @Override
         public String toString() {
             return wkt.getLexicalForm();
@@ -819,39 +887,27 @@ public class MapImpl implements Map {
     }
 
     private class ObstacleHandler {
-
         private Geometry makeCloud(Obstacle obstacle, Collection<? extends Obstacle> others) {
             Set<Coordinate> cSet = new HashSet<>();
             Consumer<Obstacle> co = o -> Arrays.stream(o.geom().getCoordinates()).forEach(cSet::add);
             co.accept(obstacle);
             others.forEach(co);
-            
-            Coordinate[] points = null;
+
             if (cSet.size() > 2) {
                 PointCloudSorter pcs = new PointCloudSorter(MapImpl.this.getContext(), cSet);
-//                List<LineString> lst = pcs.getResult();
-//                Geometry g = ctxt.geometryFactory.createGeometryCollection(lst.toArray(new LineString[0]));
-//                Geometry g2 = g.union();
-//                return g2.isEmpty() ? g : g2;
                 return pcs.walk();
-            } 
-            points = cSet.toArray(new Coordinate[cSet.size()]);
-            return ctxt.geometryFactory.createLineString( cSet.toArray(new Coordinate[cSet.size()]));
-        
- 
-            
-           // List<Point> pList = cSet.stream().map(ctxt.geometryFactory::createPoint).collect(Collectors.toList());
-            //return ctxt.geometryFactory.buildGeometry(pList).union();
+            }
+
+            return ctxt.geometryFactory.createLineString(cSet.toArray(new Coordinate[cSet.size()]));
         }
 
-        private Set<ObstacleImpl> mergeIntersectOrTouch(Obstacle obstacle) {
+        private Set<Obstacle> mergeIntersectOrTouch(UpdateRequest req, Obstacle obstacle) {
             Var otherWkt = Var.alloc("otherWkt");
             SelectBuilder sb = new SelectBuilder().setDistinct(true).addVar(Namespace.s).addVar(otherWkt) //
                     .from(Namespace.UnionModel.getURI()) //
                     .addWhere(Namespace.s, Geo.AS_WKT_NODE, otherWkt) //
-                    .addWhere(Namespace.s, RDF.type, Namespace.Obst)
-                    .addFilter(ctxt.graphGeomFactory.isNearby(exprF, obstacle.wkt(), otherWkt,
-                            ctxt.scaleInfo.getResolution()));
+                    .addWhere(Namespace.s, RDF.type, Namespace.Obst).addFilter(ctxt.graphGeomFactory.isNearby(exprF,
+                            obstacle.wkt(), otherWkt, ctxt.scaleInfo.getResolution()));
 
             Set<ObstacleImpl> solns = new HashSet<>();
 
@@ -860,21 +916,20 @@ public class MapImpl implements Map {
                         new ObstacleImpl(soln.getResource(Namespace.s.getName()), soln.getLiteral(otherWkt.getName())));
                 return true;
             };
-            
+
             exec(sb, processor);
 
-            Set<ObstacleImpl> solution = new HashSet<>();
+            Set<Obstacle> solution = new HashSet<>();
 
             if (solns.isEmpty()) {
-                ObstacleImpl obstImpl = (ObstacleImpl) obstacle;
+                Obstacle obstImpl = obstacle;
                 Resource r = obstImpl.in(ModelFactory.createDefaultModel());
-                doUpdate(new UpdateBuilder().addInsert(Namespace.PlanningModel, r.getModel()));
+                req.add(new UpdateBuilder().addInsert(Namespace.PlanningModel, r.getModel()).build());
                 solution.add(obstImpl);
             } else {
                 solns.remove(obstacle);
                 if (!solns.isEmpty()) {
                     Geometry result = makeCloud(obstacle, solns);
-                    UpdateRequest req = new UpdateRequest();
                     for (Obstacle obst : solns) {
                         req.add(new UpdateBuilder()
                                 .addDelete(Namespace.PlanningModel, obst.rdf(), Namespace.p, Namespace.o)
@@ -884,25 +939,10 @@ public class MapImpl implements Map {
                     }
 
                     Model merged = ModelFactory.createDefaultModel();
-//                    try {
-//                    ObstacleImpl obst = (result instanceof MultiPoint) ?
-//                            new ObstacleImpl( ConcaveHull.concaveHullByLength(result,
-//                                     ctxt.scaleInfo.getResolution())) :
-//                                         new ObstacleImpl(result);
-//                        obst.in(merged);
-//                        solution.add(obst);
-//                    req.add(new UpdateBuilder().addInsert(Namespace.PlanningModel, merged).build());
-//                    } catch (NullPointerException e) {
-//                        System.err.println( "OUCH" );
-//                        e.printStackTrace();
-//                        ConcaveHull.concaveHullByLength(result,
-//                                ctxt.scaleInfo.getResolution());
-//                    }
                     ObstacleImpl obst = new ObstacleImpl(result);
-                      obst.in(merged);
-                      solution.add(obst);
+                    obst.in(merged);
+                    solution.add(obst);
                     req.add(new UpdateBuilder().addInsert(Namespace.PlanningModel, merged).build());
-                    doUpdate(req);
                 }
             }
             return solution;
@@ -912,22 +952,38 @@ public class MapImpl implements Map {
             // find all Obstacles that this obstacle will intersect or touch
             // if there are any, merge them together.
             // if not just write this on to the graph.
-            Set<ObstacleImpl> work = mergeIntersectOrTouch(obst);
-            // delete any Coords that are within buffer of any of the work geometries.
             Var wkt = Var.alloc("wkt");
+            AskBuilder askBuilder = new AskBuilder().from(Namespace.UnionModel.getURI()) //
+                    .addWhere(Namespace.s, Geo.AS_WKT_NODE, wkt) //
+                    .addWhere(Namespace.s, RDF.type, Namespace.Obst) //
+                    .addFilter(ctxt.graphGeomFactory.isNearby(exprF, obst.wkt(), wkt, ctxt.scaleInfo.getResolution()));
+
+            UpdateRequest req = new UpdateRequest();
+            Set<Obstacle> work;
+            if (ask(askBuilder)) {
+                work = mergeIntersectOrTouch(req, obst);
+            } else {
+                Model merged = ModelFactory.createDefaultModel();
+                obst.in(merged);
+                req.add(new UpdateBuilder().addInsert(Namespace.PlanningModel, merged).build());
+                work = Set.of(obst);
+            }
+            // delete any Coords that are within buffer of any of the work geometries.
             Var obstRes = Var.alloc("obst");
             Var otherWkt = Var.alloc("otherWkt");
-            UpdateBuilder update = new UpdateBuilder()
-                    .addDelete(Namespace.PlanningModel, Namespace.s, Namespace.p, Namespace.o)
+            req.add(new UpdateBuilder().addDelete(Namespace.PlanningModel, Namespace.s, Namespace.p, Namespace.o)
                     .addGraph(Namespace.UnionModel, new WhereBuilder() //
                             .addWhere(Namespace.s, Namespace.p, Namespace.o) //
                             .addWhere(Namespace.s, RDF.type, Namespace.Coord) //
                             .addWhere(Namespace.s, Geo.AS_WKT_NODE, wkt) //
                             .addWhere(obstRes, Geo.AS_WKT_NODE, otherWkt)
-                            .addFilter(exprF.lt(ctxt.graphGeomFactory.calcDistance(exprF, wkt, otherWkt), buffer))
-                            .addFilter(exprF.in(exprF.asExpr(obstRes), exprF
-                                    .asList(work.stream().map(Obstacle::rdf).collect(Collectors.toList()).toArray()))));
-            doUpdate(update);
+                            .addFilter(exprF.lt(ctxt.graphGeomFactory.calcDistance(exprF, wkt, otherWkt),
+                                    ctxt.chassisInfo.radius))
+                            .addFilter(exprF.in(exprF.asExpr(obstRes),
+                                    exprF.asList(
+                                            work.stream().map(Obstacle::rdf).collect(Collectors.toList()).toArray()))))
+                    .build());
+            doUpdate(req);
             return work;
         }
 

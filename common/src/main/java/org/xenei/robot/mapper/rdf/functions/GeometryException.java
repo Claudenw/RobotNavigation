@@ -3,7 +3,7 @@ package org.xenei.robot.mapper.rdf.functions;
 public class GeometryException extends RuntimeException {
 
     public GeometryException() {
-        
+
     }
 
     public GeometryException(String message) {

@@ -71,6 +71,10 @@ public final class GraphGeomFactory {
         return expF.call(Namespace.distanceF, geo1, geo2);
     }
 
+    public Expr calcIntersectionDistance(ExprFactory expF, Object geo1, Object geo2, Object geo3) {
+        return expF.call(Namespace.intersectDistF, geo1, geo2, geo3);
+    }
+
     public Expr overlaps(ExprFactory expF, Object geo1, Object geo2) {
         return expF.call(Namespace.overlapsF, geo1, geo2);
     }

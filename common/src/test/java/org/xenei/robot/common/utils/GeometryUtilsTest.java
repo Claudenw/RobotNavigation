@@ -20,10 +20,12 @@ import org.xenei.robot.common.FrontsCoordinate;
 import org.xenei.robot.common.FrontsCoordinateTest;
 import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.common.testUtils.CoordinateUtils;
+import org.xenei.robot.common.testUtils.TestChassisInfo;
+import org.xenei.robot.common.testUtils.TestingPositionSupplier;
 
 public class GeometryUtilsTest {
     
-    private static RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT);
+    private static RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT, TestChassisInfo.DEFAULT);
 
     @ParameterizedTest
     @MethodSource("polygonParameters")
