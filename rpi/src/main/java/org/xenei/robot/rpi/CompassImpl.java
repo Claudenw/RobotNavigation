@@ -2,15 +2,10 @@ package org.xenei.robot.rpi;
 
 import java.util.Timer;
 import java.util.TimerTask;
-import java.util.concurrent.Executors;
 import java.util.concurrent.locks.ReentrantLock;
 
-import javax.swing.text.Position;
-
-import org.locationtech.jts.geom.Coordinate;
 import org.xenei.robot.common.Compass;
 import org.xenei.robot.common.Location;
-import org.xenei.robot.common.utils.AngleUtils;
 import org.xenei.robot.common.utils.DoubleUtils;
 import org.xenei.robot.rpi.sensors.MMC3416xPJ;
 import org.xenei.robot.rpi.sensors.MMC3416xPJ.Axis;
@@ -31,18 +26,19 @@ public class CompassImpl implements Compass {
             samples[position] = compass.getHeading();
             lock.lock();
             try {
-                XSum += samples[position].getAxisValue(Axis.X)-oldSample.getAxisValue(Axis.X);
-                YSum += samples[position].getAxisValue(Axis.Y)-oldSample.getAxisValue(Axis.Y);
+                XSum += samples[position].getAxisValue(Axis.X) - oldSample.getAxisValue(Axis.X);
+                YSum += samples[position].getAxisValue(Axis.Y) - oldSample.getAxisValue(Axis.Y);
             } finally {
                 lock.unlock();
             }
-            position = Math.floorMod(position+1, limit);
-        }};
+            position = Math.floorMod(position + 1, limit);
+        }
+    };
 
     public CompassImpl() {
         lock = new ReentrantLock();
         samples = new MMC3416xPJ.Values[limit];
-        for (int i=0;i<limit;i++) {
+        for (int i = 0; i < limit; i++) {
             samples[i] = compass.getHeading();
             XSum += samples[i].getAxisValue(Axis.X);
             YSum += samples[i].getAxisValue(Axis.Y);
@@ -63,21 +59,21 @@ public class CompassImpl implements Compass {
         } finally {
             lock.unlock();
         }
-        Location heading = Location.from(x,y);
+        Location heading = Location.from(x, y);
         return DoubleUtils.round(heading.theta(), 2);
     }
-    
+
     @Override
     public double instantHeading() {
         MMC3416xPJ.Values values = compass.getHeading();
         return Location.from(values.getAxisValue(Axis.X), values.getAxisValue(Axis.Y)).theta();
     }
-    
+
     public static void main(String[] args) throws InterruptedException {
         Compass c = new CompassImpl();
         while (true) {
             double h = c.heading();
-            System.out.format( "Heading: %s %s degrees\n", h, Math.toDegrees(h));
+            System.out.format("Heading: %s %s degrees\n", h, Math.toDegrees(h));
             Thread.sleep(500);
         }
     }

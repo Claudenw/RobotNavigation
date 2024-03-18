@@ -23,7 +23,7 @@ public class MMC3416xPJ {
 
     public enum Axis {
         X, Y, Z;
-        
+
         public static Axis[] XY = { Axis.X, Axis.Y };
     }
 

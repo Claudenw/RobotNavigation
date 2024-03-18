@@ -36,7 +36,7 @@ import com.diozero.api.DigitalOutputDevice;
 /**
  * Stepper driver for the ULN2003 chip
  */
-public class ULN2003 implements AutoCloseable {
+public class ULN2003 implements Motor {
 
     private static final Logger LOG = LoggerFactory.getLogger(ULN2003.class);
     
@@ -49,9 +49,9 @@ public class ULN2003 implements AutoCloseable {
     public static final double STEPPER_28BYJ48 = 5.625/64;
     
     private final MotorBlock block;
-    private SteppingStatus task;
+    private SteppingStatusImpl task;
     private final double revMilliPerStepMin;
-    public final double stepsPerRotation;
+    private final double stepsPerRotation;
     
     private static Options getOptions() {
         
@@ -127,6 +127,12 @@ public class ULN2003 implements AutoCloseable {
         stepsPerRotation = 360/strideAngle;
         LOG.debug("Created instance {}: {}", this.hashCode(), toString());
     }
+    
+    @Override
+    public double stepsPerRotation() {
+        return stepsPerRotation;
+    }
+    
 
     @Override
     public String toString() {
@@ -161,11 +167,11 @@ public class ULN2003 implements AutoCloseable {
      * 300. Note that high rpm will lead to step loss, so rpm should not be larger
      * than 150.
      */
-    public SteppingStatus prepareRun(int steps, int rpm) {
+    public SteppingStatusImpl prepareRun(int steps, int rpm) {
         // revmilli/stepsmin * min/rev = milli/steps (min/rev = 1/rpm)
         long msPerStep = (long) Math.ceil(revMilliPerStepMin / limit(rpm, 1, 300));
         
-        SteppingStatus result = new SteppingStatus(steps, msPerStep);
+        SteppingStatusImpl result = new SteppingStatusImpl(steps, msPerStep);
         
         LOG.debug("Preparing task {} steps:{} rpm:{}", this, steps, rpm);
 
@@ -179,15 +185,14 @@ public class ULN2003 implements AutoCloseable {
     public void stop() {
         block.off();
     }
-    
 
-    public class SteppingStatus implements Callable<SteppingStatus> {
+    public class SteppingStatusImpl implements Motor.SteppingStatus {
         private volatile int  count;
         private final int initialCounter;
         private final boolean fwd;
         private final long msPerStep;
         
-        SteppingStatus(int steps, long msPerStep) {
+        SteppingStatusImpl(int steps, long msPerStep) {
             initialCounter = Math.abs(limit(steps, -32768, 32767));
             count = initialCounter;
             fwd = steps >= 0;
@@ -196,7 +201,7 @@ public class ULN2003 implements AutoCloseable {
         }
 
         @Override
-        public SteppingStatus call() throws InterruptedException {
+        public SteppingStatusImpl call() throws InterruptedException {
             while (count-- > 0) {
                 block.step(fwd, msPerStep);
             }

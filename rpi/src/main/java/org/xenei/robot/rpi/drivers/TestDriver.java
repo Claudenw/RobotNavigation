@@ -5,7 +5,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
-import org.xenei.robot.rpi.drivers.ULN2003.SteppingStatus;
+import org.xenei.robot.rpi.drivers.Motor.SteppingStatus;
 
 import com.diozero.internal.spi.NativeDeviceFactoryInterface;
 import com.diozero.sbc.DeviceFactoryHelper;
