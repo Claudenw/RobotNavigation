@@ -1,9 +1,6 @@
 package org.xenei.robot.common;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.xenei.robot.common.utils.AngleUtils.RADIANS_180;
-import static org.xenei.robot.common.utils.AngleUtils.RADIANS_45;
 
 import java.util.ArrayList;
 import java.util.Arrays;

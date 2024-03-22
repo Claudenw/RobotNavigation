@@ -3,13 +3,10 @@ package org.xenei.robot.common;
 import java.util.Comparator;
 
 import org.locationtech.jts.geom.Coordinate;
-import org.locationtech.jts.geom.Geometry;
-import org.locationtech.jts.geom.Point;
 import org.xenei.robot.common.utils.AngleUtils;
-import org.xenei.robot.common.utils.RobutContext;
 import org.xenei.robot.common.utils.CoordUtils;
 import org.xenei.robot.common.utils.DoubleUtils;
-import org.xenei.robot.common.utils.GeometryUtils;
+import org.xenei.robot.common.utils.RobutContext;
 
 public interface Position extends Location {
 
@@ -35,7 +32,7 @@ public interface Position extends Location {
             }
         };
     }
-    
+
     /**
      * Compares Coordinates by angle and then range.
      */
@@ -101,7 +98,9 @@ public interface Position extends Location {
     double getHeading();
 
     /**
-     * Calculates the heading required to move from the current absolute position to another absolute coordinate.
+     * Calculates the heading required to move from the current absolute position to
+     * another absolute coordinate.
+     * 
      * @param coordinate the coordinate to calculate the heading to.
      * @return the heading in radians.
      */
@@ -110,7 +109,9 @@ public interface Position extends Location {
     }
 
     /**
-     * Calculate sthe heading required to move from the current absolute position to another absolute position.
+     * Calculate sthe heading required to move from the current absolute position to
+     * another absolute position.
+     * 
      * @param position the position to calculate the heading to.
      * @return the heading in radians.
      */
@@ -134,16 +135,14 @@ public interface Position extends Location {
             return this;
         }
 
-        double x = AngleUtils.RADIANS_90;
-        
         double range = relativeCoordinates.range();
         double thetar = relativeCoordinates.theta();
         double thetah = this.getHeading();
 
         double apime = AngleUtils.normalize(thetah + thetar);
-        //double apime = thetah + thetar;
+        // double apime = thetah + thetar;
 
-        //Coordinate c = CoordUtils.fromAngle(apime, range);
+        // Coordinate c = CoordUtils.fromAngle(apime, range);
         Coordinate a = this.plus(CoordUtils.fromAngle(apime, range));
         return Position.from(a, apime);
     }
@@ -166,8 +165,9 @@ public interface Position extends Location {
 
     default boolean checkCollision(RobutContext ctxt, Coordinate c, double tolerance) {
         Coordinate l = CoordUtils.fromAngle(getHeading(), distance(c));
-        double d = ctxt.geometryUtils.asPath(tolerance, this.getCoordinate(), l).distance(ctxt.geometryUtils.asPoint(c));
-        return DoubleUtils.inRange(d, tolerance/2);
+        double d = ctxt.geometryUtils.asPath(tolerance, this.getCoordinate(), l)
+                .distance(ctxt.geometryUtils.asPoint(c));
+        return DoubleUtils.inRange(d, tolerance / 2);
     }
 
 }
