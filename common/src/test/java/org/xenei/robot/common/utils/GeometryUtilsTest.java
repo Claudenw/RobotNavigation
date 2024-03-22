@@ -21,10 +21,9 @@ import org.xenei.robot.common.FrontsCoordinateTest;
 import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.common.testUtils.CoordinateUtils;
 import org.xenei.robot.common.testUtils.TestChassisInfo;
-import org.xenei.robot.common.testUtils.TestingPositionSupplier;
 
 public class GeometryUtilsTest {
-    
+
     private static RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT, TestChassisInfo.DEFAULT);
 
     @ParameterizedTest
@@ -56,8 +55,8 @@ public class GeometryUtilsTest {
 
         lst.add(Arguments.of("radius edges", ctxt.geometryUtils.asPolygon(center, .25, 4), expected));
 
-        lst.add(Arguments.of("hasCoord radius edges", ctxt.geometryUtils.asPolygon(FrontsCoordinateTest.make(1, 1), .25, 4),
-                expected));
+        lst.add(Arguments.of("hasCoord radius edges",
+                ctxt.geometryUtils.asPolygon(FrontsCoordinateTest.make(1, 1), .25, 4), expected));
 
         expected = new Coordinate[] { new Coordinate(1, 1.25), new Coordinate(0.75, 1), new Coordinate(0.75, 0.75),
                 new Coordinate(1.25, 0.75), new Coordinate(1, 1.25) };
@@ -71,14 +70,13 @@ public class GeometryUtilsTest {
         List<FrontsCoordinate> hList = Arrays.stream(expected).map(FrontsCoordinateTest::make)
                 .collect(Collectors.toList());
 
-        lst.add(Arguments.of("hasCoord array", ctxt.geometryUtils.asPolygon(hList.toArray(new FrontsCoordinate[hList.size()])),
+        lst.add(Arguments.of("hasCoord array",
+                ctxt.geometryUtils.asPolygon(hList.toArray(new FrontsCoordinate[hList.size()])), expected));
+
+        lst.add(Arguments.of("hasCoord",
+                ctxt.geometryUtils.asPolygon(hList.get(0), hList.get(1), hList.get(2), hList.get(3), hList.get(4)),
                 expected));
 
-
-        lst.add(Arguments.of("hasCoord", ctxt.geometryUtils.asPolygon(
-                hList.get(0), hList.get(1), hList.get(2), hList.get(3), hList.get(4)),
-                expected));
-        
         return lst.stream();
     }
 
@@ -101,12 +99,12 @@ public class GeometryUtilsTest {
 
         return lst.stream();
     }
-    
+
     @Test
     public void asLineTest() {
-        Coordinate[] expected = new Coordinate[] { new Coordinate(1,1), new Coordinate(3,3), new Coordinate(-4,-4) };
-        
-        LineString ls = ctxt.geometryUtils.asLine( expected[0], expected[1], expected[2] );
+        Coordinate[] expected = new Coordinate[] { new Coordinate(1, 1), new Coordinate(3, 3), new Coordinate(-4, -4) };
+
+        LineString ls = ctxt.geometryUtils.asLine(expected[0], expected[1], expected[2]);
         Coordinate[] actual = ls.getCoordinates();
         assertEquals(expected.length, actual.length);
         for (int i = 0; i < actual.length; i++) {
@@ -153,6 +151,5 @@ public class GeometryUtilsTest {
 //        return asPath(asCollection(points));
 //    }
 //
-
 
 }

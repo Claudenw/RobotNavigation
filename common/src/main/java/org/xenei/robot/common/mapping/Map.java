@@ -4,15 +4,10 @@ import java.util.Collection;
 import java.util.Optional;
 import java.util.Set;
 
-import org.apache.jena.rdf.model.Literal;
 import org.apache.jena.rdf.model.Resource;
 import org.locationtech.jts.geom.Coordinate;
-import org.locationtech.jts.geom.Geometry;
-import org.xenei.robot.common.FrontsCoordinate;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Position;
-import org.xenei.robot.common.ScaleInfo;
-import org.xenei.robot.common.UnmodifiableCoordinate;
 import org.xenei.robot.common.planning.Solution;
 import org.xenei.robot.common.planning.Step;
 import org.xenei.robot.common.utils.RobutContext;
@@ -46,14 +41,14 @@ public interface Map {
      * @param distance the distance to the final target.
      * @param visited true if the target has been visited.
      * @param isIndirect true if the target can not see the final target.
-     * @return the Step comprising the mapped target location and the distance value.
+     * @return the Step comprising the mapped target location and the distance
+     * value.
      */
     Optional<Step> addCoord(Coordinate target, Double distance, boolean visited, Boolean isIndirect);
-   
 
     /**
-     * Gets the collection of all steps in the planning graph that are reachable from
-     * the current position.
+     * Gets the collection of all steps in the planning graph that are reachable
+     * from the current position.
      * 
      * @param position the coordinates of the current position.
      * @return the collection of all steps in the planning graph.
@@ -73,9 +68,10 @@ public interface Map {
      * @param coords the coordinates of the path.
      */
     Coordinate[] addPath(Coordinate... coords);
-    
+
     /**
      * Adds a path to the specified graph.
+     * 
      * @param model the name of the graph to add the path to.
      * @param coords the coordinates of the path.
      */
@@ -109,8 +105,9 @@ public interface Map {
      * 
      * @param obstacle the obstacle to add.
      */
-    //Coordinate addObstacle(Coordinate obstacle);
+    // Coordinate addObstacle(Coordinate obstacle);
     Set<Obstacle> addObstacle(Obstacle obstacle);
+
     /**
      * Gets the geometry for all the known obstacles.
      * 
@@ -167,26 +164,30 @@ public interface Map {
      * @param newObstacles the set of new obstacles.
      */
     void updateIsIndirect(Coordinate finalTarget, Set<Obstacle> newObstacles);
-    
+
     /**
      * Create an Obstacle.
-     * @param startPosition  The position from which we locate the obstacle.
-     * @param relativeLocation the relative locaiton of the obstacle from the start position.
+     * 
+     * @param startPosition The position from which we locate the obstacle.
+     * @param relativeLocation the relative locaiton of the obstacle from the start
+     * position.
      * @return An obstacle.
      */
     Obstacle createObstacle(Position startPosition, Location relativeLocation);
-    
+
     /**
      * Sets the coordinate as visited in the map.
+     * 
      * @param finalTarget the final target we are headed to.
      * @param coord the coordinate to mark as visited.
-     * @return 
+     * @return
      */
     void setVisited(Coordinate finalTarget, Coordinate coord);
-    
+
     /**
-     * Look in the given direction for the maximum range.  if there is an obstacle
-     * report the relative location.  otherwise return and empty optional.
+     * Look in the given direction for the maximum range. if there is an obstacle
+     * report the relative location. otherwise return and empty optional.
+     * 
      * @param position the position on the map to look from.
      * @param heading the direction to look.
      * @param maxRange the maximum range to look.

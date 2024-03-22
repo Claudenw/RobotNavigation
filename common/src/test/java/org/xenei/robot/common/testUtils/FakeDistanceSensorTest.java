@@ -4,11 +4,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Collection;
 import java.util.Set;
-import java.util.function.Supplier;
 
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
-import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Position;
@@ -18,8 +16,6 @@ import org.xenei.robot.common.mapping.Obstacle;
 import org.xenei.robot.common.planning.Solution;
 import org.xenei.robot.common.utils.RobutContext;
 import org.xenei.robot.mapper.MapImpl;
-import org.xenei.robot.mapper.MapReports;
-import org.xenei.robot.mapper.visualization.TextViz;
 
 public class FakeDistanceSensorTest {
     private FakeDistanceSensor underTest;
@@ -74,7 +70,7 @@ public class FakeDistanceSensorTest {
         solution.add(position);
         DebugViz debugViz = new DebugViz(1, map, () -> solution, () -> position);
         debugViz.redraw(null);
-        
+
         Set<Obstacle> obstacles = underTest.map().getObstacles();
         Location[] actual = underTest.sense();
         for (Location l : actual) {

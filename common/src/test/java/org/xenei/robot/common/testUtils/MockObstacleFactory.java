@@ -1,17 +1,11 @@
 package org.xenei.robot.common.testUtils;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
-
 import java.util.UUID;
 
 import org.apache.commons.lang3.NotImplementedException;
 import org.apache.jena.rdf.model.Literal;
 import org.apache.jena.rdf.model.Resource;
 import org.locationtech.jts.geom.Geometry;
-import org.mockito.Mockito;
-import org.mockito.invocation.InvocationOnMock;
-import org.mockito.stubbing.Answer;
 import org.xenei.robot.common.mapping.Obstacle;
 
 public class MockObstacleFactory {
@@ -34,22 +28,26 @@ public class MockObstacleFactory {
 
             @Override
             public UUID uuid() {
-                throw new NotImplementedException();            }
+                throw new NotImplementedException();
+            }
 
             @Override
             public Resource rdf() {
-                throw new NotImplementedException();            }
-            
+                throw new NotImplementedException();
+            }
+
+            @Override
             public int hashCode() {
                 return Obstacle.hashCode(this);
             }
-            
+
+            @Override
             public boolean equals(Object o) {
                 return Obstacle.equalsImpl(this, o);
             }
-            
+
         };
-  
+
     }
 
 }

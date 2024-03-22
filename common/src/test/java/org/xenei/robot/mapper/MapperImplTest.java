@@ -111,7 +111,7 @@ public class MapperImplTest {
         verify(map).addCoord(coordinateCaptor.capture(), doubleCaptor.capture(), one.capture(), two.capture());
         CoordinateUtils.assertEquivalent(new Coordinate(-1, -2), coordinateCaptor.getValue());
     }
-    
+
     @Test
     public void processSensorDataTest_NoTarget() {
 

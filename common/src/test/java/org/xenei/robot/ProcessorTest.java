@@ -28,7 +28,6 @@ public class ProcessorTest {
     private static final Logger LOG = LoggerFactory.getLogger(ProcessorTest.class);
     private final RobutContext ctxt;
 
-
     ProcessorTest() {
         ctxt = new RobutContext(ScaleInfo.DEFAULT, TestChassisInfo.DEFAULT);
     }

@@ -2,7 +2,6 @@ package org.xenei.robot.mapper.visualization;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.function.Supplier;
@@ -36,8 +35,7 @@ public class TextViz implements Mapper.Visualization {
         return x > Integer.MAX_VALUE ? Integer.MAX_VALUE : (x < Integer.MIN_VALUE ? Integer.MIN_VALUE : x);
     }
 
-    public TextViz(double scale, Map map, Supplier<Solution> solutionSupplier,
-            Supplier<Position> positionSupplier) {
+    public TextViz(double scale, Map map, Supplier<Solution> solutionSupplier, Supplier<Position> positionSupplier) {
         this.scale = scale;
         this.map = map;
         this.positionSupplier = positionSupplier;
@@ -93,7 +91,7 @@ public class TextViz implements Mapper.Visualization {
         } else {
             Arrays.stream(geom.getCoordinates()).forEach(coord -> {
                 Coord newCoord = new Coord(coord, c);
-                
+
                 if (points.contains(newCoord)) {
                     points.tailSet(newCoord).first().c = c;
                 } else {
@@ -122,12 +120,11 @@ public class TextViz implements Mapper.Visualization {
         addGeom(points, geometryUtils.asPoint(positionSupplier.get()), POSITION);
         output(stringBuilder(points));
     }
-    
+
     protected void output(StringBuilder sb) {
         System.out.println();
         System.out.println(sb);
     }
-    
 
     // a location in the map
     class Coord implements Comparable<Coord>, FrontsCoordinate {

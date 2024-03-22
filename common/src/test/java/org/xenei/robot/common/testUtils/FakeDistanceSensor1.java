@@ -8,7 +8,6 @@ import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.nio.charset.Charset;
 import java.util.LinkedHashMap;
-import java.util.TreeMap;
 import java.util.function.Supplier;
 
 import org.apache.commons.io.IOUtils;
@@ -73,7 +72,7 @@ public class FakeDistanceSensor1 implements FakeDistanceSensor {
             history.put(position, locations);
         }
     }
-    
+
     public Location[] replay(int idx) {
         return history.values().toArray(new Location[0][0])[idx];
     }

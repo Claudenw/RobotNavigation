@@ -1,30 +1,23 @@
 package org.xenei.robot.common.utils;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.List;
-import java.util.Stack;
 import java.util.stream.Collectors;
 
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
-import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
-import org.locationtech.jts.geom.PrecisionModel;
 import org.locationtech.jts.operation.buffer.BufferOp;
 import org.locationtech.jts.operation.buffer.BufferParameters;
 import org.xenei.robot.common.FrontsCoordinate;
 import org.xenei.robot.common.Location;
-import org.xenei.robot.common.ScaleInfo;
-import org.xenei.robot.mapper.rdf.WktDataType;
 
 public class GeometryUtils {
 
     private final RobutContext ctxt;
-    
+
     public GeometryUtils(RobutContext ctxt) {
         this.ctxt = ctxt;
     }
@@ -34,7 +27,7 @@ public class GeometryUtils {
     }
 
     public Polygon asPolygon(Coordinate coord, double radius, int edges) {
-        double angle = edges == 4 ?  AngleUtils.RADIANS_45 : 0.0;
+        double angle = edges == 4 ? AngleUtils.RADIANS_45 : 0.0;
         if (edges == 4) {
             radius *= DoubleUtils.SQRT2;
         }
@@ -56,7 +49,7 @@ public class GeometryUtils {
     public Polygon asPolygon(FrontsCoordinate coord, double radius, int edges) {
         return asPolygon(coord.getCoordinate(), radius, edges);
     }
-    
+
     public Polygon asPolygon(FrontsCoordinate... coord) {
         return asPolygon(Arrays.stream(coord).map(FrontsCoordinate::getCoordinate).collect(Collectors.toList()));
     }
@@ -71,10 +64,10 @@ public class GeometryUtils {
 
     public Geometry addBuffer(double buffer, Geometry initial) {
         BufferOp bufOp = new BufferOp(initial);
-        bufOp.setEndCapStyle(BufferParameters.CAP_ROUND);//BufferOp.CAP_BUTT);
-        return bufOp.getResultGeometry(buffer/2);
+        bufOp.setEndCapStyle(BufferParameters.CAP_ROUND);// BufferOp.CAP_BUTT);
+        return bufOp.getResultGeometry(buffer / 2);
     }
-    
+
     public Geometry asPath(double buffer, Coordinate... points) {
         return addBuffer(buffer, asLine(points));
     }

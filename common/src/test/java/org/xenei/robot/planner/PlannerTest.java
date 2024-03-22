@@ -7,13 +7,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyDouble;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.Collection;
-import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
@@ -256,11 +254,11 @@ public class PlannerTest {
 
         StepSupplier stepSupplier = new StepSupplier();
         stepSupplier.setup(new TestingStep(3, 2, 1, 1), null, new TestingStep(-1, 1, 1, 1));
-        
+
         StepSupplier coordStepSupplier = new StepSupplier();
 
-        final Coordinate visitedTarget[] = {null};
-        
+        final Coordinate visitedTarget[] = { null };
+
         Map map = new TestingMap() {
             @Override
             public Optional<Step> addCoord(Coordinate target, Double distance, boolean visited, Boolean isIndirect) {
@@ -277,14 +275,13 @@ public class PlannerTest {
                 if (underTest.getFinalTarget() == null) {
                     assertEquals(finalTarget, coord);
                 } else {
-                    assertEquals(underTest.getFinalTarget(), finalTarget );
+                    assertEquals(underTest.getFinalTarget(), finalTarget);
                 }
                 visitedTarget[0] = coord;
             }
         };
 
         Position initial = Position.from(-1, -3);
-
 
         coordStepSupplier.setup(new TestingStep(-1, -3, 0, 0));
         TestingPositionSupplier positionSupplier = new TestingPositionSupplier(initial);
@@ -302,8 +299,7 @@ public class PlannerTest {
         assertFalse(opStep.isPresent());
         CoordinateUtils.assertEquivalent(step, underTest.getTarget());
         assertNull(visitedTarget[0]);
-        
-        
+
         // change the position to current target location.
         positionSupplier.position = Position.from(underTest.getTarget());
         opStep = underTest.selectTarget();
@@ -313,7 +309,7 @@ public class PlannerTest {
         CoordinateUtils.assertNotEquivalent(step2, step);
         // verify that visited target is set
         CoordinateUtils.assertEquivalent(positionSupplier.position, visitedTarget[0]);
-        
+
         visitedTarget[0] = null;
 
         // change the position to the end location

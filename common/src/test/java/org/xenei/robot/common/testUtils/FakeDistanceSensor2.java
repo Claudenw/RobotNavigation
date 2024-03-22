@@ -8,7 +8,6 @@ import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Position;
 import org.xenei.robot.common.mapping.Map;
 import org.xenei.robot.common.utils.CoordUtils;
-import org.xenei.robot.mapper.visualization.TextViz;
 
 public class FakeDistanceSensor2 implements FakeDistanceSensor {
     private static final Logger LOG = LoggerFactory.getLogger(FakeDistanceSensor2.class);
@@ -16,7 +15,6 @@ public class FakeDistanceSensor2 implements FakeDistanceSensor {
     private final double angle;
     private static final double MAX_RANGE = 350;
     private final Supplier<Position> positionSupplier;
-    
 
     public FakeDistanceSensor2(Map map, double angle, Supplier<Position> positionSupplier) {
         this.map = map;
@@ -28,7 +26,6 @@ public class FakeDistanceSensor2 implements FakeDistanceSensor {
     public Map map() {
         return map;
     }
-
 
     @Override
     public Location[] sense() {
