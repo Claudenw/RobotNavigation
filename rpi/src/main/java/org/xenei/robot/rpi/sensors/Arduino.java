@@ -48,7 +48,7 @@ public class Arduino implements DistanceSensor {
         // check parity flag
         boolean parity = Integer.bitCount(timing) % 2 != 0;
         if (parity == parityFlg) {
-            LOG.debug(String.format("%x %x %d %s%n", buffer[0], buffer[1], timing, timing / TIME_TO_M));
+            LOG.debug(String.format("DataRead: 0:%x 1:%x %d %s", buffer[0], buffer[1], timing, timing / TIME_TO_M));
             if (timing > 0) {
                 Location c = Location.from(CoordUtils.fromAngle(0, timing / TIME_TO_M));
                 if (c.range() < 1.0) {
@@ -59,12 +59,13 @@ public class Arduino implements DistanceSensor {
             LOG.error("PARITY ERROR");
         }
 
-        return new Location[] {};
+        return new Location[] {Location.INFINITE};
     }
 
     public static void main(String[] args) {
         Arduino sensor = new Arduino();
         while (true) {
+            System.out.println("Senseing");
             Arrays.stream(sensor.sense()).forEach(System.out::println);
             TimingUtils.delay(500);
         }
