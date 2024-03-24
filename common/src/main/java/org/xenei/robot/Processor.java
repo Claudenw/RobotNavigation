@@ -147,7 +147,10 @@ public class Processor {
         map.addCoord(finalLocation.getCoordinate(), null, false, null);
         NavigationSnapshot snapshot = new NavigationSnapshot(positionSupplier.get(), finalLocation.getCoordinate());
         processSensorData(snapshot);
-        planner.setTarget(snapshot.target);
+        double heading = planner.setTarget(snapshot.target);
+        if (LOG.isDebugEnabled()) {
+            LOG.debug( "changing heading to {} from {}", heading, positionSupplier.get().getHeading() );
+        }
         while (planner.getTarget() != null) {
             Optional<Step> opStep = planner.selectTarget();
             if (planner.getTarget() == null) {

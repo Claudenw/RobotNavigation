@@ -1,5 +1,6 @@
 package org.xenei.robot.mapper;
 
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -36,9 +37,20 @@ public class MapperImpl implements Mapper {
     public List<Step> processSensorData(Coordinate finalTarget, NavigationSnapshot snapshot, Location[] obstacles) {
 
         LOG.debug("Sense position: {}", snapshot.position);
-
+        if (obstacles.length == 0) {
+            LOG.debug("No positions returned from sensor");
+            return Collections.emptyList();
+        }
         ObstacleMapper mapper = new ObstacleMapper(snapshot.position);
         List.of(obstacles).forEach(mapper::doMap);
+        if (mapper.newObstacles.isEmpty()) {
+            LOG.debug("No new obstacles detected");
+            return Collections.emptyList();
+        } 
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("{} obstacles detected", mapper.newObstacles.size());
+        }
+
         if (finalTarget != null) {
             map.updateIsIndirect(finalTarget, mapper.newObstacles);
         }
@@ -80,15 +92,18 @@ public class MapperImpl implements Mapper {
          * @param relativeObstacle the relative location to the obstacle.
          */
         void doMap(Location relativeObstacle) {
-            /* create absolute coordinates
-             * relativeObstacle is always a point on an edge of an obstacle. so add 1/2 map resolution to 
-             * the relative distance to place the obstacle within a cell.
-             */
-            newObstacles.addAll(map.addObstacle(map.createObstacle(currentPosition, relativeObstacle)));
-            if (!DoubleUtils.inRange(relativeObstacle.range(), tolerance)) {
-                Optional<Coordinate> possibleCoord = findCoordinateNear(relativeObstacle);
-                if (possibleCoord.isPresent()) {
-                    coordSet.add(possibleCoord.get());
+            if (!relativeObstacle.isInfinite())
+            {
+                /* create absolute coordinates
+                 * relativeObstacle is always a point on an edge of an obstacle. so add 1/2 map resolution to 
+                 * the relative distance to place the obstacle within a cell.
+                 */
+                newObstacles.addAll(map.addObstacle(map.createObstacle(currentPosition, relativeObstacle)));
+                if (!DoubleUtils.inRange(relativeObstacle.range(), tolerance)) {
+                    Optional<Coordinate> possibleCoord = findCoordinateNear(relativeObstacle);
+                    if (possibleCoord.isPresent()) {
+                        coordSet.add(possibleCoord.get());
+                    }
                 }
             }
         }

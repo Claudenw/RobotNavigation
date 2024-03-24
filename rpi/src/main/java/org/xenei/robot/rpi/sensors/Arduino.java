@@ -58,7 +58,7 @@ public class Arduino implements DistanceSensor {
         } else {
             LOG.error("PARITY ERROR");
         }
-
+        LOG.debug("Returning INFINITE location: "+Location.INFINITE);
         return new Location[] {Location.INFINITE};
     }
 

@@ -83,4 +83,15 @@ public class CoordUtils {
     public static double calcHeading(Coordinate from, Coordinate to) {
         return AngleUtils.normalize(Math.atan2(to.getY() - from.getY(), to.getX() - from.getX()));
     }
+
+    /**
+     * Returns true if the Coordinate represents a point of infinite distance.
+     * 
+     * @param loc the Location to check.
+     * @return true if the location is not finite, false otherwise.
+     */
+    public static boolean isInfinite(Coordinate coord) {
+        return !(Double.isFinite(coord.getX()) && Double.isFinite(coord.getY()));
+    }
+
 }

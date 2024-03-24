@@ -227,29 +227,34 @@ public class RpiMover implements Mover, AutoCloseable {
     }
    
 
+    double compassHeading() {
+        return ctxt.scaleInfo.precise(compass.heading());
+    }
+    
     @Override
     public void setHeading(double heading) {
         double headingDiff = compass.heading() - heading;
         makeInternalHeading(heading);
         double newHeadingDiff =  compass.heading() - heading;
         while (!DoubleUtils.inRange(Math.abs(newHeadingDiff), 0.01)) {
+            LOG.debug("Heading difference: {}", newHeadingDiff);
             // heading / (heading - newheading) = 1 when we are 
             double ratio = headingDiff / (headingDiff - newHeadingDiff);
             this.headingFactor *= ratio;
             makeInternalHeading(heading);
             headingDiff = newHeadingDiff;
-            newHeadingDiff =  compass.heading() - heading;
+            newHeadingDiff =  compassHeading() - heading;
         }
     }
 
     public void makeInternalHeading(double heading) {
         // theta r is the distance the wheel has to move to pass through the arc from
         // to make the direction change.
-        double theta = AngleUtils.normalize(heading - compass.heading());
+        double theta = AngleUtils.normalize(heading - compassHeading());
         int thetaSteps = steps(theta * headingFactor);
         if (LOG.isDebugEnabled()) {
-            LOG.debug(String.format("Setting heading: %s degrees sweeping through %s degrees of arc",
-                    Math.toDegrees(heading), Math.toDegrees(theta)));
+            LOG.debug("Setting heading: {} degrees sweeping through {} degrees of arc",
+                    Math.toDegrees(heading), Math.toDegrees(theta));
         }
         if (thetaSteps == 0) {
             return;
@@ -305,7 +310,7 @@ public class RpiMover implements Mover, AutoCloseable {
         public void close() {
             stop();
             double range = rotationalDistance * (ssLeft.fwdRotation() + ssRight.fwdRotation());
-            Coordinate shift = CoordUtils.fromAngle(compass.heading(), range);
+            Coordinate shift = ctxt.scaleInfo.precise(CoordUtils.fromAngle(compass.heading(), range));
             coordinates = CoordUtils.add(coordinates, shift);
             LOG.debug("steps result: range:{} shift:{} position:{}", range, shift, position());
         }

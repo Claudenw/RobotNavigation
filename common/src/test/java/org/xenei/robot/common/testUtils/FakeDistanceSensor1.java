@@ -8,6 +8,7 @@ import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.nio.charset.Charset;
 import java.util.LinkedHashMap;
+import java.util.Optional;
 import java.util.function.Supplier;
 
 import org.apache.commons.io.IOUtils;
@@ -104,8 +105,7 @@ public class FakeDistanceSensor1 implements FakeDistanceSensor {
         if (LOG.isDebugEnabled()) {
             LOG.debug("Scanning heading: {} {}", heading, Math.toDegrees(heading));
         }
-        return map.look(position, heading, 350)
-                .orElse(Location.from(CoordUtils.fromAngle(heading, Double.POSITIVE_INFINITY)));
+        return map.look(position, heading, 350).orElse(Location.INFINITE);
     }
 
     @Override

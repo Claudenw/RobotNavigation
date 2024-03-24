@@ -137,7 +137,6 @@ public class PlannerImpl implements Planner {
         map.recalculate(target);
         solution = new Solution();
         solution.add(pos);
-        ;
         return heading;
     }
 

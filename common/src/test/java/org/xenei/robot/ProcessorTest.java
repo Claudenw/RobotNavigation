@@ -62,6 +62,16 @@ public class ProcessorTest {
         Location finalCoord = Location.from(-1, 1);
         doTest(startCoord, finalCoord, mover, sensor);
     }
+    
+    @Test
+    public void stepTestEmptyMap() throws AbortedException {
+        Location startCoord = Location.from(-1, -3);
+        Mover mover = new FakeMover(Location.from(startCoord), 1);
+        Map m = new MapImpl(new RobutContext(ScaleInfo.DEFAULT, TestChassisInfo.DEFAULT));
+        DistanceSensor sensor = new FakeDistanceSensor1(m, mover::position);
+        Location finalCoord = Location.from(-1, 1);
+        doTest(startCoord, finalCoord, mover, sensor);
+    }
 
     private class StepTracker implements AbortTest {
         private int stepCount = 0;

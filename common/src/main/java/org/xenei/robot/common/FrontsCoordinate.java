@@ -6,6 +6,16 @@ import org.locationtech.jts.geom.Coordinate;
 import org.xenei.robot.common.utils.CoordUtils;
 
 public interface FrontsCoordinate {
+    
+    /**
+     * Returns true if the location represents a point of infnite distance.
+     * @param coord the Location to check.
+     * @return true if the location is not finite, false otherwise.
+     */
+    static boolean isInfinite(FrontsCoordinate loc) {
+        return CoordUtils.isInfinite(loc.getCoordinate());
+    }
+
 
     public static final FrontsCoordinate ORIGIN = new FrontsCoordinate() {
         UnmodifiableCoordinate zero = UnmodifiableCoordinate.make(new Coordinate(0,0));
@@ -14,6 +24,21 @@ public interface FrontsCoordinate {
             return zero; 
         }};
         
+        
+    /**
+     * A representative infinite value.  Testing for infinite values should be done
+     * using the isInfinite() method.
+     * @see #isInfinite()
+     */
+    public static FrontsCoordinate INFINITE = new FrontsCoordinate() {
+        UnmodifiableCoordinate infinity = UnmodifiableCoordinate.make(
+                new Coordinate(Double.POSITIVE_INFINITY,Double.POSITIVE_INFINITY));
+        @Override
+        public UnmodifiableCoordinate getCoordinate() {
+            return infinity; 
+        }};
+         
+
     /**
      * Compares Coordinates by XY positions.
      * 
@@ -95,5 +120,10 @@ public interface FrontsCoordinate {
     
     default boolean near(FrontsCoordinate other, double tolerance) {
         return near(other.getCoordinate(),tolerance);
+    }
+    
+    
+    default boolean isInfinite() {
+        return isInfinite(this);
     }
 }

@@ -20,7 +20,7 @@ unsigned int sonar_readings[SONAR_ITERATIONS];     // Where the ping distances a
 unsigned int current_iteration;                // Keeps track of iteration step.so
 unsigned int sonar_time;
 unsigned long next_trigger;
-short bitcount[] = { 0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4};
+short bitcount[] = {0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4};
 
 NewPing sonar(SONAR_TRIGGER_PIN, SONAR_ECHO_PIN, SONAR_MAX_DISTANCE);  // NewPing setup of pins and maximum distance.
 

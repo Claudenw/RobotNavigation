@@ -6,8 +6,17 @@ import org.locationtech.jts.geom.Coordinate;
 import org.xenei.robot.common.utils.CoordUtils;
 
 public interface Location extends FrontsCoordinate {
+    /**
+     * The origion for the map (0,0)
+     */
     static Location ORIGIN = from(new Coordinate(0, 0));
-
+    /**
+     * An examplar of an infinite location.
+     * @see CoordUtils#isInfinite(Coordinate)
+     * @see FrontsCoordinate#INFINITE
+     */
+    public static Location INFINITE = from(FrontsCoordinate.INFINITE);
+    
     static Location from(Coordinate c) {
         return new Location() {
             UnmodifiableCoordinate coord = UnmodifiableCoordinate.make(c);
@@ -76,4 +85,5 @@ public interface Location extends FrontsCoordinate {
     default double range() {
         return ORIGIN.distance(this);
     }
+   
 }

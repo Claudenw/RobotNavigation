@@ -116,7 +116,6 @@ public class MapperImplTest {
     public void processSensorDataTest_NoTarget() {
 
         Position currentPosition = Position.from(-1, -3, AngleUtils.RADIANS_90);
-        Coordinate target = new Coordinate(-1, 1);
         Step step = Mockito.mock(Step.class);
 
         Obstacle obstacle = Mockito.mock(Obstacle.class);
@@ -146,5 +145,39 @@ public class MapperImplTest {
         ArgumentCaptor<Boolean> two = ArgumentCaptor.forClass(Boolean.class);
         verify(map).addCoord(coordinateCaptor.capture(), doubleCaptor.capture(), one.capture(), two.capture());
         CoordinateUtils.assertEquivalent(new Coordinate(-1, -2), coordinateCaptor.getValue());
+    }
+    
+    @Test
+    public void processSensorDataTest_noSensorReadings() {
+
+        Position currentPosition = Position.from(-1, -3, AngleUtils.RADIANS_90);
+        Coordinate target = new Coordinate(-1, 1);
+        Step step = Mockito.mock(Step.class);
+
+        Obstacle obstacle = Mockito.mock(Obstacle.class);
+        Map map = Mockito.mock(Map.class);
+        when(map.getContext()).thenReturn(ctxt);
+        when(map.createObstacle(any(), any())).thenReturn(obstacle);
+        when(map.addObstacle(any())).thenReturn(Set.of(obstacle));
+        when(map.adopt(any())).thenReturn(new Coordinate(-1, -2));
+        when(map.isObstacle(any())).thenReturn(false);
+        when(map.addCoord(any(), anyDouble(), anyBoolean(), anyBoolean())).thenReturn(Optional.of(step));
+        Mapper underTest = new MapperImpl(map);
+
+        NavigationSnapshot snapshot = new NavigationSnapshot(currentPosition, target);
+        Collection<Step> result = underTest.processSensorData(null, snapshot, new Location[] {});
+        assertTrue(result.isEmpty());
+
+        // verify no indirects updated
+        verify(map, times(0)).updateIsIndirect(coordinateCaptor.capture(), setCaptor.capture());
+
+        // verify no obstacle was added
+        verify(map, times(0)).addObstacle(obstacleCaptor.capture());
+
+
+        // verify not coord was added
+        ArgumentCaptor<Boolean> one = ArgumentCaptor.forClass(Boolean.class);
+        ArgumentCaptor<Boolean> two = ArgumentCaptor.forClass(Boolean.class);
+        verify(map, times(0)).addCoord(coordinateCaptor.capture(), doubleCaptor.capture(), one.capture(), two.capture());
     }
 }
