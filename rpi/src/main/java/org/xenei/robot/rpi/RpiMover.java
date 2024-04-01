@@ -1,6 +1,8 @@
 package org.xenei.robot.rpi;
 
-import java.util.Random;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -30,6 +32,7 @@ import org.xenei.robot.rpi.drivers.ULN2003;
 import org.xenei.robot.rpi.drivers.ULN2003.Mode;
 
 public class RpiMover implements Mover, AutoCloseable {
+
     private static final int MAX_RPM = 150;
     private Motor[] motor = new Motor[2];
     private static final int LEFT = 0;
@@ -41,8 +44,12 @@ public class RpiMover implements Mover, AutoCloseable {
     /** Meters traveled in one rotation. */
     private final double rotationalDistance;
     private final int rpm;
-    /** what factor should be used to convert angle to rotations -- initially chassis radius.*/
+    /**
+     * what factor should be used to convert angle to rotations -- initially chassis
+     * radius.
+     */
     private double headingFactor;
+    private double turningFactor;
 
     private static final Logger LOG = LoggerFactory.getLogger(RpiMover.class);
 
@@ -56,11 +63,10 @@ public class RpiMover implements Mover, AutoCloseable {
      * @throws InterruptedException
      */
     RpiMover(RobutContext ctxt, Compass compass, Coordinate coords) throws InterruptedException {
-        this(ctxt, compass, coords, 
-                new ULN2003(Mode.FULL_STEP, ULN2003.STEPPER_28BYJ48, 17, 27, 22, 23),
+        this(ctxt, compass, coords, new ULN2003(Mode.FULL_STEP, ULN2003.STEPPER_28BYJ48, 17, 27, 22, 23),
                 new ULN2003(Mode.FULL_STEP, ULN2003.STEPPER_28BYJ48, 6, 24, 25, 26));
     }
-    
+
     /**
      * @param ctxt The context for the robut.
      * @param compass the compass implementation to use.
@@ -70,11 +76,12 @@ public class RpiMover implements Mover, AutoCloseable {
      * @param maxSpeed meters / minute (min 1, max 150).
      * @throws InterruptedException
      */
-    RpiMover(RobutContext ctxt, Compass compass, Coordinate coords, Motor left, Motor right) throws InterruptedException {
+    RpiMover(RobutContext ctxt, Compass compass, Coordinate coords, Motor left, Motor right)
+            throws InterruptedException {
         this.ctxt = ctxt;
         motor[LEFT] = left;
         motor[RIGHT] = right;
-        this.headingFactor = ctxt.chassisInfo.radius;
+        this.headingFactor = 1.0;
         this.coordinates = coords;
         this.compass = compass;
         this.rotationalDistance = Math.PI * ctxt.chassisInfo.wheelDiameter / 100; // in meters
@@ -82,39 +89,56 @@ public class RpiMover implements Mover, AutoCloseable {
         // this.r = width/2.0; // in cm
         // meterminute / meterrotation = meterrotation/meter/minute = r/m
         this.rpm = limit((long) Math.ceil(ctxt.chassisInfo.maxSpeed / rotationalDistance), 1, MAX_RPM);
+        this.turningFactor = ctxt.chassisInfo.radius * AngleUtils.PI_x_2;
         LOG.debug("RpiMover: {}", position());
     }
 
     private static Options getOptions() {
-        return new Options().addOption(new Option("?", "This help"))
-                .addOption(Option.builder("s").type(Double.class).desc("max Speed in meters/minute (min=1, max=150)")
-                        .hasArg().build())
+        return new Options().addOption(new Option("?", "This help")).addOption(new Option("q", "Quit"))
                 .addOption(Option.builder("h").type(Double.class).desc("Heading").hasArg().build())
-                .addOption(new Option("a", "Analyze heading movement"));
+                .addOption(Option.builder("m").type(Double.class).desc("Move (angle range)").hasArgs().build())
+                .addOption(new Option("c", "Compass reading"));
     }
 
     public static void main(String[] args) {
         try {
-            CommandLine commandLine = DefaultParser.builder().build().parse(getOptions(), args);
-            if (commandLine.hasOption("?")) {
-                new HelpFormatter().printHelp(ULN2003.class.getCanonicalName(), getOptions());
-                return;
-            }
-            double speed = commandLine.getParsedOptionValue("s", 60);
-            //
-            RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT, new ChassisInfo(0.24, 8, speed));
+            RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT, new ChassisInfo(0.22, 8, 60));
             Compass compass = new CompassImpl();
             try (RpiMover mover = new RpiMover(ctxt, compass, new Coordinate(0, 0))) {
-                if (commandLine.hasOption('a')) {
-                    // doAnalyze(mover);
-                } else {
-                    double heading = Math.toRadians(commandLine.getParsedOptionValue("h"));
-                    double theta = compass.heading();
-                    LOG.debug("Heading: {} {} degrees", theta, Math.toDegrees(theta));
-                    mover.setHeading(heading);
-                    LOG.debug("Mover: {}", mover.position());
-                    theta = compass.heading();
-                    LOG.debug("Heading: {} {} degrees", theta, Math.toDegrees(theta));
+
+                BufferedReader bufferReader = new BufferedReader(new InputStreamReader(System.in));
+                new HelpFormatter().printHelp(RpiMover.class.getCanonicalName(), getOptions());
+                while (true) {
+                    System.out.print("Command: ");
+                    String line = bufferReader.readLine();
+                    System.out.format("Read: %s\n", line);
+                    if (line == null || line.length() == 0) {
+                        return;
+                    }
+                    CommandLine commandLine = DefaultParser.builder().build().parse(getOptions(), line.split("\s"));
+                    if (commandLine.hasOption("?")) {
+                        new HelpFormatter().printHelp(RpiMover.class.getCanonicalName(), getOptions());
+                    }
+
+                    if (commandLine.hasOption("h")) {
+                        mover.setHeading(Math.toRadians(commandLine.getParsedOptionValue("h")));
+                    }
+                    if (commandLine.hasOption("m")) {
+                        List<Object> values = commandLine.getParsedOptionValues("m");
+                        double angle = Math.toRadians(((Double) values.get(0)).doubleValue());
+                        double range = ((Double) values.get(1)).doubleValue();
+                        Location l = Location.from(CoordUtils.fromAngle(angle, range));
+                        mover.move(l);
+                    }
+                    if (commandLine.hasOption("q")) {
+                        return;
+                    }
+                    if (commandLine.hasOption("c")) {
+                        System.out.println(compass);
+                        double h = mover.compassHeading();
+                        System.out.println(String.format("Mover[Heading: %s %s degrees hf:%s]", h, Math.toDegrees(h),
+                                mover.headingFactor));
+                    }
                 }
             }
         } catch (Exception e) {
@@ -125,53 +149,10 @@ public class RpiMover implements Mover, AutoCloseable {
         System.exit(0);
     }
 
-    private static void doAnalyze(RpiMover mover) {
-        Random random = new Random();
-        int head = random.nextInt(-180, 180);
-        double theta = Math.toRadians(head);
-
-        double originalHeading = mover.position().getHeading();
-        double arc = AngleUtils.normalize(theta - originalHeading);
-        double d = arc * mover.ctxt.chassisInfo.radius;
-
-        mover.setHeading(theta);
-
-        double actual = mover.position().getHeading();
-        double aarc = AngleUtils.normalize(actual - originalHeading);
-        double ad = aarc * mover.ctxt.chassisInfo.radius;
-
-        double newR = ad / arc;
-
-        double err = actual - theta;
-
-        double limit = Math.toRadians(1.0);
-        while (err > limit) {
-            LOG.info("target {} actual {} err {} r:{} -> new r: {}", theta, actual, err, mover.ctxt.chassisInfo.radius,
-                    newR);
-//            mover.ctxt.chassisInfo.radius = newR;
-            head = random.nextInt(-180, 180);
-            theta = Math.toRadians(head);
-
-            originalHeading = mover.position().getHeading();
-            arc = AngleUtils.normalize(theta - originalHeading);
-            d = arc * mover.ctxt.chassisInfo.radius;
-
-            mover.setHeading(theta);
-
-            actual = mover.position().getHeading();
-            aarc = AngleUtils.normalize(actual - originalHeading);
-            ad = aarc * mover.ctxt.chassisInfo.radius;
-
-            newR = ad / arc;
-
-            err = actual - theta;
-
-        }
-    }
-
     public double getHeadingFactor() {
         return headingFactor;
     }
+
     private int limit(long value, int min, int max) {
         return (value < min) ? min : (value > max) ? max : (int) value;
     }
@@ -207,8 +188,8 @@ public class RpiMover implements Mover, AutoCloseable {
     }
 
     /**
-     * Starts the motors and returns the StepMonitor
-     * protected for testing.
+     * Starts the motors and returns the StepMonitor protected for testing.
+     * 
      * @param left the number of steps to take with the left motor.
      * @param right the number of steps to take with the right motor.
      * @param rpm
@@ -225,35 +206,46 @@ public class RpiMover implements Mover, AutoCloseable {
     public Position position() {
         return Position.from(coordinates, compass.heading());
     }
-   
 
     double compassHeading() {
-        return ctxt.scaleInfo.precise(compass.heading());
+        return compass.heading();
     }
-    
+
     @Override
     public void setHeading(double heading) {
         double headingDiff = compass.heading() - heading;
+
         makeInternalHeading(heading);
-        double newHeadingDiff =  compass.heading() - heading;
-        while (!DoubleUtils.inRange(Math.abs(newHeadingDiff), 0.01)) {
-            LOG.debug("Heading difference: {}", newHeadingDiff);
-            // heading / (heading - newheading) = 1 when we are 
-            double ratio = headingDiff / (headingDiff - newHeadingDiff);
-            this.headingFactor *= ratio;
+        double newHeadingDiff = compass.heading() - heading;
+        LOG.debug("old diff heading {} - new diff heading {} = {}", headingDiff, newHeadingDiff,
+                headingDiff - newHeadingDiff);
+
+        int escape=5;
+        while (!DoubleUtils.inRange(Math.abs(newHeadingDiff), compass.accuracy())) {
+            if (escape-- == 0) { 
+                break;
+            }
+            LOG.debug("Heading difference: {} accuracy: {}", newHeadingDiff, compass.accuracy());
+            // heading / (heading - newheading) = 1 when we are
+           /* double ratio = newHeadingDiff / headingDiff;
+            LOG.debug("Changing heading factor from {} to {}", this.headingFactor, ratio);
+            this.headingFactor = DoubleUtils.round(ratio, compass.decimalPlaces());
+            */
             makeInternalHeading(heading);
             headingDiff = newHeadingDiff;
-            newHeadingDiff =  compassHeading() - heading;
+            newHeadingDiff = compass.instantaneousHeading() - heading;
         }
+        LOG.debug("Heading {} achieved. {}", heading, compass);
     }
 
-    public void makeInternalHeading(double heading) {
+    private void makeInternalHeading(double heading) {
         // theta r is the distance the wheel has to move to pass through the arc from
         // to make the direction change.
-        double theta = AngleUtils.normalize(heading - compassHeading());
-        int thetaSteps = steps(theta * headingFactor);
+        double theta = AngleUtils.normalize(compass.instantaneousHeading()-heading)*-1;
+        double range = turningFactor * theta / AngleUtils.PI_x_2;
+        int thetaSteps = steps(range * this.headingFactor);
         if (LOG.isDebugEnabled()) {
-            LOG.debug("Setting heading: {} degrees sweeping through {} degrees of arc",
+            LOG.debug("Setting heading: {} {} degrees sweeping through {} degrees of arc", heading,
                     Math.toDegrees(heading), Math.toDegrees(theta));
         }
         if (thetaSteps == 0) {
@@ -261,11 +253,14 @@ public class RpiMover implements Mover, AutoCloseable {
         }
         try (StepMonitor monitor = takeSteps(thetaSteps, -thetaSteps, MAX_RPM)) {
             while (!monitor.complete()) {
-                if (DoubleUtils.inRange(Math.abs(compass.instantHeading() - heading), 0.01)) {
+                double d = compass.instantaneousHeading() - heading;
+                if (DoubleUtils.inRange(d, compass.accuracy())) {
+                    LOG.debug("In range so stopping: {} <= {}", d, compass.accuracy());
                     monitor.stop();
                 }
             }
         }
+        LOG.debug("{}", compass);
     }
 
     public class StepMonitor implements AutoCloseable {
@@ -310,7 +305,7 @@ public class RpiMover implements Mover, AutoCloseable {
         public void close() {
             stop();
             double range = rotationalDistance * (ssLeft.fwdRotation() + ssRight.fwdRotation());
-            Coordinate shift = ctxt.scaleInfo.precise(CoordUtils.fromAngle(compass.heading(), range));
+            Coordinate shift = ctxt.scaleInfo.round(CoordUtils.fromAngle(compass.heading(), range));
             coordinates = CoordUtils.add(coordinates, shift);
             LOG.debug("steps result: range:{} shift:{} position:{}", range, shift, position());
         }

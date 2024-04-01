@@ -2,12 +2,14 @@ package org.xenei.robot.rpi;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.Mockito.mock;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
 
+import org.apache.commons.lang3.NotImplementedException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -90,6 +92,7 @@ public class RpiMoverTest {
     
     class TestingCompass implements Compass {
         double heading;
+        
 
         TestingCompass(double heading) {
             this.heading = heading;
@@ -98,14 +101,19 @@ public class RpiMoverTest {
         public double heading() {
             return heading;
         }
-
-        @Override
-        public double instantHeading() {
-            return heading;
-        }
         
         public synchronized void increment(double value) {
             heading += value;
+        }
+        
+        @Override
+        public double sd()
+        {
+            return 0.1;
+        }
+        
+        public int decimalPlaces() {
+            throw new NotImplementedException();
         }
     }
     

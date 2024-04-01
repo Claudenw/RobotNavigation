@@ -15,7 +15,10 @@ public interface Motor extends AutoCloseable {
 
     interface SteppingStatus extends Callable<SteppingStatus> {
         
-       
+        /**
+         * Returns true if the motor is running.
+         * @return
+         */
         public boolean isRunning();
         
         /**
@@ -24,6 +27,10 @@ public interface Motor extends AutoCloseable {
          */
         public int fwdSteps();
         
+        /**
+         * Gets the number of rotations of the wheel..
+         * @return the number of rotations.
+         */
         public double fwdRotation();
     }
 }
