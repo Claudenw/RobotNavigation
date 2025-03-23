@@ -32,7 +32,7 @@ public class PointCloudSorter {
             Coordinate pi = points.get(i);
             for (int j = i + 1; j < points.size(); j++) {
                 Coordinate pj = points.get(j);
-                double d = ctxt.scaleInfo.precise(pi.distance(pj));
+                double d = ctxt.scaleInfo.round(pi.distance(pj));
                 dMatrix.set(i, j, d);
                 if (d <= ctxt.scaleInfo.getResolution()) {
                     iMatrix.increment(i, j);

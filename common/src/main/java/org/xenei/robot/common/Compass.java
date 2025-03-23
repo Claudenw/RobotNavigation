@@ -1,6 +1,7 @@
 package org.xenei.robot.common;
 
 import org.locationtech.jts.geom.Coordinate;
+import org.xenei.robot.common.utils.DoubleUtils;
 
 public interface Compass {
     /**
@@ -32,9 +33,29 @@ public interface Compass {
     double heading();
     
     /**
-     * The heading read from the device at this instant.  This may differ from the {@code heading()} 
-     * results as this is an instantaneous value and that one may be averaged.
-     * @return the instantaneous heading measurement.
+     * the instantaneous heading.  The latest reading from the source.
+     * 
+     * @return the current heading
      */
-    double instantHeading();
+    double instantaneousHeading();
+    
+    /**
+     * Gets the standard deviaion of the compass measurements.
+     * @return the standard deviation of the compass measurements
+     */
+    double sd();
+    
+    /**
+     * Number of decimal positions of accuracy.
+     * @return the number of decimal digits of accuracy.
+     */
+    int decimalPlaces();
+    
+    /**
+     * The decimal position at which changes can not be detected.
+     * @return the accuracy
+     */
+    default double accuracy() {
+        return DoubleUtils.tolerance(decimalPlaces());
+    }
 }

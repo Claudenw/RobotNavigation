@@ -51,7 +51,7 @@ public class ScaleInfoTest {
     @ParameterizedTest(name = "{index} - {2}")
     @MethodSource("precisionParameters")
     public void preciseTest(ScaleInfo underTest, double expected, double value) {
-        assertEquals(expected, underTest.precise(value));
+        assertEquals(expected, underTest.round(value));
     }
 
     private static Stream<Arguments> precisionParameters() {

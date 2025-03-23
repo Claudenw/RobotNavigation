@@ -231,6 +231,7 @@ public class MapImpl implements Map {
     @SuppressWarnings("unchecked")
     @Override
     public Set<Obstacle> addObstacle(Obstacle obst) {
+        LOG.debug("Adding obstacle: {}", obst);
         return (Set<Obstacle>) obstacleHandler.addObstacle(obst);
     }
 
@@ -836,7 +837,7 @@ public class MapImpl implements Map {
 
         ObstacleImpl(Position startPostition, Location relativeLocation) {
             Position absoluteObstacle = startPostition.nextPosition(relativeLocation);
-            absoluteObstacle = Position.from(ctxt.scaleInfo.precise(absoluteObstacle.getCoordinate()),
+            absoluteObstacle = Position.from(ctxt.scaleInfo.round(absoluteObstacle.getCoordinate()),
                     absoluteObstacle.getHeading());
             geom = ctxt.geometryUtils.asPoint(absoluteObstacle);
             wkt = ctxt.graphGeomFactory.asWKT(geom);

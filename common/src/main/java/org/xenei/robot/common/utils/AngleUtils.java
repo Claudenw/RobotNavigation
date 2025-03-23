@@ -10,6 +10,10 @@ public class AngleUtils {
     public static final double RADIANS_270 = -RADIANS_90;
     public static final double RADIANS_315 = -RADIANS_45;
     
+    /** 2 * pi */
+    public static final double PI_x_2 = 2 * Math.PI;
+   
+    
     /**
      * The point at which rounding errors appear in angular calculations.
      */

@@ -45,7 +45,7 @@ public class Processor {
     public Processor(RobutContext ctxt, Mover mover, Supplier<Position> positionSupplier, DistanceSensor sensor) {
         this.ctxt = ctxt;
         this.mover = mover;
-        this.positionSupplier = positionSupplier;
+        this.positionSupplier = () -> ctxt.scaleInfo.round(positionSupplier.get());
         this.sensor = sensor;
         map = new MapImpl(ctxt);
         mapper = new MapperImpl(map);
@@ -126,7 +126,7 @@ public class Processor {
     }
 
     private NavigationSnapshot setHeading(double heading) {
-     // adjust the heading 
+        // adjust the heading 
         mover.setHeading(heading);
         NavigationSnapshot snapshot = newSnapshot();
         // look where we are heading.
@@ -149,7 +149,7 @@ public class Processor {
         processSensorData(snapshot);
         double heading = planner.setTarget(snapshot.target);
         if (LOG.isDebugEnabled()) {
-            LOG.debug( "changing heading to {} from {}", heading, positionSupplier.get().getHeading() );
+            LOG.debug( "calculated heading {} compare to {}", heading, positionSupplier.get().getHeading() );
         }
         while (planner.getTarget() != null) {
             Optional<Step> opStep = planner.selectTarget();
@@ -158,7 +158,7 @@ public class Processor {
             }
             if (opStep.isPresent()) {
                 Step step = opStep.get();
-                Position nextPosition = step.nextPosition(snapshot.position);
+                Position nextPosition = map.getContext().scaleInfo.round(step.nextPosition(snapshot.position));
                 if (snapshot.didHeadingChange(nextPosition)) {
                     snapshot = setHeading(nextPosition.getHeading());
                 }

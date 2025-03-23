@@ -7,7 +7,18 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="73861c4c-4921-4ad2-ad58-e4848e0c1787" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/../rpi/src/main/java/org/xenei/robot/rpi/sensors/Arduino.java" beforeDir="false" afterPath="$PROJECT_DIR$/../rpi/src/main/java/org/xenei/robot/rpi/sensors/Arduino.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../common/src/main/java/org/xenei/robot/Processor.java" beforeDir="false" afterPath="$PROJECT_DIR$/../common/src/main/java/org/xenei/robot/Processor.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../common/src/main/java/org/xenei/robot/common/Compass.java" beforeDir="false" afterPath="$PROJECT_DIR$/../common/src/main/java/org/xenei/robot/common/Compass.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../common/src/main/java/org/xenei/robot/common/Position.java" beforeDir="false" afterPath="$PROJECT_DIR$/../common/src/main/java/org/xenei/robot/common/Position.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../common/src/main/java/org/xenei/robot/common/ScaleInfo.java" beforeDir="false" afterPath="$PROJECT_DIR$/../common/src/main/java/org/xenei/robot/common/ScaleInfo.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../common/src/main/java/org/xenei/robot/common/utils/AngleUtils.java" beforeDir="false" afterPath="$PROJECT_DIR$/../common/src/main/java/org/xenei/robot/common/utils/AngleUtils.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../common/src/main/java/org/xenei/robot/common/utils/DoubleUtils.java" beforeDir="false" afterPath="$PROJECT_DIR$/../common/src/main/java/org/xenei/robot/common/utils/DoubleUtils.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../common/src/main/java/org/xenei/robot/mapper/MapImpl.java" beforeDir="false" afterPath="$PROJECT_DIR$/../common/src/main/java/org/xenei/robot/mapper/MapImpl.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../common/src/main/java/org/xenei/robot/mapper/MapperImpl.java" beforeDir="false" afterPath="$PROJECT_DIR$/../common/src/main/java/org/xenei/robot/mapper/MapperImpl.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../common/src/main/java/org/xenei/robot/mapper/PointCloudSorter.java" beforeDir="false" afterPath="$PROJECT_DIR$/../common/src/main/java/org/xenei/robot/mapper/PointCloudSorter.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../common/src/main/java/org/xenei/robot/planner/PlannerImpl.java" beforeDir="false" afterPath="$PROJECT_DIR$/../common/src/main/java/org/xenei/robot/planner/PlannerImpl.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../common/src/test/java/org/xenei/robot/common/LocationTest.java" beforeDir="false" afterPath="$PROJECT_DIR$/../common/src/test/java/org/xenei/robot/common/LocationTest.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../common/src/test/java/org/xenei/robot/common/ScaleInfoTest.java" beforeDir="false" afterPath="$PROJECT_DIR$/../common/src/test/java/org/xenei/robot/common/ScaleInfoTest.java" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -25,9 +36,9 @@
     <option name="majorVersion" value="2023" />
     <option name="minorVersion" value="2.2" />
   </component>
-  <component name="ProjectColorInfo"><![CDATA[{
-  "associatedIndex": 8
-}]]></component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 8
+}</component>
   <component name="ProjectId" id="2YtwZcNeiFY0cSL8fiWpphTnwak" />
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
@@ -38,10 +49,12 @@
     "RunOnceActivity.OpenProjectViewOnStart": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.cidr.known.project.marker": "true",
+    "RunOnceActivity.readMode.enableVisualFormatting": "true",
     "WebServerToolWindowFactoryState": "false",
     "cf.first.check.clang-format": "false",
     "cidr.known.project.marker": "true",
     "git-widget-placeholder": "main",
+    "nodejs_package_manager_path": "npm",
     "vue.rearranger.settings.migration": "true"
   }
 }]]></component>
@@ -54,7 +67,11 @@
       <option name="presentableId" value="Default" />
       <updated>1701358241720</updated>
       <workItem from="1701358243887" duration="14000" />
+      <workItem from="1718860150402" duration="89000" />
     </task>
     <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
   </component>
 </project>

@@ -12,6 +12,10 @@ public class DoubleUtils {
 
     private DoubleUtils() {
     }
+    
+    public static double tolerance(int decimalPlaces) {
+        return 1/Math.pow(10, decimalPlaces);
+    }
 
     // bitmasking negative number check
     public static boolean isNeg(double d) {

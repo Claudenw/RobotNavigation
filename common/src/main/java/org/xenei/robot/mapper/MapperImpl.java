@@ -14,6 +14,7 @@ import org.xenei.robot.common.FrontsCoordinate;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.NavigationSnapshot;
 import org.xenei.robot.common.Position;
+import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.common.mapping.Map;
 import org.xenei.robot.common.mapping.Mapper;
 import org.xenei.robot.common.mapping.Obstacle;
@@ -42,7 +43,8 @@ public class MapperImpl implements Mapper {
             return Collections.emptyList();
         }
         ObstacleMapper mapper = new ObstacleMapper(snapshot.position);
-        List.of(obstacles).forEach(mapper::doMap);
+        ScaleInfo scaleInfo = map.getContext().scaleInfo;
+        List.of(obstacles).stream().map( l -> scaleInfo.round(l)).forEach(mapper::doMap);
         if (mapper.newObstacles.isEmpty()) {
             LOG.debug("No new obstacles detected");
             return Collections.emptyList();

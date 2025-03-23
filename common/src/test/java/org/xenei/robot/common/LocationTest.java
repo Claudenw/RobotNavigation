@@ -7,6 +7,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Stream;
 
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -42,5 +43,11 @@ public class LocationTest {
         Arrays.stream(CoordUtilsTest.arguments()).forEach(s -> processStream(lst, s));
 
         return Stream.of(lst.toArray(new Arguments[0]));
+    }
+    
+    @Test
+    public void thetaTest() {
+        Location underTest = Location.from(0,5);
+        System.out.println( underTest.theta() );
     }
 }

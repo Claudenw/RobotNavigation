@@ -50,26 +50,43 @@ public final class ScaleInfo {
     /**
      * Rounds the double to the number of specified decimal places.
      * @param d the number to truncate.
-     * @return The truncated value.
+     * @return The rounded value.
      */
-    public double precise(double d) {
+    public double round(double d) {
         return DoubleUtils.round(d, decimalPlaces);
     }
 
     /**
-     * Rounds the coordinates to the specified decimal places.
-     * @param c the original coordinate
-     * @return the coordinate with truncated positions.
+     * Rounds the position coordinates and heading to the specified decimal places.
+     * @param pos the original position
+     * @return the position with rounded positions.
      */
-    public Coordinate precise(Coordinate c) {
-        return new Coordinate(precise(c.getX()),precise(c.getY()));
+    public Position round(Position pos) {
+        return pos.isInfinite() ? pos : Position.from(round(pos.getX()), round(pos.getY()), round(pos.getHeading()));
+    }
 
+    /**
+     * Rounds the location coordinates to the specified decimal places.
+     * @param loc the original location
+     * @return the position with rounded positions.
+     */
+    public Location round(Location loc) {
+        return loc.isInfinite()? loc : Location.from(round(loc.getX()), round(loc.getY()));
+    }
+    
+    /**
+     * Rounds the coordinates to the specified decimal places.
+     * @param coord the original coordinate
+     * @return the coordinate with rounded values.
+     */
+    public Coordinate round(Coordinate coord) {
+        return new Coordinate(round(coord.getX()), round(coord.getY()));
     }
 
     /**
      * Puts the value within a cell on a map.
-     * @param value
-     * @return
+     * @param value the value to scale.
+     * @return the value the scaled value.
      */
     public double scale(double value) {
         long scaledValue = (long) Math.floor((Math.abs(value) * scale * truncationFactor) + (modulusFactor / 2.0));

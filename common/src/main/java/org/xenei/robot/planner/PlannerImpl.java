@@ -133,11 +133,10 @@ public class PlannerImpl implements Planner {
         LOG.info("Setting target to {} starting from {}", target, pos);
         this.target.clear();
         this.target.push(target);
-        double heading = CoordUtils.calcHeading(pos.getCoordinate(), getTarget());
         map.recalculate(target);
         solution = new Solution();
         solution.add(pos);
-        return heading;
+        return map.getContext().scaleInfo.round(CoordUtils.calcHeading(pos.getCoordinate(), getTarget()));
     }
 
     @Override

@@ -27,8 +27,8 @@ public interface Position extends Location {
 
             @Override
             public String toString() {
-                return String.format("Position[ %s heading:%.4f ]", CoordUtils.toString(this.getCoordinate(), 4),
-                        Math.toDegrees(getHeading()));
+                return String.format("Position[ %s heading:%.4f (%.4f) ]", CoordUtils.toString(this.getCoordinate(), 4),
+                        getHeading(), Math.toDegrees(getHeading()));
             }
         };
     }
