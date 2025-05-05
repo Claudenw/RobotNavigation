@@ -108,7 +108,7 @@ public class RpiMover implements Mover, AutoCloseable {
                     if (line == null || line.isEmpty()) {
                         return;
                     }
-                    CommandLine commandLine = DefaultParser.builder().build().parse(getOptions(), line.split("\s"));
+                    CommandLine commandLine = DefaultParser.builder().build().parse(getOptions(), line.split("\\s"));
                     if (commandLine.hasOption("?")) {
                         new HelpFormatter().printHelp(RpiMover.class.getCanonicalName(), getOptions());
                     }
@@ -189,7 +189,7 @@ public class RpiMover implements Mover, AutoCloseable {
      * @return
      */
     private StepMonitor takeSteps(int left, int right, int rpm) {
-        LOG.debug(String.format("Taking steps %s %s @ %s rpm", left, right, rpm));
+        LOG.debug("Taking steps {} {} @ {} rpm", left, right, rpm);
         SteppingStatus ssLeft = motor[LEFT].prepareRun(left, rpm);
         SteppingStatus ssRight = motor[RIGHT].prepareRun(right, rpm);
         return new StepMonitor(ssLeft, ssRight);

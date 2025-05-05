@@ -7,8 +7,6 @@ import java.util.concurrent.locks.ReentrantLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xenei.robot.common.Compass;
-import org.xenei.robot.common.Position;
-import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.common.utils.AngleUtils;
 import org.xenei.robot.common.utils.DoubleUtils;
 import org.xenei.robot.rpi.sensors.MMC3416xPJ;
@@ -20,7 +18,7 @@ public class CompassImpl implements Compass {
     private final int limit = 10;
     private final MMC3416xPJ.Values[] samples;
     private int position = 0;
-    private Timer timer;;
+    private Timer timer;
     private float XSum = 0.0f;
     private float YSum = 0.0f;
     private final ReentrantLock lock;
@@ -52,7 +50,7 @@ public class CompassImpl implements Compass {
         position = 0;
         timer = new Timer();
         timer.schedule(task, 0, 250);
-        LOG.info("Compass: "+compass);
+        LOG.info("Compass: {}", compass);
     }
 
     /* package private for testing */
@@ -136,10 +134,8 @@ public class CompassImpl implements Compass {
     public static void main(String[] args) throws InterruptedException {
         CompassImpl c = new CompassImpl();
         while (true) {
-            double h = c.heading();
-            System.out.println( c.toString() );
+            System.out.println(c);
             Thread.sleep(500);
         }
     }
-
 }
