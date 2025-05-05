@@ -62,7 +62,7 @@ public class RpiMover implements Mover, AutoCloseable {
      */
     RpiMover(RobutContext ctxt, Compass compass, Coordinate coords) throws InterruptedException {
         this(ctxt, compass, coords, new ULN2003(Mode.FULL_STEP, ULN2003.STEPPER_28BYJ48, 15, 18, 23, 24),
-                new ULN2003(Mode.FULL_STEP, ULN2003.STEPPER_28BYJ48, 25,8, 7, 12));
+                new ULN2003(Mode.FULL_STEP, ULN2003.STEPPER_28BYJ48, 12,7, 8, 25));
     }
 
     /**
