@@ -31,8 +31,8 @@ public class MMC3416xPJ {
         _16bits_8ms(2048f, (byte) 0), _16bits_4ms(2048f, (byte) 0), _14bits_2ms(512f, (byte) 2),
         _12bits_1ms(128f, (byte) 4);
 
-        private float max;
-        private byte flag;
+        private final float max;
+        private final byte flag;
 
         Resolution(float max, byte flag) {
             this.max = max;
@@ -149,14 +149,14 @@ public class MMC3416xPJ {
     }
 
     public class Status {
-        private static byte REG_STATUS = 0x06;
+        private static final byte REG_STATUS = 0x06;
         /**
          * Check Status
          */
-        private static byte MEASUREMENT_DONE = 0x01;
-        private static byte PUMP_ON = 0x02;
-        private static byte READ_DONE = 0x04;
-        private static byte SELFTEST_OK = 0x08;
+        private static final byte MEASUREMENT_DONE = 0x01;
+        private static final byte PUMP_ON = 0x02;
+        private static final byte READ_DONE = 0x04;
+        private static final byte SELFTEST_OK = 0x08;
 
         private byte status;
 
@@ -196,14 +196,14 @@ public class MMC3416xPJ {
     }
 
     public class Configuration {
-        private static byte INTERNAL_CONTROL_0 = 0x07;
+        private static final byte INTERNAL_CONTROL_0 = 0x07;
 
-        private static byte RESET = 0x40;
-        private static byte SET = 0x20;
-        private static byte REFILL_CAP = (byte) 0x80;
-        private static byte NO_BOOST = 0x10;
-        private static byte CONTINUOUS_MODE = 0x02;
-        private static byte TAKE_MEASUREMENT = 0x01;
+        private static final byte RESET = 0x40;
+        private static final byte SET = 0x20;
+        private static final byte REFILL_CAP = (byte) 0x80;
+        private static final byte NO_BOOST = 0x10;
+        private static final byte CONTINUOUS_MODE = 0x02;
+        private static final byte TAKE_MEASUREMENT = 0x01;
 
         private byte value = 0;
 
@@ -258,9 +258,9 @@ public class MMC3416xPJ {
     }
 
     private class InternalControl {
-        private static byte INTERNAL_CONTROL_1 = 0x08;
-        private static byte SOFT_RESET = (byte) 0x80;
-        private static byte SELFTEST = 0x20;
+        private static final byte INTERNAL_CONTROL_1 = 0x08;
+        private static final byte SOFT_RESET = (byte) 0x80;
+        private static final byte SELFTEST = 0x20;
 
         private byte value = 0;
 
@@ -287,12 +287,10 @@ public class MMC3416xPJ {
     }
 
     public class Values {
-        private int[] data = new int[3];
+        private final int[] data = new int[3];
 
         private Values(int[] v) {
-            for (int i = 0; i < 3; i++) {
-                data[i] = v[i];
-            }
+            System.arraycopy(v, 0, data, 0, 3);
         }
 
         private Values() {
@@ -363,8 +361,7 @@ public class MMC3416xPJ {
             Values values = mag.getHeading();
             System.out.println(values);
             Location c = Location.from(values.getAxisValue(Axis.X), values.getAxisValue(Axis.Y));
-            Location d = Location.from(values.getAxisData(Axis.X), values.getAxisData(Axis.Y));
-            System.out.format("Heading: value: %s  data: %s\n", Math.toDegrees(c.theta()));
+            System.out.format("Heading: value: %s  data: %s\n", Math.toDegrees(c.theta()), values);
             TimingUtils.delay(TimeUnit.MILLISECONDS, 250);
         }
     }

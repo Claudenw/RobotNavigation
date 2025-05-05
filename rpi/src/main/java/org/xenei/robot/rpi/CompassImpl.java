@@ -16,7 +16,7 @@ import org.xenei.robot.rpi.sensors.MMC3416xPJ.Axis;
 
 public class CompassImpl implements Compass {
     private static final Logger LOG = LoggerFactory.getLogger(CompassImpl.class);
-    private MMC3416xPJ compass = new MMC3416xPJ();
+    private final MMC3416xPJ compass = new MMC3416xPJ();
     private final int limit = 10;
     private final MMC3416xPJ.Values[] samples;
     private int position = 0;

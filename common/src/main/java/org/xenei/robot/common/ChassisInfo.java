@@ -7,7 +7,7 @@ public class ChassisInfo {
      */
     public final double radius;
     /** The diameter of the wheels in cm. */
-    public final int wheelDiameter; 
+    public final double wheelDiameter;
     /** the maximum speed of the chassis in m/min */
     public final double maxSpeed; // m/min
 
@@ -17,7 +17,7 @@ public class ChassisInfo {
      * @param wheelDiameter in cm
      * @param maxSpeed in m/min
      */
-    public ChassisInfo(double maxWidth, int wheelDiameter, double maxSpeed) {
+    public ChassisInfo(double maxWidth, double wheelDiameter, double maxSpeed) {
         radius = maxWidth/2.0;
         this.wheelDiameter = wheelDiameter;
         this.maxSpeed = maxSpeed;
