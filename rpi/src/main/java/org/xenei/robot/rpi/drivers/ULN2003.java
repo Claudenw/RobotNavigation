@@ -263,7 +263,7 @@ public class ULN2003 implements Motor {
             return steps[(pulse / pulseLength) % steps.length];
         }
 
-    };
+    }
 
     static class MotorBlock {
         private final DigitalOutputDevice[] gpio;
