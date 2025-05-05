@@ -1,18 +1,9 @@
 package org.xenei.robot.rpi.drivers;
 
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.List;
-import java.util.concurrent.Callable;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.FutureTask;
+
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import org.apache.commons.cli.CommandLine;
@@ -23,12 +14,6 @@ import org.apache.commons.cli.ParseException;
 import org.apache.commons.cli.HelpFormatter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.xenei.robot.common.Listener;
-import org.xenei.robot.common.ListenerContainer;
-import org.xenei.robot.common.ListenerContainerImpl;
-import org.xenei.robot.common.planning.Planner;
-import org.xenei.robot.rpi.RpiMover;
-import org.xenei.robot.rpi.drivers.ULN2003.Mode;
 import org.xenei.robot.rpi.utils.DigitalOutputDeviceFactory;
 
 import com.diozero.api.DigitalOutputDevice;
@@ -55,7 +40,7 @@ public class ULN2003 implements Motor {
     
     private static Options getOptions() {
         
-        String modeOptions = Arrays.stream(Mode.values()).map( m -> m.name() ).collect(Collectors.joining(", "));
+        String modeOptions = Arrays.stream(Mode.values()).map(Enum::name).collect(Collectors.joining(", "));
         return new Options()
                 .addOption(new Option("?", "This help"))
                 .addOption(new Option("M", "Excersize MotorBlock"))
@@ -78,8 +63,7 @@ public class ULN2003 implements Motor {
             }
             int steps = commandLine.getParsedOptionValue("s");
             int rpm = commandLine.getParsedOptionValue("r");
-            
-            List<Integer> gpin = commandLine.getParsedOptionValues("g");
+            List<Integer> gpin = Arrays.stream(commandLine.getOptionValues("g")).map(Integer::parseInt).collect(Collectors.toList());
             Mode mode = commandLine.getParsedOptionValue("m");
             boolean fwd = !commandLine.hasOption("reverse");
             
@@ -152,10 +136,6 @@ public class ULN2003 implements Motor {
     public void close() throws Exception {
         block.stop();
     }
-
-    /**
-     * @see https://en.wikipedia.org/wiki/Stepper_motor#/media/File:Drive.png
-     */
 
     /**
      * Drive the stepper motor.
@@ -232,7 +212,7 @@ public class ULN2003 implements Motor {
     }
 
     /**
-     * @see https://en.wikipedia.org/wiki/Stepper_motor#/media/File:Drive.png
+     * @see <a href='https://en.wikipedia.org/wiki/Stepper_motor#/media/File:Drive.png'>drive diagram</a>
      */
     public enum Mode {
         FULL_STEP(2, new byte[] { // cycle 8
@@ -257,9 +237,9 @@ public class ULN2003 implements Motor {
         });
 
         /** The number of steps for each pulse */
-        private int pulseLength; 
+        private final int pulseLength;
         /** the patterns for the motor */
-        private byte[] steps;
+        private final byte[] steps;
         
 
         Mode(int pulseLength, byte[] steps) {
