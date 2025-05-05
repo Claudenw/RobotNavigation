@@ -87,10 +87,11 @@ public class RpiMover implements Mover, AutoCloseable {
     }
 
     private static Options getOptions() {
-        return new Options().addOption(new Option("?", "This help")).addOption(new Option("q", "Quit"))
+        return new Options().addOption(Option.builder("?").desc("This help").hasArg(false).build())
+                .addOption(Option.builder("q").desc("Quit").build())
                 .addOption(Option.builder("h").type(Double.class).desc("Heading").hasArg().build())
                 .addOption(Option.builder("m").type(Double.class).desc("Move (angle range)").hasArgs().build())
-                .addOption(new Option("c", "Compass reading"));
+                .addOption(Option.builder("c").desc("Compass reading").build());
     }
 
     public static void main(String[] args) {
@@ -121,7 +122,9 @@ public class RpiMover implements Mover, AutoCloseable {
                         double angle = Math.toRadians(values.get(0));
                         double range = values.get(1);
                         Location l = Location.from(CoordUtils.fromAngle(angle, range));
+                        System.out.println("Moving to " + l);
                         mover.move(l);
+
                     }
                     if (commandLine.hasOption("q")) {
                         return;
