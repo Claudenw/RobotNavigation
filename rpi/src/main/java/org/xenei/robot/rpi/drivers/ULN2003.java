@@ -266,21 +266,21 @@ public class ULN2003 implements Motor {
     };
 
     static class MotorBlock {
-        private DigitalOutputDevice[] gpio;
+        private final DigitalOutputDevice[] gpio;
         private int currentPulse;
-        private Mode mode;
+        private final Mode mode;
         
         private static byte[] map = { 0x8, 0x4, 0x2, 0x1 };
 
-        public MotorBlock(Mode mode, int gpio1, int gpio2, int gpio3, int gpio4) throws InterruptedException {
+        public MotorBlock(final Mode mode, final int gpio1, final int gpio2, final int gpio3, final int gpio4) throws InterruptedException {
             System.out.format("MotorBlock...%s %s %s %s %s%n", mode, gpio1, gpio2, gpio3, gpio4);
             this.mode = mode;
             this.currentPulse = -1;
-            this.gpio = new DigitalOutputDevice[4];
-            this.gpio[0] = dodF.build(gpio1);
-            this.gpio[1] = dodF.build(gpio2);
-            this.gpio[2] = dodF.build(gpio3);
-            this.gpio[3] = dodF.build(gpio4);
+            this.gpio = new DigitalOutputDevice[] {
+                new DigitalOutputDevice.Builder(gpio1).setActiveHigh(true).setInitialValue(false).build(),
+                    new DigitalOutputDevice.Builder(gpio2).setActiveHigh(true).setInitialValue(false).build(),
+                    new DigitalOutputDevice.Builder(gpio3).setActiveHigh(true).setInitialValue(false).build(),
+                    new DigitalOutputDevice.Builder(gpio4).setActiveHigh(true).setInitialValue(false).build()};
             // got to known state.
             step(true, 0);
         }
