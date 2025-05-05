@@ -34,7 +34,7 @@ import org.xenei.robot.rpi.drivers.ULN2003.Mode;
 
 public class RpiMover implements Mover, AutoCloseable {
 
-    private static final int MAX_RPM = 150;
+    private static final int MAX_RPM = 300;
     private final Motor[] motor = new Motor[2];
     private static final int LEFT = 0;
     private static final int RIGHT = 1;
