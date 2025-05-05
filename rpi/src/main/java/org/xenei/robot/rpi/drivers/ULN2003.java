@@ -273,6 +273,7 @@ public class ULN2003 implements Motor {
         private static byte[] map = { 0x8, 0x4, 0x2, 0x1 };
 
         public MotorBlock(Mode mode, int gpio1, int gpio2, int gpio3, int gpio4) throws InterruptedException {
+            System.out.format("MotorBlock...%s %s %s %s %s%n", mode, gpio1, gpio2, gpio3, gpio4);
             this.mode = mode;
             this.currentPulse = -1;
             this.gpio = new DigitalOutputDevice[4];
