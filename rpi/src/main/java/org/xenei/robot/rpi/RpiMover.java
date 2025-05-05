@@ -2,6 +2,7 @@ package org.xenei.robot.rpi;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -34,11 +35,11 @@ import org.xenei.robot.rpi.drivers.ULN2003.Mode;
 public class RpiMover implements Mover, AutoCloseable {
 
     private static final int MAX_RPM = 150;
-    private Motor[] motor = new Motor[2];
+    private final Motor[] motor = new Motor[2];
     private static final int LEFT = 0;
     private static final int RIGHT = 1;
     private Coordinate coordinates;
-    private Compass compass;
+    private final Compass compass;
     private final RobutContext ctxt;
     private final ExecutorService executor;
     /** Meters traveled in one rotation. */
@@ -48,8 +49,8 @@ public class RpiMover implements Mover, AutoCloseable {
      * what factor should be used to convert angle to rotations -- initially chassis
      * radius.
      */
-    private double headingFactor;
-    private double turningFactor;
+    private final double headingFactor;
+    private final double turningFactor;
 
     private static final Logger LOG = LoggerFactory.getLogger(RpiMover.class);
 
@@ -57,9 +58,6 @@ public class RpiMover implements Mover, AutoCloseable {
      * @param ctxt The context for the robut.
      * @param compass the compass implementation to use.
      * @param coords the initial coordinates.
-     * @param width The width of the mover in CM.
-     * @param wheelDiameter the wheel diameter in CM.
-     * @param maxSpeed meters / minute (min 1, max 150).
      * @throws InterruptedException
      */
     RpiMover(RobutContext ctxt, Compass compass, Coordinate coords) throws InterruptedException {
@@ -71,13 +69,8 @@ public class RpiMover implements Mover, AutoCloseable {
      * @param ctxt The context for the robut.
      * @param compass the compass implementation to use.
      * @param coords the initial coordinates.
-     * @param width The width of the mover in CM.
-     * @param wheelDiameter the wheel diameter in CM.
-     * @param maxSpeed meters / minute (min 1, max 150).
-     * @throws InterruptedException
      */
-    RpiMover(RobutContext ctxt, Compass compass, Coordinate coords, Motor left, Motor right)
-            throws InterruptedException {
+    RpiMover(RobutContext ctxt, Compass compass, Coordinate coords, Motor left, Motor right) {
         this.ctxt = ctxt;
         motor[LEFT] = left;
         motor[RIGHT] = right;
@@ -112,7 +105,7 @@ public class RpiMover implements Mover, AutoCloseable {
                     System.out.print("Command: ");
                     String line = bufferReader.readLine();
                     System.out.format("Read: %s\n", line);
-                    if (line == null || line.length() == 0) {
+                    if (line == null || line.isEmpty()) {
                         return;
                     }
                     CommandLine commandLine = DefaultParser.builder().build().parse(getOptions(), line.split("\s"));
@@ -124,9 +117,9 @@ public class RpiMover implements Mover, AutoCloseable {
                         mover.setHeading(Math.toRadians(commandLine.getParsedOptionValue("h")));
                     }
                     if (commandLine.hasOption("m")) {
-                        List<Object> values = commandLine.getParsedOptionValues("m");
-                        double angle = Math.toRadians(((Double) values.get(0)).doubleValue());
-                        double range = ((Double) values.get(1)).doubleValue();
+                        List<Double> values = Arrays.stream(commandLine.getOptionValues("m")).map(Double::parseDouble).toList();
+                        double angle = Math.toRadians(values.get(0));
+                        double range = values.get(1);
                         Location l = Location.from(CoordUtils.fromAngle(angle, range));
                         mover.move(l);
                     }

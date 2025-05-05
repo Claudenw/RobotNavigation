@@ -101,7 +101,12 @@ public class RpiMoverTest {
         public double heading() {
             return heading;
         }
-        
+
+        @Override
+        public double instantaneousHeading() {
+            return 0;
+        }
+
         public synchronized void increment(double value) {
             heading += value;
         }
