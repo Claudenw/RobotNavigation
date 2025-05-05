@@ -24,7 +24,8 @@ import com.diozero.api.DigitalOutputDevice;
 public class ULN2003 implements Motor {
 
     private static final Logger LOG = LoggerFactory.getLogger(ULN2003.class);
-    
+
+
     private static DigitalOutputDeviceFactory dodF = i -> new DigitalOutputDevice.Builder(i)
             .setActiveHigh(true).setInitialValue(false).build();
 
@@ -63,10 +64,11 @@ public class ULN2003 implements Motor {
             }
             int steps = commandLine.getParsedOptionValue("s");
             int rpm = commandLine.getParsedOptionValue("r");
-            List<Integer> gpin = Arrays.stream(commandLine.getOptionValues("g")).map(Integer::parseInt).collect(Collectors.toList());
+            List<Integer> gpin = Arrays.stream(commandLine.getOptionValues("g")).map(Integer::parseInt).toList();
             Mode mode = commandLine.getParsedOptionValue("m");
             boolean fwd = !commandLine.hasOption("reverse");
-            
+
+            System.out.format("Running ULN2003...%s%n", gpin);
             if (commandLine.hasOption("M")) {
                 MotorBlock block = new MotorBlock(mode, gpin.get(0), gpin.get(1), gpin.get(2), gpin.get(3));
                 for (int i=0;i<steps;i++) {
@@ -120,8 +122,8 @@ public class ULN2003 implements Motor {
 
     @Override
     public String toString() {
-        return new StringBuilder("ULN2003 ").append(hashCode()).append(":\n  " )
-        .append( block.toString()).append( String.format("\n  stepsPerRotation: %s", stepsPerRotation)).toString();
+        return "ULN2003 " + hashCode() + ":\n  " +
+                block.toString() + String.format("\n  stepsPerRotation: %s", stepsPerRotation);
     }
 
     private int limit(int value, int min, int max) {
