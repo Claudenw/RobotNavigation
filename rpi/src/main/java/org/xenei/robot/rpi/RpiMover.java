@@ -57,7 +57,7 @@ public class RpiMover implements Mover, AutoCloseable {
     private static ULN2003 left() throws InterruptedException {
         //return new ULN2003(Mode.FULL_STEP, ULN2003.STEPPER_28BYJ48, 15, 18, 23, 24);
        return new ULN2003(Mode.FULL_STEP, ULN2003.STEPPER_28BYJ48, 24 , 23, 18, 15);
-    };
+    }
 
     private static ULN2003 right() throws InterruptedException {
         return new ULN2003(Mode.FULL_STEP, ULN2003.STEPPER_28BYJ48, 12,7, 8, 25);
@@ -67,7 +67,7 @@ public class RpiMover implements Mover, AutoCloseable {
      * @param ctxt The context for the robut.
      * @param compass the compass implementation to use.
      * @param coords the initial coordinates.
-     * @throws InterruptedException
+     * @throws InterruptedException on configuration error.
      */
     RpiMover(RobutContext ctxt, Compass compass, Coordinate coords) throws InterruptedException {
         this(ctxt, compass, coords,  left(), right());
@@ -98,7 +98,7 @@ public class RpiMover implements Mover, AutoCloseable {
         return new Options().addOption(Option.builder("?").desc("This help").hasArg(false).build())
                 .addOption(Option.builder("q").desc("Quit").build())
                 .addOption(Option.builder("h").type(Double.class).desc("Heading").hasArg().build())
-                .addOption(Option.builder("m").type(Double.class).desc("Move (angle range)").hasArgs().build())
+                .addOption(Option.builder("m").type(Double.class).desc("Move (angle range)").numberOfArgs(2).build())
                 .addOption(Option.builder("c").desc("Compass reading").build());
     }
 
@@ -107,7 +107,7 @@ public class RpiMover implements Mover, AutoCloseable {
             RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT, new ChassisInfo(0.23, 3.2, 60));
             Compass compass = new CompassImpl();
             try (RpiMover mover = new RpiMover(ctxt, compass, new Coordinate(0, 0))) {
-
+                Options options = getOptions();
                 BufferedReader bufferReader = new BufferedReader(new InputStreamReader(System.in));
                 new HelpFormatter().printHelp(RpiMover.class.getCanonicalName(), getOptions());
                 while (true) {
@@ -117,7 +117,11 @@ public class RpiMover implements Mover, AutoCloseable {
                     if (line == null || line.isEmpty()) {
                         return;
                     }
-                    CommandLine commandLine = DefaultParser.builder().build().parse(getOptions(), line.split("\\s"));
+                    String[] cmd = Arrays.stream(line.split("\\s")).filter(s -> !s.isBlank()).toArray(String[]::new);
+                    if (!cmd[0].startsWith("-")) {
+                        cmd[0] = "-" + cmd[0];
+                    }
+                    CommandLine commandLine = DefaultParser.builder().build().parse(options, cmd);
                     if (commandLine.hasOption("?")) {
                         new HelpFormatter().printHelp(RpiMover.class.getCanonicalName(), getOptions());
                     }
@@ -140,8 +144,8 @@ public class RpiMover implements Mover, AutoCloseable {
                     if (commandLine.hasOption("c")) {
                         System.out.println(compass);
                         double h = mover.compassHeading();
-                        System.out.println(String.format("Mover[Heading: %s %s degrees hf:%s]", h, Math.toDegrees(h),
-                                mover.headingFactor));
+                        System.out.format("Mover[Heading: %s %s degrees hf:%s]%n", h, Math.toDegrees(h),
+                                mover.headingFactor);
                     }
                 }
             }
