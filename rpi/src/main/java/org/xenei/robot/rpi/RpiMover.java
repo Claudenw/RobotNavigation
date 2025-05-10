@@ -60,7 +60,7 @@ public class RpiMover implements Mover, AutoCloseable {
     };
 
     private static ULN2003 right() throws InterruptedException {
-        return new ULN2003(Mode.FULL_STEP, ULN2003.STEPPER_28BYJ48, 12,7, 8, 25)
+        return new ULN2003(Mode.FULL_STEP, ULN2003.STEPPER_28BYJ48, 12,7, 8, 25);
     }
 
     /**
