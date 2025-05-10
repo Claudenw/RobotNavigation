@@ -54,6 +54,15 @@ public class RpiMover implements Mover, AutoCloseable {
 
     private static final Logger LOG = LoggerFactory.getLogger(RpiMover.class);
 
+    private static ULN2003 left() throws InterruptedException {
+        //return new ULN2003(Mode.FULL_STEP, ULN2003.STEPPER_28BYJ48, 15, 18, 23, 24);
+       return new ULN2003(Mode.FULL_STEP, ULN2003.STEPPER_28BYJ48, 24 , 23, 18, 15);
+    };
+
+    private static ULN2003 right() throws InterruptedException {
+        return new ULN2003(Mode.FULL_STEP, ULN2003.STEPPER_28BYJ48, 12,7, 8, 25)
+    }
+
     /**
      * @param ctxt The context for the robut.
      * @param compass the compass implementation to use.
@@ -61,8 +70,7 @@ public class RpiMover implements Mover, AutoCloseable {
      * @throws InterruptedException
      */
     RpiMover(RobutContext ctxt, Compass compass, Coordinate coords) throws InterruptedException {
-        this(ctxt, compass, coords, new ULN2003(Mode.FULL_STEP, ULN2003.STEPPER_28BYJ48, 15, 18, 23, 24),
-                new ULN2003(Mode.FULL_STEP, ULN2003.STEPPER_28BYJ48, 12,7, 8, 25));
+        this(ctxt, compass, coords,  left(), right());
     }
 
     /**
