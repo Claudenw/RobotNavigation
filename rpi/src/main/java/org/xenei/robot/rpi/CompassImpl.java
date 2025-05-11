@@ -15,40 +15,39 @@ import org.xenei.robot.rpi.sensors.MMC3416xPJ.Axis;
 public class CompassImpl implements Compass {
     private static final Logger LOG = LoggerFactory.getLogger(CompassImpl.class);
     private final MMC3416xPJ compass = new MMC3416xPJ();
-    private final int limit = 10;
+    private final static int SAMPLE_SIZE = 10;
     private final MMC3416xPJ.Values[] samples;
     private int position = 0;
-    private Timer timer;
     private float XSum = 0.0f;
     private float YSum = 0.0f;
     private final ReentrantLock lock;
     private static final int accuracy = 2;
-    private TimerTask task = new TimerTask() {
-        @Override
-        public void run() {
-            MMC3416xPJ.Values oldSample = samples[position];
-            samples[position] = compass.getHeading();
-            lock.lock();
-            try {
-                XSum += samples[position].getAxisValue(Axis.X) - oldSample.getAxisValue(Axis.X);
-                YSum += samples[position].getAxisValue(Axis.Y) - oldSample.getAxisValue(Axis.Y);
-            } finally {
-                lock.unlock();
-            }
-            position = Math.floorMod(position + 1, limit);
-        }
-    };
 
     public CompassImpl() {
         lock = new ReentrantLock();
-        samples = new MMC3416xPJ.Values[limit];
-        for (int i = 0; i < limit; i++) {
+        samples = new MMC3416xPJ.Values[SAMPLE_SIZE];
+        for (int i = 0; i < SAMPLE_SIZE; i++) {
             samples[i] = compass.getHeading();
             XSum += samples[i].getAxisValue(Axis.X);
             YSum += samples[i].getAxisValue(Axis.Y);
         }
         position = 0;
-        timer = new Timer();
+        Timer timer = new Timer();
+        TimerTask task = new TimerTask() {
+            @Override
+            public void run() {
+                MMC3416xPJ.Values oldSample = samples[position];
+                samples[position] = compass.getHeading();
+                lock.lock();
+                try {
+                    XSum += samples[position].getAxisValue(Axis.X) - oldSample.getAxisValue(Axis.X);
+                    YSum += samples[position].getAxisValue(Axis.Y) - oldSample.getAxisValue(Axis.Y);
+                } finally {
+                    lock.unlock();
+                }
+                position = Math.floorMod(position + 1, SAMPLE_SIZE);
+            }
+        };
         timer.schedule(task, 0, 250);
         LOG.info("Compass: {}", compass);
     }
@@ -104,24 +103,24 @@ public class CompassImpl implements Compass {
     @Override
     public double sd() {
         double mean = 0;
-        double headings[] = new double[limit];
+        double headings[] = new double[SAMPLE_SIZE];
         lock.lock();
         try {
-            for (int i = 0; i < limit; i++) {
+            for (int i = 0; i < SAMPLE_SIZE; i++) {
                 headings[i] = heading(samples[i].getAxisValue(Axis.X), samples[i].getAxisValue(Axis.Y));
                 mean += headings[i];
             }
         } finally {
             lock.unlock();
         }
-        mean /= limit;
+        mean /= SAMPLE_SIZE;
         double sum = 0;
         double value = 0;
-        for (int i = 0; i < limit; i++) {
+        for (int i = 0; i < SAMPLE_SIZE; i++) {
             value = headings[i] - mean;
             sum += (value * value);
         }
-        return DoubleUtils.round(Math.sqrt(sum / (limit - 1)), accuracy + 1);
+        return DoubleUtils.round(Math.sqrt(sum / (SAMPLE_SIZE - 1)), accuracy + 1);
     }
 
     @Override
@@ -135,6 +134,10 @@ public class CompassImpl implements Compass {
         CompassImpl c = new CompassImpl();
         while (true) {
             System.out.println(c);
+            double h = c.heading();
+            double rawdeg = Math.toDegrees(h);
+            double deg =  (rawdeg < 0) ? rawdeg + 360 : rawdeg;
+            System.out.format("Compass[Heading: %s %s (%s) degrees]%n", h, DoubleUtils.round(rawdeg, accuracy + 1), DoubleUtils.round(deg, accuracy + 1));
             Thread.sleep(500);
         }
     }
