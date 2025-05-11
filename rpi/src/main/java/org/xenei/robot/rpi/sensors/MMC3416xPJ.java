@@ -352,7 +352,7 @@ public class MMC3416xPJ {
         public String toString() {
             StringBuilder sb = new StringBuilder("Values[ ");
             for (Axis axis : Axis.values()) {
-                sb.append(String.format("%s:{%s %.5f} ", axis, getAxisData(axis), getAxisGauss(axis)));
+                sb.append(String.format("%s:{%s field =  %.5f gauss} ", axis, getAxisData(axis), getAxisGauss(axis)));
             }
             return sb.append("]").toString();
         }
@@ -370,8 +370,6 @@ public class MMC3416xPJ {
         while (true) {
             Values values = mag.getHeading();
             System.out.println(values);
-            Location c = Location.from(values.getAxisGauss(Axis.X), values.getAxisGauss(Axis.Y));
-            System.out.format("Heading: value: %s  data: %s\n", Math.toDegrees(c.theta()), values);
             TimingUtils.delay(TimeUnit.MILLISECONDS, 250);
         }
     }

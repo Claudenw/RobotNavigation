@@ -18,8 +18,8 @@ public class CompassImpl implements Compass {
     private final static int SAMPLE_SIZE = 10;
     private final MMC3416xPJ.Values[] samples;
     private int position = 0;
-    private float XSum = 0.0f;
-    private float YSum = 0.0f;
+    private double XSum = 0.0;
+    private double YSum = 0.0;
     private final ReentrantLock lock;
     private static final int accuracy = 2;
 
@@ -96,8 +96,8 @@ public class CompassImpl implements Compass {
 
     @Override
     public double heading() {
-        float x;
-        float y;
+        double x;
+        double y;
         lock.lock();
         try {
             x = XSum;
