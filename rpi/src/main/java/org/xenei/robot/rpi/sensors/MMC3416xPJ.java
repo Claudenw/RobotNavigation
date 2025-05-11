@@ -4,6 +4,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
+import java.nio.ShortBuffer;
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
@@ -322,10 +323,9 @@ public class MMC3416xPJ {
                 device.readBytes(buffer);
 
                 // save the data
-                ByteBuffer bb = ByteBuffer.wrap(buffer).order(ByteOrder.LITTLE_ENDIAN);
-                IntBuffer ib = bb.asIntBuffer();
+                ShortBuffer shortBuffer = ByteBuffer.wrap(buffer).order(ByteOrder.LITTLE_ENDIAN).asShortBuffer();
                 for (Axis axis : Axis.values()) {
-                    data[axis.ordinal()] = ib.get(axis.ordinal()) - offsets.getAxisData(axis);
+                    data[axis.ordinal()] = shortBuffer.get(axis.ordinal()) - offsets.getAxisData(axis);
                 }
             } finally {
                 lock.unlock();
