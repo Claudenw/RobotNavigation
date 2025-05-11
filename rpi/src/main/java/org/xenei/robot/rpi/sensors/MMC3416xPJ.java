@@ -1,7 +1,10 @@
 package org.xenei.robot.rpi.sensors;
 
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
+import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -11,54 +14,51 @@ import org.xenei.robot.common.utils.TimingUtils;
 import com.diozero.api.I2CDevice;
 
 public class MMC3416xPJ {
-
     private static final int CONTROLLER = 1;
     private static final int ADDRESS = 0x30;
 
-    private static byte REG_PRODUCT_ID = 0x20;
-    private static byte PRODUCT_ID = 0x06;
+    private static final byte REG_PRODUCT_ID = 0x20;
+    private static final byte PRODUCT_ID = 0x06;
 
     public static byte OK = 0x00;
     public static byte ERROR = (byte) 0xFF;
 
+    private final Values zeroOffset = new Values(new int[] {0, 0, 0,});
+
     public enum Axis {
         X, Y, Z;
-
-        public static Axis[] XY = { Axis.X, Axis.Y };
     }
 
+    /**
+     * The resolution of the measurements.
+     */
     public enum Resolution {
-        _16bits_8ms(2048f, (byte) 0), _16bits_4ms(2048f, (byte) 0), _14bits_2ms(512f, (byte) 2),
+        _16bits_8ms(2048f, (byte) 0), _16bits_4ms(2048f, (byte) 1), _14bits_2ms(512f, (byte) 2),
         _12bits_1ms(128f, (byte) 4);
 
+        /** THe maximum value of the measurement */
         private final float max;
+        /** The register value for the device call */
         private final byte flag;
 
         Resolution(float max, byte flag) {
             this.max = max;
             this.flag = flag;
         }
-
-        public float getMax() {
-            return max;
-        }
-
-        public float getFlag() {
-            return flag;
-        }
-
-    };
+    }
 
     private final ReentrantLock lock;
     private final I2CDevice device;
     private Resolution resolution;
     private boolean continuous;
+    private Values offsets;
 
     public MMC3416xPJ() {
         lock = new ReentrantLock();
         device = new I2CDevice(CONTROLLER, ADDRESS);
         setResolution(Resolution._16bits_8ms);
         continuous = false;
+        calcOffsets();
     }
 
     public boolean isContinuous() {
@@ -86,18 +86,27 @@ public class MMC3416xPJ {
         return new InternalControl().setSWReset().execute();
     }
 
+    public void calcOffsets() {
+        int[] v3 = new int[3];
+        Arrays.fill(v3, 0);
+        new Configuration().setSet().execute();
+        Values v1 = new Values(zeroOffset);
+        new Configuration().setReset().execute();
+        Values v2 = new Values(zeroOffset);
+        for (Axis axis : Axis.values()) {
+            v3[axis.ordinal()] = (v1.getAxisData(axis) + v2.getAxisData(axis)) / 2;
+        }
+        offsets = new Values(v3);
+    }
+
+    /**
+     * Calculates the Values for the difference between the
+     * @return
+     */
     public Values getHeading() {
         lock.lock();
         try {
-            new Configuration().setSet().execute();
-            Values v1 = new Values();
-            new Configuration().setReset().execute();
-            Values v2 = new Values();
-            int[] v3 = new int[3];
-            v3[0] = (v1.getAxisData(Axis.X) - v2.getAxisData(Axis.X)) / 2;
-            v3[1] = (v1.getAxisData(Axis.Y) - v2.getAxisData(Axis.Y)) / 2;
-            v3[2] = (v1.getAxisData(Axis.Z) - v2.getAxisData(Axis.Z)) / 2;
-            return new Values(v3);
+            return new Values(offsets);
         } finally {
             lock.unlock();
         }
@@ -135,7 +144,7 @@ public class MMC3416xPJ {
     }
 
     public Values getData() {
-        return new Values();
+        return new Values(zeroOffset);
     }
 
     public void reset() {
@@ -286,6 +295,9 @@ public class MMC3416xPJ {
         }
     }
 
+    /**
+     * The X, Y, and Z values read from the sensor.
+     */
     public class Values {
         private final int[] data = new int[3];
 
@@ -293,26 +305,28 @@ public class MMC3416xPJ {
             System.arraycopy(v, 0, data, 0, 3);
         }
 
-        private Values() {
+        private Values(Values offsets) {
             byte[] buffer = new byte[6];
             lock.lock();
             try {
+                // take measurements
                 Status status = new Configuration().setCapRefill().setTakeMeasurement().execute();
-
                 while (!status.measurementDone() && !status.readDone()) {
                     System.out.println("Waiting  for measurement");
                     TimingUtils.delay(100);
                     status.refresh();
                 }
 
-                device.writeByte((byte) 0x00);
+                // read the measurements
+                device.writeByte(OK);
                 device.readBytes(buffer);
-                // dumpBuffer(buffer);
 
-                data[0] = 0xFFFF & ((buffer[1] << 8) | (buffer[0] & 0xFF)) >> resolution.flag;
-                data[1] = 0xFFFF & ((buffer[3] << 8) | (buffer[2] & 0xFF)) >> resolution.flag;
-                data[2] = 0xFFFF & ((buffer[5] << 8) | (buffer[4] & 0xFF)) >> resolution.flag;
-                // System.out.format("0x%x 0x%x 0x%x\n", data[0], data[1], data[2]);
+                // save the data
+                ByteBuffer bb = ByteBuffer.wrap(buffer).order(ByteOrder.LITTLE_ENDIAN);
+                IntBuffer ib = bb.asIntBuffer();
+                for (Axis axis : Axis.values()) {
+                    data[axis.ordinal()] = ib.get(axis.ordinal()) - offsets.getAxisData(axis);
+                }
             } finally {
                 lock.unlock();
             }
