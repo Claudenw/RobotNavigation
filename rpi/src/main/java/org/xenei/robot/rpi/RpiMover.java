@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
@@ -168,12 +169,12 @@ public class RpiMover implements Mover, AutoCloseable {
         System.exit(0);
     }
 
-    private void generateTrainingData(int recordCount) throws IOException {
+    private void generateTrainingData(int recordCount) throws IOException, InterruptedException {
         Random random = new Random();
         Path p = Files.createTempFile("testData", ".csv");
         try (FileWriter fos = new FileWriter(p.toFile())) {
             for (int i = 0; i < recordCount; i++) {
-                double initialHeading = compass.instantaneousHeading();
+                double initialHeading = compass.heading();
                 int thetaSteps = i;
                 //int thetaSteps = random.nextInt(-3000, 3000);
                 if (thetaSteps != 0) {
@@ -181,7 +182,8 @@ public class RpiMover implements Mover, AutoCloseable {
                         monitor.waitForComplete();
                     }
                 }
-                double finalHeading = compass.instantaneousHeading();
+                Thread.sleep(Duration.ofSeconds(3).toMillis());
+                double finalHeading = compass.heading();
 
                 String result = String.format("%d,%.2f%n", thetaSteps, finalHeading-initialHeading);
                 System.out.print(result);
