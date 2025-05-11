@@ -173,15 +173,18 @@ public class RpiMover implements Mover, AutoCloseable {
         Path p = Files.createTempFile("testData", ".csv");
         try (FileWriter fos = new FileWriter(p.toFile())) {
             for (int i = 0; i < recordCount; i++) {
-                int heading = random.nextInt(360);
                 double initialHeading = compass.heading();
+                int thetaSteps = random.nextInt(-3000, 3000);
+                if (thetaSteps != 0) {
+                    try (StepMonitor monitor = takeSteps(thetaSteps, -thetaSteps, MAX_RPM)) {
+                        monitor.waitForComplete();
+                    }
+                }
+                double finalHeading = compass.heading();
 
-                int steps = makeInternalHeading(heading);
-
-                double newHeadingDiff = compass.heading() - initialHeading;
-
-                System.out.format("%d,%.2f", steps, newHeadingDiff);
-                fos.append(String.format("%d,%.2f", steps, newHeadingDiff));
+                String result = String.format("%d,%.2f%n", thetaSteps, finalHeading-initialHeading);
+                System.out.print(result);
+                fos.append(result);
             }
         }
         System.out.println("Wrote to: "+p);
