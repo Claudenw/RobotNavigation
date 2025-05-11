@@ -1,7 +1,13 @@
 package org.xenei.robot.rpi;
 
 import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.io.InputStreamReader;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
@@ -162,17 +168,21 @@ public class RpiMover implements Mover, AutoCloseable {
         System.exit(0);
     }
 
-    private void generateTrainingData(int recordCount) {
+    private void generateTrainingData(int recordCount) throws IOException {
         Random random = new Random();
-        for (int i = 0; i < recordCount; i++) {
-            int heading = random.nextInt(360);
-            double headingDiff = compass.heading() - heading;
+        Path p = Files.createTempFile("testData", ".csv");
+        try (FileWriter fos = new FileWriter(p.toFile())) {
+            for (int i = 0; i < recordCount; i++) {
+                int heading = random.nextInt(360);
+                double initialHeading = compass.heading();
 
-            int steps = makeInternalHeading(heading);
+                int steps = makeInternalHeading(heading);
 
-            double newHeadingDiff = compass.heading() - heading;
+                double newHeadingDiff = compass.heading() - initialHeading;
 
-            System.out.format("%s, %s", steps, newHeadingDiff);
+                System.out.format("%d,%.2f", steps, newHeadingDiff);
+                fos.append(String.format("%d,%.2f", steps, newHeadingDiff));
+            }
         }
     }
 
