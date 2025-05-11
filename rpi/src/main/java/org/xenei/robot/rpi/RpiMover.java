@@ -184,6 +184,7 @@ public class RpiMover implements Mover, AutoCloseable {
                 fos.append(String.format("%d,%.2f", steps, newHeadingDiff));
             }
         }
+        System.out.println("Wrote to: "+p);
     }
 
     public double getHeadingFactor() {
