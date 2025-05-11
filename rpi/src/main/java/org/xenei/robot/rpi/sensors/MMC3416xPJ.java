@@ -3,7 +3,6 @@ package org.xenei.robot.rpi.sensors;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
-import java.nio.IntBuffer;
 import java.nio.ShortBuffer;
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
@@ -37,13 +36,13 @@ public class MMC3416xPJ {
         _16bits_8ms(2048f, (byte) 0), _16bits_4ms(2048f, (byte) 1), _14bits_2ms(512f, (byte) 2),
         _12bits_1ms(128f, (byte) 4);
 
-        /** THe maximum value of the measurement */
-        private final float max;
+        /** The number of counts per G */
+        private final float sensitivity;
         /** The register value for the device call */
         private final byte flag;
 
-        Resolution(float max, byte flag) {
-            this.max = max;
+        Resolution(float sensitivity, byte flag) {
+            this.sensitivity = sensitivity;
             this.flag = flag;
         }
     }
@@ -333,20 +332,16 @@ public class MMC3416xPJ {
             }
         }
 
-        public IntBuffer getData() {
-            return IntBuffer.wrap(data).asReadOnlyBuffer();
-        }
-
-        public FloatBuffer getValues() {
+        public FloatBuffer getGauss() {
             FloatBuffer fb = FloatBuffer.allocate(Axis.values().length);
             for (int i = 0; i < fb.capacity(); i++) {
-                fb.put(i, data[i] / resolution.max);
+                fb.put(i, data[i] / resolution.sensitivity);
             }
             return fb;
         }
 
-        public float getAxisValue(Axis axis) {
-            return data[axis.ordinal()] / resolution.max;
+        public float getAxisGauss(Axis axis) {
+            return data[axis.ordinal()] / resolution.sensitivity;
         }
 
         public int getAxisData(Axis axis) {
@@ -357,7 +352,7 @@ public class MMC3416xPJ {
         public String toString() {
             StringBuilder sb = new StringBuilder("Values[ ");
             for (Axis axis : Axis.values()) {
-                sb.append(String.format("%s:{%s %.5f} ", axis, getAxisData(axis), getAxisValue(axis)));
+                sb.append(String.format("%s:{%s %.5f} ", axis, getAxisData(axis), getAxisGauss(axis)));
             }
             return sb.append("]").toString();
         }
@@ -375,7 +370,7 @@ public class MMC3416xPJ {
         while (true) {
             Values values = mag.getHeading();
             System.out.println(values);
-            Location c = Location.from(values.getAxisValue(Axis.X), values.getAxisValue(Axis.Y));
+            Location c = Location.from(values.getAxisGauss(Axis.X), values.getAxisGauss(Axis.Y));
             System.out.format("Heading: value: %s  data: %s\n", Math.toDegrees(c.theta()), values);
             TimingUtils.delay(TimeUnit.MILLISECONDS, 250);
         }

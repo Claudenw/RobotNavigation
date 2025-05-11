@@ -28,8 +28,8 @@ public class CompassImpl implements Compass {
         samples = new MMC3416xPJ.Values[SAMPLE_SIZE];
         for (int i = 0; i < SAMPLE_SIZE; i++) {
             samples[i] = compass.getHeading();
-            XSum += samples[i].getAxisValue(Axis.X);
-            YSum += samples[i].getAxisValue(Axis.Y);
+            XSum += samples[i].getAxisGauss(Axis.X);
+            YSum += samples[i].getAxisGauss(Axis.Y);
         }
         position = 0;
         Timer timer = new Timer();
@@ -40,8 +40,8 @@ public class CompassImpl implements Compass {
                 samples[position] = compass.getHeading();
                 lock.lock();
                 try {
-                    XSum += samples[position].getAxisValue(Axis.X) - oldSample.getAxisValue(Axis.X);
-                    YSum += samples[position].getAxisValue(Axis.Y) - oldSample.getAxisValue(Axis.Y);
+                    XSum += samples[position].getAxisGauss(Axis.X) - oldSample.getAxisGauss(Axis.X);
+                    YSum += samples[position].getAxisGauss(Axis.Y) - oldSample.getAxisGauss(Axis.Y);
                 } finally {
                     lock.unlock();
                 }
@@ -53,26 +53,40 @@ public class CompassImpl implements Compass {
     }
 
     /* package private for testing */
-    static double heading(double x, double y) {
 
-        if (x == 0 && y == 0) {
-            return 0;
+    /**
+     *
+     * @param xGauss the xGauss
+     * @param yGauss the yGauss
+     * @return the heading
+     */
+    static double heading(double xGauss, double yGauss) {
+
+        /*
+        Calculate the direction D by first checking to see if the X Gauss data is equal to 0 to prevent divide by 0 zero
+         errors in the future calculations. If the X Gauss data is 0, check to see if the Y Gauss data is less than 0.
+         If Y is less than 0 Gauss, the direction D is 90 degrees; if Y is greater than or equal to 0 Gauss, the direction
+         D is 0 degrees.
+         */
+        if (xGauss == 0) {
+            return yGauss < 0 ? AngleUtils.RADIANS_90 : 0d;
         }
 
-        double hX = x == 0 ? 0 : -x;
-        double hY = y == 0 ? 0 : -y;
+        /*
+        If the X Gauss data is not zero, calculate the arctangent of the Y Gauss and X Gauss data and convert from polar coordinates to degrees.
+        D = arctan(yGaussData/xGaussData)∗(180/π)
+        */
+        double result = Math.atan(yGauss / xGauss);
 
-        double theta = Math.atan(hY / hX);
-        boolean yNeg = DoubleUtils.isNeg(hY);
-        boolean tNeg = DoubleUtils.isNeg(theta);
-
-        if (yNeg && !tNeg) {
-            theta -= Math.PI;
-        } else if (!yNeg && tNeg) {
-            theta += Math.PI;
+        /*
+        If the direction D is greater than 360 degrees, subtract 360 degrees from that value.
+        */
+        if (result > AngleUtils.PI_x_2) {
+            result -= AngleUtils.PI_x_2;
+        } else if (result < 0) {
+            result += AngleUtils.PI_x_2;
         }
-        // angle will be pointing the wrong way, so reverse it.
-        return AngleUtils.normalize(theta + Math.PI);
+        return result;
     }
     
     @Override
@@ -97,7 +111,7 @@ public class CompassImpl implements Compass {
     @Override
     public double instantaneousHeading() {
         MMC3416xPJ.Values values = compass.getHeading();
-        return DoubleUtils.round(heading(values.getAxisValue(Axis.X), values.getAxisValue(Axis.Y)), accuracy);
+        return DoubleUtils.round(heading(values.getAxisGauss(Axis.X), values.getAxisGauss(Axis.Y)), accuracy);
     }
     
     @Override
@@ -107,7 +121,7 @@ public class CompassImpl implements Compass {
         lock.lock();
         try {
             for (int i = 0; i < SAMPLE_SIZE; i++) {
-                headings[i] = heading(samples[i].getAxisValue(Axis.X), samples[i].getAxisValue(Axis.Y));
+                headings[i] = heading(samples[i].getAxisGauss(Axis.X), samples[i].getAxisGauss(Axis.Y));
                 mean += headings[i];
             }
         } finally {

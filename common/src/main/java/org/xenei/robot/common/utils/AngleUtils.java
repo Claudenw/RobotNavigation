@@ -2,15 +2,21 @@ package org.xenei.robot.common.utils;
 
 public class AngleUtils {
 
+    /** the number of radian in 45 degrees */
     public static final double RADIANS_45 = Math.PI / 4;
+    /** the number of radian in 90 degrees */
     public static final double RADIANS_90 = 2 * RADIANS_45;
+    /** the number of radian in 135 degrees */
     public static final double RADIANS_135 = 3 * RADIANS_45;
+    /** the number of radian in 180 degrees */
     public static final double RADIANS_180 = Math.PI;
+    /** the number of radian in 225 degrees */
     public static final double RADIANS_225 = -RADIANS_135;
+    /** the number of radian in 270 degrees */
     public static final double RADIANS_270 = -RADIANS_90;
+    /** the number of radian in 315 degrees */
     public static final double RADIANS_315 = -RADIANS_45;
-    
-    /** 2 * pi */
+    /** 2pi */
     public static final double PI_x_2 = 2 * Math.PI;
    
     
