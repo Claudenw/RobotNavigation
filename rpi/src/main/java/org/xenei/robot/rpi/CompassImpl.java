@@ -106,6 +106,7 @@ public class CompassImpl implements Compass {
         } finally {
             lock.unlock();
         }
+        System.out.format("Heading calculated from %s %s ", x, y);
         return DoubleUtils.round(heading(x, y), accuracy);
     }
 
@@ -148,7 +149,6 @@ public class CompassImpl implements Compass {
     public static void main(String[] args) throws InterruptedException {
         CompassImpl c = new CompassImpl();
         while (true) {
-            System.out.println(c);
             double h = c.heading();
             double rawdeg = Math.toDegrees(h);
             double deg =  (rawdeg < 0) ? rawdeg + 360 : rawdeg;

@@ -323,7 +323,6 @@ public class MMC3416xPJ {
                 // save the data
                 ShortBuffer shortBuffer = ByteBuffer.wrap(buffer).order(ByteOrder.LITTLE_ENDIAN).asShortBuffer();
                 for (int i = 0; i < Axis.values().length; i++) {
-                    System.out.format("read %s %s%n", Axis.values()[i].name(), shortBuffer.get(i));
                     data[i] = shortBuffer.get(i) - offsets.data[i];
                 }
             } finally {
