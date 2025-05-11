@@ -106,7 +106,9 @@ public class RpiMover implements Mover, AutoCloseable {
                 .addOption(Option.builder("h").type(Double.class).desc("Heading").hasArg().argName("degrees").build())
                 .addOption(Option.builder("m").type(Double.class).desc("Move (angle range)").numberOfArgs(2).build())
                 .addOption(Option.builder("c").desc("Compass reading").build())
-                .addOption(Option.builder("t").desc("Training data").hasArg().type(Integer.class).argName("recordCount").build());
+                .addOption(Option.builder("t").desc("Training data").hasArg().type(Integer.class).argName("recordCount").build())
+                .addOption(Option.builder("x").desc("x-ray compas test").build());
+
     }
 
     public static void main(String[] args) {
@@ -159,6 +161,10 @@ public class RpiMover implements Mover, AutoCloseable {
                         int recordCount = commandLine.getParsedOptionValue("t");
                         mover.generateTrainingData(recordCount);
                     }
+
+                    if (commandLine.hasOption("x")) {
+                        mover.xrayTest();
+                    }
                 }
             }
         } catch (Exception e) {
@@ -167,6 +173,26 @@ public class RpiMover implements Mover, AutoCloseable {
         }
         LOG.debug("Exiting");
         System.exit(0);
+    }
+
+    private void xrayTest() throws InterruptedException {
+
+        Future<?> future = executor.submit(() -> {
+            double oldDeg = -1;
+
+            while (true) {
+                double h = compass.heading();
+                double deg = DoubleUtils.round(Math.toDegrees(h), accuracy + 1);
+                if (deg != oldDeg) {
+                    System.out.format("Compass[Heading: %s %s degrees]%n", h, deg);
+                    oldDeg = deg;
+                }
+                Thread.sleep(500);
+            }
+        });
+        generateTrainingData(10);
+        Thread.sleep(500);
+        future.cancel(true);
     }
 
     private void generateTrainingData(int recordCount) throws IOException, InterruptedException {

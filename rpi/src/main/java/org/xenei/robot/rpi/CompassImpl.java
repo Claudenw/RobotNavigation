@@ -16,6 +16,7 @@ public class CompassImpl implements Compass {
     private static final Logger LOG = LoggerFactory.getLogger(CompassImpl.class);
     private final MMC3416xPJ compass = new MMC3416xPJ();
     private final static int SAMPLE_SIZE = 10;
+    private final static int POLL_INTERVAL = 250;
     private final MMC3416xPJ.Values[] samples;
     private int position = 0;
     private double XSum = 0.0;
@@ -49,12 +50,11 @@ public class CompassImpl implements Compass {
                 position = Math.floorMod(position + 1, SAMPLE_SIZE);
             }
         };
-        timer.schedule(task, 0, 250);
+        timer.schedule(task, 0, POLL_INTERVAL);
         LOG.info("Compass: {}", compass);
     }
 
     /* package private for testing */
-
     /**
      *
      * @param xGauss the xGauss
@@ -88,6 +88,10 @@ public class CompassImpl implements Compass {
             result += AngleUtils.PI_x_2;
         }
         return result;
+    }
+
+    public void settle() throws InterruptedException {
+        Thread.sleep(SAMPLE_SIZE * POLL_INTERVAL);
     }
     
     @Override
