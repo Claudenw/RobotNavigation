@@ -20,6 +20,7 @@ public class CompassImpl implements Compass {
     private int position = 0;
     private double XSum = 0.0;
     private double YSum = 0.0;
+    private final Timer timer;
     private final ReentrantLock lock;
     private static final int accuracy = 2;
 
@@ -32,7 +33,7 @@ public class CompassImpl implements Compass {
             YSum += samples[i].getAxisGauss(Axis.Y);
         }
         position = 0;
-        Timer timer = new Timer();
+        timer = new Timer();
         TimerTask task = new TimerTask() {
             @Override
             public void run() {
@@ -117,7 +118,7 @@ public class CompassImpl implements Compass {
     @Override
     public double sd() {
         double mean = 0;
-        double headings[] = new double[SAMPLE_SIZE];
+        double[] headings = new double[SAMPLE_SIZE];
         lock.lock();
         try {
             for (int i = 0; i < SAMPLE_SIZE; i++) {
