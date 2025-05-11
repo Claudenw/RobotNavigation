@@ -7,6 +7,7 @@ import static org.mockito.Mockito.mock;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 import org.apache.commons.lang3.NotImplementedException;
@@ -97,6 +98,12 @@ public class RpiMoverTest {
         TestingCompass(double heading) {
             this.heading = heading;
         }
+
+        @Override
+        public void setPauseFunc(Supplier<Boolean> pauseFunc) {
+        // do nothing
+        }
+
         @Override
         public double heading() {
             return heading;
