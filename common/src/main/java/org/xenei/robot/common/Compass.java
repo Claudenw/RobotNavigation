@@ -3,7 +3,14 @@ package org.xenei.robot.common;
 import org.locationtech.jts.geom.Coordinate;
 import org.xenei.robot.common.utils.DoubleUtils;
 
+import java.util.function.Supplier;
+
 public interface Compass {
+    /**
+     * Pauses data collection
+     */
+    void setPauseFunc(Supplier<Boolean> pauseFunc);
+
     /**
      * Calculates the position from a point and the heading reading.
      * 

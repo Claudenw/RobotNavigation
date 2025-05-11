@@ -3,6 +3,7 @@ package org.xenei.robot.rpi;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Supplier;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,8 +25,10 @@ public class CompassImpl implements Compass {
     private final Timer timer;
     private final ReentrantLock lock;
     private static final int accuracy = 2;
+    private Supplier<Boolean> pauseFunc;
 
     public CompassImpl() {
+        this.pauseFunc = () -> false;
         lock = new ReentrantLock();
         samples = new MMC3416xPJ.Values[SAMPLE_SIZE];
         for (int i = 0; i < SAMPLE_SIZE; i++) {
@@ -38,20 +41,26 @@ public class CompassImpl implements Compass {
         TimerTask task = new TimerTask() {
             @Override
             public void run() {
-                MMC3416xPJ.Values oldSample = samples[position];
-                samples[position] = compass.getHeading();
-                lock.lock();
-                try {
-                    XSum += samples[position].getAxisGauss(Axis.X) - oldSample.getAxisGauss(Axis.X);
-                    YSum += samples[position].getAxisGauss(Axis.Y) - oldSample.getAxisGauss(Axis.Y);
-                } finally {
-                    lock.unlock();
+                if (!pauseFunc.get()) {
+                    MMC3416xPJ.Values oldSample = samples[position];
+                    samples[position] = compass.getHeading();
+                    lock.lock();
+                    try {
+                        XSum += samples[position].getAxisGauss(Axis.X) - oldSample.getAxisGauss(Axis.X);
+                        YSum += samples[position].getAxisGauss(Axis.Y) - oldSample.getAxisGauss(Axis.Y);
+                    } finally {
+                        lock.unlock();
+                    }
+                    position = Math.floorMod(position + 1, SAMPLE_SIZE);
                 }
-                position = Math.floorMod(position + 1, SAMPLE_SIZE);
             }
         };
         timer.schedule(task, 0, POLL_INTERVAL);
         LOG.info("Compass: {}", compass);
+    }
+
+    public void setPauseFunc(Supplier<Boolean> pauseFunc) {
+        this.pauseFunc = pauseFunc;
     }
 
     /* package private for testing */

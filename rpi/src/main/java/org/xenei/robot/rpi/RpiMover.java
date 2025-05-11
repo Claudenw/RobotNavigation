@@ -269,7 +269,9 @@ public class RpiMover implements Mover, AutoCloseable {
         LOG.debug("Taking steps {} {} @ {} rpm", left, right, rpm);
         SteppingStatus ssLeft = motor[LEFT].prepareRun(left, rpm);
         SteppingStatus ssRight = motor[RIGHT].prepareRun(right, rpm);
-        return new StepMonitor(ssLeft, ssRight);
+        StepMonitor result = new StepMonitor(ssLeft, ssRight);
+        compass.setPauseFunc(() -> !result.complete());
+        return result;
     }
 
     @Override
