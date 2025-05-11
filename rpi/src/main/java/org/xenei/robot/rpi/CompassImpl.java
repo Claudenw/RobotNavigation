@@ -150,9 +150,8 @@ public class CompassImpl implements Compass {
         CompassImpl c = new CompassImpl();
         while (true) {
             double h = c.heading();
-            double rawdeg = Math.toDegrees(h);
-            double deg =  (rawdeg < 0) ? rawdeg + 360 : rawdeg;
-            System.out.format("Compass[Heading: %s %s (%s) degrees]%n", h, DoubleUtils.round(rawdeg, accuracy + 1), DoubleUtils.round(deg, accuracy + 1));
+            double deg = Math.toDegrees(h);
+            System.out.format("Compass[Heading: %s %s degrees]%n", h, DoubleUtils.round(deg, accuracy + 1));
             Thread.sleep(500);
         }
     }
