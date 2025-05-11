@@ -175,14 +175,14 @@ public class RpiMover implements Mover, AutoCloseable {
         System.exit(0);
     }
 
-    private void xrayTest() throws InterruptedException {
+    private void xrayTest() throws InterruptedException, IOException {
 
         Future<?> future = executor.submit(() -> {
             double oldDeg = -1;
 
             while (true) {
                 double h = compass.heading();
-                double deg = DoubleUtils.round(Math.toDegrees(h), accuracy + 1);
+                double deg = DoubleUtils.round(Math.toDegrees(h), 3);
                 if (deg != oldDeg) {
                     System.out.format("Compass[Heading: %s %s degrees]%n", h, deg);
                     oldDeg = deg;
