@@ -324,8 +324,9 @@ public class MMC3416xPJ {
 
                 // save the data
                 ShortBuffer shortBuffer = ByteBuffer.wrap(buffer).order(ByteOrder.LITTLE_ENDIAN).asShortBuffer();
-                for (Axis axis : Axis.values()) {
-                    data[axis.ordinal()] = shortBuffer.get(axis.ordinal()) - offsets.getAxisData(axis);
+                for (int i = 0; i < Axis.values().length; i++) {
+                    System.out.format("read %s %s%n", Axis.values()[i].name(), shortBuffer.get(i));
+                    data[i] = shortBuffer.get(i) - offsets.data[i];
                 }
             } finally {
                 lock.unlock();
@@ -337,8 +338,8 @@ public class MMC3416xPJ {
         }
 
         public FloatBuffer getValues() {
-            FloatBuffer fb = FloatBuffer.allocate(3);
-            for (int i = 0; i < 3; i++) {
+            FloatBuffer fb = FloatBuffer.allocate(Axis.values().length);
+            for (int i = 0; i < fb.capacity(); i++) {
                 fb.put(i, data[i] / resolution.max);
             }
             return fb;
