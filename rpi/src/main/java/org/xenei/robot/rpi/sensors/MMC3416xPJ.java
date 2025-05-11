@@ -8,7 +8,6 @@ import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
-import org.xenei.robot.common.Location;
 import org.xenei.robot.common.utils.TimingUtils;
 
 import com.diozero.api.I2CDevice;
@@ -26,7 +25,7 @@ public class MMC3416xPJ {
     private final Values zeroOffset = new Values(new int[] {0, 0, 0,});
 
     public enum Axis {
-        X, Y, Z;
+        X, Y, Z
     }
 
     /**
