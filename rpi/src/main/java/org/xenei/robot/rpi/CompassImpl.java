@@ -41,7 +41,6 @@ public class CompassImpl implements Compass {
         TimerTask task = new TimerTask() {
             @Override
             public void run() {
-                if (!pauseFunc.get()) {
                     MMC3416xPJ.Values oldSample = samples[position];
                     samples[position] = compass.getHeading();
                     lock.lock();
@@ -52,7 +51,6 @@ public class CompassImpl implements Compass {
                         lock.unlock();
                     }
                     position = Math.floorMod(position + 1, SAMPLE_SIZE);
-                }
             }
         };
         timer.schedule(task, 0, POLL_INTERVAL);

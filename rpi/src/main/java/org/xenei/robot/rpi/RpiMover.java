@@ -208,7 +208,7 @@ public class RpiMover implements Mover, AutoCloseable {
                         monitor.waitForComplete();
                     }
                 }
-                Thread.sleep(Duration.ofSeconds(3).toMillis());
+                //Thread.sleep(Duration.ofSeconds(3).toMillis());
                 double finalHeading = compass.heading();
 
                 String result = String.format("%d,%.2f%n", thetaSteps, finalHeading-initialHeading);
@@ -270,7 +270,7 @@ public class RpiMover implements Mover, AutoCloseable {
         SteppingStatus ssLeft = motor[LEFT].prepareRun(left, rpm);
         SteppingStatus ssRight = motor[RIGHT].prepareRun(right, rpm);
         StepMonitor result = new StepMonitor(ssLeft, ssRight);
-        compass.setPauseFunc(() -> !result.complete());
+        //compass.setPauseFunc(() -> !result.complete());
         return result;
     }
 
