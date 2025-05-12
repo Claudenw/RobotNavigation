@@ -200,7 +200,7 @@ public class RpiMover implements Mover, AutoCloseable {
         Path p = Files.createTempFile("testData", ".csv");
         try (FileWriter fos = new FileWriter(p.toFile())) {
             for (int i = 0; i < recordCount; i++) {
-                double initialHeading = compass.heading();
+                double initialHeading = compass.instantaneousHeading();
                 int thetaSteps = i;
                 //int thetaSteps = random.nextInt(-3000, 3000);
                 if (thetaSteps != 0) {
@@ -209,7 +209,7 @@ public class RpiMover implements Mover, AutoCloseable {
                     }
                 }
                 //Thread.sleep(Duration.ofSeconds(3).toMillis());
-                double finalHeading = compass.heading();
+                double finalHeading = compass.instantaneousHeading();
 
                 String result = String.format("%d,%.2f%n", thetaSteps, finalHeading-initialHeading);
                 System.out.print(result);
