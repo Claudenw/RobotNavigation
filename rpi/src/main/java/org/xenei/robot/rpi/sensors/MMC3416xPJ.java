@@ -105,6 +105,8 @@ public class MMC3416xPJ {
     public Values getHeading() {
         lock.lock();
         try {
+            new Configuration().setSet().execute();
+            new Configuration().setReset().execute();
             return new Values(offsets);
         } finally {
             lock.unlock();
