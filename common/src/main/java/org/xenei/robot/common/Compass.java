@@ -7,11 +7,6 @@ import java.util.function.Supplier;
 
 public interface Compass {
     /**
-     * Pauses data collection
-     */
-    void setPauseFunc(Supplier<Boolean> pauseFunc);
-
-    /**
      * Calculates the position from a point and the heading reading.
      * 
      * @param location The location of the device.

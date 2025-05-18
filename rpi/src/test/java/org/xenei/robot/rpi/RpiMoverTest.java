@@ -2,12 +2,9 @@ package org.xenei.robot.rpi;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
-import static org.mockito.Mockito.mock;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 import org.apache.commons.lang3.NotImplementedException;
@@ -25,10 +22,7 @@ import org.xenei.robot.rpi.testUtils.TestChassisInfo;
 import org.xenei.robot.common.utils.AngleUtils;
 import org.xenei.robot.common.utils.DoubleUtils;
 import org.xenei.robot.common.utils.RobutContext;
-import org.xenei.robot.rpi.RpiMover.StepMonitor;
 import org.xenei.robot.rpi.drivers.Motor;
-import org.xenei.robot.rpi.drivers.Motor.SteppingStatus;
-import org.xenei.robot.rpi.drivers.ULN2003.SteppingStatusImpl;
 
 public class RpiMoverTest {
 
@@ -93,15 +87,9 @@ public class RpiMoverTest {
     
     class TestingCompass implements Compass {
         double heading;
-        
 
         TestingCompass(double heading) {
             this.heading = heading;
-        }
-
-        @Override
-        public void setPauseFunc(Supplier<Boolean> pauseFunc) {
-        // do nothing
         }
 
         @Override

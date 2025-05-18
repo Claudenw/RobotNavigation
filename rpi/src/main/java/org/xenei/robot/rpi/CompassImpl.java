@@ -2,6 +2,7 @@ package org.xenei.robot.rpi;
 
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.concurrent.atomic.DoubleAdder;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
 
@@ -11,7 +12,6 @@ import org.xenei.robot.common.Compass;
 import org.xenei.robot.common.utils.AngleUtils;
 import org.xenei.robot.common.utils.DoubleUtils;
 import org.xenei.robot.rpi.sensors.mmc3416xpj.MMC3416xPJ;
-import org.xenei.robot.rpi.sensors.mmc3416xpj.Axis;
 import org.xenei.robot.rpi.sensors.mmc3416xpj.Values;
 
 public class CompassImpl implements Compass {
@@ -20,46 +20,38 @@ public class CompassImpl implements Compass {
     private final static int SAMPLE_SIZE = 10;
     private final static int POLL_INTERVAL = 250;
     private final Values[] samples;
+    private DoubleAdder totalRadians;
     private int position = 0;
-    private double XSum = 0.0;
-    private double YSum = 0.0;
     private final Timer timer;
     private final ReentrantLock lock;
     private static final int accuracy = 2;
-    private Supplier<Boolean> pauseFunc;
 
     public CompassImpl() {
-        this.pauseFunc = () -> false;
+        totalRadians = new DoubleAdder();
         lock = new ReentrantLock();
         samples = new Values[SAMPLE_SIZE];
         for (int i = 0; i < SAMPLE_SIZE; i++) {
             samples[i] = compass.getHeading();
-            XSum += samples[i].getGauss(Axis.X);
-            YSum += samples[i].getGauss(Axis.Y);
+            totalRadians.add(samples[i].radians());
         }
         position = 0;
         timer = new Timer();
         TimerTask task = new TimerTask() {
             @Override
             public void run() {
+                lock.lock();
+                try {
                     Values oldSample = samples[position];
                     samples[position] = compass.getHeading();
-                    lock.lock();
-                    try {
-                        XSum += samples[position].getGauss(Axis.X) - oldSample.getGauss(Axis.X);
-                        YSum += samples[position].getGauss(Axis.Y) - oldSample.getGauss(Axis.Y);
-                    } finally {
-                        lock.unlock();
-                    }
+                    totalRadians.add(samples[position].radians() - oldSample.radians());
+                } finally {
+                    lock.unlock();
                     position = Math.floorMod(position + 1, SAMPLE_SIZE);
+                }
             }
         };
         timer.schedule(task, 0, POLL_INTERVAL);
         LOG.info("Compass: {}", compass);
-    }
-
-    public void setPauseFunc(Supplier<Boolean> pauseFunc) {
-        this.pauseFunc = pauseFunc;
     }
 
     /* package private for testing */
@@ -109,22 +101,13 @@ public class CompassImpl implements Compass {
 
     @Override
     public double heading() {
-        double x;
-        double y;
-        lock.lock();
-        try {
-            x = XSum;
-            y = YSum;
-        } finally {
-            lock.unlock();
-        }
-        return DoubleUtils.round(heading(x, y), accuracy);
+        return DoubleUtils.round(totalRadians.sum()/SAMPLE_SIZE, accuracy);
     }
 
     @Override
     public double instantaneousHeading() {
         Values values = compass.getHeading();
-        return DoubleUtils.round(heading(values.getGauss(Axis.X), values.getGauss(Axis.Y)), accuracy);
+        return DoubleUtils.round(values.radians(), accuracy);
     }
     
     @Override
@@ -134,7 +117,7 @@ public class CompassImpl implements Compass {
         lock.lock();
         try {
             for (int i = 0; i < SAMPLE_SIZE; i++) {
-                headings[i] = heading(samples[i].getGauss(Axis.X), samples[i].getGauss(Axis.Y));
+                headings[i] = samples[i].radians();
                 mean += headings[i];
             }
         } finally {
