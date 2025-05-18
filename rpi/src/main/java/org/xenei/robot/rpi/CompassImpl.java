@@ -10,15 +10,16 @@ import org.slf4j.LoggerFactory;
 import org.xenei.robot.common.Compass;
 import org.xenei.robot.common.utils.AngleUtils;
 import org.xenei.robot.common.utils.DoubleUtils;
-import org.xenei.robot.rpi.sensors.MMC3416xPJ;
-import org.xenei.robot.rpi.sensors.MMC3416xPJ.Axis;
+import org.xenei.robot.rpi.sensors.mmc3416xpj.MMC3416xPJ;
+import org.xenei.robot.rpi.sensors.mmc3416xpj.Axis;
+import org.xenei.robot.rpi.sensors.mmc3416xpj.Values;
 
 public class CompassImpl implements Compass {
     private static final Logger LOG = LoggerFactory.getLogger(CompassImpl.class);
     private final MMC3416xPJ compass = new MMC3416xPJ();
     private final static int SAMPLE_SIZE = 10;
     private final static int POLL_INTERVAL = 250;
-    private final MMC3416xPJ.Values[] samples;
+    private final Values[] samples;
     private int position = 0;
     private double XSum = 0.0;
     private double YSum = 0.0;
@@ -30,7 +31,7 @@ public class CompassImpl implements Compass {
     public CompassImpl() {
         this.pauseFunc = () -> false;
         lock = new ReentrantLock();
-        samples = new MMC3416xPJ.Values[SAMPLE_SIZE];
+        samples = new Values[SAMPLE_SIZE];
         for (int i = 0; i < SAMPLE_SIZE; i++) {
             samples[i] = compass.getHeading();
             XSum += samples[i].getAxisGauss(Axis.X);
@@ -41,7 +42,7 @@ public class CompassImpl implements Compass {
         TimerTask task = new TimerTask() {
             @Override
             public void run() {
-                    MMC3416xPJ.Values oldSample = samples[position];
+                    Values oldSample = samples[position];
                     samples[position] = compass.getHeading();
                     lock.lock();
                     try {
@@ -122,7 +123,7 @@ public class CompassImpl implements Compass {
 
     @Override
     public double instantaneousHeading() {
-        MMC3416xPJ.Values values = compass.getHeading();
+        Values values = compass.getHeading();
         return DoubleUtils.round(heading(values.getAxisGauss(Axis.X), values.getAxisGauss(Axis.Y)), accuracy);
     }
     
