@@ -34,8 +34,8 @@ public class CompassImpl implements Compass {
         samples = new Values[SAMPLE_SIZE];
         for (int i = 0; i < SAMPLE_SIZE; i++) {
             samples[i] = compass.getHeading();
-            XSum += samples[i].getAxisGauss(Axis.X);
-            YSum += samples[i].getAxisGauss(Axis.Y);
+            XSum += samples[i].getGauss(Axis.X);
+            YSum += samples[i].getGauss(Axis.Y);
         }
         position = 0;
         timer = new Timer();
@@ -46,8 +46,8 @@ public class CompassImpl implements Compass {
                     samples[position] = compass.getHeading();
                     lock.lock();
                     try {
-                        XSum += samples[position].getAxisGauss(Axis.X) - oldSample.getAxisGauss(Axis.X);
-                        YSum += samples[position].getAxisGauss(Axis.Y) - oldSample.getAxisGauss(Axis.Y);
+                        XSum += samples[position].getGauss(Axis.X) - oldSample.getGauss(Axis.X);
+                        YSum += samples[position].getGauss(Axis.Y) - oldSample.getGauss(Axis.Y);
                     } finally {
                         lock.unlock();
                     }
@@ -124,7 +124,7 @@ public class CompassImpl implements Compass {
     @Override
     public double instantaneousHeading() {
         Values values = compass.getHeading();
-        return DoubleUtils.round(heading(values.getAxisGauss(Axis.X), values.getAxisGauss(Axis.Y)), accuracy);
+        return DoubleUtils.round(heading(values.getGauss(Axis.X), values.getGauss(Axis.Y)), accuracy);
     }
     
     @Override
@@ -134,7 +134,7 @@ public class CompassImpl implements Compass {
         lock.lock();
         try {
             for (int i = 0; i < SAMPLE_SIZE; i++) {
-                headings[i] = heading(samples[i].getAxisGauss(Axis.X), samples[i].getAxisGauss(Axis.Y));
+                headings[i] = heading(samples[i].getGauss(Axis.X), samples[i].getGauss(Axis.Y));
                 mean += headings[i];
             }
         } finally {

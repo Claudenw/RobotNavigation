@@ -3,6 +3,7 @@ package org.xenei.robot.rpi.sensors.mmc3416xpj;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.ShortBuffer;
+import java.util.Scanner;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Function;
@@ -18,11 +19,7 @@ public final class MMC3416xPJ {
     private static final byte PRODUCT_ID = 0x06;
     private static final byte FIRST_DATA_REGISTER = 0x00;
 
-
-    public static byte OK = 0x00;
     public static byte ERROR = (byte) 0xFF;
-
-    //final Values zeroOffset = new Values(ShortBuffer.wrap( new short[] { 0, 0, 0 }));
 
     private final ReentrantLock lock;
     private final I2CDevice device;
@@ -340,6 +337,18 @@ public final class MMC3416xPJ {
         }
     }
 
+//    public static void main(String[] args) {
+//        MMC3416xPJ mag = new MMC3416xPJ();
+//        System.out.println(mag);
+//
+//        TimingUtils.delay(TimeUnit.SECONDS, 1);
+//
+//        while (true) {
+//            Values values = mag.getHeading();
+//            System.out.println(values);
+//            TimingUtils.delay(TimeUnit.MILLISECONDS, 250);
+//        }
+//    }
 
     public static void main(String[] args) {
         MMC3416xPJ mag = new MMC3416xPJ();
@@ -347,12 +356,17 @@ public final class MMC3416xPJ {
 
         TimingUtils.delay(TimeUnit.SECONDS, 1);
 
+        Scanner userInput = new Scanner(System.in);
         while (true) {
             Values values = mag.getHeading();
             System.out.println(values);
+            double D = Math.atan(values.getGauss(Axis.X)/values.getGauss(Axis.Y)) * (180/Math.PI);
+            System.out.format("Degrees: %s%n", D);
+            String input = userInput.nextLine();
             TimingUtils.delay(TimeUnit.MILLISECONDS, 250);
         }
     }
+
 
     private class DebugFunction implements Function<Status, Boolean>
     {

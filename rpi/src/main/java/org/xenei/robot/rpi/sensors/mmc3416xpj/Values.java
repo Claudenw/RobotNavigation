@@ -1,9 +1,5 @@
 package org.xenei.robot.rpi.sensors.mmc3416xpj;
 
-import org.xenei.robot.common.utils.TimingUtils;
-
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 import java.nio.ShortBuffer;
 
@@ -12,7 +8,7 @@ import java.nio.ShortBuffer;
  */
 public final class Values {
 
-    private final int[] data = new int[3];
+    private final short[] data = new short[3];
     private final float sensitivity;
 
     Values(ShortBuffer buffer, Resolution resolution) {
@@ -24,17 +20,25 @@ public final class Values {
 
     public FloatBuffer getGauss() {
         FloatBuffer fb = FloatBuffer.allocate(Axis.values().length);
-        for (int i = 0; i < fb.capacity(); i++) {
+        for (int i = 0; i < Axis.values().length; i++) {
             fb.put(i, data[i] / sensitivity);
         }
         return fb;
     }
 
-    public float getAxisGauss(Axis axis) {
+    public ShortBuffer getData() {
+        ShortBuffer sb = ShortBuffer.allocate(Axis.values().length);
+        for (int i = 0; i < Axis.values().length; i++) {
+            sb.put(i, data[i]);
+        }
+        return sb;
+    }
+
+    public float getGauss(Axis axis) {
         return data[axis.ordinal()] / sensitivity;
     }
 
-    public int getAxisData(Axis axis) {
+    public int getData(Axis axis) {
         return data[axis.ordinal()];
     }
 
@@ -42,8 +46,12 @@ public final class Values {
     public String toString() {
         StringBuilder sb = new StringBuilder("Values[ ");
         for (Axis axis : Axis.values()) {
-            sb.append(String.format("%s:{%s field =  %.5f gauss} ", axis, getAxisData(axis), getAxisGauss(axis)));
+            sb.append(String.format("%s:{%s field =  %.5f gauss} ", axis, getData(axis), getGauss(axis)));
         }
         return sb.append("]").toString();
+    }
+
+    public double degrees() {
+        return Math.atan(getGauss(Axis.X)/ getGauss(Axis.Y)) * (180/Math.PI);
     }
 }
