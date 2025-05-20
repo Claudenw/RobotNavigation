@@ -21,6 +21,25 @@ public final class MMC3416xPJ {
 
     public static byte ERROR = (byte) 0xFF;
 
+    private static final byte INTERNAL_CONTROL_0 = 0x07;
+    private static final byte INTERNAL_CONTROL_1 = 0x08;
+
+    private static final byte EMPTY_BYTE = (byte) 0;
+
+    // values for internal control 0
+    private static final byte REFILL_CAP =  (byte) 0x80;
+    private static final byte RESET = (byte) 0x40;
+    private static final byte SET = (byte) 0x20;
+    private static final byte NO_BOOST = (byte) 0x10;
+    private static final byte CONTINUOUS_MODE = (byte) 0x02;
+    private static final byte TAKE_MEASUREMENT = (byte) 0x01;
+
+    // values for internal control 1
+    private static final byte SW_RESET =  (byte) 0x80;
+    private static final byte SELF_TEST_BYTE = (byte) 0x20;
+
+    private static final byte FREQ_MASK = (byte) 0x0C;
+
     private final ReentrantLock lock;
     private final I2CDevice device;
     private final Configurator configurator;
@@ -29,9 +48,11 @@ public final class MMC3416xPJ {
         lock = new ReentrantLock();
         device = new I2CDevice(CONTROLLER, ADDRESS);
         this.configurator = new Configurator();
-        configurator.selfTest();
-        configurator.set();
-        configurator.reset();
+        if (!selfTest()) {
+            throw new IllegalStateException("Self test failed");
+        }
+        set();
+        reset();
     }
 
     void lock() {
@@ -42,53 +63,204 @@ public final class MMC3416xPJ {
         lock.unlock();
     }
 
-    void writeByteData(int register, byte value) {
-        lock.lock();
-        device.writeByteData(register, value);
-        lock.unlock();
-    }
-
     Status status() {
         return new Status(writeThenRead(Status.REG_STATUS));
     }
 
-    public Configurator getConfigurator() {
-        return configurator;
+    public Frequency getFrequency() {
+        lock();
+        try {
+            byte value = (byte) (device.readByteData(INTERNAL_CONTROL_0) & FREQ_MASK);
+            for (Frequency f : Frequency.values()) {
+                if (f.value == value) {
+                    return f;
+                }
+            }
+            throw new IllegalStateException(String.format("Invalid frequency: %x", value));
+        } finally {
+            unlock();
+        }
+    }
+
+    public boolean isContinuous() {
+        lock();
+        try {
+            return checkMask(device.readByteData(INTERNAL_CONTROL_0), CONTINUOUS_MODE);
+        } finally {
+            unlock();
+        }
+    }
+    /**
+     * Will reset the sensor by passing a large current through Set/Reset Coil in
+     * a reversed direction
+     * @return this
+     */
+    public void reset() {
+        lock();
+        try {
+            device.writeByteData(INTERNAL_CONTROL_0, REFILL_CAP);
+            while (status().pumpOn()) {
+                TimingUtils.delay(100);
+            }
+            device.writeByteData(INTERNAL_CONTROL_0, RESET);
+        } finally {
+            unlock();
+        }
+    }
+
+    /**
+     * Will set the sensor by passing a large current through Set/Reset Coil
+     * @return this
+     */
+    public void set() {
+        lock();
+        try {
+            device.writeByteData(INTERNAL_CONTROL_0, REFILL_CAP);
+            while (status().pumpOn()) {
+                TimingUtils.delay(100);
+            }
+            device.writeByteData(INTERNAL_CONTROL_0, SET);
+        } finally {
+            unlock();
+        }
+    }
+
+    /**
+     * Will disable the charge pump and cause the storage capacitor to
+     * be charged off VDD.
+     * @return this
+     */
+    public void enableBoost(boolean state) {
+        byte value;
+        lock();
+        try {
+            if (state) {
+                // turn of NO_BOOST flag
+                value = (byte) (device.readByteData(INTERNAL_CONTROL_0) & (CONTINUOUS_MODE | FREQ_MASK));
+            } else {
+                value = NO_BOOST;
+            }
+            device.writeByteData(INTERNAL_CONTROL_0, value);
+            while (!status().readDone()) {
+                TimingUtils.delay(100);
+            }
+        } finally {
+            unlock();
+        }
+    }
+
+    /**
+     * Will disable the charge pump and cause the storage capacitor to
+     * be charged off VDD.
+     * @return this
+     */
+    public boolean isBoostEnabled() {
+        lock();
+        try {
+            return !checkMask(device.readByteData(INTERNAL_CONTROL_0), NO_BOOST);
+        } finally {
+            unlock();
+        }
+    }
+
+
+    /**
+     * Determines how often the chip will take measurements in Continuous
+     * Measurement Mode.  If freq is {@code null} continuous measurement is disabled.
+     * @param freq the frequency to use.
+     * @return this.
+     */
+    public void setContinuousMode(Frequency freq) {
+        byte value = freq == null ? EMPTY_BYTE : (byte) (freq.value & CONTINUOUS_MODE);
+        lock();
+        try {
+            value &= (byte) (device.readByteData(INTERNAL_CONTROL_0) & NO_BOOST);
+            device.writeByteData(INTERNAL_CONTROL_0, value);
+        } finally {
+            unlock();
+        }
     }
 
     public Values takeMeasurement() {
-        lock.lock();
+        lock();
         try {
             byte[] buffer = new byte[6];
-            // request the measurements
-            configurator.takeMeasurement();
+            device.writeByteData(INTERNAL_CONTROL_0, TAKE_MEASUREMENT);
+            while (!status().measurementDone()) {
+                TimingUtils.delay(100);
+            }
 
             // read the measurements
             device.writeByte(FIRST_DATA_REGISTER);
-            device.readBytes(buffer);
-
+            int bytesRead = device.readBytes(buffer);
+            if (bytesRead != 6) {
+                throw new IllegalStateException(String.format("Read %s bytes, 6 expected", bytesRead));
+            }
             // save the data
             ShortBuffer shortBuffer = ByteBuffer.wrap(buffer).order(ByteOrder.LITTLE_ENDIAN).asShortBuffer();
-            return new Values(shortBuffer, configurator.resolution);
-        }
-        finally {
-            lock.unlock();
+            return new Values(shortBuffer, getResolution());
+        } finally {
+            unlock();
         }
     }
 
+    public void softwareReset() {
+        lock();
+        try {
+            device.writeByteData(INTERNAL_CONTROL_1, SW_RESET);
+        } finally {
+            unlock();
+        }
+    }
 
-//    public void calcOffsets() {
-//        int[] v3 = new int[3];
-//        Arrays.fill(v3, 0);
-//        new Configurator().setSet().execute();
-//        Values v1 = new Values(zeroOffset);
-//        new Configurator().setReset().execute();
-//        Values v2 = new Values(zeroOffset);
-//        for (Axis axis : Axis.values()) {
-//            v3[axis.ordinal()] = (v1.getAxisData(axis) + v2.getAxisData(axis)) / 2;
-//        }
-//        offsets = new Values(v3);
-//    }
+    public boolean selfTest() {
+        lock();
+        try {
+            device.writeByteData(INTERNAL_CONTROL_1, SELF_TEST_BYTE);
+            while (!status().readDone()) {
+                TimingUtils.delay(100);
+            }
+            device.writeByteData(INTERNAL_CONTROL_0, TAKE_MEASUREMENT);
+            while (!status().measurementDone()) {
+                TimingUtils.delay(100);
+            }
+            return checkMask(device.readByteData(INTERNAL_CONTROL_1), SELF_TEST_BYTE);
+        } finally {
+            unlock();
+        }
+    }
+
+    public Resolution setResolution(Resolution resolution) {
+        byte value = EMPTY_BYTE;
+        if (resolution != null) {
+            value |= resolution.flag;
+        }
+        lock();
+        try {
+            device.writeByteData(INTERNAL_CONTROL_1, value);
+            while (!status().readDone()) {
+                TimingUtils.delay(100);
+            }
+            return getResolution();
+        } finally {
+            unlock();
+        }
+    }
+
+    public Resolution getResolution() {
+        lock();
+        try {
+            byte value = (byte) (device.readByteData(INTERNAL_CONTROL_1) & 0x03);
+            for (Resolution resolution : Resolution.values()) {
+                if (resolution.flag == value) {
+                    return resolution;
+                }
+            }
+            throw new IllegalStateException(String.format("Invalid resolution: %X", value));
+        } finally {
+            unlock();
+        }
+    }
 
     /**
      * Calculates the Values for the difference between the
@@ -98,7 +270,7 @@ public final class MMC3416xPJ {
         return takeMeasurement();
     }
 
-    public static boolean checkMask(short result, short mask) {
+    private static boolean checkMask(short result, short mask) {
         return (result & mask) == mask;
     }
 
@@ -123,8 +295,8 @@ public final class MMC3416xPJ {
 
     @Override
     public String toString() {
-        return String.format("MMC3146xPJ[ continuous:%s product:%s resolution:%s]", configurator.isContinuous(), getProductId(),
-                configurator.getResolution());
+        return String.format("MMC3146xPJ[ continuous:%s product:%s resolution:%s]", isContinuous(), getProductId(),
+                getResolution());
     }
 
     static final class Status {
@@ -186,155 +358,6 @@ public final class MMC3416xPJ {
     }
 
     public class Configurator {
-        private static final byte INTERNAL_CONTROL_0 = 0x07;
-        private static final byte INTERNAL_CONTROL_1 = 0x08;
-
-        private static final byte EMPTY_BYTE = (byte) 0;
-
-        // values for internal control 0
-        private static final byte REFILL_CAP =  (byte) 0x80;
-        private static final byte RESET = (byte) 0x40;
-        private static final byte SET = (byte) 0x20;
-        private static final byte NO_BOOST = (byte) 0x10;
-        private static final byte CONTINUOUS_MODE = (byte) 0x02;
-        private static final byte TAKE_MEASUREMENT = (byte) 0x01;
-
-        // values for internal control 1
-        private static final byte SW_RESET =  (byte) 0x80;
-        private static final byte SELF_TEST = (byte) 0x20;
-
-        private Resolution resolution;
-        private Frequency frequency;
-        private boolean disableBoost;
-
-        private Configurator() {
-            resolution = Resolution._16bits_8ms;
-        }
-
-        public Resolution getResolution() {
-            return resolution;
-        }
-
-        public Frequency getFrequency() {
-            return frequency;
-        }
-
-        public boolean isContinuous() {
-            return frequency != null;
-        }
-
-
-        /**
-         * Will reset the sensor by passing a large current through Set/Reset Coil in
-         * a reversed direction
-         * @return this
-         */
-        public Configurator reset() {
-            updateControl0(REFILL_CAP, status -> !status.pumpOn());
-            updateControl0(RESET, Status::readDone);
-            return this;
-        }
-
-        /**
-         * Will set the sensor by passing a large current through Set/Reset Coil
-         * @return this
-         */
-        public Configurator set() {
-            updateControl0(REFILL_CAP, status -> !status.pumpOn());
-            updateControl0(SET, Status::readDone);
-            return this;
-        }
-
-        /**
-         * Will disable the charge pump and cause the storage capacitor to
-         * be charged off VDD.
-         * @return this
-         */
-        public Configurator enableBoost(boolean state) {
-            disableBoost = !state;
-            updateControl0(EMPTY_BYTE, Status::readDone);
-            return this;
-        }
-
-        /**
-         * Determines how often the chip will take measurements in Continuous
-         * Measurement Mode.  If freq is {@code null} continuous measurement is disabled.
-         * @param freq the frequency to use.
-         * @return this.
-         */
-        public Configurator setContinuousMode(Frequency freq) {
-            this.frequency = freq;
-            updateControl0(EMPTY_BYTE, Status::readDone);
-            return this;
-        }
-
-        void takeMeasurement() {
-            updateControl0(TAKE_MEASUREMENT, Status::measurementDone);
-        }
-
-        private void updateControl0(byte value, Function<Status, Boolean> completionTest) {
-            DebugFunction df = new DebugFunction(completionTest);
-            completionTest = df;
-            if (frequency != null) {
-                value |= (byte) (frequency.ordinal() << 2);
-                value |= CONTINUOUS_MODE;
-            }
-            value |= disableBoost ? NO_BOOST : EMPTY_BYTE;
-
-            lock();
-            try {
-                System.out.format("write %X: %X\n", INTERNAL_CONTROL_0, value);
-                writeByteData(INTERNAL_CONTROL_0, value);
-
-                if (!checkMask(value, RESET)) {
-                    TimingUtils.delay(100);
-                }
-                while (!completionTest.apply(status())) {
-                    TimingUtils.delay(100);
-                }
-            } finally {
-                unlock();
-            }
-        }
-
-        public Configurator softwareReset() {
-            updateControl1(SW_RESET, Status::readDone);
-            return this;
-        }
-
-        public Configurator selfTest() {
-            updateControl1(SELF_TEST, Status::readDone);
-            return this;
-        }
-
-        public Configurator setResolution(Resolution resolution) {
-            this.resolution = resolution;
-            updateControl1(EMPTY_BYTE, Status::readDone);
-            return this;
-        }
-
-        private void updateControl1(byte value, Function<Status, Boolean> completionTest) {
-            DebugFunction df = new DebugFunction(completionTest);
-            completionTest = df;
-                if (resolution != null) {
-                    value |= resolution.flag;
-                }
-            lock();
-            try {
-
-                System.out.format("write %X: %X\n", INTERNAL_CONTROL_1, value);
-                writeByteData(INTERNAL_CONTROL_1, value);
-
-                if (!checkMask(value, RESET)) {
-                    TimingUtils.delay(100);
-                }
-                while (!completionTest.apply(status())) {
-                    TimingUtils.delay(100);
-                }
-            } finally {
-                unlock();
-            }
-        }
     }
 
 //    public static void main(String[] args) {
