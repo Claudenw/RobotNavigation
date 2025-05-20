@@ -50,20 +50,15 @@ public class RpiMover implements Mover, AutoCloseable {
     /** Meters traveled in one rotation. */
     private final double rotationalDistance;
     private final int rpm;
-    /**
-     * what factor should be used to convert angle to rotations -- initially chassis
-     * radius.
-     */
-    private final double headingFactor;
 
     private static final Logger LOG = LoggerFactory.getLogger(RpiMover.class);
 
-    private static ULN2003 left() throws InterruptedException {
+    private static ULN2003 right() throws InterruptedException {
         //return new ULN2003(Mode.FULL_STEP, ULN2003.STEPPER_28BYJ48, 15, 18, 23, 24);
        return new ULN2003(Mode.FULL_STEP, ULN2003.STEPPER_28BYJ48, 24 , 23, 18, 15);
     }
 
-    private static ULN2003 right() throws InterruptedException {
+    private static ULN2003 left() throws InterruptedException {
         return new ULN2003(Mode.FULL_STEP, ULN2003.STEPPER_28BYJ48, 12,7, 8, 25);
     }
 
@@ -86,7 +81,6 @@ public class RpiMover implements Mover, AutoCloseable {
         this.ctxt = ctxt;
         motor[LEFT] = left;
         motor[RIGHT] = right;
-        this.headingFactor = 1.0;
         this.coordinates = coords;
         this.compass = compass;
         this.rotationalDistance = Math.PI * ctxt.chassisInfo.wheelDiameter / 100; // in meters
@@ -112,7 +106,7 @@ public class RpiMover implements Mover, AutoCloseable {
     public static void main(String[] args) {
         try {
             RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT, new ChassisInfo(0.23, 3.2, 60));
-            Compass compass = new DummyCompass();
+            Compass compass = new DeadReconing();
             try (RpiMover mover = new RpiMover(ctxt, compass, new Coordinate(0, 0))) {
                 Options options = getOptions();
                 BufferedReader bufferReader = new BufferedReader(new InputStreamReader(System.in));
@@ -153,8 +147,7 @@ public class RpiMover implements Mover, AutoCloseable {
                     if (commandLine.hasOption("c")) {
                         System.out.println(compass);
                         double h = mover.compassHeading();
-                        System.out.format("Mover[Heading: %s %s degrees hf:%s]%n", h, Math.toDegrees(h),
-                                mover.headingFactor);
+                        System.out.format("Mover[Heading: %s %s degrees]%n", h, Math.toDegrees(h));
                     }
 
                     if (commandLine.hasOption("t")) {
@@ -219,10 +212,6 @@ public class RpiMover implements Mover, AutoCloseable {
         System.out.println("Wrote to: "+p);
     }
 
-    public double getHeadingFactor() {
-        return headingFactor;
-    }
-
     private int limit(long value, int min, int max) {
         return (value < min) ? min : (value > max) ? max : (int) value;
     }
@@ -273,7 +262,9 @@ public class RpiMover implements Mover, AutoCloseable {
         SteppingStatus ssLeft = motor[LEFT].prepareRun(left, rpm);
         SteppingStatus ssRight = motor[RIGHT].prepareRun(right, rpm);
         StepMonitor result = new StepMonitor(ssLeft, ssRight);
-        //compass.setPauseFunc(() -> !result.complete());
+        if (compass instanceof DeadReconing) {
+            ((DeadReconing) compass).track(result);
+        }
         return result;
     }
 
@@ -323,8 +314,7 @@ public class RpiMover implements Mover, AutoCloseable {
         // theta r is the distance the wheel has to move to pass through the arc from
         // to make the direction change.
         double theta = AngleUtils.normalize(compass.instantaneousHeading()-heading)*-1;
-        double range = ctxt.chassisInfo.radius * theta;
-        int thetaSteps = steps(range * this.headingFactor);
+        int thetaSteps = DeadReconing.stepsTo(theta);
         if (LOG.isDebugEnabled()) {
             LOG.debug("Setting heading: {} {} degrees sweeping through {} degrees of arc", heading,
                     Math.toDegrees(heading), Math.toDegrees(theta));
@@ -387,16 +377,19 @@ public class RpiMover implements Mover, AutoCloseable {
         }
     }
 
-    private static class DummyCompass implements Compass {
+    private static class DeadReconing implements Compass {
+        private static final double STEPS_PER_RADIAN = 640.0;
+        double heading;
+        StepMonitor currentMonitor;
 
         @Override
         public double heading() {
-            return 0;
+            return heading;
         }
 
         @Override
         public double instantaneousHeading() {
-            return 0;
+            return heading + (currentMonitor.ssLeft.fwdSteps() - currentMonitor.ssRight.fwdSteps()) / STEPS_PER_RADIAN;
         }
 
         @Override
@@ -406,7 +399,21 @@ public class RpiMover implements Mover, AutoCloseable {
 
         @Override
         public int decimalPlaces() {
-            return 0;
+            return 2;
+        }
+
+        public void track(StepMonitor stepMonitor) {
+            if (currentMonitor == null) {
+                int stepDifferential = currentMonitor.ssLeft.fwdSteps() - currentMonitor.ssRight.fwdSteps();
+                if (stepDifferential != 0) {
+                    heading += stepDifferential / STEPS_PER_RADIAN;
+                }
+            }
+            this.currentMonitor = stepMonitor;
+        }
+
+        public static int stepsTo(double theta) {
+            return (int) Math.round(theta * STEPS_PER_RADIAN / 2);
         }
     }
 }
