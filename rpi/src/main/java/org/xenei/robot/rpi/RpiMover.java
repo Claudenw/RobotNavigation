@@ -378,7 +378,7 @@ public class RpiMover implements Mover, AutoCloseable {
     }
 
     private static class DeadReconing implements Compass {
-        private static final double STEPS_PER_RADIAN = 640.0;
+        private static final double STEPS_PER_RADIAN = 640.0 * 10;
         private double heading;
         private StepMonitor currentMonitor;
 
