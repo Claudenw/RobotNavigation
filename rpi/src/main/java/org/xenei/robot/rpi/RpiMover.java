@@ -379,8 +379,8 @@ public class RpiMover implements Mover, AutoCloseable {
 
     private static class DeadReconing implements Compass {
         private static final double STEPS_PER_RADIAN = 640.0;
-        double heading;
-        StepMonitor currentMonitor;
+        private double heading;
+        private StepMonitor currentMonitor;
 
         @Override
         public double heading() {
@@ -406,7 +406,7 @@ public class RpiMover implements Mover, AutoCloseable {
         }
 
         public void track(StepMonitor stepMonitor) {
-            if (currentMonitor == null) {
+            if (currentMonitor != null) {
                 int stepDifferential = currentMonitor.ssLeft.fwdSteps() - currentMonitor.ssRight.fwdSteps();
                 if (stepDifferential != 0) {
                     heading += stepDifferential / STEPS_PER_RADIAN;
