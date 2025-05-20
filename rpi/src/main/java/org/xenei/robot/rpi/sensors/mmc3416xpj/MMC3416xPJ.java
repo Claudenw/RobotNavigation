@@ -42,12 +42,10 @@ public final class MMC3416xPJ {
 
     private final ReentrantLock lock;
     private final I2CDevice device;
-    private final Configurator configurator;
 
     public MMC3416xPJ() {
         lock = new ReentrantLock();
         device = new I2CDevice(CONTROLLER, ADDRESS);
-        this.configurator = new Configurator();
         if (!selfTest()) {
             throw new IllegalStateException("Self test failed");
         }
@@ -93,7 +91,6 @@ public final class MMC3416xPJ {
     /**
      * Will reset the sensor by passing a large current through Set/Reset Coil in
      * a reversed direction
-     * @return this
      */
     public void reset() {
         lock();
@@ -110,7 +107,6 @@ public final class MMC3416xPJ {
 
     /**
      * Will set the sensor by passing a large current through Set/Reset Coil
-     * @return this
      */
     public void set() {
         lock();
@@ -128,7 +124,6 @@ public final class MMC3416xPJ {
     /**
      * Will disable the charge pump and cause the storage capacitor to
      * be charged off VDD.
-     * @return this
      */
     public void enableBoost(boolean state) {
         byte value;
@@ -168,7 +163,6 @@ public final class MMC3416xPJ {
      * Determines how often the chip will take measurements in Continuous
      * Measurement Mode.  If freq is {@code null} continuous measurement is disabled.
      * @param freq the frequency to use.
-     * @return this.
      */
     public void setContinuousMode(Frequency freq) {
         byte value = freq == null ? EMPTY_BYTE : (byte) (freq.value & CONTINUOUS_MODE);
@@ -285,12 +279,16 @@ public final class MMC3416xPJ {
     }
 
     public byte getProductId() {
-        byte result = 0;
-        result = writeThenRead(REG_PRODUCT_ID);
-        if (result != PRODUCT_ID) {
-            result = ERROR;
+        lock();
+        try {
+            byte result = writeThenRead(REG_PRODUCT_ID);
+            if (result != PRODUCT_ID) {
+                result = ERROR;
+            }
+            return result;
+        } finally {
+            unlock();
         }
-        return result;
     }
 
     @Override
@@ -357,8 +355,6 @@ public final class MMC3416xPJ {
         }
     }
 
-    public class Configurator {
-    }
 
 //    public static void main(String[] args) {
 //        MMC3416xPJ mag = new MMC3416xPJ();

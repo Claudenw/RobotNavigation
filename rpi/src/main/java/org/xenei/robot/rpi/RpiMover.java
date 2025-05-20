@@ -105,6 +105,7 @@ public class RpiMover implements Mover, AutoCloseable {
                 .addOption(Option.builder("q").desc("Quit").build())
                 .addOption(Option.builder("h").type(Double.class).desc("Heading").hasArg().argName("degrees").build())
                 .addOption(Option.builder("m").type(Double.class).desc("Move (angle range)").numberOfArgs(2).build())
+                .addOption(Option.builder("s").type(Integer.class).desc("Step (left right)").numberOfArgs(2).build())
                 .addOption(Option.builder("c").desc("Compass reading").build())
                 .addOption(Option.builder("t").desc("Training data").hasArg().type(Integer.class).argName("recordCount").build())
                 .addOption(Option.builder("x").desc("x-ray compas test").build());
@@ -134,7 +135,6 @@ public class RpiMover implements Mover, AutoCloseable {
                     if (commandLine.hasOption("?")) {
                         new HelpFormatter().printHelp(RpiMover.class.getCanonicalName(), getOptions());
                     }
-
                     if (commandLine.hasOption("h")) {
                         mover.setHeading(Math.toRadians(commandLine.getParsedOptionValue("h")));
                     }
@@ -145,7 +145,10 @@ public class RpiMover implements Mover, AutoCloseable {
                         Location l = Location.from(CoordUtils.fromAngle(angle, range));
                         System.out.println("Moving to " + l);
                         mover.move(l);
-
+                    }
+                    if (commandLine.hasOption("s")) {
+                        List<Integer> values = Arrays.stream(commandLine.getOptionValues("s")).map(Integer::parseInt).toList();
+                        mover.steps(values.get(0), values.get(1));
                     }
                     if (commandLine.hasOption("q")) {
                         return;
@@ -242,6 +245,9 @@ public class RpiMover implements Mover, AutoCloseable {
         LOG.debug("RpiMover shut down complete");
     }
 
+    public void steps(int left, int right) {
+        takeSteps(left, right, rpm).waitForComplete();
+    }
     @Override
     public Position move(Location location) {
         Position currentPosition = position();
