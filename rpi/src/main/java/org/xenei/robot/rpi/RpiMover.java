@@ -389,7 +389,7 @@ public class RpiMover implements Mover, AutoCloseable {
 
         @Override
         public double instantaneousHeading() {
-            if (currentMonitor == null) {
+            if (currentMonitor != null) {
                 return heading + (currentMonitor.ssLeft.fwdSteps() - currentMonitor.ssRight.fwdSteps()) / STEPS_PER_RADIAN;
             }
             return heading;
