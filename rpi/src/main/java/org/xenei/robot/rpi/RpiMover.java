@@ -1,14 +1,11 @@
 package org.xenei.robot.rpi;
 
 import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
@@ -115,7 +112,7 @@ public class RpiMover implements Mover, AutoCloseable {
     public static void main(String[] args) {
         try {
             RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT, new ChassisInfo(0.23, 3.2, 60));
-            Compass compass = new CompassImpl();
+            Compass compass = new DummyCompass();
             try (RpiMover mover = new RpiMover(ctxt, compass, new Coordinate(0, 0))) {
                 Options options = getOptions();
                 BufferedReader bufferReader = new BufferedReader(new InputStreamReader(System.in));
@@ -387,6 +384,29 @@ public class RpiMover implements Mover, AutoCloseable {
             Coordinate shift = ctxt.scaleInfo.round(CoordUtils.fromAngle(compass.heading(), range));
             coordinates = CoordUtils.add(coordinates, shift);
             LOG.debug("steps result: range:{} shift:{} position:{}", range, shift, position());
+        }
+    }
+
+    private static class DummyCompass implements Compass {
+
+        @Override
+        public double heading() {
+            return 0;
+        }
+
+        @Override
+        public double instantaneousHeading() {
+            return 0;
+        }
+
+        @Override
+        public double sd() {
+            return 0;
+        }
+
+        @Override
+        public int decimalPlaces() {
+            return 0;
         }
     }
 }
