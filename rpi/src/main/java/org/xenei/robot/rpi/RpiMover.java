@@ -246,7 +246,7 @@ public class RpiMover implements Mover, AutoCloseable {
 
     private int steps(double range) {
         long steps = Math.round(motor[LEFT].stepsPerRotation() * range / rotationalDistance);
-        return limit(steps, Short.MIN_VALUE, Short.MAX_VALUE);
+        return limit(steps, Integer.MIN_VALUE, Integer.MAX_VALUE);
     }
 
     /**
