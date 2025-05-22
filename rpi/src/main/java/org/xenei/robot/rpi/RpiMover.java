@@ -106,7 +106,7 @@ public class RpiMover implements Mover, AutoCloseable {
     public static void main(String[] args) {
         try {
             RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT, new ChassisInfo(0.23, 3.2, 60));
-            Compass compass = new DeadReconing();
+            Compass compass = new DeadReckoning();
             try (RpiMover mover = new RpiMover(ctxt, compass, new Coordinate(0, 0))) {
                 Options options = getOptions();
                 BufferedReader bufferReader = new BufferedReader(new InputStreamReader(System.in));
@@ -262,8 +262,8 @@ public class RpiMover implements Mover, AutoCloseable {
         SteppingStatus ssLeft = motor[LEFT].prepareRun(left, rpm);
         SteppingStatus ssRight = motor[RIGHT].prepareRun(right, rpm);
         StepMonitor result = new StepMonitor(ssLeft, ssRight);
-        if (compass instanceof DeadReconing) {
-            ((DeadReconing) compass).track(result);
+        if (compass instanceof DeadReckoning) {
+            ((DeadReckoning) compass).track(result);
         }
         return result;
     }
@@ -314,7 +314,7 @@ public class RpiMover implements Mover, AutoCloseable {
         // theta r is the distance the wheel has to move to pass through the arc from
         // to make the direction change.
         double theta = AngleUtils.normalize(compass.instantaneousHeading()-heading)*-1;
-        int thetaSteps = DeadReconing.stepsTo(theta);
+        int thetaSteps = DeadReckoning.stepsTo(theta);
         if (LOG.isDebugEnabled()) {
             LOG.debug("Setting heading: {} {} degrees sweeping through {} degrees of arc", heading,
                     Math.toDegrees(heading), Math.toDegrees(theta));
@@ -377,7 +377,7 @@ public class RpiMover implements Mover, AutoCloseable {
         }
     }
 
-    private static class DeadReconing implements Compass {
+    private static class DeadReckoning implements Compass {
         private static final double STEPS_PER_RADIAN = 640.0 * 10;
         private double heading;
         private StepMonitor currentMonitor;
@@ -417,6 +417,13 @@ public class RpiMover implements Mover, AutoCloseable {
 
         public static int stepsTo(double theta) {
             return (int) Math.round(theta * STEPS_PER_RADIAN / 2);
+        }
+
+        @Override
+        public String toString() {
+            double h = heading();
+            double sd = sd();
+            return String.format("DeadReckoning[Heading: %s %s degrees]", h, DoubleUtils.round(Math.toDegrees(h), decimalPlaces() + 1), sd);
         }
     }
 }

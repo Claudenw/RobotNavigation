@@ -3,15 +3,15 @@ package org.xenei.robot.rpi.drivers;
 import java.util.concurrent.Callable;
 
 public interface Motor extends AutoCloseable {
-    public boolean active();
-    public SteppingStatus prepareRun(int steps, int rpm);
-    public double stepsPerRotation();
+    boolean active();
+    SteppingStatus prepareRun(int steps, int rpm);
+    double stepsPerRotation();
     
 
     /**
      * Stop a stepper motor.
      */
-    public void stop();
+    void stop();
 
     interface SteppingStatus extends Callable<SteppingStatus> {
         

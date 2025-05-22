@@ -151,7 +151,7 @@ public class ULN2003 implements Motor {
      */
     public SteppingStatusImpl prepareRun(int steps, int rpm) {
         // revmilli/stepsmin * min/rev = milli/steps (min/rev = 1/rpm)
-        long msPerStep = (long) Math.ceil(revMilliPerStepMin / limit(rpm, 1, 300));
+        long msPerStep = (long) Math.ceil(revMilliPerStepMin / limit(rpm, 1, 150));
         
         SteppingStatusImpl result = new SteppingStatusImpl(steps, msPerStep);
         
@@ -175,7 +175,7 @@ public class ULN2003 implements Motor {
         private final long msPerStep;
         
         SteppingStatusImpl(int steps, long msPerStep) {
-            initialCounter = Math.abs(limit(steps, -32768, 32767));
+            initialCounter = Math.abs(steps);//Math.abs(limit(steps, Short.MIN_VALUE, Short.MAX_VALUE));
             count = initialCounter;
             fwd = steps >= 0;
             this.msPerStep = msPerStep;
