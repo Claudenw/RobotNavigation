@@ -130,6 +130,11 @@ public class RpiMoverTest {
         }
 
         @Override
+        public int getMaxRpm() {
+            return 300;
+        }
+
+        @Override
         public void close() throws Exception {
             // TODO Auto-generated method stub
             
