@@ -3,6 +3,7 @@ package org.xenei.robot.rpi.drivers;
 import java.util.concurrent.Callable;
 
 public interface Motor extends AutoCloseable {
+    int getMaxRpm();
     boolean active();
     SteppingStatus prepareRun(int steps, int rpm);
     double stepsPerRotation();

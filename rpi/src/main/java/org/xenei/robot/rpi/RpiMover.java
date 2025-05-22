@@ -39,7 +39,6 @@ import org.xenei.robot.rpi.drivers.ULN2003.Mode;
 
 public class RpiMover implements Mover, AutoCloseable {
 
-    private static final int MAX_RPM = 300;
     private final Motor[] motor = new Motor[2];
     private static final int LEFT = 0;
     private static final int RIGHT = 1;
@@ -87,7 +86,7 @@ public class RpiMover implements Mover, AutoCloseable {
         this.executor = Executors.newFixedThreadPool(3);
         // this.r = width/2.0; // in cm
         // meterminute / meterrotation = meterrotation/meter/minute = r/m
-        this.rpm = limit((long) Math.ceil(ctxt.chassisInfo.maxSpeed / rotationalDistance), 1, MAX_RPM);
+        this.rpm = limit((long) Math.ceil(ctxt.chassisInfo.maxSpeed / rotationalDistance), 1, motor[0].getMaxRpm());
         LOG.debug("RpiMover: {}", position());
     }
 
@@ -197,7 +196,7 @@ public class RpiMover implements Mover, AutoCloseable {
                 int thetaSteps = i;
                 //int thetaSteps = random.nextInt(-3000, 3000);
                 if (thetaSteps != 0) {
-                    try (StepMonitor monitor = takeSteps(thetaSteps, -thetaSteps, MAX_RPM)) {
+                    try (StepMonitor monitor = takeSteps(thetaSteps, -thetaSteps, motor[0].getMaxRpm())) {
                         monitor.waitForComplete();
                     }
                 }
@@ -322,7 +321,7 @@ public class RpiMover implements Mover, AutoCloseable {
         if (thetaSteps == 0) {
             return 0;
         }
-        try (StepMonitor monitor = takeSteps(thetaSteps, -thetaSteps, MAX_RPM)) {
+        try (StepMonitor monitor = takeSteps(thetaSteps, -thetaSteps, motor[0].getMaxRpm())) {
             monitor.waitForComplete();
         }
         LOG.debug("{}", compass);

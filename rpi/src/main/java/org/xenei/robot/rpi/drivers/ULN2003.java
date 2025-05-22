@@ -25,6 +25,7 @@ public class ULN2003 implements Motor {
 
     private static final Logger LOG = LoggerFactory.getLogger(ULN2003.class);
 
+    public static final int MAX_RPM = 150;
 
     private static DigitalOutputDeviceFactory dodF = i -> new DigitalOutputDevice.Builder(i)
             .setActiveHigh(true).setInitialValue(false).build();
@@ -119,6 +120,10 @@ public class ULN2003 implements Motor {
         return stepsPerRotation;
     }
     
+    @Override
+    public int getMaxRpm() {
+        return MAX_RPM;
+    }
 
     @Override
     public String toString() {
