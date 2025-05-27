@@ -12,7 +12,7 @@ public interface Step extends FrontsCoordinate, Comparable<Step> {
     /**
      * The default comparator for Steps
      */
-    public static Comparator<Step> compare = (one, two) -> {
+    Comparator<Step> compare = (one, two) -> {
         int x = Double.compare(one.cost(), two.cost());
         return x == 0 ? CoordUtils.XYCompr.compare(one.getCoordinate(), two.getCoordinate()) : x;
     };
@@ -21,21 +21,21 @@ public interface Step extends FrontsCoordinate, Comparable<Step> {
      * The cost of this step.
      * @return the cost of this step.
      */
-    public double cost();
+    double cost();
 
     /**
      * The distance from this coordinate to the target.
-     * @return
+     * @return the distance for this step
      */
-    public double distance();
+    double distance();
 
     /**
      * The geometry of this step.
-     * @return
+     * @return the gemetry associated with this step.
      */
-    public Geometry getGeometry();
+    Geometry getGeometry();
     
-    default public Position nextPosition(Position currentPosition) {
+    default Position nextPosition(Position currentPosition) {
         double heading = currentPosition.headingTo(this);
         return Position.from(getCoordinate(), heading);
     }

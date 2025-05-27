@@ -57,7 +57,7 @@ public interface Planner extends ListenerContainer {
      * Replaces the current planner target without clearing the current plan. If the
      * only one target is in the planner stack then this method adds a record.
      * 
-     * @param target The coordinates to head toward.
+     * @param coordinate The coordinates to head toward.
      * @return the heading to the new target.
      */
     double replaceTarget(Coordinate coordinate);
