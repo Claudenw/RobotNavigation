@@ -11,7 +11,6 @@ import org.locationtech.jts.geom.Geometry;
 public class MapBuilder {
 
     private final Map map;
-    
 
     public enum Type {
         Obstacle, Path

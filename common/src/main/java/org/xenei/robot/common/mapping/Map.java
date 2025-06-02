@@ -3,12 +3,13 @@ package org.xenei.robot.common.mapping;
 import java.util.Collection;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Future;
 
 import org.apache.jena.rdf.model.Resource;
 import org.locationtech.jts.geom.Coordinate;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Position;
-import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.common.planning.Solution;
 import org.xenei.robot.common.planning.Step;
 import org.xenei.robot.common.utils.RobutContext;
@@ -33,8 +34,7 @@ public interface Map {
     boolean isClearPath(Coordinate source, Coordinate dest);
 
     /**
-     * Add the target to the planning
-     *
+     * Add the target to the planning.
      * If the distance is null, then the result will be empty as there can be no
      * steps to a non-declared target.
      *
@@ -58,32 +58,32 @@ public interface Map {
 
     /**
      * Gets the collection of all coordinates in the planning graph.
-     * 
+     *
      * @return the collection of all coordinates in the planning graph.
      */
-    Collection<MapCoord> getCoords();
+    CompletableFuture<Collection<MapCoord>> getCoords();
 
     /**
      * Adds a path to the planning graph.
-     * 
+     *
      * @param coords the coordinates of the path.
      */
-    Coordinate[] addPath(Coordinate... coords);
+    Future<Coordinate[]> addPath(Coordinate... coords);
 
     /**
      * Adds a path to the specified graph.
-     * 
-     * @param model the name of the graph to add the path to.
+     *
+     * @param model  the name of the graph to add the path to.
      * @param coords the coordinates of the path.
      */
-    Coordinate[] addPath(Resource model, Coordinate... coords);
+    Future<Coordinate[]> addPath(Resource model, Coordinate... coords);
 
     /**
      * Update the planning model with new distances based on the new target
-     * 
+     *
      * @param target the new target.
      */
-    Coordinate recalculate(Coordinate target);
+    Future<Coordinate> recalculate(Coordinate target);
 
     /**
      * Find the best targets based on the costs in the graph.
@@ -106,23 +106,23 @@ public interface Map {
      * 
      * @param obstacle the obstacle to add.
      */
-    // Coordinate addObstacle(Coordinate obstacle);
     Set<Obstacle> addObstacle(Obstacle obstacle);
 
     /**
      * Gets the geometry for all the known obstacles.
-     * 
+     *
      * @return the set of geometries for all the knowns obstacles.
      */
-    Set<Obstacle> getObstacles();
+    CompletableFuture<Set<Obstacle>> getObstacles();
 
     /**
      * Breaks the path between a and b.
-     * 
+     *
      * @param a the first coordinate to break the path for.
      * @param b the second coordinate to break the path for.
+     * @return
      */
-    void cutPath(Coordinate a, Coordinate b);
+    Future<?> cutPath(Coordinate a, Coordinate b);
 
     /**
      * Write the path specified by the solution in the the base model.
@@ -160,11 +160,12 @@ public interface Map {
     /**
      * Update the map so that any Coord that was previously not indirect but is now
      * blocked by newObstacle is marked as indirect.
-     * 
-     * @param finalTarget The final target
+     *
+     * @param finalTarget  The final target
      * @param newObstacles the set of new obstacles.
+     * @return
      */
-    void updateIsIndirect(Coordinate finalTarget, Set<Obstacle> newObstacles);
+    CompletableFuture<Void> updateIsIndirect(Coordinate finalTarget, Set<Obstacle> newObstacles);
 
     /**
      * Create an Obstacle.
@@ -178,21 +179,21 @@ public interface Map {
 
     /**
      * Sets the coordinate as visited in the map.
-     * 
+     *
      * @param finalTarget the final target we are headed to.
-     * @param coord the coordinate to mark as visited.
+     * @param coord       the coordinate to mark as visited.
      * @return
      */
-    void setVisited(Coordinate finalTarget, Coordinate coord);
+    Future<?> setVisited(Coordinate finalTarget, Coordinate coord);
 
     /**
      * Look in the given direction for the maximum range. if there is an obstacle
      * report the relative location. otherwise return and empty optional.
-     * 
+     *
      * @param position the position on the map to look from.
-     * @param heading the direction to look.
+     * @param heading  the direction to look.
      * @param maxRange the maximum range to look.
      * @return the relative location of a located obstacle or an empty Optional.
      */
-    Optional<Location> look(Position position, double heading, int maxRange);
+    CompletableFuture<Optional<Location>> look(Position position, double heading, int maxRange);
 }

@@ -18,6 +18,7 @@ import org.xenei.robot.common.Position;
 import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.common.utils.CoordUtils;
 import org.xenei.robot.common.utils.RobutContext;
+import org.xenei.robot.rpi.mover.RpiMover;
 import org.xenei.robot.rpi.sensors.Arduino;
 
 public class Robut {

@@ -1,7 +1,20 @@
 package org.xenei.robot.common.utils;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import org.apache.commons.collections4.map.LRUMap;
 import org.apache.jena.riot.RIOT;
@@ -12,6 +25,7 @@ import org.xenei.robot.common.ChassisInfo;
 import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.mapper.GraphGeomFactory;
 import org.xenei.robot.mapper.rdf.Namespace;
+import org.xenei.robot.ml.SensorLayer;
 
 public class RobutContext {
 
@@ -22,6 +36,8 @@ public class RobutContext {
     public final GeometryUtils geometryUtils;
     public final GraphGeomFactory graphGeomFactory;
     public final Map<String, Geometry> cache = Collections.synchronizedMap(new LRUMap<String, Geometry>(500));
+    private final ExecutorService workScheduler = Executors.newWorkStealingPool();
+    private final ScheduledExecutorService scheduledExecutor = Executors.newSingleThreadScheduledExecutor();
 
     /**
      * Constructor
@@ -43,4 +59,52 @@ public class RobutContext {
     public double getScaledRadius() {
         return chassisInfo.radius + scaleInfo.getResolution();
     }
+
+    public ScheduledFuture<?> scheduleAtFixedRate(Runnable command, long initialDelay, long period, TimeUnit unit) {
+        return scheduledExecutor.scheduleAtFixedRate(command, initialDelay, period, unit);
+    }
+
+    public void shutdown() {
+        scheduledExecutor.shutdown();
+        workScheduler.shutdown();
+    }
+
+    public List<Runnable> shutdownNow() {
+        List<Runnable> r = new ArrayList<Runnable>();
+        r.addAll(scheduledExecutor.shutdownNow());
+        r.addAll(workScheduler.shutdownNow());
+        return r;
+    }
+
+
+    public boolean isShutdown() {
+        return scheduledExecutor.isShutdown() & workScheduler.isShutdown();
+    }
+
+
+    public boolean isTerminated() {
+        return scheduledExecutor.isTerminated() & workScheduler.isTerminated();
+    }
+
+
+    public boolean awaitTermination(long timeout, TimeUnit unit) throws InterruptedException {
+        return scheduledExecutor.awaitTermination(timeout, unit) & workScheduler.awaitTermination(timeout, unit);
+    }
+
+    public <T> CompletableFuture<T> submit(Callable<T> task) {
+        CompletableFuture<T> future = new CompletableFuture<>();
+        workScheduler.execute(() -> {
+            try {
+                future.complete(task.call());
+            } catch (Throwable t) {
+                future.completeExceptionally(t);
+            }
+        });
+        return future;
+    }
+
+    public CompletableFuture<?> submit(Runnable task) {
+        return CompletableFuture.runAsync(task, workScheduler);
+    }
+
 }

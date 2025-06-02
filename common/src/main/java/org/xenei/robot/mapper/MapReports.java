@@ -83,7 +83,7 @@ public class MapReports {
     public static String dumpObstacles(MapImpl map) {
         StringBuilder builder = new StringBuilder();
         TreeSet<Obstacle> obs = new TreeSet<>((a, b) -> a.wkt().toString().compareTo(b.wkt().toString()));
-        obs.addAll(map.getObstacles());
+        obs.addAll(map.getObstacles().join());
         obs.forEach(o -> builder.append(String.format("Obst: %s %s\n", o.uuid(), o.geom())));
         return builder.toString();
     }
@@ -91,9 +91,8 @@ public class MapReports {
     public static String dumpObstacleDistance(MapImpl map) {
         StringBuilder builder = new StringBuilder();
         TreeSet<Obstacle> obs = new TreeSet<>((a, b) -> a.wkt().toString().compareTo(b.wkt().toString()));
-        obs.addAll(map.getObstacles());
-        List<Obstacle> lst = new ArrayList<Obstacle>();
-        lst.addAll(obs);
+        obs.addAll(map.getObstacles().join());
+        List<Obstacle> lst = new ArrayList<>(obs);
         double[][] dist = new double[obs.size()][obs.size()];
 
         for (int i = 0; i < lst.size() - 1; i++) {

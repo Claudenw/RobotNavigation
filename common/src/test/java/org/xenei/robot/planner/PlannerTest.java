@@ -17,6 +17,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Queue;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Future;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -271,13 +273,14 @@ public class PlannerTest {
             }
 
             @Override
-            public void setVisited(Coordinate finalTarget, Coordinate coord) {
+            public Future<?> setVisited(Coordinate finalTarget, Coordinate coord) {
                 if (underTest.getFinalTarget() == null) {
                     assertEquals(finalTarget, coord);
                 } else {
                     assertEquals(underTest.getFinalTarget(), finalTarget);
                 }
                 visitedTarget[0] = coord;
+                return null;
             }
         };
 
@@ -406,25 +409,25 @@ public class PlannerTest {
         }
 
         @Override
-        public Collection<MapCoord> getCoords() {
+        public CompletableFuture<Collection<MapCoord>> getCoords() {
             // TODO Auto-generated method stub
             return null;
         }
 
         @Override
-        public Coordinate[] addPath(Coordinate... coords) {
+        public Future<Coordinate[]> addPath(Coordinate... coords) {
             // TODO Auto-generated method stub
             return null;
         }
 
         @Override
-        public Coordinate[] addPath(Resource model, Coordinate... coords) {
+        public Future<Coordinate[]> addPath(Resource model, Coordinate... coords) {
             // TODO Auto-generated method stub
             return null;
         }
 
         @Override
-        public Coordinate recalculate(Coordinate target) {
+        public Future<Coordinate> recalculate(Coordinate target) {
             // TODO Auto-generated method stub
             return null;
         }
@@ -447,15 +450,16 @@ public class PlannerTest {
         }
 
         @Override
-        public Set<Obstacle> getObstacles() {
+        public CompletableFuture<Set<Obstacle>> getObstacles() {
             // TODO Auto-generated method stub
             return null;
         }
 
         @Override
-        public void cutPath(Coordinate a, Coordinate b) {
+        public Future<?> cutPath(Coordinate a, Coordinate b) {
             // TODO Auto-generated method stub
 
+            return null;
         }
 
         @Override
@@ -477,9 +481,10 @@ public class PlannerTest {
         }
 
         @Override
-        public void updateIsIndirect(Coordinate finalTarget, Set<Obstacle> newObstacles) {
+        public CompletableFuture<Void> updateIsIndirect(Coordinate finalTarget, Set<Obstacle> newObstacles) {
             // TODO Auto-generated method stub
 
+            return null;
         }
 
         @Override
@@ -489,13 +494,14 @@ public class PlannerTest {
         }
 
         @Override
-        public void setVisited(Coordinate finalTarget, Coordinate coord) {
+        public Future<?> setVisited(Coordinate finalTarget, Coordinate coord) {
             // TODO Auto-generated method stub
 
+            return null;
         }
 
         @Override
-        public Optional<Location> look(Position position, double heading, int maxRange) {
+        public CompletableFuture<Optional<Location>> look(Position position, double heading, int maxRange) {
             // TODO Auto-generated method stub
             return Optional.empty();
         }

@@ -1,4 +1,4 @@
-package org.xenei.robot.rpi;
+package org.xenei.robot.rpi.mover;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -141,12 +141,6 @@ public class RpiMoverTest {
         }
 
         @Override
-        public boolean active() {
-            // TODO Auto-generated method stub
-            return false;
-        }
-
-        @Override
         public SteppingStatus prepareRun(int steps, int rpm) {
             long msPerStep = 50;
             int mySteps = (int) Math.round(steps * (angleFactor/TestChassisInfo.DEFAULT.radius));
@@ -189,18 +183,23 @@ public class RpiMoverTest {
             }
 
             @Override
-            public SteppingStatusImpl call() throws InterruptedException {
+            public boolean step() {
+                try {
                     Thread.sleep(msPerStep);
-                    compass.increment(positiveAngleFactor*Math.toRadians(0.5)*(fwd ? count : -count));
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+                compass.increment(positiveAngleFactor*Math.toRadians(0.5)*(fwd ? count : -count));
                 count = 0;
                 LOG.info("SteppingStatus complete.  count:{} initial counter:{}", count, initialCounter);
-                return this;
+                return false;
             }
-            
-            public boolean isRunning() {
-                return count > 0;
+
+            @Override
+            public boolean isComplete() {
+                return true;
             }
-            
+
             /**
              * Gets the number of steps taken in a forward direction.
              * @return the number of steps taken, negative for reverse travel.

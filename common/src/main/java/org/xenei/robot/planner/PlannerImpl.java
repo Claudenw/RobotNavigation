@@ -34,9 +34,8 @@ public class PlannerImpl implements Planner {
 
     /**
      * Constructs a planner.
-     * 
-     * @param sensor the sensor to sense environment.
-     * @param startPosition the starting position.
+     * @param map the map to use
+     * @param positionSupplier a provider of the current position.
      */
     public PlannerImpl(Map map, Supplier<Position> positionSupplier) {
         this(map, positionSupplier, null);
@@ -44,9 +43,8 @@ public class PlannerImpl implements Planner {
 
     /**
      * Constructs a planner.
-     * 
-     * @param sensor the sensor to sense environment.
-     * @param startPosition the starting position.
+     * @param map the map to use
+     * @param positionSupplier a provider of the current position.
      * @param target the coordinates of the target to reach.
      */
     public PlannerImpl(Map map, Supplier<Position> positionSupplier, Location target) {

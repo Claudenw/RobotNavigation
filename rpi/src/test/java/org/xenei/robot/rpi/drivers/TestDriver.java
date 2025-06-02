@@ -41,10 +41,11 @@ public class TestDriver {
         TestDriver driver = new TestDriver();
         SteppingStatus status = driver.motor.prepareRun(60000, 100);
         ExecutorService executor = Executors.newFixedThreadPool(1);
-        Future<SteppingStatus> future = executor.submit(status);
+        Future<?> future = executor.submit( () -> {while (!status.isComplete()) {
+            status.step();}
+        });
         while (!future.isDone()) {
-            System.out.println( String.format( "s:%s r:%s ", 
-                    status.fwdSteps(), status.fwdRotation()));
+            System.out.format( "s:%s r:%s %n", status.fwdSteps(), status.fwdRotation());
         }
         System.out.println( "done");
         try {

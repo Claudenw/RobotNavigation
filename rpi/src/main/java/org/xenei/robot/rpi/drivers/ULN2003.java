@@ -10,7 +10,6 @@ import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
-import org.apache.commons.cli.ParseException;
 import org.apache.commons.cli.HelpFormatter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,7 +35,6 @@ public class ULN2003 implements Motor {
     public static final double STEPPER_28BYJ48 = 5.625/64;
     
     private final MotorBlock block;
-    private SteppingStatusImpl task;
     private final double revMilliPerStepMin;
     private final double stepsPerRotation;
     
@@ -45,7 +43,6 @@ public class ULN2003 implements Motor {
         String modeOptions = Arrays.stream(Mode.values()).map(Enum::name).collect(Collectors.joining(", "));
         return new Options()
                 .addOption(new Option("?", "This help"))
-                .addOption(new Option("M", "Excersize MotorBlock"))
                 .addOption(Option.builder("s").type(Integer.class).desc("Number of steps").hasArg().required().build())
                 .addOption(Option.builder("r").type(Integer.class).desc("RPM").hasArg().build())
                 .addOption(Option.builder("g").type(Integer.class).desc("GPIO pins (must be 4 pins)").hasArgs().required().build())
@@ -56,7 +53,7 @@ public class ULN2003 implements Motor {
                 ;
     }
     
-    public static void main(String[] args) throws InterruptedException, ParseException {
+    public static void main(String[] args) {
         try {
             CommandLine commandLine = DefaultParser.builder().build().parse(getOptions(), args);
             if (commandLine.hasOption("?")) {
@@ -64,25 +61,20 @@ public class ULN2003 implements Motor {
                 return;
             }
             int steps = commandLine.getParsedOptionValue("s");
-            int rpm = commandLine.getParsedOptionValue("r");
+            int rpm = commandLine.getParsedOptionValue("r", 150);
             List<Integer> gpin = Arrays.stream(commandLine.getOptionValues("g")).map(Integer::parseInt).toList();
             Mode mode = commandLine.getParsedOptionValue("m");
             boolean fwd = !commandLine.hasOption("reverse");
-
+            int direction = fwd ? 1 : -1;
             System.out.format("Running ULN2003...%s%n", gpin);
-            if (commandLine.hasOption("M")) {
-                MotorBlock block = new MotorBlock(mode, gpin.get(0), gpin.get(1), gpin.get(2), gpin.get(3));
-                for (int i=0;i<steps;i++) {
-                    block.step(fwd,150);
+            try(ULN2003 motor = new ULN2003(mode, ULN2003.STEPPER_28BYJ48, gpin.get(0), gpin.get(1), gpin.get(2), gpin.get(3))) {
+                SteppingStatus steppingStatus = motor.prepareRun(steps * direction, rpm);
+                while (steppingStatus.step()) {
+                    Thread.sleep(150);
                 }
-            } else {
-                int direction = fwd ? 1 : -1;
-                try(ULN2003 motor = new ULN2003(mode, ULN2003.STEPPER_28BYJ48, gpin.get(0), gpin.get(1), gpin.get(2), gpin.get(3))) {
-                    motor.prepareRun(steps*direction, rpm).call();
-                    LOG.info("Finished");
-                } catch (Exception e) {
-                    LOG.error("failed", e);
-                }
+                LOG.info("Finished");
+            } catch (Exception e) {
+                LOG.error("failed", e);
             }
         } catch (Exception e) {
             new HelpFormatter().printHelp(ULN2003.class.getCanonicalName(), getOptions());
@@ -135,10 +127,6 @@ public class ULN2003 implements Motor {
         return (value < min) ? min : (value > max) ? max : value;
     }
 
-    public boolean active() {
-        return task != null && task.isRunning();
-    }
-
     @Override
     public void close() throws Exception {
         block.stop();
@@ -147,7 +135,7 @@ public class ULN2003 implements Motor {
     /**
      * Drive the stepper motor.
      * 
-     * @param steps: The number of steps to run, range from -32768 to 32767. When
+     * @param steps: The number of steps to run. When
      * steps = 0, the stepper stops. When steps > 0, the stepper runs clockwise.
      * When steps < 0, the stepper runs anticlockwise.
      * @param rpm: Revolutions per minute, the speed of a stepper, range from 1 to
@@ -157,12 +145,8 @@ public class ULN2003 implements Motor {
     public SteppingStatusImpl prepareRun(int steps, int rpm) {
         // revmilli/stepsmin * min/rev = milli/steps (min/rev = 1/rpm)
         long msPerStep = (long) Math.ceil(revMilliPerStepMin / limit(rpm, 1, 150));
-        
-        SteppingStatusImpl result = new SteppingStatusImpl(steps, msPerStep);
-        
         LOG.debug("Preparing task {} steps:{} rpm:{}", this, steps, rpm);
-
-        return result;
+        return  new SteppingStatusImpl(steps, msPerStep);
     }
 
 
@@ -178,28 +162,34 @@ public class ULN2003 implements Motor {
         private final int initialCounter;
         private final boolean fwd;
         private final long msPerStep;
+        private long stepCompleteTime = 0;
         
         SteppingStatusImpl(int steps, long msPerStep) {
             initialCounter = Math.abs(steps);//Math.abs(limit(steps, Short.MIN_VALUE, Short.MAX_VALUE));
             count = initialCounter;
             fwd = steps >= 0;
             this.msPerStep = msPerStep;
-            LOG.debug("SteppingStatus created for %s steps", count);
+            LOG.debug("SteppingStatus created for {} steps", count);
         }
 
         @Override
-        public SteppingStatusImpl call() throws InterruptedException {
-            while (count-- > 0) {
-                block.step(fwd, msPerStep);
+        public boolean step() {
+            long now = System.currentTimeMillis();
+            if (count > 0) {
+                if (now > stepCompleteTime) {
+                    block.step(fwd);
+                    stepCompleteTime = now + msPerStep;
+                }
+                return true;
             }
-            LOG.info("SteppingStatus complete.  count:{} initial counter:{}", count, initialCounter);
-            return this;
+            return false;
         }
-        
-        public boolean isRunning() {
-            return count > 0;
+
+        @Override
+        public boolean isComplete() {
+            return count <= 0;
         }
-        
+
         /**
          * Gets the number of steps taken in a forward direction.
          * @return the number of steps taken, negative for reverse travel.
@@ -275,7 +265,7 @@ public class ULN2003 implements Motor {
         private int currentPulse;
         private final Mode mode;
         
-        private static byte[] map = { 0x8, 0x4, 0x2, 0x1 };
+        private static final byte[] MAP = { 0x8, 0x4, 0x2, 0x1 };
 
         public MotorBlock(final Mode mode, final int gpio1, final int gpio2, final int gpio3, final int gpio4) throws InterruptedException {
             System.out.format("MotorBlock...%s %s %s %s %s%n", mode, gpio1, gpio2, gpio3, gpio4);
@@ -287,7 +277,7 @@ public class ULN2003 implements Motor {
                     new DigitalOutputDevice.Builder(gpio3).setActiveHigh(true).setInitialValue(false).build(),
                     new DigitalOutputDevice.Builder(gpio4).setActiveHigh(true).setInitialValue(false).build()};
             // got to known state.
-            step(true, 0);
+            step(true);
         }
         
         @Override
@@ -296,27 +286,42 @@ public class ULN2003 implements Motor {
                     gpio[1].getGpio(), gpio[2].getGpio(), gpio[3].getGpio());
         }
 
-        public void step(boolean fwd, long delay) throws InterruptedException {
+        /**
+         * Cause the motor to take a single step.
+         * @param fwd if True step forward else step backward.
+         */
+        public void step(boolean fwd) {
             currentPulse = mode.adjustPulse(currentPulse, fwd);
             int pattern = mode.pattern(currentPulse);
             if (LOG.isDebugEnabled()) {
                 LOG.debug("MotorBlock - Stepping {}.  Pattern: {} Pulse: {}", (fwd?"forward":"backward"), pattern, currentPulse);
             }   
             for (int i = 0; i < 4; i++) {
-                gpio[i].setOn((map[i] & pattern) == 0);
+                gpio[i].setOn((MAP[i] & pattern) == 0);
             }
-            TimeUnit.MILLISECONDS.sleep(delay);
         }
 
+        /**
+         * Sets all the stepper magnets on or off.
+         * Turning them all on will lock the motor.
+         * @param state the state for the stepper magnets.
+         */
         private void setAll(boolean state) {
             for (int i = 0; i < 4; i++) {
                 gpio[i].setOn(state);
             }
         }
+
+        /**
+         * Turn the motor off.
+         */
         public void off() {
             setAll(false);
         }
-        
+
+        /**
+         * Lock the motor shaft so that it will not turn.
+         */
         public void stop() {
             setAll(true);
         }

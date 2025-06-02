@@ -2,7 +2,9 @@ package org.xenei.robot;
 
 import java.util.Collection;
 import java.util.Optional;
+import java.util.concurrent.ExecutionException;
 import java.util.function.Supplier;
+import java.util.prefs.AbstractPreferences;
 
 import org.apache.jena.arq.querybuilder.AskBuilder;
 import org.apache.jena.arq.querybuilder.ExprFactory;
@@ -134,9 +136,13 @@ public class Processor {
         return snapshot;
     }
     
-    private NavigationSnapshot move(Step step) {
+    private NavigationSnapshot move(Step step) throws AbortedException {
         Location relativeLoc = mover.position().relativeLocation(step.getCoordinate());
-        map.setVisited(planner.getFinalTarget(), mover.move(relativeLoc).getCoordinate());
+        try {
+            map.setVisited(planner.getFinalTarget(), mover.move(relativeLoc).getCoordinate()).get();
+        } catch (ExecutionException  | InterruptedException e) {
+            throw new AbortedException(e);
+        }
         NavigationSnapshot snapshot = newSnapshot();
         planner.registerPositionChange(snapshot);
         processSensorData(snapshot);
@@ -178,7 +184,7 @@ public class Processor {
     }
 
     @FunctionalInterface
-    interface AbortTest {
+    public interface AbortTest {
         void check(Processor processor) throws AbortedException;
     }
 }

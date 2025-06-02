@@ -1,18 +1,12 @@
-package org.xenei.robot.rpi;
+package org.xenei.robot.rpi.mover;
 
 import java.io.BufferedReader;
-import java.io.FileWriter;
-import java.io.IOException;
 import java.io.InputStreamReader;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Random;
+import java.util.Optional;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.DefaultParser;
@@ -32,20 +26,22 @@ import org.xenei.robot.common.utils.AngleUtils;
 import org.xenei.robot.common.utils.CoordUtils;
 import org.xenei.robot.common.utils.DoubleUtils;
 import org.xenei.robot.common.utils.RobutContext;
+import org.xenei.robot.ml.SensorLayer;
 import org.xenei.robot.rpi.drivers.Motor;
 import org.xenei.robot.rpi.drivers.Motor.SteppingStatus;
 import org.xenei.robot.rpi.drivers.ULN2003;
 import org.xenei.robot.rpi.drivers.ULN2003.Mode;
+import org.xenei.robot.rpi.sensors.BumpSensor;
 
 public class RpiMover implements Mover, AutoCloseable {
-
     private final Motor[] motor = new Motor[2];
     private static final int LEFT = 0;
     private static final int RIGHT = 1;
     private Coordinate coordinates;
     private final Compass compass;
+    private final DeadReckoning deadReckoning;
     private final RobutContext ctxt;
-    private final ExecutorService executor;
+    private final BumpSensorModel bumpSensorModel;
     /** Meters traveled in one rotation. */
     private final double rotationalDistance;
     private final int rpm;
@@ -67,8 +63,8 @@ public class RpiMover implements Mover, AutoCloseable {
      * @param coords the initial coordinates.
      * @throws InterruptedException on configuration error.
      */
-    RpiMover(RobutContext ctxt, Compass compass, Coordinate coords) throws InterruptedException {
-        this(ctxt, compass, coords,  left(), right());
+    public RpiMover(RobutContext ctxt, Compass compass, Coordinate coords) throws InterruptedException {
+        this(ctxt, compass, coords, left(), right());
     }
 
     /**
@@ -82,8 +78,13 @@ public class RpiMover implements Mover, AutoCloseable {
         motor[RIGHT] = right;
         this.coordinates = coords;
         this.compass = compass;
+        this.deadReckoning = new DeadReckoning();
         this.rotationalDistance = Math.PI * ctxt.chassisInfo.wheelDiameter / 100; // in meters
-        this.executor = Executors.newFixedThreadPool(3);
+        // configure bump sensor
+        BumpSensor bumpSensor = new BumpSensor();
+        this.ctxt.scheduleAtFixedRate(bumpSensor, 500, 42, TimeUnit.MILLISECONDS);
+        this.bumpSensorModel = new BumpSensorModel(ctxt);
+        bumpSensor.addListener(bumpSensorModel);
         // this.r = width/2.0; // in cm
         // meterminute / meterrotation = meterrotation/meter/minute = r/m
         this.rpm = limit((long) Math.ceil(ctxt.chassisInfo.maxSpeed / rotationalDistance), 1, motor[0].getMaxRpm());
@@ -96,10 +97,7 @@ public class RpiMover implements Mover, AutoCloseable {
                 .addOption(Option.builder("h").type(Double.class).desc("Heading").hasArg().argName("degrees").build())
                 .addOption(Option.builder("m").type(Double.class).desc("Move (angle range)").numberOfArgs(2).build())
                 .addOption(Option.builder("s").type(Integer.class).desc("Step (left right)").numberOfArgs(2).build())
-                .addOption(Option.builder("c").desc("Compass reading").build())
-                .addOption(Option.builder("t").desc("Training data").hasArg().type(Integer.class).argName("recordCount").build())
-                .addOption(Option.builder("x").desc("x-ray compas test").build());
-
+                .addOption(Option.builder("c").desc("Compass reading").build());
     }
 
     public static void main(String[] args) {
@@ -138,7 +136,7 @@ public class RpiMover implements Mover, AutoCloseable {
                     }
                     if (commandLine.hasOption("s")) {
                         List<Integer> values = Arrays.stream(commandLine.getOptionValues("s")).map(Integer::parseInt).toList();
-                        mover.steps(values.get(0), values.get(1));
+                        mover.takeSteps(values.get(0), values.get(1), mover.rpm);
                     }
                     if (commandLine.hasOption("q")) {
                         return;
@@ -148,15 +146,6 @@ public class RpiMover implements Mover, AutoCloseable {
                         double h = mover.compassHeading();
                         System.out.format("Mover[Heading: %s %s degrees]%n", h, Math.toDegrees(h));
                     }
-
-                    if (commandLine.hasOption("t")) {
-                        int recordCount = commandLine.getParsedOptionValue("t");
-                        mover.generateTrainingData(recordCount);
-                    }
-
-                    if (commandLine.hasOption("x")) {
-                        mover.xrayTest();
-                    }
                 }
             }
         } catch (Exception e) {
@@ -165,50 +154,6 @@ public class RpiMover implements Mover, AutoCloseable {
         }
         LOG.debug("Exiting");
         System.exit(0);
-    }
-
-    private void xrayTest() throws InterruptedException, IOException {
-
-        Future<?> future = executor.submit(() -> {
-            double oldDeg = -1;
-
-            while (true) {
-                double h = compass.heading();
-                double deg = DoubleUtils.round(Math.toDegrees(h), 3);
-                if (deg != oldDeg) {
-                    System.out.format("Compass[Heading: %s %s degrees]%n", h, deg);
-                    oldDeg = deg;
-                }
-                Thread.sleep(500);
-            }
-        });
-        generateTrainingData(10);
-        Thread.sleep(500);
-        future.cancel(true);
-    }
-
-    private void generateTrainingData(int recordCount) throws IOException, InterruptedException {
-        Random random = new Random();
-        Path p = Files.createTempFile("testData", ".csv");
-        try (FileWriter fos = new FileWriter(p.toFile())) {
-            for (int i = 0; i < recordCount; i++) {
-                double initialHeading = compass.instantaneousHeading();
-                int thetaSteps = i;
-                //int thetaSteps = random.nextInt(-3000, 3000);
-                if (thetaSteps != 0) {
-                    try (StepMonitor monitor = takeSteps(thetaSteps, -thetaSteps, motor[0].getMaxRpm())) {
-                        monitor.waitForComplete();
-                    }
-                }
-                //Thread.sleep(Duration.ofSeconds(3).toMillis());
-                double finalHeading = compass.instantaneousHeading();
-
-                String result = String.format("%d,%.2f%n", thetaSteps, finalHeading-initialHeading);
-                System.out.print(result);
-                fos.append(result);
-            }
-        }
-        System.out.println("Wrote to: "+p);
     }
 
     private int limit(long value, int min, int max) {
@@ -230,17 +175,58 @@ public class RpiMover implements Mover, AutoCloseable {
         LOG.debug("RpiMover shut down complete");
     }
 
-    public void steps(int left, int right) {
-        takeSteps(left, right, rpm).waitForComplete();
-    }
     @Override
     public Position move(Location location) {
         Position currentPosition = position();
         Position nxt = currentPosition.nextPosition(location);
         setHeading(currentPosition.headingTo(nxt));
         int rangeSteps = steps(location.range());
-        takeSteps(rangeSteps, rangeSteps, rpm).waitForComplete();
+        takeSteps(rangeSteps, rangeSteps, rpm).ifPresent(this::fixBumpSensor);
         return position();
+    }
+
+    private void fixBumpSensor(SensorLayer sensorLayer) {
+        int rangeSteps = steps(0.01);
+        Optional<SensorLayer> nextLayer = Optional.empty();
+        while (sensorLayer != null) {
+            switch (sensorLayer.getAnswer()) {
+                case FF -> {
+                    nextLayer = takeSteps(rangeSteps, rangeSteps, rpm, sensorLayer.getTrigger());
+                }
+                case FS -> {
+                    nextLayer = takeSteps(rangeSteps, 0, rpm, sensorLayer.getTrigger());
+                }
+                case FR -> {
+                    nextLayer = takeSteps(rangeSteps, -rangeSteps, rpm, sensorLayer.getTrigger());
+                }
+                case SF -> {
+                    nextLayer = takeSteps(0, rangeSteps, rpm, sensorLayer.getTrigger());
+                }
+                case SS -> {
+                    nextLayer = takeSteps(0, 0, rpm, sensorLayer.getTrigger());
+                }
+                case SR -> {
+                    nextLayer = takeSteps(0, -rangeSteps, rpm, sensorLayer.getTrigger());
+                }
+                case RF -> {
+                    nextLayer = takeSteps(-rangeSteps, rangeSteps, rpm, sensorLayer.getTrigger());
+                }
+                case RS -> {
+                    nextLayer = takeSteps(-rangeSteps, 0, rpm, sensorLayer.getTrigger());
+                }
+                case RR -> {
+                    nextLayer = takeSteps(-rangeSteps, -rangeSteps, rpm, sensorLayer.getTrigger());
+                }
+                case DONT_CARE -> {
+                    LOG.error("Invalid SensorLayer answer: DONT_CARE ");
+                    return;
+                }
+            }
+            if (nextLayer.isPresent()) {
+                sensorLayer.feedback(nextLayer.get().getTrigger());
+            }
+            sensorLayer = nextLayer.orElse(null);
+        }
     }
 
     private int steps(double range) {
@@ -253,18 +239,40 @@ public class RpiMover implements Mover, AutoCloseable {
      * 
      * @param left the number of steps to take with the left motor.
      * @param right the number of steps to take with the right motor.
-     * @param rpm
-     * @return
+     * @param rpm the speed to travel at.
+     * @return the StepMonitor.
      */
-    private StepMonitor takeSteps(int left, int right, int rpm) {
+    private Optional<SensorLayer> takeSteps(int left, int right, int rpm)  {
+        return takeSteps(left, right, rpm, (byte)0);
+    }
+
+    /**
+     * Recover from a sensor collision detection.
+     *
+     * @param left the number of steps to take with the left motor.
+     * @param right the number of steps to take with the right motor.
+     * @param rpm the speed to travel at.
+     * @param lastTrigger the initial value of the bump detector.
+     * @return the completed step monitor
+     */
+    private Optional<SensorLayer> takeSteps(int left, int right, int rpm, byte lastTrigger)  {
         LOG.debug("Taking steps {} {} @ {} rpm", left, right, rpm);
         SteppingStatus ssLeft = motor[LEFT].prepareRun(left, rpm);
         SteppingStatus ssRight = motor[RIGHT].prepareRun(right, rpm);
         StepMonitor result = new StepMonitor(ssLeft, ssRight);
-        if (compass instanceof DeadReckoning) {
-            ((DeadReckoning) compass).track(result);
+        BumpChangeDetector bumpChangeDetector = new BumpChangeDetector(new StepMonitor(ssLeft, ssRight), lastTrigger);
+        bumpSensorModel.addListener(bumpChangeDetector);
+        try {
+            result = ctxt.submit(result).get();
+            deadReckoning.track(result);
         }
-        return result;
+        catch (InterruptedException | ExecutionException e) {
+            LOG.error("Error taking steps", e);
+        } finally {
+            bumpSensorModel.removeListener(bumpChangeDetector);
+            deadReckoning.track(null);
+        }
+        return bumpChangeDetector.getSensorLayer();
     }
 
     @Override
@@ -321,108 +329,9 @@ public class RpiMover implements Mover, AutoCloseable {
         if (thetaSteps == 0) {
             return 0;
         }
-        try (StepMonitor monitor = takeSteps(thetaSteps, -thetaSteps, motor[0].getMaxRpm())) {
-            monitor.waitForComplete();
-        }
+        takeSteps(thetaSteps, -thetaSteps, motor[0].getMaxRpm());
         LOG.debug("{}", compass);
         return thetaSteps;
     }
 
-    public class StepMonitor implements AutoCloseable {
-
-        SteppingStatus ssLeft;
-        SteppingStatus ssRight;
-
-        Future<SteppingStatus> leftFuture;
-        Future<SteppingStatus> rightFuture;
-
-        StepMonitor(SteppingStatus ssLeft, SteppingStatus ssRight) {
-            this.ssLeft = ssLeft;
-            this.ssRight = ssRight;
-            leftFuture = executor.submit(ssLeft);
-            rightFuture = executor.submit(ssRight);
-        }
-
-        public boolean complete() {
-            return leftFuture.isDone() && rightFuture.isDone();
-        }
-
-        public void stop() {
-            if (!leftFuture.isDone()) {
-                leftFuture.cancel(true);
-            }
-            if (!rightFuture.isDone()) {
-                rightFuture.cancel(true);
-            }
-        }
-
-        public void waitForComplete() {
-            try {
-                leftFuture.get();
-                rightFuture.get();
-            } catch (InterruptedException | ExecutionException e) {
-                LOG.error("Error while waiting for steps ");
-                stop();
-            }
-        }
-
-        @Override
-        public void close() {
-            stop();
-            double range = rotationalDistance * (ssLeft.fwdRotation() + ssRight.fwdRotation());
-            Coordinate shift = ctxt.scaleInfo.round(CoordUtils.fromAngle(compass.heading(), range));
-            coordinates = CoordUtils.add(coordinates, shift);
-            LOG.debug("steps result: range:{} shift:{} position:{}", range, shift, position());
-        }
-    }
-
-    private static class DeadReckoning implements Compass {
-        private static final double STEPS_PER_RADIAN = 640.0 * 10;
-        private double heading;
-        private StepMonitor currentMonitor;
-
-        @Override
-        public double heading() {
-            return heading;
-        }
-
-        @Override
-        public double instantaneousHeading() {
-            if (currentMonitor != null) {
-                return heading + (currentMonitor.ssLeft.fwdSteps() - currentMonitor.ssRight.fwdSteps()) / STEPS_PER_RADIAN;
-            }
-            return heading;
-        }
-
-        @Override
-        public double sd() {
-            return 0;
-        }
-
-        @Override
-        public int decimalPlaces() {
-            return 2;
-        }
-
-        public void track(StepMonitor stepMonitor) {
-            if (currentMonitor != null) {
-                int stepDifferential = currentMonitor.ssLeft.fwdSteps() - currentMonitor.ssRight.fwdSteps();
-                if (stepDifferential != 0) {
-                    heading += stepDifferential / STEPS_PER_RADIAN;
-                }
-            }
-            this.currentMonitor = stepMonitor;
-        }
-
-        public static int stepsTo(double theta) {
-            return (int) Math.round(theta * STEPS_PER_RADIAN / 2);
-        }
-
-        @Override
-        public String toString() {
-            double h = heading();
-            double sd = sd();
-            return String.format("DeadReckoning[Heading: %s %s degrees]", h, DoubleUtils.round(Math.toDegrees(h), decimalPlaces() + 1), sd);
-        }
-    }
 }

@@ -16,10 +16,10 @@ public interface Mapper {
      * add. Also sets the obstacleMapper if a collision with the current path was
      * detected.
      * 
-     * @param currentPosition The current position.
+     * @param finalTarget The coordinates for the desired final location.
      * @param snapshot The current NavigationSnapshot.
      * @param obstacles the relative location of obstacles.
-     * @return the location of an non-obstacle when heading toward the target.
+     * @return the location of a non-obstacle when heading toward the target.
      * (shortest non collision position)
      */
     Collection<Step> processSensorData(Coordinate finalTarget, NavigationSnapshot snapshot,

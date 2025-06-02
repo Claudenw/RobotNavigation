@@ -93,7 +93,8 @@ public class MapViz implements Mapper.Visualization {
     public void redraw(Coordinate target) {
         GeometryUtils geometryUtils = map.getContext().geometryUtils;
         List<AbstractDrawingCommand> cmds = new ArrayList<>();
-        for (Obstacle obst : map.getObstacles()) {
+        map.getObstacles().thenAccept( obs -> obs.forEach(obst ->
+        {
             if (obst.geom() instanceof GeometryCollection) {
                 GeometryCollection gCollection = (GeometryCollection) obst.geom();
 
@@ -103,11 +104,11 @@ public class MapViz implements Mapper.Visualization {
             } else {
                 cmds.add(getPoly(obst.geom(), Color.RED));
             }
-        }
+        }));
 
-        for (MapCoord mapCoord : map.getCoords()) {
+        map.getCoords().thenAccept( coords -> coords.forEach( mapCoord -> {
             cmds.add(getPoly(mapCoord.geometry, mapCoord.isIndirect ? Color.CYAN : Color.BLUE));
-        }
+        }));
 
         List<Coordinate> lst = solutionSupplier.get().stream().collect(Collectors.toList());
         if (lst.size() > 1) {

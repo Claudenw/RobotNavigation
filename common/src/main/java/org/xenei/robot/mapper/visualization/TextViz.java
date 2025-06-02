@@ -5,7 +5,6 @@ import java.util.List;
 import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
 
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
@@ -53,7 +52,7 @@ public class TextViz implements Mapper.Visualization {
     /**
      * Generates the map for display.
      * 
-     * @param c the character to use for enabled items.
+     * @param points the set of points.
      * @return the StringBuilder.
      */
     private StringBuilder stringBuilder(SortedSet<Coord> points) {
@@ -105,10 +104,9 @@ public class TextViz implements Mapper.Visualization {
     public void redraw(Coordinate target) {
         GeometryUtils geometryUtils = map.getContext().geometryUtils;
         SortedSet<Coord> points = new TreeSet<>();
-        map.getObstacles().forEach(o -> addGeom(points, o.geom(), OBSTACLE));
-        map.getCoords()
-                .forEach(coord -> addGeom(points, coord.geometry, coord.isIndirect ? COORD_INDIRECT : COORD_DIRECT));
-        List<Coordinate> lst = solutionSupplier.get().stream().collect(Collectors.toList());
+        map.getObstacles().thenAccept(s -> s.forEach(o -> addGeom(points, o.geom(), OBSTACLE)));
+        map.getCoords().thenAccept( mc -> mc.forEach(coord -> addGeom(points, coord.geometry, coord.isIndirect ? COORD_INDIRECT : COORD_DIRECT)));
+        List<Coordinate> lst = solutionSupplier.get().stream().toList();
         if (lst.size() > 1) {
             addGeom(points, geometryUtils.asPath(0.25, lst.toArray(new Coordinate[lst.size()])), PATH);
         } else if (lst.size() == 1) {
