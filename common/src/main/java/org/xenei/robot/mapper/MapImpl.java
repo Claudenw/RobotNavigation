@@ -10,7 +10,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
@@ -211,7 +210,7 @@ public class MapImpl implements Map {
     }
 
     @Override
-    public Optional<Step> addCoord(Coordinate coord, Double distance, boolean visited, Boolean isIndirect) {
+    public CompletableFuture<Optional<Step>> addCoord(Coordinate coord, Double distance, boolean visited, Boolean isIndirect) {
         MapCoordinate mapCoord = new MapCoordinate(coord);
         UpdateRequest req = new UpdateRequest();
         if (exists(mapCoord, Namespace.Coord)) {
@@ -246,27 +245,21 @@ public class MapImpl implements Map {
             req.add(new UpdateBuilder().addInsert(Namespace.PlanningModel, qA.getModel()).build());
         }
 
-        CompletableFuture<?> future = doUpdate(req);
-        LOG.debug("Added {} for {}", mapCoord, coord);
-        if (distance == null || distance <= 0 ) {
-            return Optional.empty();
-        }
-        try {
-            future.get();
+        return doUpdate(req).thenApply( x -> {
+            LOG.debug("Added {} for {}", mapCoord, coord);
+            if (distance == null || distance <= 0) {
+                return Optional.empty();
+            }
             return Optional.of(StepImpl.builder().setCoordinate(mapCoord).setDistance(distance)
                     .setCost(isIndirect != null && isIndirect ? distance * 2 : distance).build(ctxt));
-        } catch (ExecutionException e) {
-            throw new RuntimeException(e);
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
+        });
     }
 
     @SuppressWarnings("unchecked")
     @Override
-    public Set<Obstacle> addObstacle(Obstacle obst) {
+    public CompletableFuture<Set<? extends Obstacle>> addObstacle(Obstacle obst) {
         LOG.debug("Adding obstacle: {}", obst);
-        return (Set<Obstacle>) obstacleHandler.addObstacle(obst);
+        return obstacleHandler.addObstacle(obst);
     }
 
     @Override
@@ -698,6 +691,11 @@ public class MapImpl implements Map {
     }
 
     @Override
+    public Obstacle createObstacle(Position startPosition, Location relativeStart, Location relativeEnd) {
+        return new ObstacleImpl(startPosition, relativeStart, relativeEnd);
+    }
+
+    @Override
     public Obstacle createObstacle(Position startPosition, Location relativeLocation) {
         return new ObstacleImpl(startPosition, relativeLocation);
     }
@@ -912,24 +910,26 @@ public class MapImpl implements Map {
             this.wkt = wkt;
         }
 
-        ObstacleImpl(Coordinate start, Coordinate end) {
+        ObstacleImpl(Position startPosition, Location relativeStart, Location relativeEnd) {
+            Location start = startPosition.nextPosition(relativeStart);
+            Location end = startPosition.nextPosition(relativeEnd);
             double d = start.distance(end);
             int parts = (int) (d / ctxt.scaleInfo.getHalfResolution());
-            double xIncr = (end.x - start.x) / (parts + 1);
-            double yIncr = (end.y - start.y) / (parts + 1);
+            double xIncr = (end.getX() - start.getX()) / (parts + 1);
+            double yIncr = (end.getY() - start.getY()) / (parts + 1);
             Coordinate[] part = new Coordinate[parts + 1];
-            part[0] = start;
+            part[0] = start.getCoordinate();
             for (int i = 1; i < parts; i++) {
                 part[i] = new Coordinate(part[i - 1].x + xIncr, part[i - 1].y + yIncr);
             }
-            part[parts] = end;
+            part[parts] = end.getCoordinate();
             geom = ctxt.geometryUtils.asLine(part);
             wkt = ctxt.graphGeomFactory.asWKT(geom);
             uuid = UUID.randomUUID();
         }
 
-        ObstacleImpl(Position startPostition, Location relativeLocation) {
-            Position absoluteObstacle = startPostition.nextPosition(relativeLocation);
+        ObstacleImpl(Position startPosition, Location relativeLocation) {
+            Position absoluteObstacle = startPosition.nextPosition(relativeLocation);
             absoluteObstacle = Position.from(ctxt.scaleInfo.round(absoluteObstacle.getCoordinate()),
                     absoluteObstacle.getHeading());
             geom = ctxt.geometryUtils.asPoint(absoluteObstacle);
@@ -1052,7 +1052,7 @@ public class MapImpl implements Map {
             });
         }
 
-        Set<? extends Obstacle> addObstacle(Obstacle obst) {
+        CompletableFuture<Set<? extends Obstacle>> addObstacle(Obstacle obst) {
             // find all Obstacles that this obstacle will intersect or touch
             // if there are any, merge them together.
             // if not just write this on to the graph.
@@ -1087,8 +1087,7 @@ public class MapImpl implements Map {
                                     exprF.asList(
                                             work.stream().map(Obstacle::rdf).toList().toArray()))))
                     .build());
-            doUpdate(req);
-            return work;
+            return doUpdate(req).thenApply( x -> work);
         }
 
         boolean isObstacle(Coordinate point) {

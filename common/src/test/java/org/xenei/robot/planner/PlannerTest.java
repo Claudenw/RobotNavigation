@@ -263,7 +263,7 @@ public class PlannerTest {
 
         Map map = new TestingMap() {
             @Override
-            public Optional<Step> addCoord(Coordinate target, Double distance, boolean visited, Boolean isIndirect) {
+            public CompletableFuture<Optional<Step>> addCoord(Coordinate target, Double distance, boolean visited, Boolean isIndirect) {
                 return Optional.ofNullable(coordStepSupplier.get());
             }
 
@@ -399,7 +399,7 @@ public class PlannerTest {
         }
 
         @Override
-        public Optional<Step> addCoord(Coordinate target, Double distance, boolean visited, Boolean isIndirect) {
+        public CompletableFuture<Optional<Step>> addCoord(Coordinate target, Double distance, boolean visited, Boolean isIndirect) {
             return null;
         }
 
@@ -444,7 +444,7 @@ public class PlannerTest {
         }
 
         @Override
-        public Set<Obstacle> addObstacle(Obstacle obstacle) {
+        public CompletableFuture<Set<? extends Obstacle>> addObstacle(Obstacle obstacle) {
             // TODO Auto-generated method stub
             return null;
         }

@@ -4,9 +4,12 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.ShortBuffer;
 import java.util.Arrays;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.Consumer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.xenei.robot.common.BumpSensor;
 import org.xenei.robot.common.DistanceSensor;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.utils.CoordUtils;
@@ -23,6 +26,7 @@ public class Arduino implements DistanceSensor {
     private final I2CDevice device;
     private final byte[] buffer;
     private final ShortBuffer sb;
+    private final CopyOnWriteArrayList<Consumer<DistanceSensor.DistanceReading>> listeners;
 
     private static final Logger LOG = LoggerFactory.getLogger(Arduino.class);
 
@@ -30,6 +34,7 @@ public class Arduino implements DistanceSensor {
         device = new I2CDevice(CONTROLLER, ADDRESS);
         buffer = new byte[2];
         sb = ByteBuffer.wrap(buffer).order(ByteOrder.LITTLE_ENDIAN).asShortBuffer();
+        listeners = new CopyOnWriteArrayList<>();
     }
 
     @Override
@@ -38,7 +43,16 @@ public class Arduino implements DistanceSensor {
     }
 
     @Override
-    public Location[] sense() {
+    public void addListener(Consumer<DistanceReading> listener) {
+        listeners.add(listener);
+    }
+
+    @Override
+    public void removeListener(Consumer<DistanceReading> listener) {
+        listeners.remove(listener);
+    }
+
+    public void sense() {
         device.readBytes(buffer);
         // capture parity flag
         boolean parityFlg = (buffer[1] & 0x80) != 0;
@@ -50,16 +64,17 @@ public class Arduino implements DistanceSensor {
         if (parity == parityFlg) {
             LOG.debug(String.format("DataRead: 0:%x 1:%x %d %s", buffer[0], buffer[1], timing, timing / TIME_TO_M));
             if (timing > 0) {
-                Location c = Location.from(CoordUtils.fromAngle(0, timing / TIME_TO_M));
-                if (c.range() < 1.0) {
-                    return new Location[] { c };
+                double range = timing / TIME_TO_M;
+                if (range < 1.0) {
+                    DistanceReading reading = new DistanceReading(0, timing / TIME_TO_M);
+                    for (Consumer<DistanceReading> listener : listeners) {
+                        listener.accept(reading);
+                    }
                 }
             }
         } else {
             LOG.error("PARITY ERROR");
         }
-        LOG.debug("Returning INFINITE location: "+Location.INFINITE);
-        return new Location[] {Location.INFINITE};
     }
 
     public static void main(String[] args) {

@@ -13,12 +13,17 @@ import org.locationtech.jts.geom.Geometry;
 import org.xenei.robot.mapper.rdf.Namespace;
 
 /**
- * Hashcode should be implemented as wkt().hashCode()
-
+ * An RDF map construct containing a shape, and RDF Literal for the shape, and the RDF resource.
  */
 public interface Obstacle {
-    static Comparator<Obstacle> comp = (x,y) -> x.wkt().getLexicalForm().compareTo(y.wkt().getLexicalForm());
-  
+
+    Comparator<Obstacle> comp = (x,y) -> x.wkt().getLexicalForm().compareTo(y.wkt().getLexicalForm());
+
+    /**
+     * Hashcode should be implemented as wkt().hashCode()
+     * @param o the obstacle
+     * @return the hashCode
+     */
     static int hashCode(Obstacle o) {
         return o.wkt().hashCode();
     }

@@ -1,66 +1,81 @@
 package org.xenei.robot.mapper;
 
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
-import java.util.stream.Collectors;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 import org.locationtech.jts.geom.Coordinate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xenei.robot.common.FrontsCoordinate;
 import org.xenei.robot.common.Location;
-import org.xenei.robot.common.NavigationSnapshot;
 import org.xenei.robot.common.Position;
 import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.common.mapping.Map;
 import org.xenei.robot.common.mapping.Mapper;
-import org.xenei.robot.common.mapping.Obstacle;
-import org.xenei.robot.common.planning.Step;
 import org.xenei.robot.common.utils.CoordUtils;
 import org.xenei.robot.common.utils.DoubleUtils;
 
 public class MapperImpl implements Mapper {
     private static final Logger LOG = LoggerFactory.getLogger(MapperImpl.class);
     private final Map map;
+    private final double tolerance;
+    private final Supplier<Position> positionSupplier;
+    private final ScaleInfo scaleInfo;
+    private final Supplier<Coordinate> targetSupplier;
 
-    public MapperImpl(Map map) {
+    /**
+     *
+     * @param map The map to work with.
+     * @param positionSupplier a position supplier scaled to the map.
+     * @param targetSupplier a target supplier scaled to the map.
+     */
+    public MapperImpl(Map map, Supplier<Position> positionSupplier, Supplier<Coordinate> targetSupplier) {
         this.map = map;
+        tolerance = map.getContext().getScaledRadius();
+        this.scaleInfo = map.getContext().scaleInfo;
+        this.positionSupplier = positionSupplier;
+        this.targetSupplier = targetSupplier;
     }
 
-    public Map getMap() {
-        return map;
-    }
 
     @Override
-    public List<Step> processSensorData(Coordinate finalTarget, NavigationSnapshot snapshot, Location[] obstacles) {
-
-        LOG.debug("Sense position: {}", snapshot.position);
-        if (obstacles.length == 0) {
-            LOG.debug("No positions returned from sensor");
-            return Collections.emptyList();
-        }
-        ObstacleMapper mapper = new ObstacleMapper(snapshot.position);
-        ScaleInfo scaleInfo = map.getContext().scaleInfo;
-        List.of(obstacles).stream().map( l -> scaleInfo.round(l)).forEach(mapper::doMap);
-        if (mapper.newObstacles.isEmpty()) {
-            LOG.debug("No new obstacles detected");
-            return Collections.emptyList();
-        } 
-        if (LOG.isDebugEnabled()) {
-            LOG.debug("{} obstacles detected", mapper.newObstacles.size());
-        }
-
-        if (finalTarget != null) {
-            map.updateIsIndirect(finalTarget, mapper.newObstacles);
-        }
-        return mapper.coordSet.stream()
-                .map(c -> map.addCoord(c, finalTarget == null ? null : c.distance(finalTarget), false,
-                        finalTarget == null ? null : !map.isClearPath(c, finalTarget)))
-                .flatMap(Optional::stream).collect(Collectors.toList());
+    public Consumer<Location> getRelativeObstacleConsumer() {
+        return relativeObstacle -> {
+            if (!DoubleUtils.inRange(relativeObstacle.range(), map.getContext().chassisInfo.radius)) {
+                Position position = positionSupplier.get();
+                Location scaledObstacle = map.getContext().scaleInfo.round(relativeObstacle);
+                map.getContext().submit(new ObstacleMapper(map, position, scaledObstacle));
+            }
+        };
     }
+
+//    @Override
+//    public List<Step> processSensorData(Coordinate finalTarget, NavigationSnapshot snapshot, Location[] obstacles) {
+//
+//        LOG.debug("Sense position: {}", snapshot.position);
+//        if (obstacles.length == 0) {
+//            LOG.debug("No positions returned from sensor");
+//            return Collections.emptyList();
+//        }
+//        ObstacleMapper mapper = new ObstacleMapper(snapshot.position);
+//        ScaleInfo scaleInfo = map.getContext().scaleInfo;
+//        List.of(obstacles).stream().map( l -> scaleInfo.round(l)).forEach(mapper::doMap);
+//        if (mapper.newObstacles.isEmpty()) {
+//            LOG.debug("No new obstacles detected");
+//            return Collections.emptyList();
+//        }
+//        if (LOG.isDebugEnabled()) {
+//            LOG.debug("{} obstacles detected", mapper.newObstacles.size());
+//        }
+//
+//        if (finalTarget != null) {
+//            map.updateIsIndirect(finalTarget, mapper.newObstacles);
+//        }
+//        return mapper.coordSet.stream()
+//                .map(c -> map.addCoord(c, finalTarget == null ? null : c.distance(finalTarget), false,
+//                        finalTarget == null ? null : !map.isClearPath(c, finalTarget)))
+//                .flatMap(Optional::stream).collect(Collectors.toList());
+//    }
 
     @Override
     public boolean equivalent(FrontsCoordinate position, Coordinate target) {
@@ -72,72 +87,46 @@ public class MapperImpl implements Mapper {
         return map.isClearPath(currentPosition.getCoordinate(), target);
     }
 
-    class ObstacleMapper {
+    /**
+     * Adds coordinates to the map that are near a registered obstacle.
+     */
+    class ObstacleMapper implements Runnable {
+        final Map map;
         final Position currentPosition;
         final double tolerance;
-        /** the set of new obstacles */
-        final Set<Obstacle> newObstacles;
-        /** a set of coordinates that represent new coords */
-        final Set<Coordinate> coordSet;
+        final Location relativeObstacle;
 
-        ObstacleMapper(Position currentPosition) {
+        ObstacleMapper(Map map, Position currentPosition, Location relativeObstacle) {
+            this.map = map;
             this.currentPosition = currentPosition;
             this.tolerance = map.getContext().getScaledRadius();
-            this.newObstacles = new HashSet<>();
-            this.coordSet = new HashSet<Coordinate>();
+            this.relativeObstacle = relativeObstacle;
         }
 
-        /**
-         * Adds the relative obstacle to the map and potentially adds values to the
-         * coordSet.
-         * 
-         * @param relativeObstacle the relative location to the obstacle.
-         */
-        void doMap(Location relativeObstacle) {
-            if (!relativeObstacle.isInfinite())
-            {
-                /* create absolute coordinates
-                 * relativeObstacle is always a point on an edge of an obstacle. so add 1/2 map resolution to 
-                 * the relative distance to place the obstacle within a cell.
-                 */
-                newObstacles.addAll(map.addObstacle(map.createObstacle(currentPosition, relativeObstacle)));
-                if (!DoubleUtils.inRange(relativeObstacle.range(), tolerance)) {
-                    Optional<Coordinate> possibleCoord = findCoordinateNear(relativeObstacle);
-                    if (possibleCoord.isPresent()) {
-                        coordSet.add(possibleCoord.get());
-                    }
-                }
+        public void run() {
+            //Optional<Coordinate> findCoordinateNear(Location relativeObstacle) {
+            double distance = relativeObstacle.range() - tolerance;
+            if (distance < tolerance) {
+                return;
             }
-        }
-
-        /**
-         * Finds an open coordinate between the obstacle and the current position when
-         * heading toward the obstacle.
-         * 
-         * @param relativeObstacle
-         * @return
-         */
-        Optional<Coordinate> findCoordinateNear(Location relativeObstacle) {
-            double d = relativeObstacle.range() - tolerance;
-            if (d < tolerance) {
-                return Optional.empty();
-            }
-            Location relativeCoord = Location.from(CoordUtils.fromAngle(relativeObstacle.theta(), d));
+            Location relativeCoord = Location.from(CoordUtils.fromAngle(relativeObstacle.theta(), distance));
             Location candidate = currentPosition.nextPosition(relativeCoord);
             Coordinate newCoord = map.adopt(candidate.getCoordinate());
             if (map.isObstacle(newCoord)) {
-                d -= map.getContext().scaleInfo.getResolution();
-                if (d < tolerance) {
-                    return Optional.empty();
+                distance -= map.getContext().scaleInfo.getResolution();
+                if (distance < tolerance) {
+                    return;
                 }
-                relativeCoord = Location.from(CoordUtils.fromAngle(relativeObstacle.theta(), d));
+                relativeCoord = Location.from(CoordUtils.fromAngle(relativeObstacle.theta(), distance));
                 candidate = currentPosition.nextPosition(relativeCoord);
                 newCoord = map.adopt(candidate.getCoordinate());
                 if (map.isObstacle(newCoord)) {
-                    return Optional.empty();
+                    return;
                 }
             }
-            return Optional.ofNullable(currentPosition.distance(newCoord) < tolerance ? null : newCoord);
+            Coordinate finalTarget = targetSupplier.get();
+            map.addCoord(newCoord, finalTarget == null ? null : newCoord.distance(finalTarget), false,
+                    finalTarget == null ? null : !map.isClearPath(newCoord, finalTarget));
         }
     }
 }

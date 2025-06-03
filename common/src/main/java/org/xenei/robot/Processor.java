@@ -1,10 +1,8 @@
 package org.xenei.robot;
 
-import java.util.Collection;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Supplier;
-import java.util.prefs.AbstractPreferences;
 
 import org.apache.jena.arq.querybuilder.AskBuilder;
 import org.apache.jena.arq.querybuilder.ExprFactory;
@@ -16,6 +14,7 @@ import org.apache.jena.vocabulary.RDF;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xenei.robot.common.AbortedException;
+import org.xenei.robot.common.BumpSensor;
 import org.xenei.robot.common.DistanceSensor;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Mover;
@@ -29,6 +28,7 @@ import org.xenei.robot.common.utils.DoubleUtils;
 import org.xenei.robot.common.utils.RobutContext;
 import org.xenei.robot.mapper.MapImpl;
 import org.xenei.robot.mapper.MapReports;
+import org.xenei.robot.mapper.MapBumpSensorAdapter;
 import org.xenei.robot.mapper.MapperImpl;
 import org.xenei.robot.mapper.rdf.Namespace;
 import org.xenei.robot.planner.PlannerImpl;
@@ -40,19 +40,25 @@ public class Processor {
     private final RobutContext ctxt;
     public final Planner planner;
     private final Mapper mapper;
-    private final DistanceSensor sensor;
     private final Mover mover;
     private final Supplier<Position> positionSupplier;
 
-    public Processor(RobutContext ctxt, Mover mover, Supplier<Position> positionSupplier, DistanceSensor sensor) {
+    public Processor(RobutContext ctxt, Mover mover, Supplier<Position> positionSupplier, Map map) {
         this.ctxt = ctxt;
         this.mover = mover;
         this.positionSupplier = () -> ctxt.scaleInfo.round(positionSupplier.get());
-        this.sensor = sensor;
-        map = new MapImpl(ctxt);
-        mapper = new MapperImpl(map);
+        this.map = map;
+        this.planner = new PlannerImpl(map, positionSupplier);
+        this.mapper = new MapperImpl(map, positionSupplier, planner::getFinalTarget);
         LOG.debug("Initial position: ()", positionSupplier.get());
-        planner = new PlannerImpl(map, positionSupplier);
+    }
+
+    public Planner getPlanner() {
+        return planner;
+    }
+
+    public Mapper getMapper() {
+        return mapper;
     }
 
     public void add(Mapper.Visualization visualization) {
@@ -71,7 +77,7 @@ public class Processor {
                     mover.setHeading(newHeading);
                     NavigationSnapshot testingSnapshot = new NavigationSnapshot(mover.position(), 
                             planner.getFinalTarget());
-                    mapper.processSensorData(planner.getFinalTarget(), testingSnapshot, sensor.sense());
+                    //mapper.processSensorData(planner.getFinalTarget(), testingSnapshot, sensor.sense());
                     planner.notifyListeners();
                     cont = mapper.isClearPath(testingSnapshot.position, planner.getFinalTarget());
                     if (!cont) {
@@ -122,17 +128,17 @@ public class Processor {
         });
     }
     
-    private void processSensorData(NavigationSnapshot snapshot) {
-        mapper.processSensorData(planner.getFinalTarget(), snapshot, sensor.sense());
-        planner.notifyListeners();
-    }
+//    private void processSensorData(NavigationSnapshot snapshot) {
+//        mapper.processSensorData(planner.getFinalTarget(), snapshot, sensor.sense());
+//        planner.notifyListeners();
+//    }
 
     private NavigationSnapshot setHeading(double heading) {
         // adjust the heading 
         mover.setHeading(heading);
         NavigationSnapshot snapshot = newSnapshot();
         // look where we are heading.
-        processSensorData(snapshot);
+//        processSensorData(snapshot);
         return snapshot;
     }
     
@@ -145,14 +151,14 @@ public class Processor {
         }
         NavigationSnapshot snapshot = newSnapshot();
         planner.registerPositionChange(snapshot);
-        processSensorData(snapshot);
+        //processSensorData(snapshot);
         return snapshot;
     }
 
     public void moveTo(Location finalLocation, AbortTest abortTest) throws AbortedException {
         map.addCoord(finalLocation.getCoordinate(), null, false, null);
         NavigationSnapshot snapshot = new NavigationSnapshot(positionSupplier.get(), finalLocation.getCoordinate());
-        processSensorData(snapshot);
+        //processSensorData(snapshot);
         double heading = planner.setTarget(snapshot.target);
         if (LOG.isDebugEnabled()) {
             LOG.debug( "calculated heading {} compare to {}", heading, positionSupplier.get().getHeading() );

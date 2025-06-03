@@ -8,12 +8,21 @@ import org.xenei.robot.common.utils.CoordUtils;
 import org.xenei.robot.common.utils.DoubleUtils;
 import org.xenei.robot.common.utils.RobutContext;
 
+/**
+ * A position is a location and a heading.
+ */
 public interface Position extends Location {
 
-    static Position from(Coordinate c, double head) {
+    /**
+     * Create a position from a coordinate and a heading
+     * @param coordinate the coordinate for the position.
+     * @param head the heading for the position.
+     * @return the position at the coordinate and heading.
+     */
+    static Position from(Coordinate coordinate, double head) {
         return new Position() {
-            double heading = head;
-            UnmodifiableCoordinate coord = UnmodifiableCoordinate.make(c);
+            final double heading = head;
+            final UnmodifiableCoordinate coord = UnmodifiableCoordinate.make(coordinate);
 
             @Override
             public UnmodifiableCoordinate getCoordinate() {
@@ -109,10 +118,10 @@ public interface Position extends Location {
     }
 
     /**
-     * Calculate sthe heading required to move from the current absolute position to
-     * another absolute position.
+     * Calculates the heading required to move from the current absolute position to
+     * an absolute coordinate.
      * 
-     * @param position the position to calculate the heading to.
+     * @param coordinate the coordinate to calculate the heading to.
      * @return the heading in radians.
      */
     default double headingTo(FrontsCoordinate coordinate) {

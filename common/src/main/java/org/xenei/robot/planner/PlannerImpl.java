@@ -4,6 +4,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Optional;
 import java.util.Stack;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -23,7 +24,7 @@ import org.xenei.robot.common.planning.Step;
 import org.xenei.robot.common.utils.CoordUtils;
 import org.xenei.robot.mapper.rdf.Namespace;
 
-public class PlannerImpl implements Planner {
+public class PlannerImpl implements Planner  {
     private static final Logger LOG = LoggerFactory.getLogger(PlannerImpl.class);
     private final TargetStack target;
     private final Map map;
@@ -67,6 +68,7 @@ public class PlannerImpl implements Planner {
         LOG.debug("PlannerImpl: {}", snapshot);
     }
 
+
     @Override
     public NavigationSnapshot getSnapshot() {
         return snapshot;
@@ -100,7 +102,6 @@ public class PlannerImpl implements Planner {
         Position pos = positionSupplier.get();
         if (pos.equals2D(getTarget(), map.getContext().scaleInfo.getResolution())) {
             LOG.debug("Reached intermediate target");
-            // TODO use thread for set visited
             map.setVisited(getFinalTarget(), target.pop());
             if (target.isEmpty()) {
                 LOG.debug("Reached final target");

@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.Scanner;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
 import org.locationtech.jts.geom.Coordinate;
@@ -12,14 +13,21 @@ import org.slf4j.LoggerFactory;
 import org.xenei.robot.Processor;
 import org.xenei.robot.common.AbortedException;
 import org.xenei.robot.common.ChassisInfo;
+import org.xenei.robot.common.DistanceSensor;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Mover;
 import org.xenei.robot.common.Position;
 import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.common.utils.CoordUtils;
 import org.xenei.robot.common.utils.RobutContext;
+import org.xenei.robot.mapper.MapDistanceSensorAdapter;
+import org.xenei.robot.mapper.MapImpl;
+import org.xenei.robot.mapper.MapBumpSensorAdapter;
+import org.xenei.robot.mapper.MapperImpl;
+import org.xenei.robot.mapper.RelativeLocationDistanceSensorAdapter;
 import org.xenei.robot.rpi.mover.RpiMover;
 import org.xenei.robot.rpi.sensors.Arduino;
+import org.xenei.robot.rpi.sensors.BumpSensorImpl;
 
 public class Robut {
 
@@ -30,9 +38,20 @@ public class Robut {
 
     public Robut(Coordinate origin) throws InterruptedException {
         RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT, new ChassisInfo(0.24, 8, 60));
+        BumpSensorImpl bumpSensor = new BumpSensorImpl();
+        ctxt.scheduleAtFixedRate(bumpSensor, 500, 42, TimeUnit.MILLISECONDS);
         Mover mover = new RpiMover(ctxt, new CompassImpl(), origin);
+        bumpSensor.addListener(mover.getBumpSensorListener());
         positionSupplier = mover::position;
-        this.processor = new Processor(ctxt, mover, positionSupplier, new Arduino());
+        MapImpl map = new MapImpl(ctxt);
+        bumpSensor.addListener(new MapBumpSensorAdapter(map, positionSupplier));
+        DistanceSensor arduino = new Arduino();
+        arduino.addListener(new MapDistanceSensorAdapter(map, positionSupplier));
+
+        this.processor = new Processor(ctxt, mover, positionSupplier, map);
+        RelativeLocationDistanceSensorAdapter relativeLocationDistanceSensorAdapter =
+                new RelativeLocationDistanceSensorAdapter(processor.getMapper().getRelativeObstacleConsumer());
+        arduino.addListener(relativeLocationDistanceSensorAdapter);
     }
 
     public void moveTo(Location relativeLocation) throws AbortedException {

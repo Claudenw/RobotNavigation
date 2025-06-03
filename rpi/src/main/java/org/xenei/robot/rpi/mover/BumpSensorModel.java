@@ -2,6 +2,7 @@ package org.xenei.robot.rpi.mover;
 
 import org.xenei.robot.common.utils.RobutContext;
 import org.xenei.robot.ml.SensorLayer;
+import org.xenei.robot.common.BumpSensor;
 
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
@@ -9,7 +10,7 @@ import java.util.function.Consumer;
 /**
  * Creates a SensorLayer to process the bump sensor changes.
  */
-class BumpSensorModel implements Consumer<Byte> {
+class BumpSensorModel implements Consumer<BumpSensor.BumpState> {
     private final SensorLayer sensorLayer;
     private final CopyOnWriteArrayList<Consumer<SensorLayer>> listeners;
     private final RobutContext ctxt;
@@ -30,8 +31,8 @@ class BumpSensorModel implements Consumer<Byte> {
     }
 
     @Override
-    public void accept(Byte aByte) {
-        byte result = sensorLayer.trigger(aByte);
+    public void accept(BumpSensor.BumpState state) {
+        byte result = sensorLayer.trigger(state.getValue());
         if (result != SensorLayer.DONT_CARE) {
             listeners.forEach( l -> ctxt.submit(() -> l.accept(sensorLayer)));
         }

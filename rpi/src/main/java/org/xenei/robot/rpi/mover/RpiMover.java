@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.DefaultParser;
@@ -16,6 +17,7 @@ import org.apache.commons.cli.Options;
 import org.locationtech.jts.geom.Coordinate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.xenei.robot.common.BumpSensor;
 import org.xenei.robot.common.ChassisInfo;
 import org.xenei.robot.common.Compass;
 import org.xenei.robot.common.Location;
@@ -31,7 +33,7 @@ import org.xenei.robot.rpi.drivers.Motor;
 import org.xenei.robot.rpi.drivers.Motor.SteppingStatus;
 import org.xenei.robot.rpi.drivers.ULN2003;
 import org.xenei.robot.rpi.drivers.ULN2003.Mode;
-import org.xenei.robot.rpi.sensors.BumpSensor;
+import org.xenei.robot.rpi.sensors.BumpSensorImpl;
 
 public class RpiMover implements Mover, AutoCloseable {
     private final Motor[] motor = new Motor[2];
@@ -76,19 +78,20 @@ public class RpiMover implements Mover, AutoCloseable {
         this.ctxt = ctxt;
         motor[LEFT] = left;
         motor[RIGHT] = right;
-        this.coordinates = coords;
-        this.compass = compass;
         this.deadReckoning = new DeadReckoning();
+        this.compass = compass == null ? this.deadReckoning : compass;
+        this.coordinates = coords;
         this.rotationalDistance = Math.PI * ctxt.chassisInfo.wheelDiameter / 100; // in meters
         // configure bump sensor
-        BumpSensor bumpSensor = new BumpSensor();
-        this.ctxt.scheduleAtFixedRate(bumpSensor, 500, 42, TimeUnit.MILLISECONDS);
         this.bumpSensorModel = new BumpSensorModel(ctxt);
-        bumpSensor.addListener(bumpSensorModel);
         // this.r = width/2.0; // in cm
         // meterminute / meterrotation = meterrotation/meter/minute = r/m
         this.rpm = limit((long) Math.ceil(ctxt.chassisInfo.maxSpeed / rotationalDistance), 1, motor[0].getMaxRpm());
         LOG.debug("RpiMover: {}", position());
+    }
+
+    public Consumer<BumpSensor.BumpState> getBumpSensorListener() {
+        return bumpSensorModel;
     }
 
     private static Options getOptions() {
@@ -103,8 +106,11 @@ public class RpiMover implements Mover, AutoCloseable {
     public static void main(String[] args) {
         try {
             RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT, new ChassisInfo(0.23, 3.2, 60));
+            BumpSensorImpl bumpSensor = new BumpSensorImpl();
+            ctxt.scheduleAtFixedRate(bumpSensor, 500, 42, TimeUnit.MILLISECONDS);
             Compass compass = new DeadReckoning();
             try (RpiMover mover = new RpiMover(ctxt, compass, new Coordinate(0, 0))) {
+                bumpSensor.addListener(mover.getBumpSensorListener());
                 Options options = getOptions();
                 BufferedReader bufferReader = new BufferedReader(new InputStreamReader(System.in));
                 new HelpFormatter().printHelp(RpiMover.class.getCanonicalName(), getOptions());
@@ -260,7 +266,7 @@ public class RpiMover implements Mover, AutoCloseable {
         SteppingStatus ssLeft = motor[LEFT].prepareRun(left, rpm);
         SteppingStatus ssRight = motor[RIGHT].prepareRun(right, rpm);
         StepMonitor result = new StepMonitor(ssLeft, ssRight);
-        BumpChangeDetector bumpChangeDetector = new BumpChangeDetector(new StepMonitor(ssLeft, ssRight), lastTrigger);
+        BumpDetector bumpChangeDetector = new BumpDetector(new StepMonitor(ssLeft, ssRight), lastTrigger);
         bumpSensorModel.addListener(bumpChangeDetector);
         try {
             result = ctxt.submit(result).get();

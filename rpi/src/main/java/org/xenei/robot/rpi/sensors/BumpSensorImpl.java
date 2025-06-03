@@ -1,37 +1,40 @@
 package org.xenei.robot.rpi.sensors;
 
 import com.diozero.api.I2CDevice;
+import org.xenei.robot.common.BumpSensor;
 
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 
-public class BumpSensor implements Runnable {
+public class BumpSensorImpl implements Runnable, BumpSensor {
     private static final int CONTROLLER = 1;
     private static final int ADDRESS = 0x27;
     private final I2CDevice device;
-    private final CopyOnWriteArrayList<Consumer<Byte>> listeners;
+    private final CopyOnWriteArrayList<Consumer<BumpState>> listeners;
 
-    public BumpSensor() {
+    public BumpSensorImpl() {
         device = new I2CDevice(CONTROLLER, ADDRESS);
         listeners = new CopyOnWriteArrayList<>();
     }
 
     public void run() {
-        byte value = (byte) (0xFF & ~device.readByte());
+        BumpState value = new BumpState((byte) (0xFF & ~device.readByte()));
         listeners.forEach(l -> l.accept(value));
     }
 
-    public void addListener(Consumer<Byte> listener) {
+    @Override
+    public void addListener(Consumer<BumpState> listener) {
         listeners.add(listener);
     }
 
-    public void removeListener(Consumer<Byte> listener) {
+    @Override
+    public void removeListener(Consumer<BumpState> listener) {
         listeners.remove(listener);
     }
 
     public static void main(String[] args) {
-        BumpSensor bump = new BumpSensor();
-        Consumer<Byte> listener = (b) -> System.out.format("%x%n", b);
+        BumpSensorImpl bump = new BumpSensorImpl();
+        Consumer<BumpState> listener = (b) -> System.out.format("%x%n", b.getValue());
         bump.addListener(listener);
         while (true) {
             bump.run();

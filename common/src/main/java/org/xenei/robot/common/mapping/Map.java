@@ -38,14 +38,14 @@ public interface Map {
      * If the distance is null, then the result will be empty as there can be no
      * steps to a non-declared target.
      *
-     * @param target the target to add.
-     * @param distance the distance to the final target.
-     * @param visited true if the target has been visited.
+     * @param target     the target to add.
+     * @param distance   the distance to the final target.
+     * @param visited    true if the target has been visited.
      * @param isIndirect true if the target can not see the final target.
      * @return the Step comprising the mapped target location and the distance
      * value.
      */
-    Optional<Step> addCoord(Coordinate target, Double distance, boolean visited, Boolean isIndirect);
+    CompletableFuture<Optional<Step>> addCoord(Coordinate target, Double distance, boolean visited, Boolean isIndirect);
 
     /**
      * Gets the collection of all steps in the planning graph that are reachable
@@ -103,10 +103,10 @@ public interface Map {
 
     /**
      * Adds an obstacle to the planning graph.
-     * 
+     *
      * @param obstacle the obstacle to add.
      */
-    Set<Obstacle> addObstacle(Obstacle obstacle);
+    CompletableFuture<Set<? extends Obstacle>> addObstacle(Obstacle obstacle);
 
     /**
      * Gets the geometry for all the known obstacles.
@@ -176,6 +176,16 @@ public interface Map {
      * @return An obstacle.
      */
     Obstacle createObstacle(Position startPosition, Location relativeLocation);
+
+    /**
+     * Create an Obstacle.
+     *
+     * @param startPosition The position from which we locate the obstacle.
+     * @param relativeStart the relative starting location of the obstacle.
+     * @param relativeEnd the relative ending location of the obstacle.
+     * @return An obstacle.
+     */
+    Obstacle createObstacle(Position startPosition, Location relativeStart, Location relativeEnd);
 
     /**
      * Sets the coordinate as visited in the map.

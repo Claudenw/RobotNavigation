@@ -1,5 +1,7 @@
 package org.xenei.robot.common;
 
+import java.util.function.Consumer;
+
 public interface Mover {
     /**
      * Move to the specified location
@@ -20,4 +22,9 @@ public interface Mover {
      */
     void setHeading(double heading);
 
+    /**
+     * Gets a BumpSensor listener.
+     * @return a BumpSensor listener.
+     */
+    Consumer<BumpSensor.BumpState> getBumpSensorListener();
 }

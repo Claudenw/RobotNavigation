@@ -8,16 +8,16 @@ import java.util.function.Consumer;
 /**
  * Reacts to a change in the bump detector ML layer and stops the step monitor.
  */
-class BumpChangeDetector implements Consumer<SensorLayer> {
+class BumpDetector implements Consumer<SensorLayer> {
     private SensorLayer sensorLayer;
     private final StepMonitor stepMonitor;
-    private Byte lastTrigger;
+    private final byte lastTrigger;
 
     /**
      * constructor.
      * @param stepMonitor the step monitor to stop.
      */
-    BumpChangeDetector(StepMonitor stepMonitor) {
+    BumpDetector(StepMonitor stepMonitor) {
         this(stepMonitor, (byte)0);
     }
 
@@ -26,8 +26,9 @@ class BumpChangeDetector implements Consumer<SensorLayer> {
      * @param stepMonitor the step monitor to stop.
      * @param lastTrigger the existing trigger value.
      */
-    BumpChangeDetector(StepMonitor stepMonitor, byte lastTrigger) {
+    BumpDetector(StepMonitor stepMonitor, byte lastTrigger) {
         this.stepMonitor = stepMonitor;
+        this.lastTrigger = lastTrigger;
     }
 
     @Override
