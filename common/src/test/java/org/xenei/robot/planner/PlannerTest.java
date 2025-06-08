@@ -12,6 +12,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
@@ -48,23 +49,24 @@ import org.xenei.robot.common.utils.AngleUtils;
 import org.xenei.robot.common.utils.RobutContext;
 
 public class PlannerTest {
-    private RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT, TestChassisInfo.DEFAULT);
+    final private RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT, TestChassisInfo.DEFAULT);
     private Planner underTest;
 
-    private ArgumentCaptor<Coordinate> coordinateCaptor = ArgumentCaptor.forClass(Coordinate.class);
+    final private ArgumentCaptor<Coordinate> coordinateCaptor = ArgumentCaptor.forClass(Coordinate.class);
     // private ArgumentCaptor<Step> stepCaptor =
     // ArgumentCaptor.forClass(Step.class);
-    private ArgumentCaptor<Double> doubleCaptor = ArgumentCaptor.forClass(Double.class);
+    final private ArgumentCaptor<Double> doubleCaptor = ArgumentCaptor.forClass(Double.class);
 
     @Test
     public void setTargetTest() {
         FrontsCoordinate fc = FrontsCoordinateTest.make(1, 1);
         Map map = Mockito.mock(Map.class);
+        when(map.getContext()).thenReturn(ctxt);
 
         TestingPositionSupplier supplier = new TestingPositionSupplier(Position.from(Location.ORIGIN));
         underTest = new PlannerImpl(map, supplier);
 
-        assertEquals(AngleUtils.RADIANS_45, underTest.setTarget(fc));
+        assertEquals(ctxt.scaleInfo.round(AngleUtils.RADIANS_45), underTest.setTarget(fc));
         assertEquals(fc.getCoordinate(), underTest.getTarget());
         verify(map).recalculate(coordinateCaptor.capture());
         assertEquals(fc.getCoordinate(), coordinateCaptor.getValue());
@@ -80,7 +82,7 @@ public class PlannerTest {
         Map map = Mockito.mock(Map.class);
         when(map.getContext()).thenReturn(ctxt);
         when(map.addCoord(any(Coordinate.class), anyDouble(), anyBoolean(), anyBoolean()))
-                .thenReturn(Optional.of(step));
+                .thenReturn(CompletableFuture.completedFuture(Optional.of(step)));
 
         Location finalLocation = Location.from(-1, 1);
         Position initial = Position.from(-1, -3);
@@ -102,7 +104,7 @@ public class PlannerTest {
 
         // verify solution has 2 items
         Solution solution = underTest.getSolution();
-        List<Coordinate> sol = solution.stream().collect(Collectors.toList());
+        List<Coordinate> sol = solution.stream().toList();
         assertEquals(2, sol.size());
         assertTrue(initial.equals2D(sol.get(0)));
         assertTrue(second.equals2D(lst.get(1)));
@@ -114,7 +116,7 @@ public class PlannerTest {
         Map map = Mockito.mock(Map.class);
         when(map.getContext()).thenReturn(ctxt);
         when(map.addCoord(any(Coordinate.class), anyDouble(), anyBoolean(), anyBoolean()))
-                .thenReturn(Optional.of(step));
+                .thenReturn(CompletableFuture.completedFuture(Optional.of(step)));
 
         Location finalLocation = Location.from(-1, 1);
         Position initial = Position.from(-1, -3);
@@ -135,7 +137,7 @@ public class PlannerTest {
 
         // verify solution has 1 item
         Solution solution = underTest.getSolution();
-        List<Coordinate> sol = solution.stream().collect(Collectors.toList());
+        List<Coordinate> sol = solution.stream().toList();
         assertEquals(1, sol.size());
         assertTrue(supplier.position.equals2D(sol.get(0)));
     }
@@ -176,7 +178,7 @@ public class PlannerTest {
 
         // verify solution has 1 item
         Solution solution = underTest.getSolution();
-        List<Coordinate> sol = solution.stream().collect(Collectors.toList());
+        List<Coordinate> sol = solution.stream().toList();
         assertEquals(1, sol.size());
         assertTrue(initial.equals2D(sol.get(0)));
     }
@@ -184,7 +186,9 @@ public class PlannerTest {
     @Test
     public void listenersTest() {
         int[] result = { 0 };
+
         Map map = Mockito.mock(Map.class);
+        when(map.getContext()).thenReturn(ctxt);
 
         Location finalCoord = Location.from(-1, 1);
         TestingPositionSupplier supplier = new TestingPositionSupplier(Position.from(-1, -3));
@@ -198,7 +202,10 @@ public class PlannerTest {
 
     @Test
     public void recalculateCostsTest() {
+
+        RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT, TestChassisInfo.DEFAULT);
         Map map = Mockito.mock(Map.class);
+        when(map.getContext()).thenReturn(ctxt);
 
         Location finalCoord = Location.from(-1, 1);
         Position initial = Position.from(-1, -3);
@@ -220,7 +227,7 @@ public class PlannerTest {
 
         // verify solution has 1 item
         Solution solution = underTest.getSolution();
-        List<Coordinate> sol = solution.stream().collect(Collectors.toList());
+        List<Coordinate> sol = solution.stream().toList();
         assertEquals(1, sol.size());
         assertTrue(initial.equals2D(sol.get(0)));
     }
@@ -259,12 +266,12 @@ public class PlannerTest {
 
         StepSupplier coordStepSupplier = new StepSupplier();
 
-        final Coordinate visitedTarget[] = { null };
+        final Coordinate[] visitedTarget = { null };
 
         Map map = new TestingMap() {
             @Override
             public CompletableFuture<Optional<Step>> addCoord(Coordinate target, Double distance, boolean visited, Boolean isIndirect) {
-                return Optional.ofNullable(coordStepSupplier.get());
+                return CompletableFuture.completedFuture(Optional.ofNullable(coordStepSupplier.get()));
             }
 
             @Override
@@ -273,14 +280,14 @@ public class PlannerTest {
             }
 
             @Override
-            public Future<?> setVisited(Coordinate finalTarget, Coordinate coord) {
+            public CompletableFuture<?> setVisited(Coordinate finalTarget, Coordinate coord) {
                 if (underTest.getFinalTarget() == null) {
                     assertEquals(finalTarget, coord);
                 } else {
                     assertEquals(underTest.getFinalTarget(), finalTarget);
                 }
                 visitedTarget[0] = coord;
-                return null;
+                return CompletableFuture.completedFuture(null);
             }
         };
 
@@ -325,17 +332,15 @@ public class PlannerTest {
         CoordinateUtils.assertEquivalent(positionSupplier.position, visitedTarget[0]);
     }
 
-    private class StepSupplier implements Supplier<Step> {
-        Queue<Step> queue = new LinkedList<Step>();
+    private static class StepSupplier implements Supplier<Step> {
+        Queue<Step> queue = new LinkedList<>();
 
         StepSupplier() {
         }
 
         void setup(Step... steps) {
             queue.clear();
-            for (Step s : steps) {
-                queue.add(s);
-            }
+            Collections.addAll(queue, steps);
         }
 
         @Override
@@ -344,7 +349,7 @@ public class PlannerTest {
         }
     }
 
-    private class TestingStep implements Step {
+    private static class TestingStep implements Step {
         UnmodifiableCoordinate coord;
         double cost;
         double distance;
@@ -415,26 +420,26 @@ public class PlannerTest {
         }
 
         @Override
-        public Future<Coordinate[]> addPath(Coordinate... coords) {
+        public CompletableFuture<Coordinate[]> addPath(Coordinate... coords) {
             // TODO Auto-generated method stub
             return null;
         }
 
         @Override
-        public Future<Coordinate[]> addPath(Resource model, Coordinate... coords) {
+        public CompletableFuture<Coordinate[]> addPath(Resource model, Coordinate... coords) {
             // TODO Auto-generated method stub
             return null;
         }
 
         @Override
-        public Future<Coordinate> recalculate(Coordinate target) {
+        public CompletableFuture<Coordinate> recalculate(Coordinate target) {
             // TODO Auto-generated method stub
             return null;
         }
 
         @Override
         public Optional<Step> getBestStep(Coordinate currentCoords) {
-            return null;
+            return Optional.empty();
         }
 
         @Override
@@ -444,7 +449,7 @@ public class PlannerTest {
         }
 
         @Override
-        public CompletableFuture<Set<? extends Obstacle>> addObstacle(Obstacle obstacle) {
+        public CompletableFuture<Set<Obstacle>> addObstacle(Obstacle obstacle) {
             // TODO Auto-generated method stub
             return null;
         }
@@ -456,7 +461,7 @@ public class PlannerTest {
         }
 
         @Override
-        public Future<?> cutPath(Coordinate a, Coordinate b) {
+        public CompletableFuture<?> cutPath(Coordinate a, Coordinate b) {
             // TODO Auto-generated method stub
 
             return null;
@@ -475,12 +480,6 @@ public class PlannerTest {
         }
 
         @Override
-        public Coordinate adopt(Coordinate a) {
-            // TODO Auto-generated method stub
-            return null;
-        }
-
-        @Override
         public CompletableFuture<Void> updateIsIndirect(Coordinate finalTarget, Set<Obstacle> newObstacles) {
             // TODO Auto-generated method stub
 
@@ -494,7 +493,13 @@ public class PlannerTest {
         }
 
         @Override
-        public Future<?> setVisited(Coordinate finalTarget, Coordinate coord) {
+        public Obstacle createObstacle(Position startPosition, Location relativeStartLocation, Location relativeEndLocation) {
+            // TODO Auto-generated method stub
+            return null;
+        }
+
+        @Override
+        public CompletableFuture<?> setVisited(Coordinate finalTarget, Coordinate coord) {
             // TODO Auto-generated method stub
 
             return null;
@@ -503,7 +508,7 @@ public class PlannerTest {
         @Override
         public CompletableFuture<Optional<Location>> look(Position position, double heading, int maxRange) {
             // TODO Auto-generated method stub
-            return Optional.empty();
+            return CompletableFuture.completedFuture(Optional.empty());
         }
     }
 

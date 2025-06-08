@@ -1,9 +1,12 @@
 package org.xenei.robot.mapper.visualization;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import java.util.SortedSet;
 import java.util.TreeSet;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
 
 import org.locationtech.jts.geom.Coordinate;
@@ -22,6 +25,7 @@ public class TextViz implements Mapper.Visualization {
     final double scale;
     final Supplier<Solution> solutionSupplier;
     final Supplier<Position> positionSupplier;
+    final Supplier<Coordinate> targetSupplier;
 
     private static final char OBSTACLE = '#';
     private static final char TARGET = 't';
@@ -34,11 +38,13 @@ public class TextViz implements Mapper.Visualization {
         return x > Integer.MAX_VALUE ? Integer.MAX_VALUE : (x < Integer.MIN_VALUE ? Integer.MIN_VALUE : x);
     }
 
-    public TextViz(double scale, Map map, Supplier<Solution> solutionSupplier, Supplier<Position> positionSupplier) {
+    public TextViz(double scale, Map map, Supplier<Solution> solutionSupplier, Supplier<Position> positionSupplier,
+                   Supplier<Coordinate> targetSupplier) {
         this.scale = scale;
         this.map = map;
         this.positionSupplier = positionSupplier;
         this.solutionSupplier = solutionSupplier;
+        this.targetSupplier = targetSupplier;
     }
 
     public double scale() {
@@ -101,21 +107,30 @@ public class TextViz implements Mapper.Visualization {
     }
 
     @Override
-    public void redraw(Coordinate target) {
+    public void redraw() {
         GeometryUtils geometryUtils = map.getContext().geometryUtils;
         SortedSet<Coord> points = new TreeSet<>();
-        map.getObstacles().thenAccept(s -> s.forEach(o -> addGeom(points, o.geom(), OBSTACLE)));
-        map.getCoords().thenAccept( mc -> mc.forEach(coord -> addGeom(points, coord.geometry, coord.isIndirect ? COORD_INDIRECT : COORD_DIRECT)));
+        List<CompletableFuture<?>> futures = new ArrayList<>();
+        futures.add(map.getObstacles().thenAccept(s -> s.forEach(o -> addGeom(points, o.geom(), OBSTACLE))));
+        futures.add(map.getCoords().thenAccept( mc -> mc.forEach(coord -> addGeom(points, coord.geometry, coord.isIndirect ? COORD_INDIRECT : COORD_DIRECT))));
         List<Coordinate> lst = solutionSupplier.get().stream().toList();
         if (lst.size() > 1) {
             addGeom(points, geometryUtils.asPath(0.25, lst.toArray(new Coordinate[lst.size()])), PATH);
         } else if (lst.size() == 1) {
             addGeom(points, geometryUtils.asPoint(lst.get(0)), PATH);
         }
+        Coordinate target = targetSupplier.get();
         if (target != null) {
             addGeom(points, geometryUtils.asPoint(target), TARGET);
         }
-        addGeom(points, geometryUtils.asPoint(positionSupplier.get()), POSITION);
+
+        Position position = positionSupplier.get();
+        if (position != null) {
+            addGeom(points, geometryUtils.asPoint(positionSupplier.get()), POSITION);
+        }
+        for (CompletableFuture<?> future : futures) {
+            future.join();
+        }
         output(stringBuilder(points));
     }
 

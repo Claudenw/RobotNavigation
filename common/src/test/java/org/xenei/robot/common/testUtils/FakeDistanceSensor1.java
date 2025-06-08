@@ -8,16 +8,19 @@ import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.nio.charset.Charset;
 import java.util.LinkedHashMap;
-import java.util.Optional;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.math3.ml.neuralnet.MapUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Position;
 import org.xenei.robot.common.mapping.Map;
-import org.xenei.robot.common.utils.CoordUtils;
+import org.xenei.robot.mapper.MapImpl;
+import org.xenei.robot.mapper.MapReports;
 
 public class FakeDistanceSensor1 implements FakeDistanceSensor {
     private static final Logger LOG = LoggerFactory.getLogger(FakeDistanceSensor.class);
@@ -27,10 +30,12 @@ public class FakeDistanceSensor1 implements FakeDistanceSensor {
     private static final double MAX_RANGE = 350;
     private final Supplier<Position> positionSupplier;
     private final LinkedHashMap<Position, Location[]> history = new LinkedHashMap<>();
+    private final CopyOnWriteArrayList<Consumer<DistanceReading>> listeners;
 
     public FakeDistanceSensor1(Map map, Supplier<Position> positionSupplier) {
         this.map = map;
         this.positionSupplier = positionSupplier;
+        this.listeners = new CopyOnWriteArrayList<>();
     }
 
     @Override
@@ -63,7 +68,7 @@ public class FakeDistanceSensor1 implements FakeDistanceSensor {
             double y = Double.parseDouble(numbers[i++]);
             double heading = Double.parseDouble(numbers[i++]);
             Position position = Position.from(x, y, heading);
-            int limit = (numbers.hashCode() - 3) / 2;
+            int limit = (numbers.length - 3) / 2;
             Location[] locations = new Location[limit];
             for (int j = 0; j < limit; j++) {
                 x = Double.parseDouble(numbers[i++]);
@@ -79,7 +84,7 @@ public class FakeDistanceSensor1 implements FakeDistanceSensor {
     }
 
     @Override
-    public Location[] sense() {
+    public void run() {
         Position position = positionSupplier.get();
         Location[] result = history.get(position);
         if (result == null) {
@@ -96,20 +101,34 @@ public class FakeDistanceSensor1 implements FakeDistanceSensor {
             } catch (IOException e) {
                 LOG.error("Can not write sensor data");
             }
-
         }
-        return result;
+        for (Location location : result) {
+            DistanceReading dr = new DistanceReading(location.theta(), location.range());
+            for (Consumer<DistanceReading> listener : listeners) {
+                listener.accept(dr);
+            }
+        }
     }
 
     private Location look(Position position, double heading) {
         if (LOG.isDebugEnabled()) {
             LOG.debug("Scanning heading: {} {}", heading, Math.toDegrees(heading));
         }
-        return map.look(position, heading, 350).orElse(Location.INFINITE);
+        return map.look(position, heading, 350).join().orElse(Location.INFINITE);
     }
 
     @Override
     public double maxRange() {
         return MAX_RANGE;
+    }
+
+    @Override
+    public void addListener(Consumer<DistanceReading> listener) {
+        this.listeners.add(listener);
+    }
+
+    @Override
+    public void removeListener(Consumer<DistanceReading> listener) {
+        this.listeners.remove(listener);
     }
 }

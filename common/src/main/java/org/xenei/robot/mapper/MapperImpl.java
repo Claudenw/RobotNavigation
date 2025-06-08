@@ -112,17 +112,9 @@ public class MapperImpl implements Mapper {
             Location relativeCoord = Location.from(CoordUtils.fromAngle(relativeObstacle.theta(), distance));
             Location candidate = currentPosition.nextPosition(relativeCoord);
             Coordinate newCoord = map.adopt(candidate.getCoordinate());
-            if (map.isObstacle(newCoord)) {
-                distance -= map.getContext().scaleInfo.getResolution();
-                if (distance < tolerance) {
-                    return;
-                }
-                relativeCoord = Location.from(CoordUtils.fromAngle(relativeObstacle.theta(), distance));
-                candidate = currentPosition.nextPosition(relativeCoord);
-                newCoord = map.adopt(candidate.getCoordinate());
-                if (map.isObstacle(newCoord)) {
-                    return;
-                }
+            // if it is not an obstical add it.
+            if (!map.isObstacle(newCoord)) {
+                map.addObstacle(map.createObstacle(currentPosition, relativeObstacle));
             }
             Coordinate finalTarget = targetSupplier.get();
             map.addCoord(newCoord, finalTarget == null ? null : newCoord.distance(finalTarget), false,

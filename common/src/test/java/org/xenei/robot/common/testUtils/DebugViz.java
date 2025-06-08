@@ -13,14 +13,15 @@ import org.xenei.robot.mapper.visualization.TextViz;
 public class DebugViz extends TextViz {
     private static final Logger LOG = LoggerFactory.getLogger(DebugViz.class);
 
-    public DebugViz(double scale, Map map, Supplier<Solution> solutionSupplier, Supplier<Position> positionSupplier) {
-        super(scale, map, solutionSupplier, positionSupplier);
+    public DebugViz(double scale, Map map, Supplier<Solution> solutionSupplier, Supplier<Position> positionSupplier,
+                    Supplier<Coordinate> targetSupplier) {
+        super(scale, map, solutionSupplier, positionSupplier, targetSupplier);
     }
 
     @Override
-    public void redraw(Coordinate target) {
+    public void redraw() {
         if (LOG.isDebugEnabled()) {
-            super.redraw(target);
+            super.redraw();
         }
     }
 

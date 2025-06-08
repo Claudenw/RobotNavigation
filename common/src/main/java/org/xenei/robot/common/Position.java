@@ -179,4 +179,8 @@ public interface Position extends Location {
         return DoubleUtils.inRange(d, tolerance / 2);
     }
 
+    default boolean isNan() {
+        return CoordUtils.isNaN(this.getCoordinate()) || Double.isNaN(getHeading());
+    }
+
 }

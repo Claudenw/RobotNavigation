@@ -6,6 +6,7 @@ import java.awt.EventQueue;
 import java.awt.Graphics;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -21,25 +22,26 @@ import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
 import org.xenei.robot.common.Position;
 import org.xenei.robot.common.mapping.Map;
-import org.xenei.robot.common.mapping.MapCoord;
 import org.xenei.robot.common.mapping.Mapper;
-import org.xenei.robot.common.mapping.Obstacle;
 import org.xenei.robot.common.planning.Solution;
 import org.xenei.robot.common.utils.GeometryUtils;
 
-public class MapViz implements Mapper.Visualization {
+public class MapViz implements Mapper.Visualization, Runnable {
     private final Supplier<Solution> solutionSupplier;
     private final Supplier<Position> positionSupplier;
+    private final Supplier<Coordinate> targetSupplier;
     private final Map map;
     private final JTSPanel panel;
     private final int scale;
     private final int buffer;
 
-    public MapViz(int scale, Map map, Supplier<Solution> solutionSupplier, Supplier<Position> positionSupplier) {
+    public MapViz(int scale, Map map, Supplier<Solution> solutionSupplier, Supplier<Position> positionSupplier,
+                   Supplier<Coordinate> targetSupplier) {
         this.map = map;
         this.panel = new JTSPanel();
         this.solutionSupplier = solutionSupplier;
         this.positionSupplier = positionSupplier;
+        this.targetSupplier = targetSupplier;
         this.scale = scale;
         this.buffer = (int) (map.getContext().scaleInfo.getResolution() * scale) / 2;
 
@@ -52,6 +54,11 @@ public class MapViz implements Mapper.Visualization {
         frame.pack();
         frame.setSize(1000, 1000);
         frame.setVisible(true);
+    }
+
+    @Override
+    public void run() {
+        redraw();
     }
 
     private AbstractDrawingCommand getPoly(Geometry geom, Color color) {
@@ -90,10 +97,11 @@ public class MapViz implements Mapper.Visualization {
     }
 
     @Override
-    public void redraw(Coordinate target) {
+    public void redraw() {
         GeometryUtils geometryUtils = map.getContext().geometryUtils;
         List<AbstractDrawingCommand> cmds = new ArrayList<>();
-        map.getObstacles().thenAccept( obs -> obs.forEach(obst ->
+        List<CompletableFuture<?>> futures = new ArrayList<>();
+        futures.add(map.getObstacles().thenAccept( obs -> obs.forEach(obst ->
         {
             if (obst.geom() instanceof GeometryCollection) {
                 GeometryCollection gCollection = (GeometryCollection) obst.geom();
@@ -104,11 +112,11 @@ public class MapViz implements Mapper.Visualization {
             } else {
                 cmds.add(getPoly(obst.geom(), Color.RED));
             }
-        }));
+        })));
 
-        map.getCoords().thenAccept( coords -> coords.forEach( mapCoord -> {
+        futures.add(map.getCoords().thenAccept( coords -> coords.forEach( mapCoord -> {
             cmds.add(getPoly(mapCoord.geometry, mapCoord.isIndirect ? Color.CYAN : Color.BLUE));
-        }));
+        })));
 
         List<Coordinate> lst = solutionSupplier.get().stream().collect(Collectors.toList());
         if (lst.size() > 1) {
@@ -117,13 +125,25 @@ public class MapViz implements Mapper.Visualization {
             cmds.add(getPoly(geometryUtils.asPolygon(lst.get(0), .25), Color.WHITE));
         }
 
+        Coordinate target = targetSupplier.get();
         if (target != null) {
             cmds.add(getPoly(geometryUtils.asPolygon(target, 0.25), Color.GREEN));
         }
 
+        Position p = positionSupplier.get();
+        if (p != null) {
+            cmds.add(getPoly(geometryUtils.asPolygon(p, 0.25), Color.ORANGE));
+        }
+
+        for (CompletableFuture<?> f : futures) {
+            f.join();
+        }
+
         rescale(cmds);
 
-        EventQueue.invokeLater(new LaterInvoker(cmds));
+        panel.clear();
+        cmds.forEach(panel::addDrawCommand);
+        panel.repaint();
     }
 
     private void rescale(List<AbstractDrawingCommand> lst) {
@@ -153,23 +173,9 @@ public class MapViz implements Mapper.Visualization {
         }
     }
 
-    private class LaterInvoker implements Runnable {
-        List<AbstractDrawingCommand> cmds;
-
-        LaterInvoker(List<AbstractDrawingCommand> cmds) {
-            this.cmds = cmds;
-        }
-
-        @Override
-        public void run() {
-            panel.clear();
-            cmds.forEach(panel::addDrawCommand);
-        };
-    }
-
     /**
      * 
-     * @see https://www.smartycoder.com
+     * @see <a href="https://www.smartycoder.com">smartycpder</a>
      *
      */
     public abstract class AbstractDrawingCommand implements DrawingCommand {

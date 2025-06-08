@@ -87,11 +87,21 @@ public class CoordUtils {
     /**
      * Returns true if the Coordinate represents a point of infinite distance.
      * 
-     * @param loc the Location to check.
+     * @param coord the Location to check.
      * @return true if the location is not finite, false otherwise.
      */
     public static boolean isInfinite(Coordinate coord) {
         return !(Double.isFinite(coord.getX()) && Double.isFinite(coord.getY()));
+    }
+
+    /**
+     * Returns true if the Coordinate represents a point of infinite distance.
+     *
+     * @param coord the Location to check.
+     * @return true if the location is not finite, false otherwise.
+     */
+    public static boolean isNaN(Coordinate coord) {
+        return (Double.isNaN(coord.getX()) || Double.isNaN(coord.getY()));
     }
 
 }

@@ -1,10 +1,20 @@
 package org.xenei.robot.common;
 
+import org.locationtech.jts.geom.Coordinate;
+import org.xenei.robot.common.utils.CoordUtils;
+
 import java.util.function.Consumer;
 
-public interface DistanceSensor {
+public interface DistanceSensor extends Runnable {
 
     record DistanceReading(double theta, double range) {
+        public Location getLocation() {return Location.from(CoordUtils.fromAngle(theta, range));}
+        static DistanceReading from(Location location) {
+            return new DistanceReading(location.theta(), location.range());
+        }
+        public static DistanceReading from(Coordinate coordinate) {
+            return from(Location.from(coordinate));
+        }
     }
 
 //    /**

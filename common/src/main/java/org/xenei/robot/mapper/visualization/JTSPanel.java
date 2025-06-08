@@ -1,9 +1,13 @@
 package org.xenei.robot.mapper.visualization;
 
+import org.xenei.robot.common.DistanceSensor;
+
 import java.awt.Color;
 import java.awt.Graphics;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.Consumer;
 
 import javax.swing.JPanel;
 
@@ -15,11 +19,10 @@ import javax.swing.JPanel;
 @SuppressWarnings("serial")
 public class JTSPanel extends JPanel {
 
-    private List<DrawingCommand> drawPathCommand = new ArrayList<>();
+    private final CopyOnWriteArrayList<DrawingCommand> drawPathCommand = new CopyOnWriteArrayList<>();
 
     public JTSPanel() {
         setSize(900, 900);
-
     }
 
     @Override
@@ -48,7 +51,6 @@ public class JTSPanel extends JPanel {
         g.setColor(Color.BLACK);
 
         for (DrawingCommand drawingCommand : drawPathCommand) {
-
             drawingCommand.doDrawing(g);
         }
 
@@ -56,7 +58,6 @@ public class JTSPanel extends JPanel {
 
     public void addDrawCommand(DrawingCommand c) {
         this.drawPathCommand.add(c);
-        repaint();
     }
 
     public void clear() {

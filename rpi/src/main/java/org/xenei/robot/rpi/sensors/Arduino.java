@@ -52,7 +52,7 @@ public class Arduino implements DistanceSensor {
         listeners.remove(listener);
     }
 
-    public void sense() {
+    public void run() {
         device.readBytes(buffer);
         // capture parity flag
         boolean parityFlg = (buffer[1] & 0x80) != 0;
@@ -79,9 +79,10 @@ public class Arduino implements DistanceSensor {
 
     public static void main(String[] args) {
         Arduino sensor = new Arduino();
+        sensor.addListener(dr -> System.out.println(dr.getLocation()));
         while (true) {
             System.out.println("Senseing");
-            Arrays.stream(sensor.sense()).forEach(System.out::println);
+            sensor.run();
             TimingUtils.delay(500);
         }
     }

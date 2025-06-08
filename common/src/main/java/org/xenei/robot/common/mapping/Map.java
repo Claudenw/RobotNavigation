@@ -6,15 +6,22 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
 
+import org.apache.commons.math3.util.Precision;
 import org.apache.jena.rdf.model.Resource;
 import org.locationtech.jts.geom.Coordinate;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Position;
+import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.common.planning.Solution;
 import org.xenei.robot.common.planning.Step;
 import org.xenei.robot.common.utils.RobutContext;
 
 public interface Map {
+    static Coordinate adopt(Coordinate c, ScaleInfo scaleInfo) {
+        double x = scaleInfo.scale(c.getX());
+        double y = scaleInfo.scale(c.getY());
+        return (Precision.equals(x, c.getX(), 0) && Precision.equals(y, c.getY(), 0)) ? c : new Coordinate(x, y);
+    }
 
     /**
      * Clears the map layer.
@@ -68,7 +75,7 @@ public interface Map {
      *
      * @param coords the coordinates of the path.
      */
-    Future<Coordinate[]> addPath(Coordinate... coords);
+    CompletableFuture<Coordinate[]> addPath(Coordinate... coords);
 
     /**
      * Adds a path to the specified graph.
@@ -76,14 +83,14 @@ public interface Map {
      * @param model  the name of the graph to add the path to.
      * @param coords the coordinates of the path.
      */
-    Future<Coordinate[]> addPath(Resource model, Coordinate... coords);
+    CompletableFuture<Coordinate[]> addPath(Resource model, Coordinate... coords);
 
     /**
      * Update the planning model with new distances based on the new target
      *
      * @param target the new target.
      */
-    Future<Coordinate> recalculate(Coordinate target);
+    CompletableFuture<Coordinate> recalculate(Coordinate target);
 
     /**
      * Find the best targets based on the costs in the graph.
@@ -106,7 +113,7 @@ public interface Map {
      *
      * @param obstacle the obstacle to add.
      */
-    CompletableFuture<Set<? extends Obstacle>> addObstacle(Obstacle obstacle);
+    CompletableFuture<Set<Obstacle>> addObstacle(Obstacle obstacle);
 
     /**
      * Gets the geometry for all the known obstacles.
@@ -122,7 +129,7 @@ public interface Map {
      * @param b the second coordinate to break the path for.
      * @return
      */
-    Future<?> cutPath(Coordinate a, Coordinate b);
+    CompletableFuture<?> cutPath(Coordinate a, Coordinate b);
 
     /**
      * Write the path specified by the solution in the the base model.
@@ -155,7 +162,9 @@ public interface Map {
      * @param a the coordinate to adopt.
      * @return the map based coordinate.
      */
-    Coordinate adopt(Coordinate a);
+    default Coordinate adopt(Coordinate a) {
+        return adopt(a, getContext().scaleInfo);
+    }
 
     /**
      * Update the map so that any Coord that was previously not indirect but is now
@@ -194,7 +203,7 @@ public interface Map {
      * @param coord       the coordinate to mark as visited.
      * @return
      */
-    Future<?> setVisited(Coordinate finalTarget, Coordinate coord);
+    CompletableFuture<?> setVisited(Coordinate finalTarget, Coordinate coord);
 
     /**
      * Look in the given direction for the maximum range. if there is an obstacle

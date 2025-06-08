@@ -31,6 +31,8 @@ public class MapDistanceSensorAdapter implements Consumer<DistanceSensor.Distanc
         Position position = positionSupplier.get();
         ScaleInfo scaleInfo = map.getContext().scaleInfo;
         Location relativeObstacle = scaleInfo.round(Location.from(CoordUtils.fromAngle(reading.theta(), reading.range())));
-        map.addObstacle(map.createObstacle(position, relativeObstacle));
+        if (!relativeObstacle.isNaN() && !relativeObstacle.isInfinite()) {
+            map.addObstacle(map.createObstacle(position, relativeObstacle));
+        }
     }
 }

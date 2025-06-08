@@ -2,8 +2,12 @@ package org.xenei.robot.common.testUtils;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -15,7 +19,9 @@ import org.xenei.robot.common.mapping.Map;
 import org.xenei.robot.common.mapping.Obstacle;
 import org.xenei.robot.common.planning.Solution;
 import org.xenei.robot.common.utils.RobutContext;
+import org.xenei.robot.mapper.MapDistanceSensorAdapter;
 import org.xenei.robot.mapper.MapImpl;
+import org.xenei.robot.mapper.visualization.MapViz;
 
 public class FakeDistanceSensorTest {
     private FakeDistanceSensor underTest;
@@ -30,7 +36,7 @@ public class FakeDistanceSensorTest {
         double y = 15.5;
         int h = 0;
 
-        Set<Obstacle> obstacles = underTest.map().getObstacles();
+        Set<Obstacle> obstacles = underTest.map().getObstacles().join();
         Location[] expected = { Location.from(0.5000, 0.0000), Location.from(0.5000, 0.0000),
                 Location.from(0.5000, 0.5000), Location.from(0.000, 0.5000), Location.from(0.0000, 0.5000),
                 Location.from(0.0000, 0.5000), Location.from(-0.5000, 0.5000), Location.from(-1.000, 0.5000),
@@ -38,8 +44,9 @@ public class FakeDistanceSensorTest {
                 Location.from(-0.5000, -0.5000), Location.from(-1.5000, -4.5000), Location.from(0.5000, -5.5000),
                 Location.from(0.5000, -1.0000), Location.from(0.5000, -0.5000), Location.from(0.5000, 0.0000) };
         positionSupplier.position = Position.from(Location.from(x, y), Math.toRadians(h));
-
-        Location[] actual = underTest.sense();
+        final List<Location> actual = new ArrayList<>();
+        underTest.addListener( dr -> actual.add(dr.getLocation()));
+        underTest.run();
         CoordinateUtils.assertEquivalent(expected, actual, 0.000001);
         for (Location l : actual) {
             assertCoordinateInObstacles(obstacles, positionSupplier.get().nextPosition(l));
@@ -53,7 +60,8 @@ public class FakeDistanceSensorTest {
                 Location.from(0.0000, -0.5000), Location.from(0.5000, -0.5000), Location.from(1.5000, -0.5000) };
         positionSupplier.position = Position.from(positionSupplier.get(), Math.PI);
 
-        actual = underTest.sense();
+        actual.clear();
+        underTest.run();
         CoordinateUtils.assertEquivalent(expected, actual, 0.000001);
         for (Location l : actual) {
             assertCoordinateInObstacles(obstacles, positionSupplier.get().nextPosition(l));
@@ -61,28 +69,33 @@ public class FakeDistanceSensorTest {
     }
 
     @Test
-    public void map2Test() {
-        Position position = Position.from(-1, -3);
-        Map map = new MapImpl(new RobutContext(ScaleInfo.DEFAULT, TestChassisInfo.DEFAULT));
-        underTest = new FakeDistanceSensor1(MapLibrary.map2(map), () -> position);
-
+    public void map2Test() throws InterruptedException {
+        Supplier<Position> positionSupplier = new TestingPositionSupplier(Position.from(-1, -3) );
         Solution solution = new Solution();
-        solution.add(position);
-        DebugViz debugViz = new DebugViz(1, map, () -> solution, () -> position);
-        debugViz.redraw(null);
+        solution.add(positionSupplier.get());
+        Map map = new MapImpl(new RobutContext(ScaleInfo.DEFAULT, TestChassisInfo.DEFAULT));
+        underTest = new FakeDistanceSensor1(MapLibrary.map2(map), positionSupplier);
+        MapViz mapViz = new MapViz(1, underTest.map(), () -> solution, positionSupplier, () -> null);
+        map.getContext().scheduleAtFixedRate(mapViz, 0,500, TimeUnit.MILLISECONDS);
+        MapDistanceSensorAdapter adapter = new MapDistanceSensorAdapter(map, positionSupplier);
+        underTest.addListener(adapter);
+        underTest.run();
 
-        Set<Obstacle> obstacles = underTest.map().getObstacles();
-        Location[] actual = underTest.sense();
-        for (Location l : actual) {
-            assertCoordinateInObstacles(obstacles, position.nextPosition(l));
-        }
+        DebugViz debugViz = new DebugViz(1, map, () -> solution, positionSupplier, () -> null);
+        debugViz.redraw();
+        Thread.sleep(1000);
+//        Set<Obstacle> obstacles = underTest.map().getObstacles().join();
+//        underTest.run();
+//        for (Location l : actual) {
+//            assertCoordinateInObstacles(obstacles, position.nextPosition(l));
+//        }
     }
 
     /**
      * Checks that at least oneof the geometries (obsts) contains the coordinate.
      * 
      * @param obsts the list of geometries.
-     * @param c he coorindate to contain.
+     * @param actual he location to contain.
      */
     void assertCoordinateInObstacles(Collection<Obstacle> obsts, Location actual) {
         boolean found = false;

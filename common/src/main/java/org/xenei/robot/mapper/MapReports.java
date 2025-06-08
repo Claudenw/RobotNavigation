@@ -65,10 +65,11 @@ public class MapReports {
 
     public static String dumpQuery(MapImpl map, SelectBuilder sb) {
         StringBuilder builder = new StringBuilder();
-        map.exec(sb, (s) -> {
-            builder.append(s.toString()).append("\n");
-            return true;
-        });
+        map.exec(sb).thenAccept(resultSet -> {
+            resultSet.forEachRemaining(s -> {
+                builder.append(s.toString()).append("\n");
+            });
+        }).join();
         return builder.toString();
     }
 

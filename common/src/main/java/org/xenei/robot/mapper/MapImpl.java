@@ -112,13 +112,6 @@ public class MapImpl implements Map {
         return ctxt;
     }
 
-    @Override
-    public Coordinate adopt(Coordinate c) {
-        double x = ctxt.scaleInfo.scale(c.getX());
-        double y = ctxt.scaleInfo.scale(c.getY());
-        return (Precision.equals(x, c.getX(), 0) && Precision.equals(y, c.getY(), 0)) ? c : new Coordinate(x, y);
-    }
-
     public static PrefixMapping getPrefixMapping() {
         PrefixMapping pm = PrefixMapping.Factory.create();
         pm.setNsPrefixes(GeoSPARQL_URI.getPrefixes());
@@ -169,27 +162,6 @@ public class MapImpl implements Map {
     /**
      * executes the select query and processes the result with the processor.
      * Processing stops when processor returns false.
-     * 
-     * @param select the SelectBuilder to execute.
-     * @param processor the processor to run to handle the results.
-     */
-    CompletableFuture<?> exec(SelectBuilder select, Predicate<QuerySolution> processor) {
-        return ctxt.submit( () -> {
-            try (LockHandler ignored = new LockHandler(Lock.READ);
-                 QueryExecution qexec = QueryExecutionFactory.create(select.build(), data)) {
-                Iterator<QuerySolution> results = qexec.execSelect();
-                while (results.hasNext()) {
-                    if (!processor.test(results.next())) {
-                        return;
-                    }
-                }
-            }
-        });
-    }
-
-    /**
-     * executes the select query and processes the result with the processor.
-     * Processing stops when processor returns false.
      *
      * @param select the SelectBuilder to execute.
      */
@@ -197,7 +169,7 @@ public class MapImpl implements Map {
         return ctxt.submit( () -> {
             try (LockHandler ignored = new LockHandler(Lock.READ);
                  QueryExecution qexec = QueryExecutionFactory.create(select.build(), data)) {
-                return qexec.execSelect();
+                return qexec.execSelect().materialise();
             }
         });
     }
@@ -257,7 +229,7 @@ public class MapImpl implements Map {
 
     @SuppressWarnings("unchecked")
     @Override
-    public CompletableFuture<Set<? extends Obstacle>> addObstacle(Obstacle obst) {
+    public CompletableFuture<Set<Obstacle>> addObstacle(Obstacle obst) {
         LOG.debug("Adding obstacle: {}", obst);
         return obstacleHandler.addObstacle(obst);
     }
@@ -427,7 +399,7 @@ public class MapImpl implements Map {
      * @param value the value to set the property to.
      * @return An optional future if the node was updated, an empty optional otherwise.
      */
-    Optional<CompletableFuture<?>> updateCoordinate(Resource model, Coordinate coordinate, Property property, Object value) {
+    CompletableFuture<?> updateCoordinate(Resource model, Coordinate coordinate, Property property, Object value) {
         LOG.debug("updating {} {} {} to {}", model.getLocalName(), CoordUtils.toString(coordinate, 1),
                 property.getLocalName(), value);
         MapCoordinate mapCoord = new MapCoordinate(coordinate);
@@ -447,9 +419,9 @@ public class MapImpl implements Map {
                                             .addWhere(Namespace.s, Namespace.x, mapCoord.getX())
                                             .addWhere(Namespace.s, Namespace.y, mapCoord.getY()))
                             .build());
-            return Optional.of(doUpdate(req));
+            return doUpdate(req);
         }
-        return Optional.empty();
+        return CompletableFuture.completedFuture(null);
     }
 
     /**
@@ -484,7 +456,7 @@ public class MapImpl implements Map {
                 LOG.debug("Query\n{}", MapReports.dumpQuery(MapImpl.this, stepQuery.query));
                 LOG.debug("Distance\n{}", MapReports.dumpDistance(MapImpl.this, currentCoords));
                 LOG.debug("Obstacles\n{}", MapReports.dumpObstacleDistance(MapImpl.this));
-                MapImpl.this.getObstacles().thenAccept(obs -> obs.forEach(s -> LOG.debug(s.toString())));
+                MapImpl.this.getObstacles().thenAccept(obs -> obs.forEach(s -> LOG.debug(s.toString()))).join();
                 LOG.debug("Model\n{}", MapReports.dumpModel(MapImpl.this));
                 LOG.debug("No Selected map points");
             }
@@ -495,11 +467,7 @@ public class MapImpl implements Map {
 
     @Override
     public CompletableFuture<?> setVisited(Coordinate finalTarget, Coordinate coord) {
-        Optional<CompletableFuture<?>> future = updateCoordinate(Namespace.PlanningModel, coord, Namespace.visited, Boolean.TRUE);
-
-        if (future.isPresent()) {
-            return future.get();
-        }
+        CompletableFuture<?> future = updateCoordinate(Namespace.PlanningModel, coord, Namespace.visited, Boolean.TRUE);
         MapCoordinate mapCoord = new MapCoordinate(coord);
         UpdateRequest req = new UpdateRequest();
         Resource qA = ctxt.graphGeomFactory.asRDF(mapCoord, Namespace.Coord);
@@ -508,7 +476,7 @@ public class MapImpl implements Map {
                 .addInsert(Namespace.PlanningModel, qA.asResource(), Namespace.distance,
                         mapCoord.distance(finalTarget)) //
                 .build());
-        return doUpdate(req);
+        return future.thenApply(r -> doUpdate(req));
     }
 
     @Override
@@ -930,6 +898,9 @@ public class MapImpl implements Map {
 
         ObstacleImpl(Position startPosition, Location relativeLocation) {
             Position absoluteObstacle = startPosition.nextPosition(relativeLocation);
+            if (Double.isNaN(absoluteObstacle.getHeading())) {
+                System.err.println("NAN");
+            }
             absoluteObstacle = Position.from(ctxt.scaleInfo.round(absoluteObstacle.getCoordinate()),
                     absoluteObstacle.getHeading());
             geom = ctxt.geometryUtils.asPoint(absoluteObstacle);
@@ -1052,7 +1023,7 @@ public class MapImpl implements Map {
             });
         }
 
-        CompletableFuture<Set<? extends Obstacle>> addObstacle(Obstacle obst) {
+        CompletableFuture<Set<Obstacle>> addObstacle(Obstacle obst) {
             // find all Obstacles that this obstacle will intersect or touch
             // if there are any, merge them together.
             // if not just write this on to the graph.
@@ -1102,17 +1073,9 @@ public class MapImpl implements Map {
 
         CompletableFuture<Set<Obstacle>> getObstacles() {
             Var wkt = Var.alloc("wkt");
-
             SelectBuilder sb = new SelectBuilder().addVar(Namespace.s).addVar(wkt) //
                     .addGraph(Namespace.UnionModel, new WhereBuilder().addWhere(Namespace.s, RDF.type, Namespace.Obst) //
                             .addWhere(Namespace.s, Geo.AS_WKT_PROP, wkt));
-
-//            Set<Obstacle> result = new HashSet<>();
-//
-//            Predicate<QuerySolution> processor = soln -> {
-//                result.add(new ObstacleImpl(soln.getResource(Namespace.s.getName()), soln.getLiteral(wkt.getName())));
-//                return true;
-//            };
 
             return exec(sb).thenApply(resultSet -> {
                 Set<Obstacle> result = new HashSet<>();
@@ -1121,7 +1084,6 @@ public class MapImpl implements Map {
                 });
                 return result;
             });
-
         }
     }
 

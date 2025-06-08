@@ -1,5 +1,7 @@
 package org.xenei.robot.common.testUtils;
 
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import org.slf4j.Logger;
@@ -15,11 +17,13 @@ public class FakeDistanceSensor2 implements FakeDistanceSensor {
     private final double angle;
     private static final double MAX_RANGE = 350;
     private final Supplier<Position> positionSupplier;
+    private final CopyOnWriteArrayList<Consumer<DistanceReading>> listeners;
 
     public FakeDistanceSensor2(Map map, double angle, Supplier<Position> positionSupplier) {
         this.map = map;
         this.angle = angle;
         this.positionSupplier = positionSupplier;
+        this.listeners = new CopyOnWriteArrayList<>();
     }
 
     @Override
@@ -28,28 +32,41 @@ public class FakeDistanceSensor2 implements FakeDistanceSensor {
     }
 
     @Override
-    public Location[] sense() {
+    public void run() {
         Position pos = positionSupplier.get();
-        Location[] result = new Location[3];
+        deliver(Location.from(look(pos, pos.getHeading() - angle).minus(pos)));
+        deliver(Location.from(look(pos, pos.getHeading()).minus(pos)));
+        deliver(Location.from(look(pos, pos.getHeading() + angle).minus(pos)));
+    }
 
-        result[0] = Location.from(look(pos, pos.getHeading() - angle).minus(pos));
-        result[1] = Location.from(look(pos, pos.getHeading()).minus(pos));
-        result[2] = Location.from(look(pos, pos.getHeading() + angle).minus(pos));
-
-        return result;
+    private void deliver(Location location) {
+        DistanceReading dr = new DistanceReading(location.theta(), location.range());
+        for (Consumer<DistanceReading> listener : listeners) {
+            listener.accept(dr);
+        }
     }
 
     private Location look(Position position, double heading) {
         if (LOG.isDebugEnabled()) {
             LOG.debug("Scanning heading: {} {}", heading, Math.toDegrees(heading));
         }
-        return map.look(position, heading, 350)
+        return map.look(position, heading, 350).join()
                 .orElse(Location.from(CoordUtils.fromAngle(heading, Double.POSITIVE_INFINITY)));
     }
 
     @Override
     public double maxRange() {
         return MAX_RANGE;
+    }
+
+    @Override
+    public void addListener(Consumer<DistanceReading> listener) {
+        listeners.add(listener);
+    }
+
+    @Override
+    public void removeListener(Consumer<DistanceReading> listener) {
+        listeners.remove(listener);
     }
 
 }

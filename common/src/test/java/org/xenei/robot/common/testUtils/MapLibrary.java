@@ -1,7 +1,17 @@
 package org.xenei.robot.common.testUtils;
 
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.DefaultParser;
+import org.apache.commons.cli.Option;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.ParseException;
+import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.common.mapping.MapBuilder;
 import org.xenei.robot.common.mapping.Map;
+import org.xenei.robot.common.planning.Solution;
+import org.xenei.robot.common.utils.RobutContext;
+import org.xenei.robot.mapper.MapImpl;
+import org.xenei.robot.mapper.visualization.TextViz;
 
 public class MapLibrary {
 
@@ -77,16 +87,40 @@ public class MapLibrary {
         return b.build();
     }
 
-    public static void main(String[] args) {
-        System.out.println("MAP 1");
-        // System.out.println(map1('#'));
-        System.out.println();
+    private static Options getOptions() {
+        Options options = new Options();
+        options.addOption(Option.builder("m").desc("Model number").hasArg().type(Integer.class).build());
+        options.addOption(Option.builder("v").desc("View flag").build());
+        options.addOption(Option.builder("o").desc("list obstacles").build());
+        return options;
+    }
 
-        System.out.println("MAP 2");
-        // System.out.println(map2('#'));
-
-        System.out.println("MAP 3");
-        // System.out.println(map3('#'));
+    public static void main(String[] args) throws ParseException {
+        CommandLine commandLine = DefaultParser.builder().build().parse(getOptions(), args);
+        int mapNumber = commandLine.getParsedOptionValue("m");
+        Map map = new MapImpl(new RobutContext(ScaleInfo.DEFAULT, TestChassisInfo.DEFAULT));
+        switch (mapNumber) {
+            case 1:
+                map1(map);
+                break;
+                case 2:
+                    map2(map);
+                    break;
+            case 3:
+                map3(map);
+                break;
+            default:
+                System.err.println("Unknown map number: " + mapNumber);
+                System.exit(1);
+        }
+        if (commandLine.hasOption("v")) {
+            TextViz textVis = new TextViz(1, map, () -> new Solution(), () -> null, () -> null);
+            textVis.redraw();
+        }
+        if (commandLine.hasOption("o")) {
+            System.out.println(" =========== Obstacles ==========");
+            map.getObstacles().thenAccept(s -> s.forEach(o -> System.out.println(o))).join();
+        }
     }
 
 }

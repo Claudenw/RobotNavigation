@@ -35,9 +35,9 @@ public class ProcessorTest {
     private void doTest(Location startCoord, Location finalCoord, Mover mover, DistanceSensor sensor)
             throws AbortedException {
         Supplier<Position> positionSupplier = mover::position;
-
-        Processor underTest = new Processor(ctxt, mover, positionSupplier, sensor);
-        MapViz mapViz = new MapViz(100, underTest.map, underTest.planner::getSolution, positionSupplier);
+        MapImpl map = new MapImpl(ctxt);
+        Processor underTest = new Processor(ctxt, mover, positionSupplier, map);
+        MapViz mapViz = new MapViz(100, underTest.map, underTest.planner::getSolution, positionSupplier, () -> null);
         underTest.add(mapViz);
         underTest.moveTo(finalCoord, new StepTracker());
     }

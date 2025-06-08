@@ -86,10 +86,11 @@ public class PlannerImpl implements Planner  {
 
     @Override
     public void registerPositionChange(NavigationSnapshot snapshot) {
-        Optional<Step> step = map.addCoord(snapshot.position.getCoordinate(),
+        map.addCoord(snapshot.position.getCoordinate(),
                 snapshot.position.distance(getFinalTarget()), true,
-                !map.isClearPath(snapshot.position.getCoordinate(), getFinalTarget()));
-        step.ifPresent(s -> solution.add(s.getCoordinate()));
+                !map.isClearPath(snapshot.position.getCoordinate(), getFinalTarget()))
+                        .thenAccept( step ->
+        step.ifPresent(s -> solution.add(s.getCoordinate())));
     }
 
     @Override

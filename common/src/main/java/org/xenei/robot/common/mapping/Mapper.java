@@ -29,9 +29,7 @@ public interface Mapper {
     interface Visualization {
         /**
          * Redraw the visualization
-         *
-         * @param target The target the planner is heading toward.
          */
-        public void redraw(Coordinate target);
+        public void redraw();
     }
 }

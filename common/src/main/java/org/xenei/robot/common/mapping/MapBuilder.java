@@ -1,6 +1,10 @@
 package org.xenei.robot.common.mapping;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Future;
 
 import org.apache.jena.rdf.model.Literal;
 import org.apache.jena.rdf.model.Resource;
@@ -11,17 +15,20 @@ import org.locationtech.jts.geom.Geometry;
 public class MapBuilder {
 
     private final Map map;
+    private List<CompletableFuture<?>> futures;
 
     public enum Type {
+
         Obstacle, Path
     };
 
     public MapBuilder(Map map) {
         this.map = map;
+        this.futures = new ArrayList<>();
     }
 
     public MapBuilder set(int x, int y) {
-        map.addObstacle(new ObstacleImpl(new Coordinate(x, y)));
+        futures.add(map.addObstacle(new ObstacleImpl(new Coordinate(x, y))));
         return this;
     }
 
@@ -33,10 +40,10 @@ public class MapBuilder {
         switch (type) {
 
         case Obstacle:
-            map.addObstacle(new ObstacleImpl(first, last));
+            futures.add(map.addObstacle(new ObstacleImpl(first, last)));
             break;
         case Path:
-            map.addPath(first, last);
+            futures.add(map.addPath(first, last));
         }
         return this;
     }
@@ -54,6 +61,9 @@ public class MapBuilder {
     }
 
     public Map build() {
+        for (CompletableFuture<?> f : futures) {
+            f.join();
+        }
         return map;
     }
 
@@ -102,5 +112,9 @@ public class MapBuilder {
             return ResourceFactory.createResource("urn:uuid:" + uuid().toString());
         }
 
+        @Override
+        public String toString() {
+            return geom.toString();
+        }
     }
 }
