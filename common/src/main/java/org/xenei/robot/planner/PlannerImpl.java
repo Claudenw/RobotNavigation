@@ -61,10 +61,8 @@ public class PlannerImpl implements Planner  {
         solution.add(snapshot.position);
         if (snapshot.target != null) {
             setTarget(snapshot.target);
-            distance = snapshot.position.distance(getFinalTarget());
-            isIndirect = !map.isClearPath(snapshot.position.getCoordinate(), getFinalTarget());
         }
-        map.addCoord(snapshot.position.getCoordinate(), distance, true, isIndirect);
+        map.addCoord(snapshot.position.getCoordinate(), getTarget(), true);
         LOG.debug("PlannerImpl: {}", snapshot);
     }
 
@@ -86,9 +84,7 @@ public class PlannerImpl implements Planner  {
 
     @Override
     public void registerPositionChange(NavigationSnapshot snapshot) {
-        map.addCoord(snapshot.position.getCoordinate(),
-                snapshot.position.distance(getFinalTarget()), true,
-                !map.isClearPath(snapshot.position.getCoordinate(), getFinalTarget()))
+        map.addCoord(snapshot.position.getCoordinate(), getFinalTarget(), true )
                         .thenAccept( step ->
         step.ifPresent(s -> solution.add(s.getCoordinate())));
     }

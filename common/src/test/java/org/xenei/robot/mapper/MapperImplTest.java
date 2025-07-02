@@ -3,26 +3,20 @@ package org.xenei.robot.mapper;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
-import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
-import java.util.function.BooleanSupplier;
 import java.util.stream.Stream;
 
-import org.apache.commons.math3.util.Precision;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -47,12 +41,8 @@ import org.xenei.robot.common.utils.RobutContext;
 
 public class MapperImplTest {
 
-    private ArgumentCaptor<Coordinate> coordinateCaptor = ArgumentCaptor.forClass(Coordinate.class);
-    private ArgumentCaptor<Step> stepCaptor = ArgumentCaptor.forClass(Step.class);
-    private ArgumentCaptor<Set> setCaptor = ArgumentCaptor.forClass(Set.class);
-    private ArgumentCaptor<Double> doubleCaptor = ArgumentCaptor.forClass(Double.class);
-    private ArgumentCaptor<Set<Obstacle>> obstacleSetCaptor = ArgumentCaptor.forClass(Set.class);
-    private ArgumentCaptor<Obstacle> obstacleCaptor = ArgumentCaptor.forClass(Obstacle.class);
+    private final ArgumentCaptor<Coordinate> coordinateCaptor = ArgumentCaptor.forClass(Coordinate.class);
+    private final ArgumentCaptor<Obstacle> obstacleCaptor = ArgumentCaptor.forClass(Obstacle.class);
 
     private RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT, TestChassisInfo.DEFAULT);
 
@@ -80,7 +70,7 @@ public class MapperImplTest {
         NavigationSnapshot snapshot = new NavigationSnapshot(currentPosition, target);
 
         verify(map, times(0)).isObstacle(any(Coordinate.class));
-        verify(map, times(0)).addCoord(any(Coordinate.class), anyDouble(), anyBoolean(), anyBoolean());
+        verify(map, times(0)).addCoord(any(Coordinate.class), any(Coordinate.class), anyBoolean());
     }
 
 
@@ -112,7 +102,7 @@ public class MapperImplTest {
             return Map.adopt(context.getArgument(0, Coordinate.class), ctxt.scaleInfo);
         });
         when(map.isObstacle(any(Coordinate.class))).thenReturn(false);
-        when(map.addCoord(any(Coordinate.class), anyDouble(), anyBoolean(), anyBoolean()))
+        when(map.addCoord(any(Coordinate.class), any(Coordinate.class), anyBoolean()))
                 .thenReturn(CompletableFuture.completedFuture(Optional.of(step)));
         when(map.isClearPath(any(Coordinate.class), any(Coordinate.class))).thenReturn(false);
 
@@ -124,10 +114,10 @@ public class MapperImplTest {
 
 
         ArgumentCaptor<Boolean> one = ArgumentCaptor.forClass(Boolean.class);
-        ArgumentCaptor<Boolean> two = ArgumentCaptor.forClass(Boolean.class);
+        ArgumentCaptor<Coordinate> targetCaptor = ArgumentCaptor.forClass(Coordinate.class);
         Callable<Boolean> mockitoTest = () -> {
             try {
-                verify(map).addCoord(coordinateCaptor.capture(), doubleCaptor.capture(), one.capture(), two.capture());
+                verify(map).addCoord(coordinateCaptor.capture(), targetCaptor.capture(), one.capture());
                 return true;
             }
             catch(AssertionError ae) {
@@ -144,7 +134,7 @@ public class MapperImplTest {
         assertEquals(obstacle, obstacleCaptor.getValue());
 
         // verify coord was added
-        verify(map).addCoord(coordinateCaptor.capture(), doubleCaptor.capture(), one.capture(), two.capture());
+        verify(map).addCoord(coordinateCaptor.capture(), targetCaptor.capture(), one.capture());
         CoordinateUtils.assertEquivalent(candidate, coordinateCaptor.getValue());
     }
 }

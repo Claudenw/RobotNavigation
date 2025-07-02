@@ -10,6 +10,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -36,7 +37,7 @@ public class RobutContext {
     public final GeometryUtils geometryUtils;
     public final GraphGeomFactory graphGeomFactory;
     public final Map<String, Geometry> cache = Collections.synchronizedMap(new LRUMap<String, Geometry>(500));
-    private final ExecutorService workScheduler = Executors.newWorkStealingPool();
+    private final ForkJoinPool workScheduler = (ForkJoinPool) Executors.newWorkStealingPool();
     private final ScheduledExecutorService scheduledExecutor = Executors.newSingleThreadScheduledExecutor();
 
     /**
@@ -105,6 +106,15 @@ public class RobutContext {
 
     public CompletableFuture<?> submit(Runnable task) {
         return CompletableFuture.runAsync(task, workScheduler);
+    }
+
+    public boolean awaitQuiescence(long timeout, TimeUnit unit) {
+        return workScheduler.awaitQuiescence(timeout, unit);
+    }
+
+    public String workerReport() {
+        return String.format( "Qs:%d Qt:%d At:%d Rt:%d", workScheduler.getQueuedSubmissionCount(), workScheduler.getQueuedTaskCount(),
+                workScheduler.getActiveThreadCount(), workScheduler.getRunningThreadCount());
     }
 
 }

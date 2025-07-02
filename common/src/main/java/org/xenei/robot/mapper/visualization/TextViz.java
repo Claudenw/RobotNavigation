@@ -29,7 +29,7 @@ public class TextViz implements Mapper.Visualization {
 
     private static final char OBSTACLE = '#';
     private static final char TARGET = 't';
-    private static final char COORD_INDIRECT = 0xB7;
+    private static final char COORD_INDIRECT = 0xA7;
     private static final char COORD_DIRECT = '*';
     private static final char PATH = '+';
     private static final char POSITION = '@';
@@ -114,11 +114,15 @@ public class TextViz implements Mapper.Visualization {
         futures.add(map.getObstacles().thenAccept(s -> s.forEach(o -> addGeom(points, o.geom(), OBSTACLE))));
         futures.add(map.getCoords().thenAccept( mc -> mc.forEach(coord -> addGeom(points, coord.geometry, coord.isIndirect ? COORD_INDIRECT : COORD_DIRECT))));
         List<Coordinate> lst = solutionSupplier.get().stream().toList();
+        for (CompletableFuture<?> future : futures) {
+            future.join();
+        }
         if (lst.size() > 1) {
             addGeom(points, geometryUtils.asPath(0.25, lst.toArray(new Coordinate[lst.size()])), PATH);
         } else if (lst.size() == 1) {
             addGeom(points, geometryUtils.asPoint(lst.get(0)), PATH);
         }
+
         Coordinate target = targetSupplier.get();
         if (target != null) {
             addGeom(points, geometryUtils.asPoint(target), TARGET);
@@ -126,10 +130,7 @@ public class TextViz implements Mapper.Visualization {
 
         Position position = positionSupplier.get();
         if (position != null) {
-            addGeom(points, geometryUtils.asPoint(positionSupplier.get()), POSITION);
-        }
-        for (CompletableFuture<?> future : futures) {
-            future.join();
+            addGeom(points, geometryUtils.asPoint(position), POSITION);
         }
         output(stringBuilder(points));
     }

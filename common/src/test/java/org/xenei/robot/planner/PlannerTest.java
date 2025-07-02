@@ -53,6 +53,7 @@ public class PlannerTest {
     private Planner underTest;
 
     final private ArgumentCaptor<Coordinate> coordinateCaptor = ArgumentCaptor.forClass(Coordinate.class);
+    final private ArgumentCaptor<Coordinate> targetCaptor = ArgumentCaptor.forClass(Coordinate.class);
     // private ArgumentCaptor<Step> stepCaptor =
     // ArgumentCaptor.forClass(Step.class);
     final private ArgumentCaptor<Double> doubleCaptor = ArgumentCaptor.forClass(Double.class);
@@ -81,7 +82,7 @@ public class PlannerTest {
         when(step.getCoordinate()).thenReturn(UnmodifiableCoordinate.make(new Coordinate(1, 1)));
         Map map = Mockito.mock(Map.class);
         when(map.getContext()).thenReturn(ctxt);
-        when(map.addCoord(any(Coordinate.class), anyDouble(), anyBoolean(), anyBoolean()))
+        when(map.addCoord(any(Coordinate.class), any(Coordinate.class), anyBoolean()))
                 .thenReturn(CompletableFuture.completedFuture(Optional.of(step)));
 
         Location finalLocation = Location.from(-1, 1);
@@ -97,7 +98,7 @@ public class PlannerTest {
         underTest.registerPositionChange(snapshot);
         assertTrue(lastSnapshot.didChange(snapshot));
 
-        verify(map, times(2)).addCoord(coordinateCaptor.capture(), doubleCaptor.capture(), anyBoolean(), anyBoolean());
+        verify(map, times(2)).addCoord(coordinateCaptor.capture(), targetCaptor.capture(), anyBoolean());
         List<Coordinate> lst = coordinateCaptor.getAllValues();
         assertTrue(initial.equals2D(lst.get(0)));
         assertTrue(second.equals2D(lst.get(1)));
@@ -115,7 +116,7 @@ public class PlannerTest {
         Step step = Mockito.mock(Step.class);
         Map map = Mockito.mock(Map.class);
         when(map.getContext()).thenReturn(ctxt);
-        when(map.addCoord(any(Coordinate.class), anyDouble(), anyBoolean(), anyBoolean()))
+        when(map.addCoord(any(Coordinate.class), any(Coordinate.class), anyBoolean()))
                 .thenReturn(CompletableFuture.completedFuture(Optional.of(step)));
 
         Location finalLocation = Location.from(-1, 1);
@@ -128,7 +129,7 @@ public class PlannerTest {
         assertFalse(snapshot.didChange(initialSnapshot));
 
         // verify addTarget called
-        verify(map, times(1)).addCoord(coordinateCaptor.capture(), doubleCaptor.capture(), anyBoolean(), anyBoolean());
+        verify(map, times(1)).addCoord(coordinateCaptor.capture(), targetCaptor.capture(), anyBoolean());
         assertTrue(supplier.position.equals2D(coordinateCaptor.getValue()));
 
         // verify recalculate called
@@ -270,7 +271,7 @@ public class PlannerTest {
 
         Map map = new TestingMap() {
             @Override
-            public CompletableFuture<Optional<Step>> addCoord(Coordinate target, Double distance, boolean visited, Boolean isIndirect) {
+            public CompletableFuture<Optional<Step>> addCoord(Coordinate coord, Coordinate target, boolean visited) {
                 return CompletableFuture.completedFuture(Optional.ofNullable(coordStepSupplier.get()));
             }
 
@@ -404,7 +405,7 @@ public class PlannerTest {
         }
 
         @Override
-        public CompletableFuture<Optional<Step>> addCoord(Coordinate target, Double distance, boolean visited, Boolean isIndirect) {
+        public CompletableFuture<Optional<Step>> addCoord(Coordinate coord, Coordinate target, boolean visited) {
             return null;
         }
 

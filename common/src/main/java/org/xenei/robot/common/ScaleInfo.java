@@ -31,10 +31,15 @@ public final class ScaleInfo {
         this.precisionModel = new PrecisionModel( 100*truncationFactor);
     }
 
+    /**
+     * Gets the resolution of this map.
+     * @return the resoluiton of the map.
+     */
     public double getResolution() {
         return resolution;
     }
 
+    @Deprecated
     public double getHalfResolution() {
         return resolution / 2;
     }

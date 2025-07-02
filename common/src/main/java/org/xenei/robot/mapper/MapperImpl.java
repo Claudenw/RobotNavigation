@@ -116,9 +116,7 @@ public class MapperImpl implements Mapper {
             if (!map.isObstacle(newCoord)) {
                 map.addObstacle(map.createObstacle(currentPosition, relativeObstacle));
             }
-            Coordinate finalTarget = targetSupplier.get();
-            map.addCoord(newCoord, finalTarget == null ? null : newCoord.distance(finalTarget), false,
-                    finalTarget == null ? null : !map.isClearPath(newCoord, finalTarget));
+            map.addCoord(newCoord, targetSupplier.get(), false);
         }
     }
 }

@@ -9,6 +9,7 @@ import java.util.concurrent.Future;
 import org.apache.commons.math3.util.Precision;
 import org.apache.jena.rdf.model.Resource;
 import org.locationtech.jts.geom.Coordinate;
+import org.xenei.robot.common.FrontsCoordinate;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Position;
 import org.xenei.robot.common.ScaleInfo;
@@ -45,14 +46,30 @@ public interface Map {
      * If the distance is null, then the result will be empty as there can be no
      * steps to a non-declared target.
      *
-     * @param target     the target to add.
-     * @param distance   the distance to the final target.
+     * @param coord     the coordinate for the coord.
+     * @param target     the target for planning if defined.
      * @param visited    true if the target has been visited.
-     * @param isIndirect true if the target can not see the final target.
      * @return the Step comprising the mapped target location and the distance
-     * value.
+     * value or an empty optional if the target is not edefined..
      */
-    CompletableFuture<Optional<Step>> addCoord(Coordinate target, Double distance, boolean visited, Boolean isIndirect);
+    default CompletableFuture<Optional<Step>> addCoord(FrontsCoordinate coord, FrontsCoordinate  target, boolean visited) {
+        return addCoord(coord.getCoordinate(), target.getCoordinate(), visited);
+    }
+
+
+    /**
+     * Add the target to the planning.
+     * If the distance is null, then the result will be empty as there can be no
+     * steps to a non-declared target.
+     *
+     * @param coord     the coordinate for the coord.
+     * @param target     the target for planning if defined.
+     * @param visited    true if the target has been visited.
+     * @return the Step comprising the mapped target location and the distance
+     * value or an empty optional if the target is not edefined..
+     */
+    CompletableFuture<Optional<Step>> addCoord(Coordinate coord, Coordinate target, boolean visited);
+
 
     /**
      * Gets the collection of all steps in the planning graph that are reachable
@@ -215,4 +232,5 @@ public interface Map {
      * @return the relative location of a located obstacle or an empty Optional.
      */
     CompletableFuture<Optional<Location>> look(Position position, double heading, int maxRange);
+
 }

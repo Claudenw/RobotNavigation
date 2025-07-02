@@ -156,7 +156,7 @@ public class Processor {
     }
 
     public void moveTo(Location finalLocation, AbortTest abortTest) throws AbortedException {
-        map.addCoord(finalLocation.getCoordinate(), null, false, null);
+        map.addCoord(finalLocation.getCoordinate(), null, false);
         NavigationSnapshot snapshot = new NavigationSnapshot(positionSupplier.get(), finalLocation.getCoordinate());
         //processSensorData(snapshot);
         double heading = planner.setTarget(snapshot.target);

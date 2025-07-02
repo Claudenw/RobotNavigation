@@ -70,7 +70,7 @@ public class MapReports {
                 builder.append(s.toString()).append("\n");
             });
         }).join();
-        return builder.toString();
+        return builder.isEmpty() ? "No data" : builder.toString();
     }
 
     public static String dumpDistance(MapImpl map, Coordinate currentPosition) {

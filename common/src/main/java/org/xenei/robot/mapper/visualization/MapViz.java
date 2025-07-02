@@ -7,12 +7,14 @@ import java.awt.Graphics;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import javax.swing.JFrame;
 import javax.swing.WindowConstants;
 
+import org.apache.jena.rdf.model.Literal;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.GeometryCollection;
@@ -130,15 +132,17 @@ public class MapViz implements Mapper.Visualization, Runnable {
             cmds.add(getPoly(geometryUtils.asPolygon(target, 0.25), Color.GREEN));
         }
 
-        Position p = positionSupplier.get();
-        if (p != null) {
-            cmds.add(getPoly(geometryUtils.asPolygon(p, 0.25), Color.ORANGE));
+        Position position = positionSupplier.get();
+        if (position != null) {
+            cmds.add(getPoly(geometryUtils.asPolygon(position, 0.25), Color.ORANGE));
         }
+
+        cmds.add(getPoly(geometryUtils.asPath(map.getContext().chassisInfo.radius, position.getCoordinate(), target), Color.ORANGE));
 
         for (CompletableFuture<?> f : futures) {
             f.join();
         }
-
+        map.getContext().awaitQuiescence(2, TimeUnit.SECONDS);
         rescale(cmds);
 
         panel.clear();

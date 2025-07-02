@@ -149,13 +149,15 @@ public interface Position extends Location {
         double thetah = this.getHeading();
 
         double apime = AngleUtils.normalize(thetah + thetar);
-        // double apime = thetah + thetar;
-
-        // Coordinate c = CoordUtils.fromAngle(apime, range);
         Coordinate a = this.plus(CoordUtils.fromAngle(apime, range));
         return Position.from(a, apime);
     }
 
+    /**
+     * Calculates the relative location from an absolute locaiton.
+     * @param absoluteLocation the coordinates of the absolute location.
+     * @return the relative location based on current location and heading.
+     */
     default Location relativeLocation(Coordinate absoluteLocation) {
         double range = distance(absoluteLocation);
         if (range == 0) {
