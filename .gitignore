@@ -13,5 +13,5 @@ rpi/login
 rpi/package
 rpi/send
 **/lib/
-
+**/.idea/**
 
