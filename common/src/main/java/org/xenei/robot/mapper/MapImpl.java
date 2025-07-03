@@ -266,16 +266,18 @@ public class MapImpl implements Map {
                 req.add(update.build());
             }
         }
-
-        final double cost = indirect != null && indirect ? distance * 2 : distance;
-        return doUpdate(req)
-                .thenApply(x -> {
-                    LOG.debug("Added {} for {}", mapCoord, coord);
-                    return target == null ?
-                            Optional.empty() :
-                            Optional.of(StepImpl.builder().setCoordinate(targetCoord).setDistance(distance)
-                                    .setCost(cost).build(ctxt));
-                });
+        Function<Object,Optional<Step>> conversion = r -> Optional.empty();
+        if (target != null) {
+            final double cost = indirect != null && indirect ? distance * 2 : distance;
+            conversion = x -> {
+                LOG.debug("Added {} for {}", mapCoord, coord);
+                return target == null ?
+                        Optional.empty() :
+                        Optional.of(StepImpl.builder().setCoordinate(targetCoord).setDistance(distance)
+                                .setCost(cost).build(ctxt));
+            };
+        }
+        return doUpdate(req).thenApply(conversion);
     }
 
     @SuppressWarnings("unchecked")

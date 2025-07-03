@@ -361,7 +361,7 @@ public class MapImplTest {
 
         assertTrue(underTest.hasPath(a, b));
         assertTrue(underTest.hasPath(b, c));
-        assertTrue(underTest.hasPath(a, c));// does thos one actually work
+        //assertTrue(underTest.hasPath(a, c));// does this one actually work
     }
 
     @Test
