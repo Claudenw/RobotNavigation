@@ -2,7 +2,6 @@ package org.xenei.robot.mapper.visualization;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
-import java.awt.EventQueue;
 import java.awt.Graphics;
 import java.util.ArrayList;
 import java.util.List;
@@ -14,7 +13,6 @@ import java.util.stream.Collectors;
 import javax.swing.JFrame;
 import javax.swing.WindowConstants;
 
-import org.apache.jena.rdf.model.Literal;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.GeometryCollection;
@@ -24,11 +22,10 @@ import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
 import org.xenei.robot.common.Position;
 import org.xenei.robot.common.mapping.Map;
-import org.xenei.robot.common.mapping.Mapper;
 import org.xenei.robot.common.planning.Solution;
 import org.xenei.robot.common.utils.GeometryUtils;
 
-public class MapViz implements Mapper.Visualization, Runnable {
+public class MapViz implements Map.Visualization {
     private final Supplier<Solution> solutionSupplier;
     private final Supplier<Position> positionSupplier;
     private final Supplier<Coordinate> targetSupplier;
@@ -56,11 +53,6 @@ public class MapViz implements Mapper.Visualization, Runnable {
         frame.pack();
         frame.setSize(1000, 1000);
         frame.setVisible(true);
-    }
-
-    @Override
-    public void run() {
-        redraw();
     }
 
     private AbstractDrawingCommand getPoly(Geometry geom, Color color) {
@@ -137,7 +129,9 @@ public class MapViz implements Mapper.Visualization, Runnable {
             cmds.add(getPoly(geometryUtils.asPolygon(position, 0.25), Color.ORANGE));
         }
 
-        cmds.add(getPoly(geometryUtils.asPath(map.getContext().chassisInfo.radius, position.getCoordinate(), target), Color.ORANGE));
+        if (target != null) {
+            cmds.add(getPoly(geometryUtils.asPath(map.getContext().chassisInfo.radius, position.getCoordinate(), target), Color.ORANGE));
+        }
 
         for (CompletableFuture<?> f : futures) {
             f.join();

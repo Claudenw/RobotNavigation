@@ -4,14 +4,13 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Optional;
 import java.util.Stack;
-import java.util.function.Consumer;
+import java.util.concurrent.Callable;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import org.locationtech.jts.geom.Coordinate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.xenei.robot.common.Listener;
 import org.xenei.robot.common.ListenerContainer;
 import org.xenei.robot.common.ListenerContainerImpl;
 import org.xenei.robot.common.Location;
@@ -50,7 +49,7 @@ public class PlannerImpl implements Planner  {
      */
     public PlannerImpl(Map map, Supplier<Position> positionSupplier, Location target) {
         this.map = map;
-        this.listeners = new ListenerContainerImpl();
+        this.listeners = new ListenerContainerImpl(map.getContext());
         this.target = new TargetStack();
         this.positionSupplier = positionSupplier;
         this.solution = new Solution();
@@ -73,7 +72,7 @@ public class PlannerImpl implements Planner  {
     }
 
     @Override
-    public void addListener(Listener listener) {
+    public void addListener(Callable<Void> listener) {
         this.listeners.addListener(listener);
     }
 

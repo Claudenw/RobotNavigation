@@ -61,8 +61,8 @@ public class Processor {
         return mapper;
     }
 
-    public void add(Mapper.Visualization visualization) {
-        planner.addListener(visualization::redraw);
+    public void add(Map.Visualization visualization) {
+        planner.addListener(() -> {visualization.redraw(); return null;});
     }
 
     private boolean checkTarget(NavigationSnapshot snapshot) {

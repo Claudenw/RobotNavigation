@@ -76,7 +76,7 @@ public class FakeDistanceSensorTest {
         Map map = new MapImpl(new RobutContext(ScaleInfo.DEFAULT, TestChassisInfo.DEFAULT));
         underTest = new FakeDistanceSensor1(MapLibrary.map2(map), positionSupplier);
         MapViz mapViz = new MapViz(1, underTest.map(), () -> solution, positionSupplier, () -> null);
-        map.getContext().scheduleAtFixedRate(mapViz, 0,500, TimeUnit.MILLISECONDS);
+        map.getContext().scheduleAtFixedRate(mapViz::redraw, 0,500, TimeUnit.MILLISECONDS);
         MapDistanceSensorAdapter adapter = new MapDistanceSensorAdapter(map, positionSupplier);
         underTest.addListener(adapter);
         underTest.run();

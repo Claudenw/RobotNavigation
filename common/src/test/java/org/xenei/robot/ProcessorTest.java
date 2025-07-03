@@ -2,7 +2,6 @@ package org.xenei.robot;
 
 import java.util.function.Supplier;
 
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,7 +52,6 @@ public class ProcessorTest {
     }
 
     @Test
-    @Disabled
     public void stepTestMap3() throws AbortedException {
         Location startCoord = Location.from(-1, -3);
         Mover mover = new FakeMover(Location.from(startCoord), 1);

@@ -16,11 +16,10 @@ import org.xenei.robot.common.FrontsCoordinate;
 import org.xenei.robot.common.Position;
 import org.xenei.robot.common.UnmodifiableCoordinate;
 import org.xenei.robot.common.mapping.Map;
-import org.xenei.robot.common.mapping.Mapper;
 import org.xenei.robot.common.planning.Solution;
 import org.xenei.robot.common.utils.GeometryUtils;
 
-public class TextViz implements Mapper.Visualization {
+public class TextViz implements Map.Visualization {
     final Map map;
     final double scale;
     final Supplier<Solution> solutionSupplier;

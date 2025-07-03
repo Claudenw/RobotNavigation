@@ -104,6 +104,16 @@ public class RobutContext {
         return future;
     }
 
+    /**
+     * Submits a collection of callables to the scheduler.
+     * @param callables the callables to execute.
+     * @return List of futures for the callables.
+     * @param <T> the return type for the futures.
+     */
+    public <T> List<Future<T>> submit(Collection<? extends Callable<T>> callables) {
+        return workScheduler.invokeAll(callables);
+    }
+
     public CompletableFuture<?> submit(Runnable task) {
         return CompletableFuture.runAsync(task, workScheduler);
     }

@@ -4,7 +4,6 @@ import java.util.Collection;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Future;
 
 import org.apache.commons.math3.util.Precision;
 import org.apache.jena.rdf.model.Resource;
@@ -233,4 +232,11 @@ public interface Map {
      */
     CompletableFuture<Optional<Location>> look(Position position, double heading, int maxRange);
 
+    /**
+     * A Visualization of a map.
+     */
+    @FunctionalInterface
+    interface Visualization {
+        void redraw();
+    }
 }

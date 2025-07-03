@@ -198,6 +198,8 @@ public class MapImplTest {
         underTest.addObstacle(new ObstacleImpl(-1, -2));
 
         Optional<Step> result = underTest.addCoord(p, t, true).join();
+        ctxt.awaitQuiescence(5, SECONDS);
+
         assertTrue(result.isPresent());
         Step step = result.get();
         assertEquals(4.0d, step.distance());
@@ -339,6 +341,7 @@ public class MapImplTest {
 
         underTest.addPath(a.getCoordinate(), c.getCoordinate());
 
+        ctxt.awaitQuiescence(5, SECONDS);
         assertTrue(underTest.hasPath(a, c), "Should have path");
     }
 
