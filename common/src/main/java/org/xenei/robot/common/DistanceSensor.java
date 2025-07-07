@@ -3,29 +3,25 @@ package org.xenei.robot.common;
 import org.locationtech.jts.geom.Coordinate;
 import org.xenei.robot.common.utils.CoordUtils;
 
+import java.util.Collection;
 import java.util.function.Consumer;
 
 public interface DistanceSensor extends Runnable {
 
     record DistanceReading(double theta, double range) {
         public Location getLocation() {return Location.from(CoordUtils.fromAngle(theta, range));}
-        static DistanceReading from(Location location) {
+        public static DistanceReading from(Location location) {
             return new DistanceReading(location.theta(), location.range());
         }
         public static DistanceReading from(Coordinate coordinate) {
             return from(Location.from(coordinate));
         }
+        public static DistanceReading from(double x, double y) {
+            return from(Location.from(x, y));
+        }
     }
 
-//    /**
-//     * Performs a sensor scan and returns all Coordinates of obstacles
-//     * relative to the current position.  If no object is detected an
-//     * infinite location should be returned.
-//     *
-//     * @return an array of Coordinates of obstacles relative to the current position.
-//     * @see Location#INFINITE
-//     */
-//    Location[] sense();
+    record Readings(Position origin, Collection<DistanceReading> readings){};
 
     /**
      * The maximum range the sensor can detect.
@@ -34,7 +30,7 @@ public interface DistanceSensor extends Runnable {
      */
     double maxRange();
 
-    void addListener(Consumer<DistanceReading> listener);
+    void addListener(Consumer<Readings> listener);
 
-    void removeListener(Consumer<DistanceReading> listener);
+    void removeListener(Consumer<Readings> listener);
 }

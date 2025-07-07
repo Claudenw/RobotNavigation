@@ -10,6 +10,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -60,11 +61,10 @@ public class MapperImplTest {
 //        when(map.addObstacle(any())).thenReturn(CompletableFuture.completedFuture(Set.of(obstacle)));
 //        when(map.adopt(any())).thenReturn(mapValue);
         Mapper underTest = new MapperImpl(map, () -> Position.from(mapValue), () -> target);
-        RelativeLocationDistanceSensorAdapter relativeLocationDistanceSensorAdapter =
-                new RelativeLocationDistanceSensorAdapter(underTest.getRelativeObstacleConsumer());
 
         // an obstacle one unit away is too close so no target generated.
-        relativeLocationDistanceSensorAdapter.accept(DistanceSensor.DistanceReading.from(CoordUtils.fromAngle(0, 1)));
+        underTest.getRelativeObstacleConsumer().accept(
+                new DistanceSensor.Readings(currentPosition, List.of(DistanceSensor.DistanceReading.from(CoordUtils.fromAngle(0, 1)))));
 
         Location[] obstacles = { Location.from(CoordUtils.fromAngle(0, 1)) };
         NavigationSnapshot snapshot = new NavigationSnapshot(currentPosition, target);
@@ -97,7 +97,7 @@ public class MapperImplTest {
         Map map = Mockito.mock(Map.class);
         when(map.getContext()).thenReturn(ctxt);
         when(map.createObstacle(any(Position.class), any(Location.class))).thenReturn(obstacle);
-        when(map.addObstacle(any())).thenReturn(CompletableFuture.completedFuture(Set.of(obstacle)));
+        when(map.addObstacle(any())).thenReturn(Set.of(obstacle));
         when(map.adopt(any(Coordinate.class))).thenAnswer( context -> {
             return Map.adopt(context.getArgument(0, Coordinate.class), ctxt.scaleInfo);
         });
@@ -107,10 +107,10 @@ public class MapperImplTest {
         when(map.isClearPath(any(Coordinate.class), any(Coordinate.class))).thenReturn(false);
 
         Mapper underTest = new MapperImpl(map, () -> currentPosition, () -> target);
-        RelativeLocationDistanceSensorAdapter relativeLocationDistanceSensorAdapter =
-                new RelativeLocationDistanceSensorAdapter(underTest.getRelativeObstacleConsumer());
+
         // process data
-        relativeLocationDistanceSensorAdapter.accept(DistanceSensor.DistanceReading.from(CoordUtils.fromAngle(0, 2)));
+        underTest.getRelativeObstacleConsumer().accept(
+                new DistanceSensor.Readings(currentPosition, List.of(DistanceSensor.DistanceReading.from(CoordUtils.fromAngle(0, 2)))));
 
 
         ArgumentCaptor<Boolean> one = ArgumentCaptor.forClass(Boolean.class);

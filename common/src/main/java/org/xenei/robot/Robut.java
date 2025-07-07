@@ -15,7 +15,6 @@ import org.xenei.robot.common.utils.RobutContext;
 import org.xenei.robot.mapper.MapBumpSensorAdapter;
 import org.xenei.robot.mapper.MapDistanceSensorAdapter;
 import org.xenei.robot.mapper.MapImpl;
-import org.xenei.robot.mapper.RelativeLocationDistanceSensorAdapter;
 
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
@@ -35,9 +34,7 @@ public class Robut {
         bumpSensor.addListener(new MapBumpSensorAdapter(map, positionSupplier));
         distSensor.addListener(new MapDistanceSensorAdapter(map, positionSupplier));
         this.processor = new Processor(ctxt, mover, positionSupplier, map);
-        RelativeLocationDistanceSensorAdapter relativeLocationDistanceSensorAdapter =
-                new RelativeLocationDistanceSensorAdapter(processor.getMapper().getRelativeObstacleConsumer());
-        distSensor.addListener(relativeLocationDistanceSensorAdapter);
+        distSensor.addListener(processor.getMapper().getRelativeObstacleConsumer());
         ctxt.scheduleAtFixedRate(bumpSensor, 500, 42, TimeUnit.MILLISECONDS);
         ctxt.scheduleAtFixedRate(distSensor, 500, 250, TimeUnit.MILLISECONDS);
     }

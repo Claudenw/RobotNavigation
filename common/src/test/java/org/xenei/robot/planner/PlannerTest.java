@@ -421,13 +421,13 @@ public class PlannerTest {
         }
 
         @Override
-        public CompletableFuture<Coordinate[]> addPath(Coordinate... coords) {
+        public Coordinate[] addPath(Coordinate... coords) {
             // TODO Auto-generated method stub
             return null;
         }
 
         @Override
-        public CompletableFuture<Coordinate[]> addPath(Resource model, Coordinate... coords) {
+        public Coordinate[] addPath(Resource model, Coordinate... coords) {
             // TODO Auto-generated method stub
             return null;
         }
@@ -450,7 +450,7 @@ public class PlannerTest {
         }
 
         @Override
-        public CompletableFuture<Set<Obstacle>> addObstacle(Obstacle obstacle) {
+        public Set<Obstacle> addObstacle(Obstacle obstacle) {
             // TODO Auto-generated method stub
             return null;
         }

@@ -4,6 +4,7 @@ import java.util.Collection;
 import java.util.function.Consumer;
 
 import org.locationtech.jts.geom.Coordinate;
+import org.xenei.robot.common.DistanceSensor;
 import org.xenei.robot.common.FrontsCoordinate;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Position;
@@ -35,7 +36,7 @@ public interface Mapper {
      *
      * @return a consumer of relative obstacles (unscaled).
      */
-    Consumer<Location> getRelativeObstacleConsumer();
+    Consumer<DistanceSensor.Readings> getRelativeObstacleConsumer();
 
     /** A visulation of the map */
     interface Visualization {

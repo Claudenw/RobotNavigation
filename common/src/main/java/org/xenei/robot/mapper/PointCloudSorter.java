@@ -23,7 +23,6 @@ public class PointCloudSorter {
     int[] connections;
 
     public PointCloudSorter(RobutContext ctxt, Set<Coordinate> cSet) {
-        LOG.debug("Starting PCS >>>>>>>>>>>>>>>>>>>>>>");
         this.ctxt = ctxt;
         dMatrix = new DoubleHalfMatrix(cSet.size());
         iMatrix = new IntHalfMatrix(cSet.size());
@@ -41,9 +40,6 @@ public class PointCloudSorter {
         }
 
         connections = iMatrix.reduction(IntHalfMatrix.plus);
-        if (LOG.isDebugEnabled()) {
-            LOG.debug("PCS created: connections:{}", connections.length);
-        }
     }
 
     public Geometry walk() {

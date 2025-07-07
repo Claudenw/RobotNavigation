@@ -7,7 +7,10 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.nio.charset.Charset;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -27,10 +30,10 @@ public class FakeDistanceSensor1 implements FakeDistanceSensor {
     private static final int BLOCKSIZE = 17;
     private static final double RADIANS = Math.toRadians(360.0 / BLOCKSIZE);
     private final Map map;
-    private static final double MAX_RANGE = 350;
+    private static final double MAX_RANGE = 5;
     private final Supplier<Position> positionSupplier;
-    private final LinkedHashMap<Position, Location[]> history = new LinkedHashMap<>();
-    private final CopyOnWriteArrayList<Consumer<DistanceReading>> listeners;
+    private final LinkedHashMap<Position, DistanceReading[]> history = new LinkedHashMap<>();
+    private final CopyOnWriteArrayList<Consumer<Readings>> listeners;
 
     public FakeDistanceSensor1(Map map, Supplier<Position> positionSupplier) {
         this.map = map;
@@ -45,13 +48,12 @@ public class FakeDistanceSensor1 implements FakeDistanceSensor {
 
     public void writeHistory(OutputStream out) {
         try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(out))) {
-            for (java.util.Map.Entry<Position, Location[]> entry : history.entrySet()) {
-
+            for (java.util.Map.Entry<Position, DistanceReading[]> entry : history.entrySet()) {
                 Position pos = entry.getKey();
                 StringBuilder sb = new StringBuilder(
                         String.format("%s,%s,%s", pos.getX(), pos.getY(), pos.getHeading()));
-                for (Location l : entry.getValue()) {
-                    sb.append(String.format(",%s,%s", l.getX(), l.getY()));
+                for (DistanceReading l : entry.getValue()) {
+                    sb.append(String.format(",%s,%s", l.theta(), l.range()));
                 }
                 writer.write(sb.append('\n').toString());
             }
@@ -69,11 +71,13 @@ public class FakeDistanceSensor1 implements FakeDistanceSensor {
             double heading = Double.parseDouble(numbers[i++]);
             Position position = Position.from(x, y, heading);
             int limit = (numbers.length - 3) / 2;
-            Location[] locations = new Location[limit];
+            DistanceReading[] locations = new DistanceReading[limit];
+            double theta;
+            double range;
             for (int j = 0; j < limit; j++) {
-                x = Double.parseDouble(numbers[i++]);
-                y = Double.parseDouble(numbers[i++]);
-                locations[j] = Location.from(x, y);
+                theta = Double.parseDouble(numbers[i++]);
+                range = Double.parseDouble(numbers[i++]);
+                locations[j] = new DistanceReading(theta, range);
             }
             history.put(position, locations);
         }
@@ -86,9 +90,9 @@ public class FakeDistanceSensor1 implements FakeDistanceSensor {
     @Override
     public void run() {
         Position position = positionSupplier.get();
-        Location[] result = history.get(position);
+        DistanceReading[] result = history.get(position);
         if (result == null) {
-            result = new Location[BLOCKSIZE];
+            result = new DistanceReading[BLOCKSIZE];
             for (int i = 0; i < BLOCKSIZE; i++) {
                 result[i] = look(position, position.getHeading() + (RADIANS * i));
                 if (LOG.isDebugEnabled()) {
@@ -102,19 +106,18 @@ public class FakeDistanceSensor1 implements FakeDistanceSensor {
                 LOG.error("Can not write sensor data");
             }
         }
-        for (Location location : result) {
-            DistanceReading dr = new DistanceReading(location.theta(), location.range());
-            for (Consumer<DistanceReading> listener : listeners) {
-                listener.accept(dr);
-            }
+        List<DistanceReading> lst = Arrays.asList(result);
+        Readings readings = new Readings(position, lst);
+        for (Consumer<Readings> listener : listeners) {
+            listener.accept(readings);
         }
     }
 
-    private Location look(Position position, double heading) {
+    private DistanceReading look(Position position, double heading) {
         if (LOG.isDebugEnabled()) {
             LOG.debug("Scanning heading: {} {}", heading, Math.toDegrees(heading));
         }
-        return map.look(position, heading, 350).join().orElse(Location.INFINITE);
+        return DistanceReading.from(map.look(position, heading, (int)maxRange()).join().orElse(Location.INFINITE));
     }
 
     @Override
@@ -123,12 +126,12 @@ public class FakeDistanceSensor1 implements FakeDistanceSensor {
     }
 
     @Override
-    public void addListener(Consumer<DistanceReading> listener) {
+    public void addListener(Consumer<Readings> listener) {
         this.listeners.add(listener);
     }
 
     @Override
-    public void removeListener(Consumer<DistanceReading> listener) {
+    public void removeListener(Consumer<Readings> listener) {
         this.listeners.remove(listener);
     }
 }

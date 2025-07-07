@@ -3,6 +3,7 @@ package org.xenei.robot.mapper;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -15,6 +16,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.apache.commons.math3.util.Precision;
@@ -280,12 +282,11 @@ public class MapImpl implements Map {
         return doUpdate(req).thenApply(conversion);
     }
 
-    @SuppressWarnings("unchecked")
     @Override
-    public CompletableFuture<Set<Obstacle>> addObstacle(Obstacle obst) {
-        LOG.debug("Adding obstacle: {}", obst);
+    public Set<Obstacle> addObstacle(Obstacle obst) {
         return obstacleHandler.addObstacle(obst);
     }
+
 
     @Override
     public boolean isObstacle(Coordinate point) {
@@ -352,7 +353,7 @@ public class MapImpl implements Map {
      * @return An array of coordinates on the path.
      */
     @Override
-    public CompletableFuture<Coordinate[]> addPath(Coordinate... coords) {
+    public Coordinate[] addPath(Coordinate... coords) {
         return addPath(Namespace.PlanningModel, Arrays.stream(coords).map(MapCoordinate::new));
     }
 
@@ -364,7 +365,7 @@ public class MapImpl implements Map {
      * @return An array of coordinates on the path.
      */
     @Override
-    public CompletableFuture<Coordinate[]> addPath(Resource model, Coordinate... coords) {
+    public Coordinate[] addPath(Resource model, Coordinate... coords) {
         return addPath(model, Arrays.stream(coords).map(MapCoordinate::new));
     }
 
@@ -374,7 +375,7 @@ public class MapImpl implements Map {
      * @param coords the coordinates of the path.
      * @return An array of coordinates on the path.
      */
-    private CompletableFuture<Coordinate[]> addPath(Resource model, Stream<MapCoordinate> coords) {
+    private Coordinate[] addPath(Resource model, Stream<MapCoordinate> coords) {
         List<MapCoordinate> lst = coords.toList();
         Coordinate[] points = new Coordinate[lst.size()];
         int[] idx = { 0 };
@@ -385,7 +386,8 @@ public class MapImpl implements Map {
         triples.add(Triple.create(tn.asNode(), RDF.type.asNode(), Namespace.Path.asNode()));
         triples.add(Triple.create(tn.asNode(), Geo.AS_WKT_PROP.asNode(), path.asNode()));
         LOG.debug("Path <{} {}>", points[0], points[points.length - 1]);
-        return doUpdate(new UpdateBuilder().addInsert(model, triples)).thenApply( s -> points);
+        doUpdate(new UpdateBuilder().addInsert(model, triples));
+        return points;
     }
 
     @Override
@@ -940,7 +942,7 @@ public class MapImpl implements Map {
             Location start = startPosition.nextPosition(relativeStart);
             Location end = startPosition.nextPosition(relativeEnd);
             double d = start.distance(end);
-            int parts = (int) (d / ctxt.scaleInfo.getHalfResolution());
+            int parts = (int) (d / (ctxt.scaleInfo.getResolution() / 2));
             double xIncr = (end.getX() - start.getX()) / (parts + 1);
             double yIncr = (end.getY() - start.getY()) / (parts + 1);
             Coordinate[] part = new Coordinate[parts + 1];
@@ -1010,6 +1012,9 @@ public class MapImpl implements Map {
         }
     }
 
+    /**
+     * Create a cloud of obsacle points in a single geometry.
+     */
     private class ObstacleHandler {
         private Geometry makeCloud(Obstacle obstacle, Collection<? extends Obstacle> others) {
             Set<Coordinate> cSet = new HashSet<>();
@@ -1025,98 +1030,85 @@ public class MapImpl implements Map {
             return ctxt.geometryFactory.createLineString(cSet.toArray(new Coordinate[0]));
         }
 
-        private CompletableFuture<Set<Obstacle>> mergeIntersectOrTouch(UpdateRequest req, Obstacle obstacle) {
-            Var otherWkt = Var.alloc("otherWkt");
-            SelectBuilder sb = new SelectBuilder().setDistinct(true).addVar(Namespace.s).addVar(otherWkt) //
-                    .from(Namespace.UnionModel.getURI()) //
-                    .addWhere(Namespace.s, Geo.AS_WKT_NODE, otherWkt) //
-                    .addWhere(Namespace.s, RDF.type, Namespace.Obst).addFilter(ctxt.graphGeomFactory.isNearby(exprF,
-                            obstacle.wkt(), otherWkt, ctxt.scaleInfo.getResolution()));
-
-//            Set<ObstacleImpl> solns = new HashSet<>();
-//
-//            Predicate<QuerySolution> processor = soln -> {
-//                solns.add(
-//                        new ObstacleImpl(soln.getResource(Namespace.s.getName()), soln.getLiteral(otherWkt.getName())));
-//                return true;
-//            };
-
-            return exec(sb).thenApply(resultSet -> {
-                Set<ObstacleImpl> solns = new HashSet<>();
-                resultSet.forEachRemaining(soln -> {
-                    solns.add(
-                            new ObstacleImpl(soln.getResource(Namespace.s.getName()), soln.getLiteral(otherWkt.getName())));
-                });
-                return solns;
-            }).thenApply(solns -> {
-//            }), processor);
-
-                Set<Obstacle> solution = new HashSet<>();
-
-                if (solns.isEmpty()) {
-                    Obstacle obstImpl = obstacle;
-                    Resource r = obstImpl.in(ModelFactory.createDefaultModel());
-                    req.add(new UpdateBuilder().addInsert(Namespace.PlanningModel, r.getModel()).build());
-                    solution.add(obstImpl);
-                } else {
-                    solns.remove(obstacle);
-                    if (!solns.isEmpty()) {
-                        Geometry result = makeCloud(obstacle, solns);
-                        for (Obstacle obst : solns) {
-                            req.add(new UpdateBuilder()
-                                    .addDelete(Namespace.PlanningModel, obst.rdf(), Namespace.p, Namespace.o)
-                                    .addGraph(Namespace.UnionModel,
-                                            new WhereBuilder().addWhere(obst.rdf(), Namespace.p, Namespace.o))
-                                    .build());
-                        }
-
-                        Model merged = ModelFactory.createDefaultModel();
-                        ObstacleImpl obst = new ObstacleImpl(result);
-                        obst.in(merged);
-                        solution.add(obst);
-                        req.add(new UpdateBuilder().addInsert(Namespace.PlanningModel, merged).build());
-                    }
+        private Set<Obstacle> mergeIntersectOrTouch(Obstacle obstacle, Set<ObstacleImpl> solns) {
+            Set<Obstacle> solution = new HashSet<>();
+            solns.remove(obstacle);
+            if (solns.isEmpty()) {
+                solution.add(obstacle);
+            } else if (solns.size() == 1) {
+                Obstacle obs = solns.iterator().next();
+                if (obstacle.geom().coveredBy(obstacle.geom())) {
+                    return Collections.emptySet();
                 }
-                return solution;
-            });
+            } else {
+                UpdateRequest req = new UpdateRequest();
+                Geometry result = makeCloud(obstacle, solns);
+                for (Obstacle obst : solns) {
+                    req.add(new UpdateBuilder()
+                            .addDelete(Namespace.PlanningModel, obst.rdf(), Namespace.p, Namespace.o)
+                            .addGraph(Namespace.UnionModel,
+                                    new WhereBuilder().addWhere(obst.rdf(), Namespace.p, Namespace.o))
+                            .build());
+                }
+                Model merged = ModelFactory.createDefaultModel();
+                ObstacleImpl obst = new ObstacleImpl(result);
+                obst.in(merged);
+                solution.add(obst);
+                req.add(new UpdateBuilder().addInsert(Namespace.PlanningModel, merged).build());
+                doUpdate(req);
+            }
+            return solution;
         }
 
-        CompletableFuture<Set<Obstacle>> addObstacle(Obstacle obst) {
+        Set<Obstacle> addObstacle(Obstacle obst) {
             // find all Obstacles that this obstacle will intersect or touch
             // if there are any, merge them together.
             // if not just write this on to the graph.
             Var wkt = Var.alloc("wkt");
-            AskBuilder askBuilder = new AskBuilder().from(Namespace.UnionModel.getURI()) //
+
+            SelectBuilder selectBuilder = new SelectBuilder()
+                    .setDistinct(true).addVar(Namespace.s)
+                    .addVar(wkt)
+                    .from(Namespace.UnionModel.getURI()) //
                     .addWhere(Namespace.s, Geo.AS_WKT_NODE, wkt) //
                     .addWhere(Namespace.s, RDF.type, Namespace.Obst) //
                     .addFilter(ctxt.graphGeomFactory.isNearby(exprF, obst.wkt(), wkt, ctxt.scaleInfo.getResolution()));
 
-            UpdateRequest req = new UpdateRequest();
             Set<Obstacle> work;
-            if (ask(askBuilder)) {
-                work = mergeIntersectOrTouch(req, obst).join();
-            } else {
+            Set<ObstacleImpl> solns = new HashSet<>();
+            exec(selectBuilder).thenAccept(
+                    resultSet -> resultSet.forEachRemaining(soln -> {
+                        solns.add(
+                                new ObstacleImpl(soln.getResource(Namespace.s.getName()), soln.getLiteral("wkt")));
+                    })
+            ).join();
+            if (solns.isEmpty()) {
+                LOG.debug("Adding obstacle: {}", obst);
                 Model merged = ModelFactory.createDefaultModel();
                 obst.in(merged);
-                req.add(new UpdateBuilder().addInsert(Namespace.PlanningModel, merged).build());
+                doUpdate(new UpdateRequest().add(new UpdateBuilder().addInsert(Namespace.PlanningModel, merged).build()));
                 work = Set.of(obst);
+            } else {
+               work = mergeIntersectOrTouch(obst, solns);
             }
-            // delete any Coords that are within buffer of any of the work geometries.
-            Var obstRes = Var.alloc("obst");
-            Var otherWkt = Var.alloc("otherWkt");
-            req.add(new UpdateBuilder().addDelete(Namespace.PlanningModel, Namespace.s, Namespace.p, Namespace.o)
-                    .addGraph(Namespace.UnionModel, new WhereBuilder() //
-                            .addWhere(Namespace.s, Namespace.p, Namespace.o) //
-                            .addWhere(Namespace.s, RDF.type, Namespace.Coord) //
-                            .addWhere(Namespace.s, Geo.AS_WKT_NODE, wkt) //
-                            .addWhere(obstRes, Geo.AS_WKT_NODE, otherWkt)
-                            .addFilter(exprF.lt(ctxt.graphGeomFactory.calcDistance(exprF, wkt, otherWkt),
-                                    ctxt.chassisInfo.radius))
-                            .addFilter(exprF.in(exprF.asExpr(obstRes),
-                                    exprF.asList(
-                                            work.stream().map(Obstacle::rdf).toList().toArray()))))
-                    .build());
-            return doUpdate(req).thenApply( x -> work);
+            if (!work.isEmpty()) {
+                // delete any Coords that are within buffer of any of the work geometries.
+                Var obstRes = Var.alloc("obst");
+                Var otherWkt = Var.alloc("otherWkt");
+                doUpdate(new UpdateRequest().add(new UpdateBuilder().addDelete(Namespace.PlanningModel, Namespace.s, Namespace.p, Namespace.o)
+                        .addGraph(Namespace.UnionModel, new WhereBuilder() //
+                                .addWhere(Namespace.s, Namespace.p, Namespace.o) //
+                                .addWhere(Namespace.s, RDF.type, Namespace.Coord) //
+                                .addWhere(Namespace.s, Geo.AS_WKT_NODE, wkt) //
+                                .addWhere(obstRes, Geo.AS_WKT_NODE, otherWkt)
+                                .addFilter(exprF.lt(ctxt.graphGeomFactory.calcDistance(exprF, wkt, otherWkt),
+                                        ctxt.chassisInfo.radius))
+                                .addFilter(exprF.in(exprF.asExpr(obstRes),
+                                        exprF.asList(
+                                                work.stream().map(Obstacle::rdf).toList().toArray()))))
+                        .build()));
+            }
+            return work;
         }
 
         boolean isObstacle(Coordinate point) {

@@ -537,7 +537,8 @@ public class MapImplTest {
         underTest = new MapImpl(ctxt);
         assertTrue(underTest.addCoord(p, t, false).join().isPresent());
         assertTrue(underTest.addCoord(coordinates[0], t, false).join().isPresent());
-        Coordinate[] path = underTest.addPath(p, coordinates[0]).join();
+        Coordinate[] path = underTest.addPath(p, coordinates[0]);
+        ctxt.awaitQuiescence(30, TimeUnit.SECONDS);
 
         ExprFactory exprF = new ExprFactory(MapImpl.getPrefixMapping());
         Var wkt = Var.alloc("wkt");
@@ -567,16 +568,17 @@ public class MapImplTest {
         Position pos = Position.from(p, 0);
         Location relative = Location.from(ctxt.scaleInfo.getResolution(), 0);
         Obstacle obst = underTest.createObstacle(pos, relative);
-        Set<Obstacle> result = underTest.addObstacle(obst).join();
+        Set<Obstacle> result = underTest.addObstacle(obst);
         assertEquals(1, result.size());
         assertEquals(obst, result.iterator().next());
 
         relative = Location.from(0, ctxt.scaleInfo.getResolution());
         Obstacle obst2 = underTest.createObstacle(pos, relative);
-        result = underTest.addObstacle(obst2).join();
-        relative = Location.from(ctxt.scaleInfo.getHalfResolution(), ctxt.scaleInfo.getHalfResolution());
+        result = underTest.addObstacle(obst2);
+        double halfResolution = ctxt.scaleInfo.getResolution() / 2;
+        relative = Location.from(halfResolution, halfResolution);
         Obstacle obst3 = underTest.createObstacle(pos, relative);
-        result = underTest.addObstacle(obst3).join();
+        result = underTest.addObstacle(obst3);
 
         assertEquals(1, underTest.getObstacles().join().size());
     }

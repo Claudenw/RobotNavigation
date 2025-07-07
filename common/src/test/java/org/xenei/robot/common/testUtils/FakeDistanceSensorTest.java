@@ -45,7 +45,7 @@ public class FakeDistanceSensorTest {
                 Location.from(0.5000, -1.0000), Location.from(0.5000, -0.5000), Location.from(0.5000, 0.0000) };
         positionSupplier.position = Position.from(Location.from(x, y), Math.toRadians(h));
         final List<Location> actual = new ArrayList<>();
-        underTest.addListener( dr -> actual.add(dr.getLocation()));
+        underTest.addListener( readings -> readings.readings().forEach(dr -> actual.add(dr.getLocation())));
         underTest.run();
         CoordinateUtils.assertEquivalent(expected, actual, 0.000001);
         for (Location l : actual) {
@@ -101,7 +101,7 @@ public class FakeDistanceSensorTest {
         boolean found = false;
         Geometry point = underTest.map().getContext().geometryUtils.asPoint(actual);
         for (Obstacle obstacle : obsts) {
-            if (obstacle.geom().buffer(underTest.map().getContext().scaleInfo.getHalfResolution()).contains(point)) {
+            if (obstacle.geom().buffer(underTest.map().getContext().scaleInfo.getResolution() / 2).contains(point)) {
                 found = true;
                 break;
             }

@@ -1,5 +1,8 @@
 package org.xenei.robot.common.testUtils;
 
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -15,9 +18,9 @@ public class FakeDistanceSensor2 implements FakeDistanceSensor {
     private static final Logger LOG = LoggerFactory.getLogger(FakeDistanceSensor2.class);
     private final Map map;
     private final double angle;
-    private static final double MAX_RANGE = 350;
+    private static final double MAX_RANGE = 5;
     private final Supplier<Position> positionSupplier;
-    private final CopyOnWriteArrayList<Consumer<DistanceReading>> listeners;
+    private final CopyOnWriteArrayList<Consumer<Readings>> listeners;
 
     public FakeDistanceSensor2(Map map, double angle, Supplier<Position> positionSupplier) {
         this.map = map;
@@ -34,15 +37,19 @@ public class FakeDistanceSensor2 implements FakeDistanceSensor {
     @Override
     public void run() {
         Position pos = positionSupplier.get();
-        deliver(Location.from(look(pos, pos.getHeading() - angle).minus(pos)));
-        deliver(Location.from(look(pos, pos.getHeading()).minus(pos)));
-        deliver(Location.from(look(pos, pos.getHeading() + angle).minus(pos)));
+        deliver(pos, Location.from(look(pos, pos.getHeading() - angle).minus(pos)));
+        deliver(pos, Location.from(look(pos, pos.getHeading()).minus(pos)));
+        deliver(pos, Location.from(look(pos, pos.getHeading() + angle).minus(pos)));
     }
 
-    private void deliver(Location location) {
-        DistanceReading dr = new DistanceReading(location.theta(), location.range());
-        for (Consumer<DistanceReading> listener : listeners) {
-            listener.accept(dr);
+    private void deliver(Position position, Location location) {
+        if (location.range() <= maxRange()) {
+            DistanceReading dr = new DistanceReading(location.theta(), location.range());
+            List<DistanceReading> lst = Arrays.asList(dr);
+            Readings readings = new Readings(position, lst);
+            for (Consumer<Readings> listener : listeners) {
+                listener.accept(readings);
+            }
         }
     }
 
@@ -50,7 +57,7 @@ public class FakeDistanceSensor2 implements FakeDistanceSensor {
         if (LOG.isDebugEnabled()) {
             LOG.debug("Scanning heading: {} {}", heading, Math.toDegrees(heading));
         }
-        return map.look(position, heading, 350).join()
+        return map.look(position, heading, (int)Math.round(maxRange())).join()
                 .orElse(Location.from(CoordUtils.fromAngle(heading, Double.POSITIVE_INFINITY)));
     }
 
@@ -60,12 +67,12 @@ public class FakeDistanceSensor2 implements FakeDistanceSensor {
     }
 
     @Override
-    public void addListener(Consumer<DistanceReading> listener) {
+    public void addListener(Consumer<Readings> listener) {
         listeners.add(listener);
     }
 
     @Override
-    public void removeListener(Consumer<DistanceReading> listener) {
+    public void removeListener(Consumer<Readings> listener) {
         listeners.remove(listener);
     }
 

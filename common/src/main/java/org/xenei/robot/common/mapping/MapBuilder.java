@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.jena.rdf.model.Literal;
 import org.apache.jena.rdf.model.Resource;
@@ -15,7 +16,6 @@ import org.locationtech.jts.geom.Geometry;
 public class MapBuilder {
 
     private final Map map;
-    private List<CompletableFuture<?>> futures;
 
     public enum Type {
 
@@ -24,11 +24,10 @@ public class MapBuilder {
 
     public MapBuilder(Map map) {
         this.map = map;
-        this.futures = new ArrayList<>();
     }
 
     public MapBuilder set(int x, int y) {
-        futures.add(map.addObstacle(new ObstacleImpl(new Coordinate(x, y))));
+        map.addObstacle(new ObstacleImpl(new Coordinate(x, y)));
         return this;
     }
 
@@ -40,10 +39,10 @@ public class MapBuilder {
         switch (type) {
 
         case Obstacle:
-            futures.add(map.addObstacle(new ObstacleImpl(first, last)));
+            map.addObstacle(new ObstacleImpl(first, last));
             break;
         case Path:
-            futures.add(map.addPath(first, last));
+            map.addPath(first, last);
         }
         return this;
     }
@@ -61,9 +60,7 @@ public class MapBuilder {
     }
 
     public Map build() {
-        for (CompletableFuture<?> f : futures) {
-            f.join();
-        }
+        map.getContext().awaitQuiescence(30, TimeUnit.SECONDS);
         return map;
     }
 
@@ -79,7 +76,7 @@ public class MapBuilder {
 
         ObstacleImpl(Coordinate start, Coordinate end) {
             double d = start.distance(end);
-            int parts = (int) (d / map.getContext().scaleInfo.getHalfResolution());
+            int parts = (int) (d / (map.getContext().scaleInfo.getResolution() / 2));
             double xIncr = (end.x - start.x) / (parts + 1);
             double yIncr = (end.y - start.y) / (parts + 1);
             Coordinate[] part = new Coordinate[parts + 1];

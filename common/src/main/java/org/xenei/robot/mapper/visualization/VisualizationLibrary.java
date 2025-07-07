@@ -74,6 +74,10 @@ abstract class VisualizationLibrary<T extends VisualizationLibrary.AbstractDrawi
             cmds.add(getPoly(geometryUtils.asPolygon(target, 0.25), Color.GREEN));
         }
 
+        for (CompletableFuture<?> f : futures) {
+            f.join();
+        }
+
         Position position = positionSupplier.get();
         if (position != null) {
             cmds.add(getPoly(geometryUtils.asPolygon(position, 0.25), Color.ORANGE));
@@ -82,11 +86,6 @@ abstract class VisualizationLibrary<T extends VisualizationLibrary.AbstractDrawi
         if (target != null) {
             cmds.add(getPoly(geometryUtils.asPath(map.getContext().chassisInfo.radius, position.getCoordinate(), target), Color.ORANGE));
         }
-
-        for (CompletableFuture<?> f : futures) {
-            f.join();
-        }
-
         return cmds;
     }
 

@@ -92,7 +92,7 @@ public interface Map {
      *
      * @param coords the coordinates of the path.
      */
-    CompletableFuture<Coordinate[]> addPath(Coordinate... coords);
+    Coordinate[] addPath(Coordinate... coords);
 
     /**
      * Adds a path to the specified graph.
@@ -100,7 +100,7 @@ public interface Map {
      * @param model  the name of the graph to add the path to.
      * @param coords the coordinates of the path.
      */
-    CompletableFuture<Coordinate[]> addPath(Resource model, Coordinate... coords);
+    Coordinate[] addPath(Resource model, Coordinate... coords);
 
     /**
      * Update the planning model with new distances based on the new target
@@ -130,7 +130,7 @@ public interface Map {
      *
      * @param obstacle the obstacle to add.
      */
-    CompletableFuture<Set<Obstacle>> addObstacle(Obstacle obstacle);
+    Set<Obstacle> addObstacle(Obstacle obstacle);
 
     /**
      * Gets the geometry for all the known obstacles.

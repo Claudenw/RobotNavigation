@@ -6,6 +6,7 @@ import java.util.function.Supplier;
 import org.locationtech.jts.geom.Coordinate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.xenei.robot.common.DistanceSensor;
 import org.xenei.robot.common.FrontsCoordinate;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Position;
@@ -39,13 +40,13 @@ public class MapperImpl implements Mapper {
 
 
     @Override
-    public Consumer<Location> getRelativeObstacleConsumer() {
-        return relativeObstacle -> {
+    public Consumer<DistanceSensor.Readings> getRelativeObstacleConsumer() {
+        return readings -> {
+            readings.readings().forEach(relativeObstacle -> {
             if (!DoubleUtils.inRange(relativeObstacle.range(), map.getContext().chassisInfo.radius)) {
-                Position position = positionSupplier.get();
-                Location scaledObstacle = map.getContext().scaleInfo.round(relativeObstacle);
-                map.getContext().submit(new ObstacleMapper(map, position, scaledObstacle));
-            }
+                Location scaledObstacle = map.getContext().scaleInfo.round(relativeObstacle.getLocation());
+                map.getContext().submit(new ObstacleMapper(map, readings.origin(), scaledObstacle));
+            }});
         };
     }
 

@@ -9,10 +9,11 @@ import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.common.mapping.Map;
 import org.xenei.robot.common.utils.CoordUtils;
 
+import java.util.Collection;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
-public class MapDistanceSensorAdapter implements Consumer<DistanceSensor.DistanceReading> {
+public class MapDistanceSensorAdapter implements Consumer<DistanceSensor.Readings> {
     private static final Logger LOG = LoggerFactory.getLogger(MapDistanceSensorAdapter.class);
     private final Map map;
     private final Supplier<Position> positionSupplier;
@@ -27,12 +28,11 @@ public class MapDistanceSensorAdapter implements Consumer<DistanceSensor.Distanc
     }
 
     @Override
-    public void accept(DistanceSensor.DistanceReading reading) {
-        Position position = positionSupplier.get();
+    public void accept(DistanceSensor.Readings readings) {
         ScaleInfo scaleInfo = map.getContext().scaleInfo;
-        Location relativeObstacle = scaleInfo.round(Location.from(CoordUtils.fromAngle(reading.theta(), reading.range())));
-        if (!relativeObstacle.isNaN() && !relativeObstacle.isInfinite()) {
-            map.addObstacle(map.createObstacle(position, relativeObstacle));
-        }
+        readings.readings().stream().map(reading -> scaleInfo.round(reading.getLocation()))
+                .filter(relativeLocation -> !relativeLocation.isNaN() && !relativeLocation.isInfinite())
+                .map(relativeLocation -> map.createObstacle(readings.origin(), relativeLocation))
+                .forEach(map::addObstacle);
     }
 }
