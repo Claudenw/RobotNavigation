@@ -4,6 +4,7 @@ import java.util.Collection;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Supplier;
 
 import org.apache.commons.math3.util.Precision;
 import org.apache.jena.rdf.model.Resource;
@@ -238,5 +239,12 @@ public interface Map {
     @FunctionalInterface
     interface Visualization {
         void redraw();
+    }
+
+    interface VisualizationInitializer {
+        Map map();
+        Supplier<Solution> solutionSupplie();
+        Supplier<Position> positionSupplier();
+        Supplier<Coordinate> targetSupplier();
     }
 }

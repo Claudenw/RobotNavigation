@@ -154,6 +154,36 @@ public interface Position extends Location {
     }
 
     /**
+     * Calculates the next position by moving the specified distance..
+     * <p>
+     * The heading does not change
+     * </p>
+     *
+     * @param range The distance to travel.
+     * @return the new Position centered on the new position with the proper
+     * heading.
+     */
+    default Position nextPosition(double range) {
+        double heading = getHeading();
+        Coordinate a = this.plus(CoordUtils.fromAngle(heading, range));
+        return Position.from(a, heading);
+    }
+
+    /**
+     * Calculates the next position.
+     * <p>
+     * The heading is will be the theta from the relative coordinates.
+     * </p>
+     *
+     * @param theta the number of radians to add to the heading.
+     * to.
+     * @return the new Position with the same locatin and different heading.
+     */
+    default Position addHeading(double theta) {
+        return Position.from(this, this.getHeading()+theta);
+    }
+
+    /**
      * Calculates the relative location from an absolute locaiton.
      * @param absoluteLocation the coordinates of the absolute location.
      * @return the relative location based on current location and heading.

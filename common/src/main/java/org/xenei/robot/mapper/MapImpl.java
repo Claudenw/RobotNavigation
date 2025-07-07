@@ -570,7 +570,7 @@ public class MapImpl implements Map {
         Var wkt = Var.alloc("wkt");
         Var indirect = Var.alloc("indirect");
 
-        System.out.println(MapReports.dumpModel(this, Namespace.PlanningModel));
+//        System.out.println(MapReports.dumpModel(this, Namespace.PlanningModel));
 
         SelectBuilder sb = new SelectBuilder().addVar(x).addVar(y).addVar(indirect).addVar(wkt) //
                 .from(Namespace.PlanningModel.getURI()) //

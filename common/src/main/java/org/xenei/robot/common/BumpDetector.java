@@ -1,4 +1,4 @@
-package org.xenei.robot.rpi.mover;
+package org.xenei.robot.common;
 
 import org.xenei.robot.ml.SensorLayer;
 
@@ -8,26 +8,26 @@ import java.util.function.Consumer;
 /**
  * Reacts to a change in the bump detector ML layer and stops the step monitor.
  */
-class BumpDetector implements Consumer<SensorLayer> {
+public class BumpDetector implements Consumer<SensorLayer> {
     private SensorLayer sensorLayer;
-    private final StepMonitor stepMonitor;
+    private final StopSwitch stopSwitch;
     private final byte lastTrigger;
 
     /**
      * constructor.
-     * @param stepMonitor the step monitor to stop.
+     * @param stopSwitch the stop switch.
      */
-    BumpDetector(StepMonitor stepMonitor) {
-        this(stepMonitor, (byte)0);
+    BumpDetector(StopSwitch stopSwitch) {
+        this(stopSwitch, (byte)0);
     }
 
     /**
      * Constructor with existing trigger state.
-     * @param stepMonitor the step monitor to stop.
+     * @param stopSwitch the step monitor to stop.
      * @param lastTrigger the existing trigger value.
      */
-    BumpDetector(StepMonitor stepMonitor, byte lastTrigger) {
-        this.stepMonitor = stepMonitor;
+    public BumpDetector(StopSwitch stopSwitch, byte lastTrigger) {
+        this.stopSwitch = stopSwitch;
         this.lastTrigger = lastTrigger;
     }
 
@@ -35,7 +35,7 @@ class BumpDetector implements Consumer<SensorLayer> {
     public void accept(SensorLayer sensorLayer) {
         if (sensorLayer.getTrigger() != lastTrigger) {
             this.sensorLayer = sensorLayer;
-            stepMonitor.stop();
+            stopSwitch.stop();
         }
     }
 
@@ -43,7 +43,7 @@ class BumpDetector implements Consumer<SensorLayer> {
      * Returns the sensor layer if a bump changed stopped the stepMonitor.
      * @return the sensor layer if a bump changed stopped the stepMonitor.
      */
-    Optional<SensorLayer> getSensorLayer() {
+    public Optional<SensorLayer> getSensorLayer() {
         return Optional.ofNullable(sensorLayer);
     }
 

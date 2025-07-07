@@ -36,7 +36,9 @@ public class TextViz implements Map.Visualization {
     private static double fitRange(double x) {
         return x > Integer.MAX_VALUE ? Integer.MAX_VALUE : (x < Integer.MIN_VALUE ? Integer.MIN_VALUE : x);
     }
-
+    public TextViz(double scale, Map.VisualizationInitializer initializer) {
+        this(scale, initializer.map(), initializer.solutionSupplie(), initializer.positionSupplier(), initializer.targetSupplier());
+    }
     public TextViz(double scale, Map map, Supplier<Solution> solutionSupplier, Supplier<Position> positionSupplier,
                    Supplier<Coordinate> targetSupplier) {
         this.scale = scale;

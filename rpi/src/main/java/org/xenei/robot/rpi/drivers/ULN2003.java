@@ -13,6 +13,8 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.HelpFormatter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.xenei.robot.common.ChassisInfo;
+import org.xenei.robot.common.utils.AngleUtils;
 import org.xenei.robot.rpi.utils.DigitalOutputDeviceFactory;
 
 import com.diozero.api.DigitalOutputDevice;
@@ -30,14 +32,14 @@ public class ULN2003 implements Motor {
             .setActiveHigh(true).setInitialValue(false).build();
 
     /**
-     * Stride angle for the 28BYJ48 stepper motor.
+     * Stride angle for the 28BYJ48 stepper motor in radians
      */
-    public static final double STEPPER_28BYJ48 = 5.625/64;
-    
+    public static final MotorInfo STEPPER_28BYJ48 = new MotorInfo(Math.toRadians(5.625) / 64, 100);
+
     private final MotorBlock block;
-    private final double revMilliPerStepMin;
-    private final double stepsPerRotation;
-    
+    private final MotorInfo motorInfo;
+    private final int stepsPerRotation;
+
     private static Options getOptions() {
         
         String modeOptions = Arrays.stream(Mode.values()).map(Enum::name).collect(Collectors.joining(", "));
@@ -90,20 +92,17 @@ public class ULN2003 implements Motor {
     /**
      * 
      * @param mode The Mode of operation.
-     * @param strideAngle number of degrees advanced on one step.
+     * @param motorInfo The motor info.
      * @param gpio1 the A GPIO pin
      * @param gpio2 the B GPIO pin
      * @param gpio3 the C GPIO pin
      * @param gpio4 the D GPIO pin
      * @throws InterruptedException 
      */
-    public ULN2003(Mode mode, double strideAngle, int gpio1, int gpio2, int gpio3, int gpio4) throws InterruptedException {
+    public ULN2003(Mode mode, MotorInfo motorInfo, int gpio1, int gpio2, int gpio3, int gpio4) throws InterruptedException {
         block = new MotorBlock(mode, gpio1, gpio2, gpio3, gpio4);
-        // rev/steps * milli/min = revmilli/stepsmin
-        double revolutionPerStep = strideAngle/360;
-        double milliPerMin = TimeUnit.MILLISECONDS.convert(1, TimeUnit.MINUTES);
-        revMilliPerStepMin = revolutionPerStep * milliPerMin;
-        stepsPerRotation = 360/strideAngle;
+        this.motorInfo = motorInfo;
+        stepsPerRotation = (int)ChassisInfo.Builder.stepsPerRotation(motorInfo.stepAngle);
         LOG.debug("Created instance {}: {}", this.hashCode(), toString());
     }
     
@@ -139,13 +138,18 @@ public class ULN2003 implements Motor {
      * steps = 0, the stepper stops. When steps > 0, the stepper runs clockwise.
      * When steps < 0, the stepper runs anticlockwise.
      * @param rpm: Revolutions per minute, the speed of a stepper, range from 1 to
-     * 300. Note that high rpm will lead to step loss, so rpm should not be larger
+     * {@code maxStepsPerMinute}. Note that high rpm will lead to step loss, so rpm should not be larger
      * than 150.
      */
     public SteppingStatusImpl prepareRun(int steps, int rpm) {
-        // revmilli/stepsmin * min/rev = milli/steps (min/rev = 1/rpm)
-        long msPerStep = (long) Math.ceil(revMilliPerStepMin / limit(rpm, 1, 150));
-        LOG.debug("Preparing task {} steps:{} rpm:{}", this, steps, rpm);
+        int stepsPerMinute = rpm * stepsPerRotation;
+        stepsPerMinute = limit(stepsPerMinute, stepsPerRotation, motorInfo.freq * 60);
+        // 60000 milliseconds per minute
+
+        long msPerStep = 60000 / stepsPerMinute;
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("Preparing task {} steps:{} rpm:{}", this, steps, stepsPerMinute / stepsPerRotation);
+        }
         return  new SteppingStatusImpl(steps, msPerStep);
     }
 
@@ -158,7 +162,7 @@ public class ULN2003 implements Motor {
     }
 
     public class SteppingStatusImpl implements Motor.SteppingStatus {
-        private volatile int  count;
+        private volatile int count;
         private final int initialCounter;
         private final boolean fwd;
         private final long msPerStep;
@@ -200,6 +204,11 @@ public class ULN2003 implements Motor {
         
         public double fwdRotation() {
             return fwdSteps() / stepsPerRotation; 
+        }
+
+        @Override
+        public double stepsPerRotation() {
+            return stepsPerRotation;
         }
 
         @Override
@@ -327,4 +336,18 @@ public class ULN2003 implements Motor {
         }
     }
 
+    public static class MotorInfo {
+        double stepAngle;
+        int freq;
+
+        /**
+         *
+         * @param stepAngle step angle in radians
+         * @param freq max frequency in hertz
+         */
+        MotorInfo(double stepAngle, int freq) {
+            this.stepAngle = stepAngle;
+            this.freq = freq;
+        }
+    }
 }

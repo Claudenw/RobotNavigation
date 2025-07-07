@@ -4,7 +4,6 @@
 	<modelVersion>4.0.0</modelVersion>
 	<artifactId>robut-common</artifactId>
 	<parent>
-		<relativePath>..</relativePath>
 		<groupId>org.xenei.robot</groupId>
 		<artifactId>DAT</artifactId>
 		<version>0.0.1-SNAPSHOT</version>
@@ -48,6 +47,10 @@
 		<dependency>
 			<groupId>org.apache.commons</groupId>
 			<artifactId>commons-lang3</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-text</artifactId>
 		</dependency>
 
 		<dependency>

@@ -3,27 +3,20 @@ package org.xenei.robot.mapper.visualization;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Graphics;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
 
 import javax.swing.JFrame;
 import javax.swing.WindowConstants;
 
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
-import org.locationtech.jts.geom.GeometryCollection;
-import org.locationtech.jts.geom.LineString;
-import org.locationtech.jts.geom.MultiLineString;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
 import org.xenei.robot.common.Position;
 import org.xenei.robot.common.mapping.Map;
 import org.xenei.robot.common.planning.Solution;
-import org.xenei.robot.common.utils.GeometryUtils;
 
 public class MapViz implements Map.Visualization {
     private final Supplier<Solution> solutionSupplier;
@@ -33,6 +26,11 @@ public class MapViz implements Map.Visualization {
     private final JTSPanel panel;
     private final int scale;
     private final int buffer;
+    private final VizLib vizLib;
+
+    public MapViz(int scale, Map.VisualizationInitializer initializer) {
+        this(scale, initializer.map(), initializer.solutionSupplie(), initializer.positionSupplier(), initializer.targetSupplier());
+    }
 
     public MapViz(int scale, Map map, Supplier<Solution> solutionSupplier, Supplier<Position> positionSupplier,
                    Supplier<Coordinate> targetSupplier) {
@@ -43,6 +41,7 @@ public class MapViz implements Map.Visualization {
         this.targetSupplier = targetSupplier;
         this.scale = scale;
         this.buffer = (int) (map.getContext().scaleInfo.getResolution() * scale) / 2;
+        this.vizLib = new VizLib();
 
         JFrame frame = new JFrame("Map Visualization");
         frame.setLayout(new BorderLayout());
@@ -55,87 +54,9 @@ public class MapViz implements Map.Visualization {
         frame.setVisible(true);
     }
 
-    private AbstractDrawingCommand getPoly(Geometry geom, Color color) {
-        if (geom instanceof Point) {
-            return new AbstractDrawingCommand(geom, color) {
-                @Override
-                protected void fillGeom(Graphics g, int[] xler, int[] yler) {
-                    g.fillOval(xler[0] - buffer, yler[0] - buffer, buffer * 2, buffer * 2);
-                }
-            };
-        }
-        if (geom instanceof Polygon) {
-            return new AbstractDrawingCommand(geom, color) {
-                @Override
-                protected void fillGeom(Graphics g, int[] xler, int[] yler) {
-                    g.fillPolygon(xler, yler, xler.length);
-                }
-            };
-        }
-
-        if (geom instanceof LineString || geom instanceof MultiLineString) {
-            return new AbstractDrawingCommand(geom, color) {
-                @Override
-                protected void fillGeom(Graphics g, int[] xler, int[] yler) {
-                    g.drawPolyline(xler, yler, xler.length);
-                }
-            };
-        }
-
-        return new AbstractDrawingCommand(geom, color) {
-            @Override
-            protected void fillGeom(Graphics g, int[] xler, int[] yler) {
-                g.drawString(geom.getClass().getSimpleName(), xler[0], yler[0]);
-            }
-        };
-    }
-
     @Override
     public void redraw() {
-        GeometryUtils geometryUtils = map.getContext().geometryUtils;
-        List<AbstractDrawingCommand> cmds = new ArrayList<>();
-        List<CompletableFuture<?>> futures = new ArrayList<>();
-        futures.add(map.getObstacles().thenAccept( obs -> obs.forEach(obst ->
-        {
-            if (obst.geom() instanceof GeometryCollection) {
-                GeometryCollection gCollection = (GeometryCollection) obst.geom();
-
-                for (int i = 0; i < gCollection.getNumGeometries(); i++) {
-                    cmds.add(getPoly(gCollection.getGeometryN(i), Color.RED));
-                }
-            } else {
-                cmds.add(getPoly(obst.geom(), Color.RED));
-            }
-        })));
-
-        futures.add(map.getCoords().thenAccept( coords -> coords.forEach( mapCoord -> {
-            cmds.add(getPoly(mapCoord.geometry, mapCoord.isIndirect ? Color.CYAN : Color.BLUE));
-        })));
-
-        List<Coordinate> lst = solutionSupplier.get().stream().collect(Collectors.toList());
-        if (lst.size() > 1) {
-            cmds.add(getPoly(geometryUtils.asPath(0.25, lst.toArray(new Coordinate[lst.size()])), Color.WHITE));
-        } else if (lst.size() == 1) {
-            cmds.add(getPoly(geometryUtils.asPolygon(lst.get(0), .25), Color.WHITE));
-        }
-
-        Coordinate target = targetSupplier.get();
-        if (target != null) {
-            cmds.add(getPoly(geometryUtils.asPolygon(target, 0.25), Color.GREEN));
-        }
-
-        Position position = positionSupplier.get();
-        if (position != null) {
-            cmds.add(getPoly(geometryUtils.asPolygon(position, 0.25), Color.ORANGE));
-        }
-
-        if (target != null) {
-            cmds.add(getPoly(geometryUtils.asPath(map.getContext().chassisInfo.radius, position.getCoordinate(), target), Color.ORANGE));
-        }
-
-        for (CompletableFuture<?> f : futures) {
-            f.join();
-        }
+        List<MapVizDrawingCommand> cmds = vizLib.draw(map, solutionSupplier, positionSupplier, targetSupplier);
         map.getContext().awaitQuiescence(2, TimeUnit.SECONDS);
         rescale(cmds);
 
@@ -144,22 +65,22 @@ public class MapViz implements Map.Visualization {
         panel.repaint();
     }
 
-    private void rescale(List<AbstractDrawingCommand> lst) {
+    private void rescale(List<MapVizDrawingCommand> lst) {
 
         double max = Integer.MIN_VALUE;
-        for (AbstractDrawingCommand cmd : lst) {
+        for (MapVizDrawingCommand cmd : lst) {
             for (int i : cmd.xler) {
                 double ii = Math.abs(i);
-                max = ii < max ? max : ii;
+                max = Math.max(ii, max);
             }
             for (int i : cmd.yler) {
                 double ii = Math.abs(i);
-                max = ii < max ? max : ii;
+                max = Math.max(ii, max);
             }
         }
         max += buffer;
         int offset = (int) Math.max(2 * max / 700, 1);
-        for (AbstractDrawingCommand cmd : lst) {
+        for (MapVizDrawingCommand cmd : lst) {
             for (int i = 0; i < cmd.xler.length; i++) {
                 cmd.xler[i] += max;
                 cmd.xler[i] /= offset;
@@ -171,22 +92,64 @@ public class MapViz implements Map.Visualization {
         }
     }
 
+    private class VizLib extends VisualizationLibrary<MapVizDrawingCommand> {
+
+        public VizLib() {
+            super(map.getContext().geometryUtils);
+        }
+
+        protected MapVizDrawingCommand drawPoint(Point geom, Color color) {
+            return new MapVizDrawingCommand(geom, color) {
+                @Override
+                protected void fillGeom(Graphics g, int[] xler, int[] yler) {
+                    g.fillOval(xler[0] - buffer, yler[0] - buffer, buffer * 2, buffer * 2);
+                }
+            };
+        }
+
+        protected MapVizDrawingCommand drawPolygon(Polygon geom, Color color) {
+            return new MapVizDrawingCommand(geom, color) {
+                @Override
+                protected void fillGeom(Graphics g, int[] xler, int[] yler) {
+                    g.fillPolygon(xler, yler, xler.length);
+                }
+            };
+        }
+
+
+        protected MapVizDrawingCommand drawLine(Geometry geom, Color color) {
+            return new MapVizDrawingCommand(geom, color) {
+                @Override
+                protected void fillGeom(Graphics g, int[] xler, int[] yler) {
+                    g.drawPolyline(xler, yler, xler.length);
+                }
+            };
+        }
+
+        protected MapVizDrawingCommand drawString(Geometry geom, Color color) {
+            return new MapVizDrawingCommand(geom, color) {
+                @Override
+                protected void fillGeom(Graphics g, int[] xler, int[] yler) {
+                    g.drawString(geom.getClass().getSimpleName(), xler[0], yler[0]);
+                }
+            };
+        }
+    }
+
     /**
-     * 
+     *
      * @see <a href="https://www.smartycoder.com">smartycpder</a>
      *
      */
-    public abstract class AbstractDrawingCommand implements DrawingCommand {
-        int[] xler;
-        int[] yler;
-        private Color color;
+    public abstract class MapVizDrawingCommand extends VisualizationLibrary.AbstractDrawingCommand implements DrawingCommand {
+        protected final int[] xler;
+        protected final int[] yler;
 
-        AbstractDrawingCommand(Geometry geom, Color color) {
-            this.color = color;
+        MapVizDrawingCommand(Geometry geom, Color color) {
+            super(geom, color);
             Coordinate[] coords = geom.getCoordinates();
             xler = new int[coords.length];
             yler = new int[coords.length];
-
             for (int i = 0; i < coords.length; i++) {
                 xler[i] = (int) Math.round(coords[i].getX() * scale);
                 yler[i] = -1 * (int) Math.round(coords[i].getY() * scale);
@@ -200,15 +163,5 @@ public class MapViz implements Map.Visualization {
         }
 
         abstract protected void fillGeom(Graphics g, int[] xler, int[] yler);
-    }
-
-    public class DrawingCommandCollection implements DrawingCommand {
-        List<DrawingCommand> cmds = new ArrayList<>();
-
-        @Override
-        public void doDrawing(Graphics g) {
-            cmds.forEach(dc -> dc.doDrawing(g));
-        }
-
     }
 }

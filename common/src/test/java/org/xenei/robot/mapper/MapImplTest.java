@@ -162,7 +162,7 @@ public class MapImplTest {
         result = underTest.addCoord(p, null, true).join();
         assertFalse(result.isPresent());
 
-        System.out.println(MapReports.dumpModel(underTest, Namespace.PlanningModel));
+        //System.out.println(MapReports.dumpModel(underTest, Namespace.PlanningModel));
         askResult.addWhere(Namespace.s, Namespace.visited, Namespace.o);
         await().atMost(Duration.ofSeconds(5)).pollInterval(Duration.ofMillis(500)).untilAsserted(() -> underTest.ask(askResult));
     }

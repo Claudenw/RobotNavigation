@@ -4,5 +4,6 @@ import org.xenei.robot.common.ChassisInfo;
 
 public class TestChassisInfo  {
     // wheel size and max speed are unused in unit tests.
-    public static final ChassisInfo DEFAULT = new ChassisInfo(0.5, 0, 0);
+    public static final ChassisInfo DEFAULT = ChassisInfo.builder()
+            .width(0.5).wheelSize(7).stepAngle(0.1).motorFreq(100).build();
 }

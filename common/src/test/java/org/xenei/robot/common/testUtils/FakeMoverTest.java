@@ -8,10 +8,13 @@ import static org.xenei.robot.common.utils.AngleUtils.RADIANS_45;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.locationtech.jts.geom.CoordinateXY;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Position;
+import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.common.utils.AngleUtils;
 import org.xenei.robot.common.utils.CoordUtils;
+import org.xenei.robot.common.utils.RobutContext;
 
 public class FakeMoverTest {
     private static final double DELTA = 0.00000000001;
@@ -21,7 +24,9 @@ public class FakeMoverTest {
 
     @BeforeEach
     public void setup() {
-        underTest = new FakeMover(Position.from(0, 0), 5);
+
+        RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT, TestChassisInfo.DEFAULT);
+        underTest = new FakeMover(ctxt, new CoordinateXY(0, 0));
     }
 
     @Test

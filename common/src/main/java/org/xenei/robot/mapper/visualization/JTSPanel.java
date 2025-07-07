@@ -13,7 +13,7 @@ import javax.swing.JPanel;
 
 /**
  * 
- * @see https://www.smartycoder.com
+ * @see <a href="https://www.smartycoder.com">smarty coder</a>
  *
  */
 @SuppressWarnings("serial")

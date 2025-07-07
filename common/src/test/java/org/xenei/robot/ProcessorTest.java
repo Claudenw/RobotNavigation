@@ -44,7 +44,7 @@ public class ProcessorTest {
     @Test
     public void stepTestMap2() throws AbortedException {
         Location startCoord = Location.from(-1, -3);
-        Mover mover = new FakeMover(Location.from(startCoord), 1);
+        Mover mover = new FakeMover(ctxt, startCoord.getCoordinate());
         Map m = new MapImpl(new RobutContext(ScaleInfo.DEFAULT, TestChassisInfo.DEFAULT));
         DistanceSensor sensor = new FakeDistanceSensor1(MapLibrary.map2(m), mover::position);
         Location finalCoord = Location.from(-1, 1);
@@ -54,7 +54,7 @@ public class ProcessorTest {
     @Test
     public void stepTestMap3() throws AbortedException {
         Location startCoord = Location.from(-1, -3);
-        Mover mover = new FakeMover(Location.from(startCoord), 1);
+        Mover mover = new FakeMover(ctxt, startCoord.getCoordinate());
         Map m = new MapImpl(new RobutContext(ScaleInfo.DEFAULT, TestChassisInfo.DEFAULT));
         DistanceSensor sensor = new FakeDistanceSensor2(MapLibrary.map3(m), AngleUtils.RADIANS_45, mover::position);
         Location finalCoord = Location.from(-1, 1);
@@ -64,7 +64,7 @@ public class ProcessorTest {
     @Test
     public void stepTestEmptyMap() throws AbortedException {
         Location startCoord = Location.from(-1, -3);
-        Mover mover = new FakeMover(Location.from(startCoord), 1);
+        Mover mover = new FakeMover(ctxt, startCoord.getCoordinate());
         Map m = new MapImpl(new RobutContext(ScaleInfo.DEFAULT, TestChassisInfo.DEFAULT));
         DistanceSensor sensor = new FakeDistanceSensor1(m, mover::position);
         Location finalCoord = Location.from(-1, 1);
@@ -80,6 +80,26 @@ public class ProcessorTest {
             if (maxLoops < stepCount++) {
                 throw new AbortedException("Did not find solution in " + maxLoops + " steps");
             }
+        }
+    }
+
+    public static void main(String[] args) throws AbortedException, InterruptedException {
+        RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT, TestChassisInfo.DEFAULT);
+        Location startCoord = Location.from(-1, -3);
+        Mover mover = new FakeMover(ctxt, startCoord.getCoordinate());
+        Map m = new MapImpl(new RobutContext(ScaleInfo.DEFAULT, TestChassisInfo.DEFAULT));
+        DistanceSensor sensor = new FakeDistanceSensor1(MapLibrary.map2(m), mover::position);
+        Location finalCoord = Location.from(-1, 1);
+        Supplier<Position> positionSupplier = mover::position;
+        MapImpl map = new MapImpl(ctxt);
+        MapLibrary.map2(map);
+        Processor underTest = new Processor(ctxt, mover, positionSupplier, map);
+        MapViz mapViz = new MapViz(100, underTest.map, underTest.planner::getSolution, positionSupplier, () -> null);
+        underTest.add(mapViz);
+        mapViz.redraw();
+
+        while (true) {
+            Thread.sleep(1000);
         }
     }
 }

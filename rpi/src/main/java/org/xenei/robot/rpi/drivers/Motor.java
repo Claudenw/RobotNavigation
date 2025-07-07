@@ -53,5 +53,11 @@ public interface Motor extends AutoCloseable {
          * @return the number of rotations.
          */
         double fwdRotation();
+
+        /**
+         * Gets the number of steps necessary to make one rotation of the drive shaft.
+         * @return the number of steps necessary to make one rotation of the drive shaft.
+         */
+        double stepsPerRotation();
     }
 }

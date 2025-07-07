@@ -1,5 +1,6 @@
 package org.xenei.robot;
 
+import java.io.IOException;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Supplier;
@@ -11,6 +12,7 @@ import org.apache.jena.geosparql.implementation.vocabulary.Geo;
 import org.apache.jena.rdf.model.Literal;
 import org.apache.jena.sparql.core.Var;
 import org.apache.jena.vocabulary.RDF;
+import org.locationtech.jts.geom.Coordinate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xenei.robot.common.AbortedException;
@@ -23,6 +25,7 @@ import org.xenei.robot.common.Position;
 import org.xenei.robot.common.mapping.Map;
 import org.xenei.robot.common.mapping.Mapper;
 import org.xenei.robot.common.planning.Planner;
+import org.xenei.robot.common.planning.Solution;
 import org.xenei.robot.common.planning.Step;
 import org.xenei.robot.common.utils.DoubleUtils;
 import org.xenei.robot.common.utils.RobutContext;
@@ -31,6 +34,7 @@ import org.xenei.robot.mapper.MapReports;
 import org.xenei.robot.mapper.MapBumpSensorAdapter;
 import org.xenei.robot.mapper.MapperImpl;
 import org.xenei.robot.mapper.rdf.Namespace;
+import org.xenei.robot.mapper.visualization.RemoteVis;
 import org.xenei.robot.planner.PlannerImpl;
 
 public class Processor {
@@ -42,6 +46,7 @@ public class Processor {
     private final Mapper mapper;
     private final Mover mover;
     private final Supplier<Position> positionSupplier;
+    private final RemoteVis remoteVis;
 
     public Processor(RobutContext ctxt, Mover mover, Supplier<Position> positionSupplier, Map map) {
         this.ctxt = ctxt;
@@ -50,7 +55,13 @@ public class Processor {
         this.map = map;
         this.planner = new PlannerImpl(map, positionSupplier);
         this.mapper = new MapperImpl(map, positionSupplier, planner::getFinalTarget);
-        LOG.debug("Initial position: ()", positionSupplier.get());
+        try {
+            this.remoteVis = new RemoteVis(map, planner::getSolution, positionSupplier,
+                    planner::getFinalTarget);
+            LOG.debug("Initial position: {}", positionSupplier.get());
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public Planner getPlanner() {
@@ -88,11 +99,11 @@ public class Processor {
                 if (cont) {
                     // we can really see the final position.
                     LOG.info("can see {} from {}", planner.getFinalTarget(), snapshot.position);
-                    Literal pathWkt = ctxt.graphGeomFactory.asWKTPath(ctxt.chassisInfo.radius, planner.getFinalTarget(),
-                            snapshot.position.getCoordinate());
-                    Var wkt = Var.alloc("wkt");
-
-                    ExprFactory exprF = new ExprFactory();
+//                    Literal pathWkt = ctxt.graphGeomFactory.asWKTPath(ctxt.chassisInfo.radius, planner.getFinalTarget(),
+//                            snapshot.position.getCoordinate());
+//                    Var wkt = Var.alloc("wkt");
+//
+//                    ExprFactory exprF = new ExprFactory();
 //                    System.out.println(MapReports.dumpQuery((MapImpl) map, new SelectBuilder() //
 //                            .from(Namespace.UnionModel.getURI()) //
 //                            .addWhere(Namespace.s, RDF.type, Namespace.Obst) //
@@ -100,15 +111,17 @@ public class Processor {
 //                            .addBind(ctxt.graphGeomFactory.calcDistance(exprF, pathWkt, wkt), "?dist")
 //                            .addBind(exprF.eq(ctxt.graphGeomFactory.calcDistance(exprF, pathWkt, wkt), 0), "?le")));
 
-                    AskBuilder ask = new AskBuilder().from(Namespace.UnionModel.getURI()) //
-                            .addWhere(Namespace.s, RDF.type, Namespace.Obst) //
-                            .addWhere(Namespace.s, Geo.AS_WKT_PROP, wkt)
-                            .addFilter(exprF.eq(ctxt.graphGeomFactory.calcDistance(exprF, pathWkt, wkt), 0));
-                    System.out.println(((MapImpl) map).ask(ask));
-                    System.out.println(MapReports.dumpQuery((MapImpl) map,
+//                    AskBuilder ask = new AskBuilder().from(Namespace.UnionModel.getURI()) //
+//                            .addWhere(Namespace.s, RDF.type, Namespace.Obst) //
+//                            .addWhere(Namespace.s, Geo.AS_WKT_PROP, wkt)
+//                            .addFilter(exprF.eq(ctxt.graphGeomFactory.calcDistance(exprF, pathWkt, wkt), 0));
+                    /*System.out.println(((MapImpl) map).ask(ask));
+                    //System.out.println(MapReports.dumpQuery((MapImpl) map,
                             new SelectBuilder().from(Namespace.UnionModel.getURI())
                                     .addWhere(Namespace.s, Namespace.p, Namespace.o)
                                     .addWhere(Namespace.s, RDF.type, Namespace.Obst)));
+                                    */
+
                     planner.replaceTarget(planner.getFinalTarget());
                     planner.notifyListeners();
                     return true;
@@ -127,38 +140,25 @@ public class Processor {
         moveTo(finalCoord, p -> {
         });
     }
-    
-//    private void processSensorData(NavigationSnapshot snapshot) {
-//        mapper.processSensorData(planner.getFinalTarget(), snapshot, sensor.sense());
-//        planner.notifyListeners();
-//    }
+
 
     private NavigationSnapshot setHeading(double heading) {
         // adjust the heading 
         mover.setHeading(heading);
-        NavigationSnapshot snapshot = newSnapshot();
-        // look where we are heading.
-//        processSensorData(snapshot);
-        return snapshot;
+        return newSnapshot();
     }
     
-    private NavigationSnapshot move(Step step) throws AbortedException {
+    private NavigationSnapshot move(Step step)  {
         Location relativeLoc = mover.position().relativeLocation(step.getCoordinate());
-        try {
-            map.setVisited(planner.getFinalTarget(), mover.move(relativeLoc).getCoordinate()).get();
-        } catch (ExecutionException  | InterruptedException e) {
-            throw new AbortedException(e);
-        }
+        map.setVisited(planner.getFinalTarget(), mover.move(relativeLoc).getCoordinate()).join();
         NavigationSnapshot snapshot = newSnapshot();
         planner.registerPositionChange(snapshot);
-        //processSensorData(snapshot);
         return snapshot;
     }
 
     public void moveTo(Location finalLocation, AbortTest abortTest) throws AbortedException {
         map.addCoord(finalLocation.getCoordinate(), null, false);
         NavigationSnapshot snapshot = new NavigationSnapshot(positionSupplier.get(), finalLocation.getCoordinate());
-        //processSensorData(snapshot);
         double heading = planner.setTarget(snapshot.target);
         if (LOG.isDebugEnabled()) {
             LOG.debug( "calculated heading {} compare to {}", heading, positionSupplier.get().getHeading() );
