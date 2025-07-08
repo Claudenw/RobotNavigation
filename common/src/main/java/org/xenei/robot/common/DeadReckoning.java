@@ -6,6 +6,7 @@ import org.xenei.robot.common.utils.RobutContext;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 public class DeadReckoning implements Compass, Supplier<Position> {
@@ -98,7 +99,6 @@ public class DeadReckoning implements Compass, Supplier<Position> {
     }
 
    public interface StepMonitor {
-        void stop();
 
         boolean hasStepDifferential();
 

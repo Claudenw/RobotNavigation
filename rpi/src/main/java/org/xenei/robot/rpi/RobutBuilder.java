@@ -17,15 +17,9 @@ import org.xenei.robot.common.ChassisInfo;
 import org.xenei.robot.common.DistanceSensor;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Mover;
-import org.xenei.robot.common.Position;
 import org.xenei.robot.common.ScaleInfo;
-import org.xenei.robot.common.utils.AngleUtils;
 import org.xenei.robot.common.utils.CoordUtils;
 import org.xenei.robot.common.utils.RobutContext;
-import org.xenei.robot.mapper.MapDistanceSensorAdapter;
-import org.xenei.robot.mapper.MapImpl;
-import org.xenei.robot.mapper.MapBumpSensorAdapter;
-import org.xenei.robot.mapper.RelativeLocationDistanceSensorAdapter;
 import org.xenei.robot.rpi.drivers.ULN2003;
 import org.xenei.robot.rpi.mover.RpiMover;
 import org.xenei.robot.rpi.sensors.Arduino;
@@ -33,15 +27,19 @@ import org.xenei.robot.rpi.sensors.BumpSensorImpl;
 
 public class RobutBuilder {
     private RobutBuilder() {
+    }
 
+    public static ChassisInfo chassisInfo() {
+        return ChassisInfo.builder().width(0.24).wheelSize(3.2)
+                .motorInfo(ULN2003.STEPPER_28BYJ48)
+                .build();
     }
 
     public static Robut build(Coordinate origin) throws InterruptedException {
-        RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT, new ChassisInfo(0.24, 8, 60,
-                ChassisInfo.metersPerStep(ULN2003.STEPPER_28BYJ48, 8)));
+        RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT, chassisInfo());
         BumpSensorImpl bumpSensor = new BumpSensorImpl();
         Mover mover = new RpiMover(ctxt, new CompassImpl(), origin);
-        DistanceSensor distSensor = new Arduino();
+        DistanceSensor distSensor = new Arduino(mover::position);
         return new Robut(ctxt, bumpSensor, distSensor, mover);
     }
 

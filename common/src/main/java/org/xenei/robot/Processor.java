@@ -73,7 +73,7 @@ public class Processor {
     }
 
     public void add(Map.Visualization visualization) {
-        planner.addListener(() -> {visualization.redraw(); return null;});
+        planner.addListener( v -> visualization.redraw());
     }
 
     private boolean checkTarget(NavigationSnapshot snapshot) {

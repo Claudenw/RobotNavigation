@@ -8,6 +8,7 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.DefaultParser;
@@ -30,6 +31,7 @@ import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.common.utils.CoordUtils;
 import org.xenei.robot.common.utils.RobutContext;
 import org.xenei.robot.ml.SensorLayer;
+import org.xenei.robot.rpi.RobutBuilder;
 import org.xenei.robot.rpi.drivers.Motor;
 import org.xenei.robot.rpi.drivers.Motor.SteppingStatus;
 import org.xenei.robot.rpi.drivers.ULN2003;
@@ -95,8 +97,7 @@ public class RpiMover extends BaseMover implements Mover, AutoCloseable {
 
     public static void main(String[] args) {
         try {
-            RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT, new ChassisInfo(0.23, 3.2, 60,
-                    ChassisInfo.metersPerStep(ULN2003.STEPPER_28BYJ48, 3.2)));
+            RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT, RobutBuilder.chassisInfo());
             BumpSensorImpl bumpSensor = new BumpSensorImpl();
             ctxt.scheduleAtFixedRate(bumpSensor, 500, 42, TimeUnit.MILLISECONDS);
             try (RpiMover mover = new RpiMover(ctxt, null, new Coordinate(0, 0))) {
@@ -171,16 +172,16 @@ public class RpiMover extends BaseMover implements Mover, AutoCloseable {
         LOG.debug("RpiMover shut down complete");
     }
 
-    @Override
-    protected int steps(double range) {
-        long steps = Math.round(motor[LEFT].stepsPerRotation() * range / rotationalDistance);
-        return limit(steps, Integer.MIN_VALUE, Integer.MAX_VALUE);
-    }
-
-    @Override
-    protected int stepsForArc(double theta) {
-        return DeadReckoning.stepsTo(theta);
-    }
+//    @Override
+//    protected int steps(double range) {
+//        long steps = Math.round(motor[LEFT].stepsPerRotation() * range / rotationalDistance);
+//        return limit(steps, Integer.MIN_VALUE, Integer.MAX_VALUE);
+//    }
+//
+//    @Override
+//    protected int stepsForArc(double theta) {
+//        return DeadReckoning.stepsTo(theta);
+//    }
 
     @Override
     protected Optional<SensorLayer> takeSteps(int left, int right, byte lastSensor) {
@@ -188,7 +189,7 @@ public class RpiMover extends BaseMover implements Mover, AutoCloseable {
         SteppingStatus ssLeft = motor[LEFT].prepareRun(left, rpm);
         SteppingStatus ssRight = motor[RIGHT].prepareRun(right, rpm);
         StepMonitor result = new StepMonitor(ssLeft, ssRight);
-        BumpDetector bumpChangeDetector = new BumpDetector(result::stop, lastSensor);
+        BumpDetector bumpChangeDetector = new BumpDetector(this, lastSensor);
         bumpSensorModel.addListener(bumpChangeDetector);
         try {
             deadReckoning.track(result);
@@ -205,4 +206,70 @@ public class RpiMover extends BaseMover implements Mover, AutoCloseable {
     public Position position() {
         return Position.from(coordinates, compass.heading());
     }
+
+    public class StepMonitor implements Runnable, DeadReckoning.StepMonitor {
+        private final Motor.SteppingStatus ssLeft;
+        private final Motor.SteppingStatus ssRight;
+        private final AtomicBoolean stopped = new AtomicBoolean(false);
+
+        StepMonitor(Motor.SteppingStatus ssLeft, Motor.SteppingStatus ssRight) {
+            this.ssLeft = ssLeft;
+            this.ssRight = ssRight;
+        }
+
+
+        private void sleep() {
+            try {
+                Thread.sleep(ssLeft.millisecondsPerStep());
+            } catch (InterruptedException e) {
+                LOG.warn("Interrupted while waiting for sleep", e);
+                accept(MotorState.STOP);
+            }
+        }
+
+        @Override
+        public void run()  {
+            Mover.MotorState motorState;
+            while (!Mover.MotorState.STOP.equals(motorState = getMotorState())) {
+                if (Mover.MotorState.RUN.equals(motorState)) {
+                    // do not merge the following 2 lines or the logic will short circuit.
+                    boolean keepRunning = ssLeft.step();
+                    keepRunning |= ssRight.step();
+                    if (!keepRunning) {
+                        accept(Mover.MotorState.STOP);
+                    } else {
+                        sleep();
+                    }
+                } else {
+                    sleep();
+                }
+            }
+        }
+
+        @Override
+        public boolean hasStepDifferential() {
+            return ssLeft.fwdSteps() != ssRight.fwdSteps();
+        }
+
+        @Override
+        public double leftRotation() {
+            return ssLeft.fwdRotation();
+        }
+
+        @Override
+        public double rightRotation() {
+            return ssRight.fwdRotation();
+        }
+
+        @Override
+        public int leftSteps() {
+            return ssLeft.fwdSteps();
+        }
+
+        @Override
+        public int rightSteps() {
+            return ssRight.fwdSteps();
+        }
+    }
+
 }

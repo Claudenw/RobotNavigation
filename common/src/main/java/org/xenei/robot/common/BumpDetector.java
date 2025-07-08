@@ -10,24 +10,24 @@ import java.util.function.Consumer;
  */
 public class BumpDetector implements Consumer<SensorLayer> {
     private SensorLayer sensorLayer;
-    private final StopSwitch stopSwitch;
+    private final Consumer<Mover.MotorState> motorState;
     private final byte lastTrigger;
 
     /**
      * constructor.
-     * @param stopSwitch the stop switch.
+     * @param motorState the consumer of motor state changes
      */
-    BumpDetector(StopSwitch stopSwitch) {
-        this(stopSwitch, (byte)0);
+    BumpDetector(Consumer<Mover.MotorState> motorState) {
+        this(motorState, (byte)0);
     }
 
     /**
      * Constructor with existing trigger state.
-     * @param stopSwitch the step monitor to stop.
+     * @param motorState the consumer of motor state changes.
      * @param lastTrigger the existing trigger value.
      */
-    public BumpDetector(StopSwitch stopSwitch, byte lastTrigger) {
-        this.stopSwitch = stopSwitch;
+    public BumpDetector(Consumer<Mover.MotorState> motorState, byte lastTrigger) {
+        this.motorState = motorState;
         this.lastTrigger = lastTrigger;
     }
 
@@ -35,7 +35,7 @@ public class BumpDetector implements Consumer<SensorLayer> {
     public void accept(SensorLayer sensorLayer) {
         if (sensorLayer.getTrigger() != lastTrigger) {
             this.sensorLayer = sensorLayer;
-            stopSwitch.stop();
+            motorState.accept(Mover.MotorState.PAUSE);
         }
     }
 

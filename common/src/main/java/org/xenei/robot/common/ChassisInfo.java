@@ -76,8 +76,7 @@ public class ChassisInfo {
     public static class Builder {
         double width;
         double wheelDiameterInCm;
-        double motorFreq;
-        double stepAngle;
+        MotorInfo motorInfo;
 
         public Builder width(double width) {
             this.width = width;
@@ -87,16 +86,15 @@ public class ChassisInfo {
             this.wheelDiameterInCm = wheelDiameterInCm;
             return this;
         }
-        public Builder motorFreq(double motorFreq) {
-            this.motorFreq = motorFreq;
+        public Builder motorInfo(MotorInfo motorInfo) {
+            this.motorInfo = motorInfo;
             return this;
         }
-        public Builder stepAngle(double stepAngle) {
-            this.stepAngle = stepAngle;
-            return this;
-        }
+
         public ChassisInfo build() {
-            return new ChassisInfo(width, wheelDiameterInCm, motorFreq, metersPerStep(stepAngle, wheelDiameterInCm / 100));
+            double wheelDiameter = wheelDiameterInCm / 100;
+            return new ChassisInfo(width, wheelDiameter, motorInfo.freq(),
+                    metersPerStep(motorInfo.stepAngle(), wheelDiameter));
         }
 
         /**
@@ -113,6 +111,5 @@ public class ChassisInfo {
         public static double stepsPerRotation(double stepAngle) {
             return AngleUtils.PI_x_2 / stepAngle;
         }
-
     }
 }

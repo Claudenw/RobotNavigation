@@ -194,7 +194,7 @@ public class PlannerTest {
         Location finalCoord = Location.from(-1, 1);
         TestingPositionSupplier supplier = new TestingPositionSupplier(Position.from(-1, -3));
         underTest = new PlannerImpl(map, supplier, finalCoord);
-        underTest.addListener(() -> result[0]++);
+        underTest.addListener(v -> result[0]++);
         underTest.notifyListeners();
         assertEquals(1, result[0]);
         verify(map).recalculate(coordinateCaptor.capture());

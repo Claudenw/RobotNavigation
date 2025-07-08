@@ -2,7 +2,8 @@ package org.xenei.robot.common;
 
 import java.util.function.Consumer;
 
-public interface Mover {
+public interface Mover extends Consumer<Mover.MotorState> {
+    enum MotorState {RUN, PAUSE, STOP}
     /**
      * Move to the specified location
      * 

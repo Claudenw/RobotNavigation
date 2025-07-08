@@ -28,7 +28,6 @@ public class FakeMover extends BaseMover {
         ctxt.scaleInfo.getResolution();
     }
 
-
     @Override
     public Position position() {
         return deadReckoning.get();
@@ -38,7 +37,7 @@ public class FakeMover extends BaseMover {
     protected Optional<SensorLayer> takeSteps(int left, int right, byte lastSensor) {
         LOG.debug("Taking steps {} {} ", left, right);
         StepMonitor result = new StepMonitor(left, right);
-        BumpDetector bumpChangeDetector = new BumpDetector(result::stop, lastSensor);
+        BumpDetector bumpChangeDetector = new BumpDetector(this, lastSensor);
         bumpSensorModel.addListener(bumpChangeDetector);
         try {
             deadReckoning.track(result);
@@ -57,7 +56,6 @@ public class FakeMover extends BaseMover {
         private final int rightLimit;
         private final int leftIncrement;
         private final int rightIncrement;
-        private final AtomicBoolean stopped = new AtomicBoolean(false);
 
 
         StepMonitor(int leftLimit, int rightLimit) {
@@ -65,11 +63,6 @@ public class FakeMover extends BaseMover {
             this.leftIncrement = leftLimit < 0 ? -1 : 1;
             this.rightLimit = rightLimit;
             this.rightIncrement = rightLimit < 0 ? -1 : 1;
-        }
-
-        @Override
-        public void stop() {
-           stopped.set(true);
         }
 
         @Override
@@ -97,27 +90,37 @@ public class FakeMover extends BaseMover {
             return rightSteps;
         }
 
+        private void sleep() {
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                LOG.warn("Interrupted while waiting for sleep", e);
+                accept(MotorState.STOP);
+            }
+        }
+
         @Override
         public void run()  {
             final long sleepTime = 10;
-            while (!stopped.get()) {
-                // do not merge the following 2 lines or the logic will short circuit.
-                boolean keepRunning = leftSteps < leftLimit;
-                keepRunning |= rightSteps < rightLimit;
-                stopped.compareAndExchange(false, !keepRunning);
-                if (keepRunning) {
-                    if (leftSteps != leftLimit) {
-                        leftSteps += leftIncrement;
+            MotorState motorState;
+            while (!MotorState.STOP.equals(motorState = getMotorState())) {
+                if (MotorState.RUN.equals(motorState)) {
+                    // do not merge the following 2 lines or the logic will short circuit.
+                    boolean keepRunning = leftSteps < leftLimit;
+                    keepRunning |= rightSteps < rightLimit;
+                    if (keepRunning) {
+                        if (leftSteps != leftLimit) {
+                            leftSteps += leftIncrement;
+                        }
+                        if (rightSteps != rightLimit) {
+                            rightSteps += rightIncrement;
+                        }
+                        sleep();
+                    } else {
+                        accept(MotorState.STOP);
                     }
-                    if (rightSteps != rightLimit) {
-                        rightSteps += rightIncrement;
-                    }
-                    try {
-                        Thread.sleep(sleepTime);
-                    } catch (InterruptedException e) {
-                        LOG.warn("Interrupted while waiting for sleep", e);
-                        stop();
-                    }
+                } else {
+                    sleep();
                 }
             }
         }

@@ -8,6 +8,8 @@ import org.xenei.robot.common.utils.RobutContext;
 import org.xenei.robot.ml.SensorLayer;
 
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 public abstract class BaseMover implements Mover {
@@ -17,21 +19,32 @@ public abstract class BaseMover implements Mover {
     protected final BumpSensorModel bumpSensorModel;
     protected final Compass compass;
     protected final RobutContext ctxt;
+    private final AtomicReference<MotorState> motorState;
 
     protected BaseMover(RobutContext ctxt, Compass compass, BumpSensorModel bumpSensorModel) {
         this.ctxt = ctxt;
         this.compass = compass;
         this.bumpSensorModel = bumpSensorModel;
+        this.motorState = new AtomicReference<>(MotorState.STOP);
     }
 
     final public Consumer<BumpSensor.BumpState> getBumpSensorListener() {
         return bumpSensorModel;
     }
 
+    protected MotorState getMotorState() {
+        return motorState.get();
+    }
+
+    public void accept(MotorState motorState) {
+        this.motorState.set(motorState);
+    }
+
     @Override
     final public Position move(Location location) {
         Position currentPosition = position();
         Position nxt = currentPosition.nextPosition(location);
+        accept(MotorState.RUN);
         setHeading(currentPosition.headingTo(nxt));
         int rangeSteps = ctxt.chassisInfo.steps(location.range());
         takeSteps(rangeSteps, rangeSteps, (byte)0).ifPresent(this::fixBumpSensor);

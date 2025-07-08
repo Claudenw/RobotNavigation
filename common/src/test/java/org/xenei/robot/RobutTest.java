@@ -28,12 +28,10 @@ import java.util.concurrent.TimeUnit;
 public class RobutTest {
 
     private static Robut build(Coordinate origin) throws InterruptedException {
-        ChassisInfo.Builder builder = new ChassisInfo.Builder()
-                .width(0.24).wheelSize(8).stepAngle(0.1).motorFreq(100);
-        RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT, builder.build());
+        RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT, TestChassisInfo.DEFAULT);
         FakeBumpSensor bumpSensor = new FakeBumpSensor();
         Mover mover = new FakeMover(ctxt, origin);
-        Map sensorMap = new MapImpl(new RobutContext(ScaleInfo.DEFAULT, TestChassisInfo.DEFAULT));
+        Map sensorMap = new MapImpl(ctxt);
         DistanceSensor distSensor = new FakeDistanceSensor1(MapLibrary.map2(sensorMap), mover::position);
 
         Robut robut = new Robut(ctxt, bumpSensor, distSensor, mover);

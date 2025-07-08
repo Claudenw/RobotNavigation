@@ -2,7 +2,7 @@ package org.xenei.robot.rpi.sensors;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.nio.ShortBuffer;;
+import java.nio.ShortBuffer;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;

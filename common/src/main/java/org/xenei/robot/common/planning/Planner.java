@@ -5,10 +5,13 @@ import java.util.Optional;
 
 import org.locationtech.jts.geom.Coordinate;
 import org.xenei.robot.common.FrontsCoordinate;
-import org.xenei.robot.common.ListenerContainer;
+//import org.xenei.robot.common.ListenerContainer;
+import org.xenei.robot.common.Listeners;
 import org.xenei.robot.common.NavigationSnapshot;
 
-public interface Planner extends ListenerContainer {
+public interface Planner extends Listeners<Void> {
+
+    void notifyListeners();
 
     /**
      * Gets the coordinates of the target.

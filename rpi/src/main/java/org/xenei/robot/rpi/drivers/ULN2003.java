@@ -2,8 +2,6 @@ package org.xenei.robot.rpi.drivers;
 
 import java.util.Arrays;
 import java.util.List;
-
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import org.apache.commons.cli.CommandLine;
@@ -14,7 +12,7 @@ import org.apache.commons.cli.HelpFormatter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xenei.robot.common.ChassisInfo;
-import org.xenei.robot.common.utils.AngleUtils;
+import org.xenei.robot.common.MotorInfo;
 import org.xenei.robot.rpi.utils.DigitalOutputDeviceFactory;
 
 import com.diozero.api.DigitalOutputDevice;
@@ -102,7 +100,7 @@ public class ULN2003 implements Motor {
     public ULN2003(Mode mode, MotorInfo motorInfo, int gpio1, int gpio2, int gpio3, int gpio4) throws InterruptedException {
         block = new MotorBlock(mode, gpio1, gpio2, gpio3, gpio4);
         this.motorInfo = motorInfo;
-        stepsPerRotation = (int)ChassisInfo.Builder.stepsPerRotation(motorInfo.stepAngle);
+        stepsPerRotation = (int)ChassisInfo.Builder.stepsPerRotation(motorInfo.stepAngle());
         LOG.debug("Created instance {}: {}", this.hashCode(), toString());
     }
     
@@ -143,7 +141,7 @@ public class ULN2003 implements Motor {
      */
     public SteppingStatusImpl prepareRun(int steps, int rpm) {
         int stepsPerMinute = rpm * stepsPerRotation;
-        stepsPerMinute = limit(stepsPerMinute, stepsPerRotation, motorInfo.freq * 60);
+        stepsPerMinute = limit(stepsPerMinute, stepsPerRotation, motorInfo.freq() * 60);
         // 60000 milliseconds per minute
 
         long msPerStep = 60000 / stepsPerMinute;
@@ -174,6 +172,11 @@ public class ULN2003 implements Motor {
             fwd = steps >= 0;
             this.msPerStep = msPerStep;
             LOG.debug("SteppingStatus created for {} steps", count);
+        }
+
+        @Override
+        public long millisecondsPerStep() {
+            return motorInfo.freq();
         }
 
         @Override
@@ -333,21 +336,6 @@ public class ULN2003 implements Motor {
          */
         public void stop() {
             setAll(true);
-        }
-    }
-
-    public static class MotorInfo {
-        double stepAngle;
-        int freq;
-
-        /**
-         *
-         * @param stepAngle step angle in radians
-         * @param freq max frequency in hertz
-         */
-        MotorInfo(double stepAngle, int freq) {
-            this.stepAngle = stepAngle;
-            this.freq = freq;
         }
     }
 }

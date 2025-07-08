@@ -5,14 +5,14 @@ import java.util.Collections;
 import java.util.Optional;
 import java.util.Stack;
 import java.util.concurrent.Callable;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import org.locationtech.jts.geom.Coordinate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.xenei.robot.common.ListenerContainer;
-import org.xenei.robot.common.ListenerContainerImpl;
+import org.xenei.robot.common.Listeners;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.NavigationSnapshot;
 import org.xenei.robot.common.Position;
@@ -27,7 +27,7 @@ public class PlannerImpl implements Planner  {
     private static final Logger LOG = LoggerFactory.getLogger(PlannerImpl.class);
     private final TargetStack target;
     private final Map map;
-    private final ListenerContainer listeners;
+    private final ListenersWithPublicTrigger<Void> listeners;
     private final Supplier<Position> positionSupplier;
     private Solution solution;
     private NavigationSnapshot snapshot;
@@ -49,7 +49,7 @@ public class PlannerImpl implements Planner  {
      */
     public PlannerImpl(Map map, Supplier<Position> positionSupplier, Location target) {
         this.map = map;
-        this.listeners = new ListenerContainerImpl(map.getContext());
+        this.listeners = new Listeners.ListenersWithPublicTrigger<>(map.getContext());
         this.target = new TargetStack();
         this.positionSupplier = positionSupplier;
         this.solution = new Solution();
@@ -72,13 +72,18 @@ public class PlannerImpl implements Planner  {
     }
 
     @Override
-    public void addListener(Callable<Void> listener) {
+    public void addListener(Consumer<Void> listener) {
         this.listeners.addListener(listener);
     }
 
     @Override
+    public void removeListener(Consumer<Void> listener) {
+        this.listeners.removeListener(listener);
+    }
+
+    @Override
     public void notifyListeners() {
-        this.listeners.notifyListeners();
+        this.listeners.trigger(null);
     }
 
     @Override

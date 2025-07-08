@@ -31,6 +31,12 @@ public interface Motor extends AutoCloseable {
     interface SteppingStatus {
 
         /**
+         * Gets the number of milliseconds it takes to complete a step.
+         * @return the number of milliseconds it takes to complete a step..
+         */
+        long millisecondsPerStep();
+
+        /**
          * Cause the motor to take a step.
          * @return {@code true} if the motor is still stepping.
          */

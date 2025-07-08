@@ -2,7 +2,7 @@ package org.xenei.robot.common;
 
 import java.util.function.Consumer;
 
-public interface BumpSensor extends Runnable{
+public interface BumpSensor extends Runnable {
     enum State { LEFT_FRONT_CORNER, RIGHT_FRONT_CORNER, LEFT_SIDE_FRONT, RIGHT_SIDE_FRONT,
     LEFT_SIDE_REAR, RIGHT_SIDE_REAR, LEFT_REAR_CORNER, RIGHT_REAR_CORNER;
 
