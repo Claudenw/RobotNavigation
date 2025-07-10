@@ -6,11 +6,11 @@ import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.xenei.robot.common.FrontsCoordinate;
 import org.xenei.robot.common.UnmodifiableCoordinate;
-import org.xenei.robot.common.planning.Step;
+import org.xenei.robot.common.planning.Segment;
 import org.xenei.robot.common.utils.CoordUtils;
 import org.xenei.robot.common.utils.RobutContext;
 
-public class StepImpl implements Step {
+public class StepImpl implements Segment {
     private final UnmodifiableCoordinate coord;
     private final double cost;
     private final Geometry geom;
@@ -82,7 +82,7 @@ public class StepImpl implements Step {
             return true;
         }
 
-        public Step build(RobutContext ctxt) {
+        public Segment build(RobutContext ctxt) {
             isValid(ctxt, true); // throws exception on not valid.
             return new StepImpl(coord, cost, distance, geom);
         }
@@ -141,7 +141,7 @@ public class StepImpl implements Step {
     }
 
     @Override
-    public int compareTo(Step other) {
-        return Step.compare.compare(this, other);
+    public int compareTo(Segment other) {
+        return Segment.compare.compare(this, other);
     }
 }

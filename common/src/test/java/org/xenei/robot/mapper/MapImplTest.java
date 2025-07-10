@@ -23,7 +23,6 @@ import org.apache.jena.arq.querybuilder.ExprFactory;
 import org.apache.jena.arq.querybuilder.SelectBuilder;
 import org.apache.jena.arq.querybuilder.WhereBuilder;
 import org.apache.jena.geosparql.implementation.vocabulary.Geo;
-import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.rdf.model.Literal;
 import org.apache.jena.rdf.model.Resource;
 import org.apache.jena.rdf.model.ResourceFactory;
@@ -35,14 +34,13 @@ import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.xenei.robot.common.FrontsCoordinate;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Position;
 import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.common.mapping.MapCoord;
 import org.xenei.robot.common.mapping.Obstacle;
 import org.xenei.robot.common.planning.Solution;
-import org.xenei.robot.common.planning.Step;
+import org.xenei.robot.common.planning.Segment;
 import org.xenei.robot.common.testUtils.CoordinateUtils;
 import org.xenei.robot.common.testUtils.DebugViz;
 import org.xenei.robot.common.testUtils.MapLibrary;
@@ -116,7 +114,7 @@ public class MapImplTest {
         underTest = new MapImpl(ctxt);
         t = new Coordinate(-1, 1);
 
-        Optional<Step> result = underTest.addCoord(p, null, false).join();
+        Optional<Segment> result = underTest.addCoord(p, null, false).join();
         assertFalse(result.isPresent());
 
         AskBuilder askResult = new AskBuilder()
@@ -140,7 +138,7 @@ public class MapImplTest {
         result = underTest.addCoord(p, t, false).join();
 
         assertTrue(result.isPresent());
-        Step step = result.get();
+        Segment step = result.get();
         assertEquals(4.0d, step.distance());
         assertEquals(t, step.getCoordinate());
         assertEquals(4.0d, step.cost());
@@ -172,9 +170,9 @@ public class MapImplTest {
         underTest = new MapImpl(ctxt);
         t = new Coordinate(-1, 1);
 
-        Optional<Step> result = underTest.addCoord(p, t, true).join();
+        Optional<Segment> result = underTest.addCoord(p, t, true).join();
         assertTrue(result.isPresent());
-        Step step = result.get();
+        Segment step = result.get();
         assertEquals(4.0d, step.distance());
         assertEquals(t, step.getCoordinate());
         assertEquals(4.0d, step.cost());
@@ -197,11 +195,11 @@ public class MapImplTest {
 
         underTest.addObstacle(new ObstacleImpl(-1, -2));
 
-        Optional<Step> result = underTest.addCoord(p, t, true).join();
+        Optional<Segment> result = underTest.addCoord(p, t, true).join();
         ctxt.awaitQuiescence(5, SECONDS);
 
         assertTrue(result.isPresent());
-        Step step = result.get();
+        Segment step = result.get();
         assertEquals(4.0d, step.distance());
         assertEquals(t, step.getCoordinate());
         assertEquals(8.0d, step.cost());
@@ -225,9 +223,9 @@ public class MapImplTest {
         List<Coordinate> solutions = List.of(new Coordinate(2, -1), new Coordinate(-4, -1));
         MapViz vMap = new MapViz(100, underTest, () -> solution, () -> Position.from(p), () -> t);
         vMap.redraw();
-        Optional<Step> pr = underTest.getBestStep(p);
+        Optional<Segment> pr = underTest.getBestStep(p);
         assertTrue(pr.isPresent());
-        Step step = pr.get();
+        Segment step = pr.get();
         assertTrue(solutions.contains(step.getCoordinate()));
 
         // remove the 2 possible solutions.
@@ -267,7 +265,7 @@ public class MapImplTest {
         setup();
         System.out.println(MapReports.dumpModel(underTest, Namespace.PlanningModel));
 
-        Optional<Step> pr = underTest.getStep(0.0, Location.from(p)).join();
+        Optional<Segment> pr = underTest.getStep(0.0, Location.from(p)).join();
         assertTrue(pr.isPresent());
         assertEquals(0, CoordUtils.XYCompr.compare(p, pr.get().getCoordinate()));
         assertEquals(p.distance(t), pr.get().distance());
@@ -298,7 +296,7 @@ public class MapImplTest {
         // Supplier<Position> positionSupplier = () -> Position.from( p );
         cMap.redraw();
         // looking from the target we should only see -4,-1 and 2,-1
-        Collection<Step> records = underTest.getSteps(p);
+        Collection<Segment> records = underTest.getSteps(p);
         cMap.redraw();
         assertEquals(12, records.size());
 
@@ -403,7 +401,7 @@ public class MapImplTest {
 
         Location c = Location.from(coordinates[0]);
 
-        Step before = underTest.getStep(0.0, c).join().orElseThrow();
+        Segment before = underTest.getStep(0.0, c).join().orElseThrow();
         Location newTarget = Location.from(-4, 1);
         t = newTarget.getCoordinate();
         underTest.recalculate(newTarget.getCoordinate());
@@ -415,7 +413,7 @@ public class MapImplTest {
         cMap.redraw();
 
 
-        Step after = underTest.getStep(0.0, c).join().orElseThrow();
+        Segment after = underTest.getStep(0.0, c).join().orElseThrow();
         assertNotEquals(before.cost(), after.cost());
 
         System.out.println(MapReports.dumpModel(underTest));
@@ -464,7 +462,7 @@ public class MapImplTest {
         c = Location.from(coordinates[0]);
         assertTrue(underTest.ask(ask));
 
-        Step before = underTest.getStep(0.0, c).join().orElseThrow();
+        Segment before = underTest.getStep(0.0, c).join().orElseThrow();
         underTest.updateCoordinate(Namespace.PlanningModel, c.getCoordinate(), Namespace.distance,
                 before.distance() + 5).join();
 
@@ -482,7 +480,7 @@ public class MapImplTest {
         }).join();
         assertEquals(1, count);
 
-        Step after = underTest.getStep(0.0, c).join().orElseThrow();
+        Segment after = underTest.getStep(0.0, c).join().orElseThrow();
         assertEquals(before.distance() + 5, after.distance());
     }
 
@@ -505,7 +503,7 @@ public class MapImplTest {
         // verify inserting a node near map coord shows up at map coord
         underTest = new MapImpl(ctxt);
         Location target = Position.from(p).nextPosition(Location.from(0,11));
-        Step step = underTest.addCoord(p, target.getCoordinate(), false).join().orElseThrow();
+        Segment step = underTest.addCoord(p, target.getCoordinate(), false).join().orElseThrow();
         assertEquals(11, step.cost());
         String result = MapReports.dumpModel(underTest, Namespace.PlanningModel);
         AskBuilder ask = new AskBuilder().addGraph(Namespace.PlanningModel, new WhereBuilder() //

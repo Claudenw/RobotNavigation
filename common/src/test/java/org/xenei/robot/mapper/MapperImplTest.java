@@ -10,7 +10,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -33,7 +32,7 @@ import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.common.mapping.Map;
 import org.xenei.robot.common.mapping.Mapper;
 import org.xenei.robot.common.mapping.Obstacle;
-import org.xenei.robot.common.planning.Step;
+import org.xenei.robot.common.planning.Segment;
 import org.xenei.robot.common.testUtils.CoordinateUtils;
 import org.xenei.robot.common.testUtils.TestChassisInfo;
 import org.xenei.robot.common.utils.AngleUtils;
@@ -91,7 +90,7 @@ public class MapperImplTest {
 
         Position currentPosition = Position.from(-0, 0, Math.toRadians(degrees));
         Coordinate target = new Coordinate(10, 10);
-        Step step = Mockito.mock(Step.class);
+        Segment step = Mockito.mock(Segment.class);
 
         Obstacle obstacle = Mockito.mock(Obstacle.class);
         Map map = Mockito.mock(Map.class);

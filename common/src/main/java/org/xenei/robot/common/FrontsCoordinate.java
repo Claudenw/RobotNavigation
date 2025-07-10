@@ -7,7 +7,7 @@ import org.xenei.robot.common.utils.CoordUtils;
 
 public interface FrontsCoordinate {
 
-    public static final FrontsCoordinate ORIGIN = new FrontsCoordinate() {
+    FrontsCoordinate ORIGIN = new FrontsCoordinate() {
         UnmodifiableCoordinate zero = UnmodifiableCoordinate.make(new Coordinate(0,0));
         @Override
         public UnmodifiableCoordinate getCoordinate() {
@@ -20,7 +20,7 @@ public interface FrontsCoordinate {
      * using the isInfinite() method.
      * @see #isInfinite()
      */
-    public static FrontsCoordinate INFINITE = new FrontsCoordinate() {
+    FrontsCoordinate INFINITE = new FrontsCoordinate() {
         UnmodifiableCoordinate infinity = UnmodifiableCoordinate.make(
                 new Coordinate(Double.POSITIVE_INFINITY,Double.POSITIVE_INFINITY));
         @Override
@@ -34,7 +34,7 @@ public interface FrontsCoordinate {
      * 
      * @see CoordUtils#XYCompr
      */
-    static Comparator<FrontsCoordinate> XYCompr = (one, two) -> {
+    Comparator<FrontsCoordinate> XYCompr = (one, two) -> {
         return CoordUtils.XYCompr.compare(one.getCoordinate(), two.getCoordinate());
     };
 

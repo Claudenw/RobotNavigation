@@ -7,12 +7,12 @@ import org.xenei.robot.common.FrontsCoordinate;
 import org.xenei.robot.common.Position;
 import org.xenei.robot.common.utils.CoordUtils;
 
-public interface Step extends FrontsCoordinate, Comparable<Step> {
+public interface Segment extends FrontsCoordinate, Comparable<Segment> {
 
     /**
      * The default comparator for Steps
      */
-    Comparator<Step> compare = (one, two) -> {
+    Comparator<Segment> compare = (one, two) -> {
         int x = Double.compare(one.cost(), two.cost());
         return x == 0 ? CoordUtils.XYCompr.compare(one.getCoordinate(), two.getCoordinate()) : x;
     };

@@ -20,6 +20,8 @@ import org.xenei.robot.common.Mover;
 import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.common.utils.CoordUtils;
 import org.xenei.robot.common.utils.RobutContext;
+import org.xenei.robot.mover.BaseMover;
+import org.xenei.robot.mover.BumpSensorLogicModule;
 import org.xenei.robot.rpi.drivers.ULN2003;
 import org.xenei.robot.rpi.mover.RpiMover;
 import org.xenei.robot.rpi.sensors.Arduino;
@@ -37,10 +39,15 @@ public class RobutBuilder {
 
     public static Robut build(Coordinate origin) throws InterruptedException {
         RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT, chassisInfo());
-        BumpSensorImpl bumpSensor = new BumpSensorImpl();
-        Mover mover = new RpiMover(ctxt, new CompassImpl(), origin);
+        BaseMover mover = new RpiMover(ctxt, new CompassImpl(), origin);
+        BumpSensorImpl bumpSensor = new BumpSensorImpl(ctxt);
+        BumpSensorLogicModule bumpSensorLogicModule = new BumpSensorLogicModule(ctxt, mover);
         DistanceSensor distSensor = new Arduino(mover::position);
-        return new Robut(ctxt, bumpSensor, distSensor, mover);
+        try {
+            return new Robut(ctxt, distSensor, mover);
+        } finally {
+            ctxt.scheduleAtFixedRate(bumpSensor, 500, 42, TimeUnit.MILLISECONDS);
+        }
     }
 
 

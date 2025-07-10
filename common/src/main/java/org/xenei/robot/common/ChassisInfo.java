@@ -2,6 +2,8 @@ package org.xenei.robot.common;
 
 import org.xenei.robot.common.utils.AngleUtils;
 
+import java.time.Duration;
+
 public class ChassisInfo {
     /**
      * The buffer needed from the center of the chassis
@@ -18,6 +20,10 @@ public class ChassisInfo {
      */
     public final double metersPerStep;
 
+    public final double stepsPerRotation;
+
+    public final MotorInfo motorInfo;
+
     public static Builder builder() {
         return new Builder();
     }
@@ -25,17 +31,35 @@ public class ChassisInfo {
      * Constructor.
      * @param radius the radius of the chassis.
      * @param wheelDiameter in m
-     * @param maxSpeed in m/min
+     * @param motorInfo the info for the motor.
      */
-    private ChassisInfo(double radius, double wheelDiameter, double maxSpeed, double metersPerStep) {
+    private ChassisInfo(double radius, double wheelDiameter, MotorInfo motorInfo) {
         this.radius = radius;
         this.wheelDiameter = wheelDiameter;
-        this.maxSpeed = maxSpeed;
-        this.metersPerStep = metersPerStep;
+        this.metersPerStep = metersPerStep(motorInfo.stepAngle(), wheelDiameter);
+        this.stepsPerRotation = stepsPerRotation(motorInfo.stepAngle());
+        long stepsPerMinute = Duration.ofMinutes(1).toMillis() / motorInfo.freq();
+        this.maxSpeed = metersPerStep * stepsPerMinute;
+        this.motorInfo = motorInfo;
     }
 
     public double width() {
         return radius * 2.0;
+    }
+
+    /**
+     *
+     * @param stepAngle in radians per step.
+     * @param wheelDiameter in m
+     * @return meters per step
+     */
+    private static double metersPerStep(double stepAngle, double wheelDiameter) {
+        double metersPerRev = Math.PI * wheelDiameter;
+        return metersPerRev / stepsPerRotation(stepAngle);
+    }
+
+    private static double stepsPerRotation(double stepAngle) {
+        return AngleUtils.PI_x_2 / stepAngle;
     }
 
     public int rotateSteps(double theta) {
@@ -63,6 +87,37 @@ public class ChassisInfo {
         return theta * wheelDiameter * Math.PI;
     }
 
+    double calcRange(double leftArc, double rightArc) {
+        if (leftArc >= 0) {
+            if (rightArc >= 0) {
+                return 2*leftArc - rightArc;
+            } else {
+                return leftArc + rightArc;
+            }
+        } else {
+            if (rightArc >= 0) {
+                return leftArc + rightArc;
+            } else {
+                return 2 * leftArc - rightArc;
+            }
+        }
+    }
+
+    public ThetaAndRange thetaAndRange(StepMonitor stepMonitor) {
+            double leftRange = range(stepMonitor.leftRotation());
+            double leftArc = pivotAngle(leftRange);
+
+            double rightRange = range(stepMonitor.rightRotation());
+            double rightArc = pivotAngle(rightRange);
+
+            return new ThetaAndRange(theta(stepMonitor.leftSteps(), stepMonitor.rightSteps()),  calcRange(leftArc, rightArc));
+    }
+
+    /**
+     * Estimate the number of steps to achieve a specific range.
+     * @param range the range to achieve
+     * @return the number of steps to get there.
+     */
     public int steps(double range) {
         return (int) Math.round(range / metersPerStep);
     }
@@ -93,23 +148,7 @@ public class ChassisInfo {
 
         public ChassisInfo build() {
             double wheelDiameter = wheelDiameterInCm / 100;
-            return new ChassisInfo(width, wheelDiameter, motorInfo.freq(),
-                    metersPerStep(motorInfo.stepAngle(), wheelDiameter));
-        }
-
-        /**
-         *
-         * @param stepAngle in radians per step.
-         * @param wheelDiameter in m
-         * @return meters per step
-         */
-        public static double metersPerStep(double stepAngle, double wheelDiameter) {
-            double metersPerRev = Math.PI * wheelDiameter;
-            return metersPerRev / stepsPerRotation(stepAngle);
-        }
-
-        public static double stepsPerRotation(double stepAngle) {
-            return AngleUtils.PI_x_2 / stepAngle;
+            return new ChassisInfo(width, wheelDiameter, motorInfo);
         }
     }
 }

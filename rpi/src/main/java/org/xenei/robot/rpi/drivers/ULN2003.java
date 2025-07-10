@@ -36,7 +36,6 @@ public class ULN2003 implements Motor {
 
     private final MotorBlock block;
     private final MotorInfo motorInfo;
-    private final int stepsPerRotation;
 
     private static Options getOptions() {
         
@@ -100,13 +99,7 @@ public class ULN2003 implements Motor {
     public ULN2003(Mode mode, MotorInfo motorInfo, int gpio1, int gpio2, int gpio3, int gpio4) throws InterruptedException {
         block = new MotorBlock(mode, gpio1, gpio2, gpio3, gpio4);
         this.motorInfo = motorInfo;
-        stepsPerRotation = (int)ChassisInfo.Builder.stepsPerRotation(motorInfo.stepAngle());
         LOG.debug("Created instance {}: {}", this.hashCode(), toString());
-    }
-    
-    @Override
-    public double stepsPerRotation() {
-        return stepsPerRotation;
     }
     
     @Override
@@ -117,7 +110,7 @@ public class ULN2003 implements Motor {
     @Override
     public String toString() {
         return "ULN2003 " + hashCode() + ":\n  " +
-                block.toString() + String.format("\n  stepsPerRotation: %s", stepsPerRotation);
+                block.toString() + String.format("\n  stepsPerRotation: %s", motorInfo.stepsPerRotation());
     }
 
     private int limit(int value, int min, int max) {
@@ -140,13 +133,14 @@ public class ULN2003 implements Motor {
      * than 150.
      */
     public SteppingStatusImpl prepareRun(int steps, int rpm) {
-        int stepsPerMinute = rpm * stepsPerRotation;
-        stepsPerMinute = limit(stepsPerMinute, stepsPerRotation, motorInfo.freq() * 60);
+
+        int stepsPerMinute = (int) Math.round(Math.max(rpm, 1) * motorInfo.stepsPerRotation());
+        stepsPerMinute = limit(stepsPerMinute, (int)motorInfo.stepsPerRotation(), motorInfo.stepsPerMinute());
         // 60000 milliseconds per minute
 
         long msPerStep = 60000 / stepsPerMinute;
         if (LOG.isDebugEnabled()) {
-            LOG.debug("Preparing task {} steps:{} rpm:{}", this, steps, stepsPerMinute / stepsPerRotation);
+            LOG.debug("Preparing task {} steps:{} rpm:{}", this, steps, stepsPerMinute / (int)motorInfo.stepsPerRotation());
         }
         return  new SteppingStatusImpl(steps, msPerStep);
     }
@@ -206,12 +200,12 @@ public class ULN2003 implements Motor {
         }
         
         public double fwdRotation() {
-            return fwdSteps() / stepsPerRotation; 
+            return fwdSteps() / motorInfo.stepsPerRotation();
         }
 
         @Override
         public double stepsPerRotation() {
-            return stepsPerRotation;
+            return motorInfo.stepsPerRotation();
         }
 
         @Override

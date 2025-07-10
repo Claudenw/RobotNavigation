@@ -4,18 +4,17 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
+
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+import java.util.function.Consumer;
 
 import org.apache.commons.collections4.map.LRUMap;
 import org.apache.jena.riot.RIOT;
@@ -24,21 +23,23 @@ import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.xenei.robot.common.ChassisInfo;
 import org.xenei.robot.common.ScaleInfo;
+import org.xenei.robot.common.mapping.Map;
+import org.xenei.robot.common.messages.Bus;
 import org.xenei.robot.mapper.GraphGeomFactory;
 import org.xenei.robot.mapper.rdf.Namespace;
-import org.xenei.robot.ml.SensorLayer;
 
 public class RobutContext {
-
     public static final Symbol symbol = Symbol.create(RobutContext.class.getName());
     public final ChassisInfo chassisInfo;
     public final ScaleInfo scaleInfo;
     public final GeometryFactory geometryFactory;
     public final GeometryUtils geometryUtils;
     public final GraphGeomFactory graphGeomFactory;
-    public final Map<String, Geometry> cache = Collections.synchronizedMap(new LRUMap<String, Geometry>(500));
+    public final java.util.Map<String, Geometry> cache = Collections.synchronizedMap(new LRUMap<String, Geometry>(500));
     private final ForkJoinPool workScheduler = (ForkJoinPool) Executors.newWorkStealingPool();
     private final ScheduledExecutorService scheduledExecutor = Executors.newSingleThreadScheduledExecutor();
+    public final Bus bus;
+    public final Visualizations visualizations;
 
     /**
      * Constructor
@@ -53,6 +54,8 @@ public class RobutContext {
         this.geometryFactory = new GeometryFactory(scaleInfo.getPrecisionModel());
         this.geometryUtils = new GeometryUtils(this);
         this.graphGeomFactory = new GraphGeomFactory(geometryUtils);
+        this.bus = new Bus(this);
+        this.visualizations = new Visualizations();
 
         Namespace.init(this);
     }
@@ -126,5 +129,27 @@ public class RobutContext {
         return String.format( "Qs:%d Qt:%d At:%d Rt:%d", workScheduler.getQueuedSubmissionCount(), workScheduler.getQueuedTaskCount(),
                 workScheduler.getActiveThreadCount(), workScheduler.getRunningThreadCount());
     }
+
+
+
+    public interface Processor<T> extends Consumer<T> {
+    }
+
+    public class Visualizations implements Map.Visualization {
+
+        private final CopyOnWriteArrayList<Map.Visualization> listeners = new CopyOnWriteArrayList<>();
+
+        public void register(Map.Visualization p) {
+            listeners.add(p);
+        }
+
+        public void unregister(Map.Visualization p) {
+            listeners.remove(p);
+        }
+
+        public void redraw() {
+            listeners.forEach(p -> submit(p::redraw));
+        }
+    };
 
 }

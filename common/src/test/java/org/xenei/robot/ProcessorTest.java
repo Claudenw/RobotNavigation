@@ -1,12 +1,12 @@
 package org.xenei.robot;
 
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import org.junit.jupiter.api.Test;
+import org.locationtech.jts.geom.Coordinate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.xenei.robot.Processor.AbortTest;
-import org.xenei.robot.common.AbortedException;
 import org.xenei.robot.common.DistanceSensor;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Mover;
@@ -31,20 +31,29 @@ public class ProcessorTest {
         ctxt = new RobutContext(ScaleInfo.DEFAULT, TestChassisInfo.DEFAULT);
     }
 
-    private void doTest(Location startCoord, Location finalCoord, Mover mover, DistanceSensor sensor)
-            throws AbortedException {
+    private void doTest(Location startCoord, Location finalCoord, FakeMover mover, DistanceSensor sensor) {
         Supplier<Position> positionSupplier = mover::position;
         MapImpl map = new MapImpl(ctxt);
-        Processor underTest = new Processor(ctxt, mover, positionSupplier, map);
+        Processor underTest = new Processor(mover, positionSupplier, map);
         MapViz mapViz = new MapViz(100, underTest.map, underTest.planner::getSolution, positionSupplier, () -> null);
-        underTest.add(mapViz);
-        underTest.moveTo(finalCoord, new StepTracker());
+        ctxt.visualizations.register(mapViz);
+        SegmentTracker segmentTracer = new SegmentTracker(ctxt);
+        try {
+            underTest.moveTo(finalCoord);
+            Coordinate target;
+            while ((target = underTest.getPlanner().getTarget()) != null) {
+                int stepsToTarget = ctxt.chassisInfo.steps(positionSupplier.get().distance(target));
+                mover.sleep(stepsToTarget);
+            }
+        } finally {
+            ctxt.bus.moveTo.unregister(segmentTracer);
+        }
     }
 
     @Test
-    public void stepTestMap2() throws AbortedException {
+    public void stepTestMap2() {
         Location startCoord = Location.from(-1, -3);
-        Mover mover = new FakeMover(ctxt, startCoord.getCoordinate());
+        FakeMover mover = new FakeMover(ctxt, startCoord.getCoordinate());
         Map m = new MapImpl(new RobutContext(ScaleInfo.DEFAULT, TestChassisInfo.DEFAULT));
         DistanceSensor sensor = new FakeDistanceSensor1(MapLibrary.map2(m), mover::position);
         Location finalCoord = Location.from(-1, 1);
@@ -52,9 +61,9 @@ public class ProcessorTest {
     }
 
     @Test
-    public void stepTestMap3() throws AbortedException {
+    public void stepTestMap3() {
         Location startCoord = Location.from(-1, -3);
-        Mover mover = new FakeMover(ctxt, startCoord.getCoordinate());
+        FakeMover mover = new FakeMover(ctxt, startCoord.getCoordinate());
         Map m = new MapImpl(new RobutContext(ScaleInfo.DEFAULT, TestChassisInfo.DEFAULT));
         DistanceSensor sensor = new FakeDistanceSensor2(MapLibrary.map3(m), AngleUtils.RADIANS_45, mover::position);
         Location finalCoord = Location.from(-1, 1);
@@ -62,41 +71,49 @@ public class ProcessorTest {
     }
     
     @Test
-    public void stepTestEmptyMap() throws AbortedException {
+    public void stepTestEmptyMap() {
         Location startCoord = Location.from(-1, -3);
-        Mover mover = new FakeMover(ctxt, startCoord.getCoordinate());
+        FakeMover mover = new FakeMover(ctxt, startCoord.getCoordinate());
         Map m = new MapImpl(new RobutContext(ScaleInfo.DEFAULT, TestChassisInfo.DEFAULT));
         DistanceSensor sensor = new FakeDistanceSensor1(m, mover::position);
         Location finalCoord = Location.from(-1, 1);
         doTest(startCoord, finalCoord, mover, sensor);
     }
 
-    private class StepTracker implements AbortTest {
-        private int stepCount = 0;
-        private int maxLoops = 100;
+    private class SegmentTracker implements Consumer<Mover.MoveTo> {
+        private int maxSegments = 100;
+        private int totalSegments = 0;
+        private RobutContext ctxt;
+
+
+        SegmentTracker(RobutContext ctxt) {
+            ctxt.bus.moveTo.register(this);
+            this.ctxt = ctxt;
+        }
 
         @Override
-        public void check(Processor processor) throws AbortedException {
-            if (maxLoops < stepCount++) {
-                throw new AbortedException("Did not find solution in " + maxLoops + " steps");
+        public void accept(Mover.MoveTo moveTo) {
+            if (++totalSegments > maxSegments) {
+                ctxt.bus.motor.send(Mover.MotorState.STOP);
+                throw new RuntimeException("Did not find solution in " + maxSegments + " steps");
             }
         }
     }
 
-    public static void main(String[] args) throws AbortedException, InterruptedException {
+    public static void main(String[] args) throws InterruptedException {
         RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT, TestChassisInfo.DEFAULT);
         Location startCoord = Location.from(-1, -3);
-        Mover mover = new FakeMover(ctxt, startCoord.getCoordinate());
+        FakeMover mover = new FakeMover(ctxt, startCoord.getCoordinate());
         Map m = new MapImpl(new RobutContext(ScaleInfo.DEFAULT, TestChassisInfo.DEFAULT));
         DistanceSensor sensor = new FakeDistanceSensor1(MapLibrary.map2(m), mover::position);
         Location finalCoord = Location.from(-1, 1);
         Supplier<Position> positionSupplier = mover::position;
         MapImpl map = new MapImpl(ctxt);
         MapLibrary.map2(map);
-        Processor underTest = new Processor(ctxt, mover, positionSupplier, map);
+        Processor underTest = new Processor(mover, positionSupplier, map);
         MapViz mapViz = new MapViz(100, underTest.map, underTest.planner::getSolution, positionSupplier, () -> null);
-        underTest.add(mapViz);
-        mapViz.redraw();
+        ctxt.visualizations.register(mapViz);
+        ctxt.visualizations.redraw();
 
         while (true) {
             Thread.sleep(1000);

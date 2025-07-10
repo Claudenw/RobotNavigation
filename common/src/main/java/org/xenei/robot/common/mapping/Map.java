@@ -4,7 +4,6 @@ import java.util.Collection;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
-import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import org.apache.commons.math3.util.Precision;
@@ -15,7 +14,7 @@ import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Position;
 import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.common.planning.Solution;
-import org.xenei.robot.common.planning.Step;
+import org.xenei.robot.common.planning.Segment;
 import org.xenei.robot.common.utils.RobutContext;
 
 public interface Map {
@@ -53,7 +52,7 @@ public interface Map {
      * @return the Step comprising the mapped target location and the distance
      * value or an empty optional if the target is not edefined..
      */
-    default CompletableFuture<Optional<Step>> addCoord(FrontsCoordinate coord, FrontsCoordinate  target, boolean visited) {
+    default CompletableFuture<Optional<Segment>> addCoord(FrontsCoordinate coord, FrontsCoordinate  target, boolean visited) {
         return addCoord(coord.getCoordinate(), target.getCoordinate(), visited);
     }
 
@@ -69,7 +68,7 @@ public interface Map {
      * @return the Step comprising the mapped target location and the distance
      * value or an empty optional if the target is not edefined..
      */
-    CompletableFuture<Optional<Step>> addCoord(Coordinate coord, Coordinate target, boolean visited);
+    CompletableFuture<Optional<Segment>> addCoord(Coordinate coord, Coordinate target, boolean visited);
 
 
     /**
@@ -79,7 +78,7 @@ public interface Map {
      * @param position the coordinates of the current position.
      * @return the collection of all steps in the planning graph.
      */
-    Collection<Step> getSteps(Coordinate position);
+    Collection<Segment> getSteps(Coordinate position);
 
     /**
      * Gets the collection of all coordinates in the planning graph.
@@ -116,7 +115,7 @@ public interface Map {
      * @param currentCoords the current coordinates to search from.
      * @return An optional step as the best solution empty if there is none.
      */
-    Optional<Step> getBestStep(Coordinate currentCoords);
+    Optional<Segment> getBestStep(Coordinate currentCoords);
 
     /**
      * Returns true if the coordinate is within an obstacle.
@@ -244,7 +243,7 @@ public interface Map {
 
     interface VisualizationInitializer {
         Map map();
-        Supplier<Solution> solutionSupplie();
+        Supplier<Solution> solutionSupplier();
         Supplier<Position> positionSupplier();
         Supplier<Coordinate> targetSupplier();
     }

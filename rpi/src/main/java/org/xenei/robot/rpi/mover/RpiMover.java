@@ -4,11 +4,7 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.DefaultParser;
@@ -18,10 +14,9 @@ import org.apache.commons.cli.Options;
 import org.locationtech.jts.geom.Coordinate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.xenei.robot.common.BaseMover;
-import org.xenei.robot.common.BumpDetector;
-import org.xenei.robot.common.BumpSensorModel;
-import org.xenei.robot.common.ChassisInfo;
+import org.xenei.robot.mover.BaseMover;
+import org.xenei.robot.common.sensor.bump.BumpDetector;
+import org.xenei.robot.common.sensor.bump.BumpSensorModel;
 import org.xenei.robot.common.Compass;
 import org.xenei.robot.common.DeadReckoning;
 import org.xenei.robot.common.Location;
@@ -30,7 +25,6 @@ import org.xenei.robot.common.Position;
 import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.common.utils.CoordUtils;
 import org.xenei.robot.common.utils.RobutContext;
-import org.xenei.robot.ml.SensorLayer;
 import org.xenei.robot.rpi.RobutBuilder;
 import org.xenei.robot.rpi.drivers.Motor;
 import org.xenei.robot.rpi.drivers.Motor.SteppingStatus;
@@ -98,7 +92,7 @@ public class RpiMover extends BaseMover implements Mover, AutoCloseable {
     public static void main(String[] args) {
         try {
             RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT, RobutBuilder.chassisInfo());
-            BumpSensorImpl bumpSensor = new BumpSensorImpl();
+            BumpSensorImpl bumpSensor = new BumpSensorImpl(ctxt);
             ctxt.scheduleAtFixedRate(bumpSensor, 500, 42, TimeUnit.MILLISECONDS);
             try (RpiMover mover = new RpiMover(ctxt, null, new Coordinate(0, 0))) {
                 bumpSensor.addListener(mover.getBumpSensorListener());
@@ -184,21 +178,19 @@ public class RpiMover extends BaseMover implements Mover, AutoCloseable {
 //    }
 
     @Override
-    protected Optional<SensorLayer> takeSteps(int left, int right, byte lastSensor) {
+    public void takeSteps(int left, int right, byte lastSensor) {
         LOG.debug("Taking steps {} {} @ {} rpm", left, right, rpm);
         SteppingStatus ssLeft = motor[LEFT].prepareRun(left, rpm);
         SteppingStatus ssRight = motor[RIGHT].prepareRun(right, rpm);
         StepMonitor result = new StepMonitor(ssLeft, ssRight);
-        BumpDetector bumpChangeDetector = new BumpDetector(this, lastSensor);
-        bumpSensorModel.addListener(bumpChangeDetector);
+        BumpDetector bumpChangeDetector = new BumpDetector(this.ctxt, lastSensor);
         try {
             deadReckoning.track(result);
             ctxt.submit(result).join();
         } finally {
-            bumpSensorModel.removeListener(bumpChangeDetector);
+            bumpChangeDetector.unregister();
             deadReckoning.track(null);
         }
-        return bumpChangeDetector.getSensorLayer();
     }
 
 
@@ -207,24 +199,16 @@ public class RpiMover extends BaseMover implements Mover, AutoCloseable {
         return Position.from(coordinates, compass.heading());
     }
 
-    public class StepMonitor implements Runnable, DeadReckoning.StepMonitor {
+    /**
+     * A system to monitor the left and right motors and report when they stop.
+     */
+    public class StepMonitor implements Runnable, org.xenei.robot.common.StepMonitor {
         private final Motor.SteppingStatus ssLeft;
         private final Motor.SteppingStatus ssRight;
-        private final AtomicBoolean stopped = new AtomicBoolean(false);
 
         StepMonitor(Motor.SteppingStatus ssLeft, Motor.SteppingStatus ssRight) {
             this.ssLeft = ssLeft;
             this.ssRight = ssRight;
-        }
-
-
-        private void sleep() {
-            try {
-                Thread.sleep(ssLeft.millisecondsPerStep());
-            } catch (InterruptedException e) {
-                LOG.warn("Interrupted while waiting for sleep", e);
-                accept(MotorState.STOP);
-            }
         }
 
         @Override
@@ -271,5 +255,4 @@ public class RpiMover extends BaseMover implements Mover, AutoCloseable {
             return ssRight.fwdSteps();
         }
     }
-
 }

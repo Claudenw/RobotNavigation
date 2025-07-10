@@ -183,6 +183,11 @@ public class RpiMoverTest {
             }
 
             @Override
+            public long millisecondsPerStep() {
+                return 250;
+            }
+
+            @Override
             public boolean step() {
                 try {
                     Thread.sleep(msPerStep);
@@ -210,6 +215,11 @@ public class RpiMoverTest {
             
             public double fwdRotation() {
                 return fwdSteps() / stepsPerRotation(); 
+            }
+
+            @Override
+            public double stepsPerRotation() {
+                return 4;
             }
 
             @Override

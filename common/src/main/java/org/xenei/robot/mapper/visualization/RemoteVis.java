@@ -12,8 +12,6 @@ import org.xenei.robot.common.Position;
 import org.xenei.robot.common.mapping.Map;
 import org.xenei.robot.common.planning.Solution;
 import org.xenei.robot.common.utils.GeometryUtils;
-import org.xenei.robot.mapper.MapReports;
-import org.xenei.robot.mapper.rdf.Namespace;
 
 import java.awt.*;
 import java.io.IOException;
@@ -37,7 +35,7 @@ public class RemoteVis {
     private final int scale = 100;
 
     public RemoteVis(Map.VisualizationInitializer initializer) throws IOException {
-        this(initializer.map(), initializer.solutionSupplie(), initializer.positionSupplier(), initializer.targetSupplier());
+        this(initializer.map(), initializer.solutionSupplier(), initializer.positionSupplier(), initializer.targetSupplier());
     }
 
     public RemoteVis(Map map, Supplier<Solution> solutionSupplier, Supplier<Position> positionSupplier,

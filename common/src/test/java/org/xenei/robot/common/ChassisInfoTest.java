@@ -12,13 +12,16 @@ public class ChassisInfoTest {
         // setup 4 steps to rotate the wheel with a 1M circumstance.
         double wheelDiameter = 1 / Math.PI * 100;
         double stepAngle = 0.25 * AngleUtils.PI_x_2;
-        assertEquals(0.25, ChassisInfo.Builder.metersPerStep(stepAngle, wheelDiameter));
+        ChassisInfo chassisInfo  = ChassisInfo.builder().motorInfo(new MotorInfo(stepAngle, 100))
+                        .wheelSize(wheelDiameter).build();
+        assertEquals(0.25, chassisInfo.metersPerStep);
     }
 
     @Test
     void stepsPerRotationTest() {
         double stepAngle = 0.25 * AngleUtils.PI_x_2;
-        double stepsPerRotation = ChassisInfo.Builder.stepsPerRotation(stepAngle);
-        assertEquals(4, stepsPerRotation, 0.001);
+        ChassisInfo chassisInfo  = ChassisInfo.builder().motorInfo(new MotorInfo(stepAngle, 100))
+                .build();
+        assertEquals(4, chassisInfo.stepsPerRotation, 0.001);
     }
 }

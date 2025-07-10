@@ -1,16 +1,25 @@
 package org.xenei.robot.common;
 
+import java.util.concurrent.locks.Lock;
 import java.util.function.Consumer;
 
-public interface Mover extends Consumer<Mover.MotorState> {
+/**
+ * Causes the system to move to a designated location.
+ * If the bumper sensor triggers.  pause, correct action, reset target to position, stop
+ * If the previous target becomes visible, reset target to pos, stop.
+ * if target is reached, stop.
+ */
+public interface Mover extends Consumer<Mover.MoveTo> {
     enum MotorState {RUN, PAUSE, STOP}
+    record MoveTo(Location location){};
+
     /**
      * Move to the specified location
      * 
      * @param location The relative location to move to.
      * @return the new unquantized absolute position.
      */
-    Position move(Location location);
+    void move(Location location);
 
     /**
      * @return the current absolute position.
@@ -24,8 +33,12 @@ public interface Mover extends Consumer<Mover.MotorState> {
     void setHeading(double heading);
 
     /**
-     * Gets a BumpSensor listener.
-     * @return a BumpSensor listener.
+     * Register a logic module operating on this mover.
+     * @param logicModule the logic module to register.
      */
-    Consumer<BumpSensor.BumpState> getBumpSensorListener();
+    void register(LogicModule logicModule);
+
+    interface LogicModule {
+        void setLock(Lock lock);
+    }
 }

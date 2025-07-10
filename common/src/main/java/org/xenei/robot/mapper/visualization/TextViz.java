@@ -2,7 +2,6 @@ package org.xenei.robot.mapper.visualization;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.List;
 import java.util.SortedSet;
 import java.util.TreeSet;
@@ -37,7 +36,7 @@ public class TextViz implements Map.Visualization {
         return x > Integer.MAX_VALUE ? Integer.MAX_VALUE : (x < Integer.MIN_VALUE ? Integer.MIN_VALUE : x);
     }
     public TextViz(double scale, Map.VisualizationInitializer initializer) {
-        this(scale, initializer.map(), initializer.solutionSupplie(), initializer.positionSupplier(), initializer.targetSupplier());
+        this(scale, initializer.map(), initializer.solutionSupplier(), initializer.positionSupplier(), initializer.targetSupplier());
     }
     public TextViz(double scale, Map map, Supplier<Solution> solutionSupplier, Supplier<Position> positionSupplier,
                    Supplier<Coordinate> targetSupplier) {

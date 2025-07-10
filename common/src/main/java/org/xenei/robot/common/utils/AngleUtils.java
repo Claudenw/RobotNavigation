@@ -35,5 +35,4 @@ public class AngleUtils {
         double d = Math.atan2(Math.sin(angle), Math.cos(angle));
         return DoubleUtils.eq(-Math.PI, d) ? Math.PI : d;
     }
-
 }

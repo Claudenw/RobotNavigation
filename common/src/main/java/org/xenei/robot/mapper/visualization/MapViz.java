@@ -29,7 +29,7 @@ public class MapViz implements Map.Visualization {
     private final VizLib vizLib;
 
     public MapViz(int scale, Map.VisualizationInitializer initializer) {
-        this(scale, initializer.map(), initializer.solutionSupplie(), initializer.positionSupplier(), initializer.targetSupplier());
+        this(scale, initializer.map(), initializer.solutionSupplier(), initializer.positionSupplier(), initializer.targetSupplier());
     }
 
     public MapViz(int scale, Map map, Supplier<Solution> solutionSupplier, Supplier<Position> positionSupplier,
@@ -66,7 +66,6 @@ public class MapViz implements Map.Visualization {
     }
 
     private void rescale(List<MapVizDrawingCommand> lst) {
-
         double max = Integer.MIN_VALUE;
         for (MapVizDrawingCommand cmd : lst) {
             for (int i : cmd.xler) {

@@ -3,32 +3,33 @@ package org.xenei.robot.planner;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Optional;
-import java.util.Stack;
-import java.util.concurrent.Callable;
-import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import org.locationtech.jts.geom.Coordinate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.xenei.robot.common.Listeners;
 import org.xenei.robot.common.Location;
+import org.xenei.robot.common.Mover;
 import org.xenei.robot.common.NavigationSnapshot;
 import org.xenei.robot.common.Position;
 import org.xenei.robot.common.mapping.Map;
+import org.xenei.robot.common.messages.Topic;
 import org.xenei.robot.common.planning.Planner;
 import org.xenei.robot.common.planning.Solution;
-import org.xenei.robot.common.planning.Step;
+import org.xenei.robot.common.planning.Segment;
+import org.xenei.robot.common.planning.TargetStack;
 import org.xenei.robot.common.utils.CoordUtils;
+import org.xenei.robot.common.utils.RobutContext;
 import org.xenei.robot.mapper.rdf.Namespace;
 
 public class PlannerImpl implements Planner  {
     private static final Logger LOG = LoggerFactory.getLogger(PlannerImpl.class);
     private final TargetStack target;
     private final Map map;
-    private final ListenersWithPublicTrigger<Void> listeners;
     private final Supplier<Position> positionSupplier;
+    private final Topic<Mover.MoveTo> moveToTopic;
+    private final Topic<Mover.MotorState> motorTopic;
     private Solution solution;
     private NavigationSnapshot snapshot;
 
@@ -49,7 +50,8 @@ public class PlannerImpl implements Planner  {
      */
     public PlannerImpl(Map map, Supplier<Position> positionSupplier, Location target) {
         this.map = map;
-        this.listeners = new Listeners.ListenersWithPublicTrigger<>(map.getContext());
+        this.moveToTopic = map.getContext().bus.moveTo;
+        this.motorTopic = map.getContext().bus.motor;
         this.target = new TargetStack();
         this.positionSupplier = positionSupplier;
         this.solution = new Solution();
@@ -65,26 +67,38 @@ public class PlannerImpl implements Planner  {
         LOG.debug("PlannerImpl: {}", snapshot);
     }
 
+    public void accept(Mover.MotorState motorState) {
+        if (Mover.MotorState.STOP.equals(motorState)) {
+            Position position = positionSupplier.get();
+            solution.add(position);
+            map.setVisited(getFinalTarget(), position.getCoordinate());
+            if (target.isEmpty()) {
+                LOG.debug("Reached final target");
+                return;
+            }
+            Optional<Segment> selected = map.getBestStep(position.getCoordinate());
+            if (selected.isPresent()) {
+                Segment step = selected.get();
+                ;
+                if (!map.areEquivalent(step.getCoordinate(), getTarget())) {
+                    target.push(selected.get().getCoordinate());
+                    if (LOG.isDebugEnabled()) {
+                        LOG.debug("New target registered: " + selected.get());
+                    }
+                } else {
+                    RobutContext ctxt = map.getContext();
+                    Position nextPosition = ctxt.scaleInfo.round(step.nextPosition(position));
+                    moveToTopic.send(new Mover.MoveTo(nextPosition));
+                }
+            }
+        }
+    }
 
     @Override
     public NavigationSnapshot getSnapshot() {
         return snapshot;
     }
 
-    @Override
-    public void addListener(Consumer<Void> listener) {
-        this.listeners.addListener(listener);
-    }
-
-    @Override
-    public void removeListener(Consumer<Void> listener) {
-        this.listeners.removeListener(listener);
-    }
-
-    @Override
-    public void notifyListeners() {
-        this.listeners.trigger(null);
-    }
 
     @Override
     public void registerPositionChange(NavigationSnapshot snapshot) {
@@ -99,7 +113,7 @@ public class PlannerImpl implements Planner  {
     }
 
     @Override
-    public Optional<Step> selectTarget() {
+    public Optional<Segment> selectTarget() {
         Position pos = positionSupplier.get();
         if (pos.equals2D(getTarget(), map.getContext().scaleInfo.getResolution())) {
             LOG.debug("Reached intermediate target");
@@ -109,7 +123,7 @@ public class PlannerImpl implements Planner  {
                 return Optional.empty();
             }
         }
-        Optional<Step> selected = map.getBestStep(pos.getCoordinate());
+        Optional<Segment> selected = map.getBestStep(pos.getCoordinate());
         if (selected.isPresent()) {
             if (!map.areEquivalent(selected.get().getCoordinate(), getTarget())) {
                 target.push(selected.get().getCoordinate());
@@ -131,6 +145,7 @@ public class PlannerImpl implements Planner  {
     public double setTarget(Coordinate target) {
         Position pos = positionSupplier.get();
         LOG.info("Setting target to {} starting from {}", target, pos);
+        motorTopic.send(Mover.MotorState.STOP);
         this.target.clear();
         this.target.push(target);
         map.recalculate(target);
@@ -191,25 +206,6 @@ public class PlannerImpl implements Planner  {
      */
     public Map getMap() {
         return map;
-    }
-
-    private class TargetStack extends Stack<Coordinate> {
-        TargetStack() {
-            super();
-        }
-
-        @Override
-        public Coordinate push(Coordinate item) {
-            if (this.size() == 2) {
-                this.pop();
-            }
-            if (this.contains(item)) {
-                while (!item.equals2D(this.pop())) {
-                    // all activity in the while statement
-                }
-            }
-            return super.push(item);
-        }
     }
 
 }

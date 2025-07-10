@@ -9,13 +9,13 @@ public interface Location extends FrontsCoordinate {
     /**
      * The origion for the map (0,0)
      */
-    static Location ORIGIN = from(new Coordinate(0, 0));
+    Location ORIGIN = from(new Coordinate(0, 0));
     /**
      * An examplar of an infinite location.
      * @see CoordUtils#isInfinite(Coordinate)
      * @see FrontsCoordinate#INFINITE
      */
-    public static Location INFINITE = from(FrontsCoordinate.INFINITE);
+    Location INFINITE = from(FrontsCoordinate.INFINITE);
     
     static Location from(Coordinate c) {
         return new Location() {
@@ -55,7 +55,7 @@ public interface Location extends FrontsCoordinate {
     /**
      * Compares Coordinates by angle and then range.
      */
-    static Comparator<Location> ThetaCompr = (one, two) -> {
+    Comparator<Location> ThetaCompr = (one, two) -> {
         int x = Double.compare(one.theta(), two.theta());
         return x == 0 ? Double.compare(one.range(), two.range()) : x;
     };
@@ -63,7 +63,7 @@ public interface Location extends FrontsCoordinate {
     /**
      * Compares Coordinates by range and then angle.
      */
-    static Comparator<Location> RangeCompr = (one, two) -> {
+    Comparator<Location> RangeCompr = (one, two) -> {
         int x = Double.compare(one.range(), two.range());
         return x == 0 ? Double.compare(one.theta(), two.theta()) : x;
     };
@@ -85,5 +85,4 @@ public interface Location extends FrontsCoordinate {
     default double range() {
         return ORIGIN.distance(this);
     }
-   
 }

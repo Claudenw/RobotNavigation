@@ -2,21 +2,19 @@ package org.xenei.robot.common.planning;
 
 import java.util.Collection;
 import java.util.Optional;
+import java.util.function.Consumer;
 
 import org.locationtech.jts.geom.Coordinate;
 import org.xenei.robot.common.FrontsCoordinate;
-//import org.xenei.robot.common.ListenerContainer;
-import org.xenei.robot.common.Listeners;
+import org.xenei.robot.common.Mover;
 import org.xenei.robot.common.NavigationSnapshot;
 
-public interface Planner extends Listeners<Void> {
-
-    void notifyListeners();
+public interface Planner extends Consumer<Mover.MotorState> {
 
     /**
      * Gets the coordinates of the target.
      * 
-     * @return the coordinates of the target.
+     * @return the coordinates of the target., or {@code null} if there is no target.
      */
     Coordinate getTarget();
 
@@ -95,7 +93,7 @@ public interface Planner extends Listeners<Void> {
      * 
      * @return The step toward the target selecton.
      */
-    Optional<Step> selectTarget();
+    Optional<Segment> selectTarget();
 
     /**
      * Sets the registers the current position as part of the solution.

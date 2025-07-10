@@ -5,21 +5,17 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import org.apache.commons.math3.util.Precision;
 import org.apache.jena.arq.querybuilder.AskBuilder;
 import org.apache.jena.arq.querybuilder.ConstructBuilder;
 import org.apache.jena.arq.querybuilder.ExprFactory;
@@ -27,7 +23,6 @@ import org.apache.jena.arq.querybuilder.Order;
 import org.apache.jena.arq.querybuilder.SelectBuilder;
 import org.apache.jena.arq.querybuilder.UpdateBuilder;
 import org.apache.jena.arq.querybuilder.WhereBuilder;
-import org.apache.jena.arq.querybuilder.clauses.WhereClause;
 import org.apache.jena.geosparql.implementation.vocabulary.Geo;
 import org.apache.jena.geosparql.implementation.vocabulary.GeoSPARQL_URI;
 import org.apache.jena.geosparql.implementation.vocabulary.SRS_URI;
@@ -50,7 +45,6 @@ import org.apache.jena.shared.Lock;
 import org.apache.jena.shared.PrefixMapping;
 import org.apache.jena.sparql.core.Var;
 import org.apache.jena.sparql.expr.Expr;
-import org.apache.jena.update.Update;
 import org.apache.jena.update.UpdateExecutionFactory;
 import org.apache.jena.update.UpdateRequest;
 import org.apache.jena.util.iterator.ExtendedIterator;
@@ -68,7 +62,7 @@ import org.xenei.robot.common.mapping.Map;
 import org.xenei.robot.common.mapping.MapCoord;
 import org.xenei.robot.common.mapping.Obstacle;
 import org.xenei.robot.common.planning.Solution;
-import org.xenei.robot.common.planning.Step;
+import org.xenei.robot.common.planning.Segment;
 import org.xenei.robot.common.utils.CoordUtils;
 import org.xenei.robot.common.utils.RobutContext;
 import org.xenei.robot.mapper.rdf.Namespace;
@@ -237,7 +231,7 @@ public class MapImpl implements Map {
 //    }
 
     @Override
-    public CompletableFuture<Optional<Step>> addCoord(final Coordinate coord, final Coordinate target, final boolean visited) {
+    public CompletableFuture<Optional<Segment>> addCoord(final Coordinate coord, final Coordinate target, final boolean visited) {
         final MapCoordinate mapCoord = new MapCoordinate(coord);
         final MapCoordinate targetCoord = target == null ? null : new MapCoordinate(target);
         final Double distance = targetCoord == null ? null : mapCoord.distance(targetCoord);
@@ -268,7 +262,7 @@ public class MapImpl implements Map {
                 req.add(update.build());
             }
         }
-        Function<Object,Optional<Step>> conversion = r -> Optional.empty();
+        Function<Object,Optional<Segment>> conversion = r -> Optional.empty();
         if (target != null) {
             final double cost = indirect != null && indirect ? distance * 2 : distance;
             conversion = x -> {
@@ -304,7 +298,7 @@ public class MapImpl implements Map {
      * @param location The location to get the Step for
      * @return the Step for the location.
      */
-    public CompletableFuture<Optional<Step>> getStep(double costToLocation, FrontsCoordinate location) {
+    public CompletableFuture<Optional<Segment>> getStep(double costToLocation, FrontsCoordinate location) {
         MapCoordinate coordinate = new MapCoordinate(location.getCoordinate());
 
         Var geom = Var.alloc("geom");
@@ -494,7 +488,7 @@ public class MapImpl implements Map {
      * position, or empty if none found.
      */
     @Override
-    public Optional<Step> getBestStep(Coordinate currentCoords) {
+    public Optional<Segment> getBestStep(Coordinate currentCoords) {
         if (data.isEmpty()) {
             LOG.debug("No map points");
             return Optional.empty();
@@ -611,7 +605,7 @@ public class MapImpl implements Map {
     }
 
     @Override
-    public Collection<Step> getSteps(Coordinate currentPosition) {
+    public Collection<Segment> getSteps(Coordinate currentPosition) {
         return new StepQuery(currentPosition).execute().join().mapWith(builder -> builder.build(ctxt))
                 .toList();
     }

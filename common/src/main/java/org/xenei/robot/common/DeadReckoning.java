@@ -3,10 +3,7 @@ package org.xenei.robot.common;
 import org.xenei.robot.common.utils.DoubleUtils;
 import org.xenei.robot.common.utils.RobutContext;
 
-import java.util.concurrent.Callable;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 public class DeadReckoning implements Compass, Supplier<Position> {
@@ -74,15 +71,7 @@ public class DeadReckoning implements Compass, Supplier<Position> {
     public void track(StepMonitor stepMonitor) {
         if (currentMonitor != null) {
             if (currentMonitor.hasStepDifferential()) {
-                double leftRange = ctxt.chassisInfo.range(currentMonitor.leftRotation());
-                double leftArc = ctxt.chassisInfo.pivotAngle(leftRange);
-
-                double rightRange = ctxt.chassisInfo.range(currentMonitor.rightRotation());
-                double rightArc = ctxt.chassisInfo.pivotAngle(rightRange);
-
-                double range = calcRange(leftArc, rightArc);
-                double theta = ctxt.chassisInfo.theta(currentMonitor.leftSteps(), currentMonitor.rightSteps());
-                position.getAndUpdate(p -> p.addHeading(theta).nextPosition(range));
+                position.getAndUpdate(p -> p.nextPosition(ctxt.chassisInfo.thetaAndRange(stepMonitor)));
             } else {
                 double range =  ctxt.chassisInfo.range(currentMonitor.leftRotation());
                 position.getAndUpdate(p -> p.nextPosition(range));
@@ -96,18 +85,5 @@ public class DeadReckoning implements Compass, Supplier<Position> {
         double h = heading();
         double sd = sd();
         return String.format("DeadReckoning[Heading: %s %s degrees]", h, DoubleUtils.round(Math.toDegrees(h), decimalPlaces() + 1));
-    }
-
-   public interface StepMonitor {
-
-        boolean hasStepDifferential();
-
-        double leftRotation();
-
-        double rightRotation();
-
-        int leftSteps();
-
-        int rightSteps();
     }
 }

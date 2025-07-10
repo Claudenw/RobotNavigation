@@ -3,10 +3,8 @@ package org.xenei.robot;
 import org.locationtech.jts.geom.Coordinate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.xenei.robot.common.ChassisInfo;
 import org.xenei.robot.common.DistanceSensor;
 import org.xenei.robot.common.Location;
-import org.xenei.robot.common.Mover;
 import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.common.mapping.Map;
 import org.xenei.robot.common.testUtils.FakeBumpSensor;
@@ -18,6 +16,7 @@ import org.xenei.robot.common.utils.CoordUtils;
 import org.xenei.robot.common.utils.RobutContext;
 import org.xenei.robot.mapper.MapImpl;
 import org.xenei.robot.mapper.visualization.MapViz;
+import org.xenei.robot.mover.BumpSensorLogicModule;
 
 
 import java.io.BufferedReader;
@@ -29,13 +28,15 @@ public class RobutTest {
 
     private static Robut build(Coordinate origin) throws InterruptedException {
         RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT, TestChassisInfo.DEFAULT);
+        FakeMover mover = new FakeMover(ctxt, origin);
         FakeBumpSensor bumpSensor = new FakeBumpSensor();
-        Mover mover = new FakeMover(ctxt, origin);
+        BumpSensorLogicModule bumpSensorLogicModule = new BumpSensorLogicModule(ctxt, mover);
         Map sensorMap = new MapImpl(ctxt);
         DistanceSensor distSensor = new FakeDistanceSensor1(MapLibrary.map2(sensorMap), mover::position);
 
-        Robut robut = new Robut(ctxt, bumpSensor, distSensor, mover);
+        Robut robut = new Robut(ctxt, distSensor, mover);
         MapViz mapViz = new MapViz(100, robut.visualizationInitializer());
+        ctxt.visualizations.register(mapViz);
         ctxt.scheduleAtFixedRate(mapViz::redraw, 500, 250, TimeUnit.MILLISECONDS);
         return robut;
     }

@@ -1,17 +1,11 @@
 package org.xenei.robot.common.mapping;
 
-import java.util.Collection;
 import java.util.function.Consumer;
 
 import org.locationtech.jts.geom.Coordinate;
 import org.xenei.robot.common.DistanceSensor;
 import org.xenei.robot.common.FrontsCoordinate;
-import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Position;
-import org.xenei.robot.common.planning.Step;
-import org.xenei.robot.common.NavigationSnapshot;
-import org.xenei.robot.common.utils.DoubleUtils;
-import org.xenei.robot.mapper.MapperImpl;
 
 public interface Mapper {
 
@@ -38,11 +32,4 @@ public interface Mapper {
      */
     Consumer<DistanceSensor.Readings> getRelativeObstacleConsumer();
 
-    /** A visulation of the map */
-    interface Visualization {
-        /**
-         * Redraw the visualization
-         */
-        public void redraw();
-    }
 }
