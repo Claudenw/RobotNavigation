@@ -9,17 +9,16 @@ import java.util.function.Consumer;
  * If the previous target becomes visible, reset target to pos, stop.
  * if target is reached, stop.
  */
-public interface Mover extends Consumer<Mover.MoveTo> {
+public interface Mover {
     enum MotorState {RUN, PAUSE, STOP}
-    record MoveTo(Location location){};
+    record MoveTo(FrontsCoordinate location){};
 
     /**
      * Move to the specified location
      * 
      * @param location The relative location to move to.
-     * @return the new unquantized absolute position.
      */
-    void move(Location location);
+    void move(FrontsCoordinate location);
 
     /**
      * @return the current absolute position.
@@ -27,7 +26,7 @@ public interface Mover extends Consumer<Mover.MoveTo> {
     Position position();
 
     /**
-     * Sets the heading for the mover.
+     * Sets the absolute heading for the mover.
      * @param heading the absolute heading specified in radians.
      */
     void setHeading(double heading);

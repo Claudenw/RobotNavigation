@@ -45,7 +45,7 @@ public class FakeDistanceSensorTest {
                 Location.from(0.5000, -1.0000), Location.from(0.5000, -0.5000), Location.from(0.5000, 0.0000) };
         positionSupplier.position = Position.from(Location.from(x, y), Math.toRadians(h));
         final List<Location> actual = new ArrayList<>();
-        underTest.addListener( readings -> readings.readings().forEach(dr -> actual.add(dr.getLocation())));
+        map.getContext().bus.distance.register(readings -> readings.readings().forEach(dr -> actual.add(dr.getLocation())));
         underTest.run();
         CoordinateUtils.assertEquivalent(expected, actual, 0.000001);
         for (Location l : actual) {
@@ -78,7 +78,7 @@ public class FakeDistanceSensorTest {
         MapViz mapViz = new MapViz(1, underTest.map(), () -> solution, positionSupplier, () -> null);
         map.getContext().scheduleAtFixedRate(mapViz::redraw, 0,500, TimeUnit.MILLISECONDS);
         MapDistanceSensorAdapter adapter = new MapDistanceSensorAdapter(map, positionSupplier);
-        underTest.addListener(adapter);
+        map.getContext().bus.distance.register(adapter);
         underTest.run();
 
         DebugViz debugViz = new DebugViz(1, map, () -> solution, positionSupplier, () -> null);

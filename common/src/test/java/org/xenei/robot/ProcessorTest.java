@@ -1,5 +1,6 @@
 package org.xenei.robot;
 
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
@@ -37,6 +38,7 @@ public class ProcessorTest {
         Processor underTest = new Processor(mover, positionSupplier, map);
         MapViz mapViz = new MapViz(100, underTest.map, underTest.planner::getSolution, positionSupplier, () -> null);
         ctxt.visualizations.register(mapViz);
+        ctxt.scheduleAtFixedRate(ctxt.visualizations::redraw, 500, 500, TimeUnit.SECONDS);
         SegmentTracker segmentTracer = new SegmentTracker(ctxt);
         try {
             underTest.moveTo(finalCoord);

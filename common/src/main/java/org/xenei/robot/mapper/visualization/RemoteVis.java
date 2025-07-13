@@ -8,6 +8,7 @@ import org.locationtech.jts.geom.CoordinateXY;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
+import org.xenei.robot.common.FrontsCoordinate;
 import org.xenei.robot.common.Position;
 import org.xenei.robot.common.mapping.Map;
 import org.xenei.robot.common.planning.Solution;
@@ -31,7 +32,7 @@ public class RemoteVis {
     private final RemoteVizLib vizLib;
     private final Supplier<Solution> solutionSupplier;
     private final Supplier<Position> positionSupplier;
-    private final Supplier<Coordinate> targetSupplier;
+    private final Supplier<FrontsCoordinate> targetSupplier;
     private final int scale = 100;
 
     public RemoteVis(Map.VisualizationInitializer initializer) throws IOException {
@@ -39,7 +40,7 @@ public class RemoteVis {
     }
 
     public RemoteVis(Map map, Supplier<Solution> solutionSupplier, Supplier<Position> positionSupplier,
-              Supplier<Coordinate> targetSupplier) throws IOException {
+              Supplier<FrontsCoordinate> targetSupplier) throws IOException {
         this.map = map;
         this.solutionSupplier = solutionSupplier;
         this.positionSupplier = positionSupplier;
@@ -126,7 +127,7 @@ public class RemoteVis {
         }
 
         @Override
-        public List<RemoteDrawingCommand> draw(Map map, Supplier<Solution> solutionSupplier, Supplier<Position> positionSupplier, Supplier<Coordinate> targetSupplier) {
+        public List<RemoteDrawingCommand> draw(Map map, Supplier<Solution> solutionSupplier, Supplier<Position> positionSupplier, Supplier<FrontsCoordinate> targetSupplier) {
             boundingBox = new BoundingBox(xDim, yDim, positionSupplier.get(), map.getContext().geometryUtils);
             List<RemoteDrawingCommand> result = super.draw(map, solutionSupplier, positionSupplier, targetSupplier);
             result.add(drawLine(boundingBox.polygon, Color.BLACK));

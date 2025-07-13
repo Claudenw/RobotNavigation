@@ -3,6 +3,7 @@ package org.xenei.robot.common;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.PrecisionModel;
 import org.xenei.robot.common.utils.DoubleUtils;
+import org.xenei.robot.mapper.MapImpl;
 
 public final class ScaleInfo {
 
@@ -37,6 +38,16 @@ public final class ScaleInfo {
      */
     public double getResolution() {
         return resolution;
+    }
+
+    /**
+     * Determines if 2 coordinates are equivalent within the resolution of the scale.
+     * @param a the first coordinate.
+     * @param b the second coordinate.
+     * @return {@code true} if the coordinates are the same within the resolution the scale.
+     */
+    public boolean areEquivalent(FrontsCoordinate a, FrontsCoordinate b) {
+        return a.equals2D(b, resolution);
     }
 
     @Deprecated

@@ -3,6 +3,7 @@ package org.xenei.robot.mover;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xenei.robot.common.Mover;
+import org.xenei.robot.common.messages.Topic;
 import org.xenei.robot.common.utils.RobutContext;
 import org.xenei.robot.ml.SensorLayer;
 
@@ -22,30 +23,31 @@ import java.util.function.Consumer;
  *      if stop:
  *          reset trigger?
  */
-public class BumpSensorLogicModule implements Mover.LogicModule, Consumer<SensorLayer> {
+public class BumpSensorLogicModule implements Mover.LogicModule {
     private static final Logger LOG = LoggerFactory.getLogger(BumpSensorLogicModule.class);
 
     private final int rangeSteps;
     private final BaseMover mover;
     private final AtomicBoolean sensorLayerEnabled;
     private Lock lock;
+    private final Topic<Mover.MotorState> motorStateTopic;
 
     public BumpSensorLogicModule(RobutContext ctxt, BaseMover mover) {
+        motorStateTopic = ctxt.bus.motor;
         sensorLayerEnabled = new AtomicBoolean(true);
         rangeSteps = ctxt.chassisInfo.steps(ctxt.scaleInfo.getResolution());
         this.mover = mover;
         this.mover.register(this);
-        ctxt.bus.bump.register(this);
+        ctxt.bus.bump.register(this::processSensorLayer);
     }
 
     /**
      * @param sensorLayer the input argument
      */
-    @Override
-    public void accept(SensorLayer sensorLayer) {
+    private void processSensorLayer(SensorLayer sensorLayer) {
         if (sensorLayerEnabled.get() && lock.tryLock()) {
             try {
-                mover.accept(Mover.MotorState.PAUSE);
+                motorStateTopic.send(Mover.MotorState.PAUSE);
                 sensorLayerEnabled.set(false);
                 takeCorrectiveAction(sensorLayer);
             } finally {

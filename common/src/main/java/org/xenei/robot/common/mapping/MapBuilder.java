@@ -12,6 +12,7 @@ import org.apache.jena.rdf.model.Resource;
 import org.apache.jena.rdf.model.ResourceFactory;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
+import org.xenei.robot.common.Location;
 
 public class MapBuilder {
 
@@ -42,7 +43,7 @@ public class MapBuilder {
             map.addObstacle(new ObstacleImpl(first, last));
             break;
         case Path:
-            map.addPath(first, last);
+            map.addPath(Location.from(first), Location.from(last));
         }
         return this;
     }

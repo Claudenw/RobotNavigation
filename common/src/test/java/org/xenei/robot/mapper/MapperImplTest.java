@@ -25,6 +25,7 @@ import org.locationtech.jts.geom.Coordinate;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import org.xenei.robot.common.DistanceSensor;
+import org.xenei.robot.common.FrontsCoordinate;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.NavigationSnapshot;
 import org.xenei.robot.common.Position;
@@ -41,25 +42,22 @@ import org.xenei.robot.common.utils.RobutContext;
 
 public class MapperImplTest {
 
-    private final ArgumentCaptor<Coordinate> coordinateCaptor = ArgumentCaptor.forClass(Coordinate.class);
+    private final ArgumentCaptor<FrontsCoordinate> coordinateCaptor = ArgumentCaptor.forClass(FrontsCoordinate.class);
     private final ArgumentCaptor<Obstacle> obstacleCaptor = ArgumentCaptor.forClass(Obstacle.class);
 
-    private RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT, TestChassisInfo.DEFAULT);
+    private final RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT, TestChassisInfo.DEFAULT);
 
     @Test
     public void processSensorDataTest_TooClose() {
 
         Position currentPosition = Position.from(-1, -3, AngleUtils.RADIANS_90);
-        Coordinate target = new Coordinate(-1, 1);
+        Location target = Location.from(-1, 1);
         Obstacle obstacle = Mockito.mock(Obstacle.class);
         Coordinate mapValue = new Coordinate(5, 5);
 
         Map map = Mockito.mock(Map.class);
         when(map.getContext()).thenReturn(ctxt);
-//        when(map.createObstacle(any(), any())).thenReturn(obstacle);
-//        when(map.addObstacle(any())).thenReturn(CompletableFuture.completedFuture(Set.of(obstacle)));
-//        when(map.adopt(any())).thenReturn(mapValue);
-        Mapper underTest = new MapperImpl(map, () -> Position.from(mapValue), () -> target);
+        Mapper underTest = new MapperImpl(map, () -> target);
 
         // an obstacle one unit away is too close so no target generated.
         underTest.getRelativeObstacleConsumer().accept(
@@ -68,8 +66,8 @@ public class MapperImplTest {
         Location[] obstacles = { Location.from(CoordUtils.fromAngle(0, 1)) };
         NavigationSnapshot snapshot = new NavigationSnapshot(currentPosition, target);
 
-        verify(map, times(0)).isObstacle(any(Coordinate.class));
-        verify(map, times(0)).addCoord(any(Coordinate.class), any(Coordinate.class), anyBoolean());
+        verify(map, times(0)).isObstacle(any(FrontsCoordinate.class));
+        verify(map, times(0)).addCoord(any(FrontsCoordinate.class), any(FrontsCoordinate.class), anyBoolean());
     }
 
 
@@ -89,23 +87,21 @@ public class MapperImplTest {
     void processSensorDataTest(final double degrees, final Coordinate sensorReading, final Coordinate candidate) {
 
         Position currentPosition = Position.from(-0, 0, Math.toRadians(degrees));
-        Coordinate target = new Coordinate(10, 10);
-        Segment step = Mockito.mock(Segment.class);
+        Location target = Location.from(10, 10);
+        Segment segment = Mockito.mock(Segment.class);
 
         Obstacle obstacle = Mockito.mock(Obstacle.class);
         Map map = Mockito.mock(Map.class);
         when(map.getContext()).thenReturn(ctxt);
         when(map.createObstacle(any(Position.class), any(Location.class))).thenReturn(obstacle);
         when(map.addObstacle(any())).thenReturn(Set.of(obstacle));
-        when(map.adopt(any(Coordinate.class))).thenAnswer( context -> {
-            return Map.adopt(context.getArgument(0, Coordinate.class), ctxt.scaleInfo);
-        });
-        when(map.isObstacle(any(Coordinate.class))).thenReturn(false);
-        when(map.addCoord(any(Coordinate.class), any(Coordinate.class), anyBoolean()))
-                .thenReturn(CompletableFuture.completedFuture(Optional.of(step)));
-        when(map.isClearPath(any(Coordinate.class), any(Coordinate.class))).thenReturn(false);
+        when(map.adopt(any(Coordinate.class))).thenAnswer( context -> Map.adopt(context.getArgument(0, Coordinate.class), ctxt.scaleInfo));
+        when(map.isObstacle(any(FrontsCoordinate.class))).thenReturn(false);
+        when(map.addCoord(any(FrontsCoordinate.class), any(FrontsCoordinate.class), anyBoolean()))
+                .thenReturn(CompletableFuture.completedFuture(Optional.of(segment)));
+        when(map.isClearPath(any(FrontsCoordinate.class), any(FrontsCoordinate.class))).thenReturn(false);
 
-        Mapper underTest = new MapperImpl(map, () -> currentPosition, () -> target);
+        Mapper underTest = new MapperImpl(map, () -> target);
 
         // process data
         underTest.getRelativeObstacleConsumer().accept(
@@ -113,7 +109,7 @@ public class MapperImplTest {
 
 
         ArgumentCaptor<Boolean> one = ArgumentCaptor.forClass(Boolean.class);
-        ArgumentCaptor<Coordinate> targetCaptor = ArgumentCaptor.forClass(Coordinate.class);
+        ArgumentCaptor<FrontsCoordinate> targetCaptor = ArgumentCaptor.forClass(FrontsCoordinate.class);
         Callable<Boolean> mockitoTest = () -> {
             try {
                 verify(map).addCoord(coordinateCaptor.capture(), targetCaptor.capture(), one.capture());

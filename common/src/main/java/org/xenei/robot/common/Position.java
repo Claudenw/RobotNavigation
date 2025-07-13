@@ -12,7 +12,7 @@ import org.xenei.robot.common.utils.RobutContext;
  * A position is a location and a heading.
  */
 public interface Position extends Location {
-
+    static Position ORIGINAL = Position.from(Location.ORIGIN, 0.0);
     /**
      * Create a position from a coordinate and a heading
      * @param coordinate the coordinate for the position.
@@ -139,7 +139,7 @@ public interface Position extends Location {
      * @return the new Position centered on the new position with the proper
      * heading.
      */
-    default Position nextPosition(Location relativeCoordinates) {
+    default Position nextPosition(FrontsCoordinate relativeCoordinates) {
         if (relativeCoordinates.range() == 0) {
             return this;
         }
@@ -188,7 +188,7 @@ public interface Position extends Location {
      * @param absoluteLocation the coordinates of the absolute location.
      * @return the relative location based on current location and heading.
      */
-    default Location relativeLocation(Coordinate absoluteLocation) {
+    default Location relativeLocation(FrontsCoordinate absoluteLocation) {
         double range = distance(absoluteLocation);
         if (range == 0) {
             return Location.ORIGIN;

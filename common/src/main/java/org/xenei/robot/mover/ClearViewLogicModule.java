@@ -3,8 +3,11 @@ package org.xenei.robot.mover;
 import org.locationtech.jts.geom.Coordinate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.xenei.robot.common.FrontsCoordinate;
 import org.xenei.robot.common.Mover;
+import org.xenei.robot.common.Position;
 import org.xenei.robot.common.mapping.Map;
+import org.xenei.robot.common.messages.Topic;
 import org.xenei.robot.common.planning.TargetStack;
 import org.xenei.robot.common.utils.RobutContext;
 import org.xenei.robot.ml.SensorLayer;
@@ -32,12 +35,14 @@ public class ClearViewLogicModule  implements Mover.LogicModule, Runnable {
     private final RobutContext ctxt;
     private final long sleepTime;
     private Lock lock;
+    private final Topic<Mover.MotorState> motorStateTopic;
 
 
     public ClearViewLogicModule(Map map, TargetStack targetStack, RobutContext ctxt, BaseMover mover) {
         this.targetStack = targetStack;
         this.map = map;
         this.ctxt = ctxt;
+        motorStateTopic = ctxt.bus.motor;
         this.sleepTime = (long) ctxt.chassisInfo.motorInfo.freq() * ctxt.chassisInfo.steps(ctxt.scaleInfo.getResolution());
         this.mover = mover;
         this.mover.register(this);
@@ -47,18 +52,17 @@ public class ClearViewLogicModule  implements Mover.LogicModule, Runnable {
      */
     @Override
     public void run() {
-        Coordinate position = mover.position().getCoordinate();
+        Position position = mover.position();
         if (!map.isClearPath(position, targetStack.peek())) {
-            mover.accept(Mover.MotorState.STOP);
+            motorStateTopic.send(Mover.MotorState.STOP);
         } else {
             if (targetStack.size() > 1) {
-                Coordinate prevTarget = targetStack.get(targetStack.size()-2);
+                FrontsCoordinate prevTarget = targetStack.get(targetStack.size()-2);
                 if (map.isClearPath(position, prevTarget)) {
-                    mover.accept(Mover.MotorState.STOP);
+                    motorStateTopic.send(Mover.MotorState.STOP);
                 };
             }
         }
-
         mover.sleep(1);
     }
 

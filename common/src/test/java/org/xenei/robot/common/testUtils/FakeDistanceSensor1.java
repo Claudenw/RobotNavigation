@@ -8,37 +8,32 @@ import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.nio.charset.Charset;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.math3.ml.neuralnet.MapUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.xenei.robot.common.DistanceSensor;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Position;
 import org.xenei.robot.common.mapping.Map;
-import org.xenei.robot.mapper.MapImpl;
-import org.xenei.robot.mapper.MapReports;
+import org.xenei.robot.common.messages.Topic;
 
 public class FakeDistanceSensor1 implements FakeDistanceSensor {
-    private static final Logger LOG = LoggerFactory.getLogger(FakeDistanceSensor.class);
+    private static final Logger LOG = LoggerFactory.getLogger(FakeDistanceSensor1.class);
     private static final int BLOCKSIZE = 17;
     private static final double RADIANS = Math.toRadians(360.0 / BLOCKSIZE);
     private final Map map;
     private static final double MAX_RANGE = 5;
     private final Supplier<Position> positionSupplier;
+    private final Topic<DistanceSensor.Readings> distanceTopic;
     private final LinkedHashMap<Position, DistanceReading[]> history = new LinkedHashMap<>();
-    private final CopyOnWriteArrayList<Consumer<Readings>> listeners;
 
     public FakeDistanceSensor1(Map map, Supplier<Position> positionSupplier) {
         this.map = map;
         this.positionSupplier = positionSupplier;
-        this.listeners = new CopyOnWriteArrayList<>();
+        this.distanceTopic = map.getContext().bus.distance;
     }
 
     @Override
@@ -106,11 +101,7 @@ public class FakeDistanceSensor1 implements FakeDistanceSensor {
                 LOG.error("Can not write sensor data");
             }
         }
-        List<DistanceReading> lst = Arrays.asList(result);
-        Readings readings = new Readings(position, lst);
-        for (Consumer<Readings> listener : listeners) {
-            listener.accept(readings);
-        }
+        distanceTopic.send(new Readings(position, Arrays.asList(result)));
     }
 
     private DistanceReading look(Position position, double heading) {
@@ -123,15 +114,5 @@ public class FakeDistanceSensor1 implements FakeDistanceSensor {
     @Override
     public double maxRange() {
         return MAX_RANGE;
-    }
-
-    @Override
-    public void addListener(Consumer<Readings> listener) {
-        this.listeners.add(listener);
-    }
-
-    @Override
-    public void removeListener(Consumer<Readings> listener) {
-        this.listeners.remove(listener);
     }
 }

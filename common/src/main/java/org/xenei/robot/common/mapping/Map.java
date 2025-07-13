@@ -13,9 +13,11 @@ import org.xenei.robot.common.FrontsCoordinate;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Position;
 import org.xenei.robot.common.ScaleInfo;
+import org.xenei.robot.common.UnmodifiableCoordinate;
 import org.xenei.robot.common.planning.Solution;
 import org.xenei.robot.common.planning.Segment;
 import org.xenei.robot.common.utils.RobutContext;
+import org.xenei.robot.mapper.MapImpl;
 
 public interface Map {
     static Coordinate adopt(Coordinate c, ScaleInfo scaleInfo) {
@@ -39,7 +41,7 @@ public interface Map {
      * @param dest the coordinates to end it
      * @return true if there are no obstacles between source and dest.
      */
-    boolean isClearPath(Coordinate source, Coordinate dest);
+    boolean isClearPath(FrontsCoordinate source, FrontsCoordinate dest);
 
     /**
      * Add the target to the planning.
@@ -52,24 +54,12 @@ public interface Map {
      * @return the Step comprising the mapped target location and the distance
      * value or an empty optional if the target is not edefined..
      */
-    default CompletableFuture<Optional<Segment>> addCoord(FrontsCoordinate coord, FrontsCoordinate  target, boolean visited) {
-        return addCoord(coord.getCoordinate(), target.getCoordinate(), visited);
+    CompletableFuture<Optional<Segment>> addCoord(FrontsCoordinate coord, FrontsCoordinate  target, boolean visited);
+
+
+    default MapCoordinate asMapCoordinate(FrontsCoordinate coord) {
+        return coord == null ? null : coord instanceof MapImpl.MapCoordinate ? (MapImpl.MapCoordinate) coord : new MapCoordinate(adopt(coord.getCoordinate()));
     }
-
-
-    /**
-     * Add the target to the planning.
-     * If the distance is null, then the result will be empty as there can be no
-     * steps to a non-declared target.
-     *
-     * @param coord     the coordinate for the coord.
-     * @param target     the target for planning if defined.
-     * @param visited    true if the target has been visited.
-     * @return the Step comprising the mapped target location and the distance
-     * value or an empty optional if the target is not edefined..
-     */
-    CompletableFuture<Optional<Segment>> addCoord(Coordinate coord, Coordinate target, boolean visited);
-
 
     /**
      * Gets the collection of all steps in the planning graph that are reachable
@@ -78,7 +68,7 @@ public interface Map {
      * @param position the coordinates of the current position.
      * @return the collection of all steps in the planning graph.
      */
-    Collection<Segment> getSteps(Coordinate position);
+    Collection<Segment> getSegments(FrontsCoordinate position);
 
     /**
      * Gets the collection of all coordinates in the planning graph.
@@ -92,7 +82,7 @@ public interface Map {
      *
      * @param coords the coordinates of the path.
      */
-    Coordinate[] addPath(Coordinate... coords);
+    void addPath(FrontsCoordinate... coords);
 
     /**
      * Adds a path to the specified graph.
@@ -100,22 +90,22 @@ public interface Map {
      * @param model  the name of the graph to add the path to.
      * @param coords the coordinates of the path.
      */
-    Coordinate[] addPath(Resource model, Coordinate... coords);
+    void addPath(Resource model, FrontsCoordinate... coords);
 
     /**
      * Update the planning model with new distances based on the new target
      *
      * @param target the new target.
      */
-    CompletableFuture<Coordinate> recalculate(Coordinate target);
+    MapCoordinate recalculate(FrontsCoordinate target);
 
     /**
-     * Find the best targets based on the costs in the graph.
+     * Find the best target based on the costs in the graph.
      * 
      * @param currentCoords the current coordinates to search from.
      * @return An optional step as the best solution empty if there is none.
      */
-    Optional<Segment> getBestStep(Coordinate currentCoords);
+    Optional<Segment> getBestSegment(FrontsCoordinate currentCoords);
 
     /**
      * Returns true if the coordinate is within an obstacle.
@@ -123,7 +113,7 @@ public interface Map {
      * @param coord the coordinate to check.
      * @return true if the point is in an obstacle, false otherwise.
      */
-    boolean isObstacle(Coordinate coord);
+    boolean isObstacle(FrontsCoordinate coord);
 
     /**
      * Adds an obstacle to the planning graph.
@@ -146,7 +136,7 @@ public interface Map {
      * @param b the second coordinate to break the path for.
      * @return
      */
-    CompletableFuture<?> cutPath(Coordinate a, Coordinate b);
+    CompletableFuture<?> cutPath(FrontsCoordinate a, FrontsCoordinate b);
 
     /**
      * Write the path specified by the solution in the the base model.
@@ -161,16 +151,6 @@ public interface Map {
      * @return the Context.
      */
     RobutContext getContext();
-
-    /**
-     * True if the two coordinates resolve to the same point on the map. This
-     * comparison accounts for resolution.
-     * 
-     * @param a A coordinate
-     * @param b A second coordinate.
-     * @return true if they resolve to the same point on the map.
-     */
-    boolean areEquivalent(Coordinate a, Coordinate b);
 
     /**
      * Converts coordinate to internal mapping coordinate adjusting for scale and
@@ -191,17 +171,17 @@ public interface Map {
      * @param newObstacles the set of new obstacles.
      * @return
      */
-    CompletableFuture<Void> updateIsIndirect(Coordinate finalTarget, Set<Obstacle> newObstacles);
+    CompletableFuture<Void> updateIsIndirect(FrontsCoordinate finalTarget, Set<Obstacle> newObstacles);
 
     /**
      * Create an Obstacle.
      * 
      * @param startPosition The position from which we locate the obstacle.
-     * @param relativeLocation the relative locaiton of the obstacle from the start
+     * @param relativeLocation the relative location of the obstacle from the start
      * position.
      * @return An obstacle.
      */
-    Obstacle createObstacle(Position startPosition, Location relativeLocation);
+    Obstacle createObstacle(Position startPosition, FrontsCoordinate relativeLocation);
 
     /**
      * Create an Obstacle.
@@ -211,7 +191,7 @@ public interface Map {
      * @param relativeEnd the relative ending location of the obstacle.
      * @return An obstacle.
      */
-    Obstacle createObstacle(Position startPosition, Location relativeStart, Location relativeEnd);
+    Obstacle createObstacle(Position startPosition, FrontsCoordinate relativeStart, FrontsCoordinate relativeEnd);
 
     /**
      * Sets the coordinate as visited in the map.
@@ -220,7 +200,7 @@ public interface Map {
      * @param coord       the coordinate to mark as visited.
      * @return
      */
-    CompletableFuture<?> setVisited(Coordinate finalTarget, Coordinate coord);
+    CompletableFuture<?> setVisited(FrontsCoordinate finalTarget, FrontsCoordinate coord);
 
     /**
      * Look in the given direction for the maximum range. if there is an obstacle
@@ -231,7 +211,7 @@ public interface Map {
      * @param maxRange the maximum range to look.
      * @return the relative location of a located obstacle or an empty Optional.
      */
-    CompletableFuture<Optional<Location>> look(Position position, double heading, int maxRange);
+    CompletableFuture<Optional<FrontsCoordinate>> look(Position position, double heading, int maxRange);
 
     /**
      * A Visualization of a map.
@@ -245,6 +225,20 @@ public interface Map {
         Map map();
         Supplier<Solution> solutionSupplier();
         Supplier<Position> positionSupplier();
-        Supplier<Coordinate> targetSupplier();
+        Supplier<FrontsCoordinate> targetSupplier();
+    }
+
+    class MapCoordinate implements FrontsCoordinate {
+
+        UnmodifiableCoordinate coord;
+
+        private MapCoordinate(Coordinate coordinate) {
+            coord = UnmodifiableCoordinate.make(coordinate);
+        }
+
+        @Override
+        public UnmodifiableCoordinate getCoordinate() {
+            return coord;
+        }
     }
 }

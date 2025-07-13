@@ -4,7 +4,6 @@ import org.locationtech.jts.geom.Coordinate;
 import org.xenei.robot.common.utils.CoordUtils;
 
 import java.util.Collection;
-import java.util.function.Consumer;
 
 public interface DistanceSensor extends Runnable {
 
@@ -21,7 +20,7 @@ public interface DistanceSensor extends Runnable {
         }
     }
 
-    record Readings(Position origin, Collection<DistanceReading> readings){};
+    record Readings(Position origin, Collection<DistanceReading> readings){}
 
     /**
      * The maximum range the sensor can detect.
@@ -29,8 +28,4 @@ public interface DistanceSensor extends Runnable {
      * @return the maximum range the sensor can detect
      */
     double maxRange();
-
-    void addListener(Consumer<Readings> listener);
-
-    void removeListener(Consumer<Readings> listener);
 }

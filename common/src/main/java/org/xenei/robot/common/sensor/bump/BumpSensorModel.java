@@ -17,6 +17,7 @@ public final class BumpSensorModel implements Consumer<BumpSensor.BumpState> {
         this.topic = ctxt.bus.bump;
         this.sensorLayer = new SensorLayer(numNeurons);
         this.sensorLayer.load("bumpSensor.model");
+
     }
 
     @Override

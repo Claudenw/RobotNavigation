@@ -80,7 +80,7 @@ public class CoordUtils {
         return AngleUtils.normalize(theta + Math.PI);
     }
 
-    public static double calcHeading(Coordinate from, Coordinate to) {
+    public static double calcHeading(FrontsCoordinate from, FrontsCoordinate to) {
         return AngleUtils.normalize(Math.atan2(to.getY() - from.getY(), to.getX() - from.getX()));
     }
 

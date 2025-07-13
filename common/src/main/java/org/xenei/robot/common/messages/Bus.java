@@ -1,5 +1,7 @@
 package org.xenei.robot.common.messages;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.xenei.robot.common.DistanceSensor;
 import org.xenei.robot.common.Mover;
 import org.xenei.robot.common.mapping.Mapper;
@@ -10,6 +12,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 
 public class Bus {
+
     public final Topic<SensorLayer> bump = new TopicImpl<SensorLayer>();
     public final Topic<DistanceSensor.Readings> distance = new TopicImpl<DistanceSensor.Readings>();
     public final Topic<Mover.MotorState> motor = new TopicImpl<Mover.MotorState>();
@@ -21,7 +24,8 @@ public class Bus {
         this.ctxt = ctxt;
     }
 
-    public class TopicImpl<T> implements Topic<T>{
+    public class TopicImpl<T> implements Topic<T> {
+        private Logger log;
         private final CopyOnWriteArrayList<Consumer<T>> listeners;
 
         private TopicImpl() {
@@ -37,6 +41,12 @@ public class Bus {
         }
 
         public void send(T message) {
+            if (log == null) {
+                log = LoggerFactory.getLogger(message.getClass());
+            }
+            if (log.isDebugEnabled()) {
+                log.debug("{} event: {} sent to {} listeners", message.getClass().getSimpleName(), message, listeners.size());
+            }
             listeners.forEach(p -> ctxt.submit(() -> p.accept(message)));
         }
     }

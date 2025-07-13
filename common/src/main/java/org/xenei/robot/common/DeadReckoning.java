@@ -6,15 +6,28 @@ import org.xenei.robot.common.utils.RobutContext;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
+/**
+ * Compass that determines position by dead reckoning.
+ */
 public class DeadReckoning implements Compass, Supplier<Position> {
     private static final double STEPS_PER_RADIAN = 640.0 * 10;
     private final AtomicReference<Position> position;
     private StepMonitor currentMonitor;
     private final RobutContext ctxt;
 
+    /**
+     * Constructor that defaults to position at origin with heading of 0.
+     * @param ctxt the robut context to work with.
+     */
     public DeadReckoning(RobutContext ctxt) {
         this(ctxt, Position.from(0.0, 0.0, 0.0));
     }
+
+    /**
+     * Constructor.
+     * @param ctxt the robut context to work with.
+     * @param initialPosition the inital position.
+     */
     public DeadReckoning(RobutContext ctxt, Position initialPosition) {
         this.ctxt = ctxt;
         position = new AtomicReference<>(initialPosition);

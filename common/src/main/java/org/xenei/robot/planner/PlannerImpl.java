@@ -4,15 +4,15 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Optional;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
 
-import org.locationtech.jts.geom.Coordinate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.xenei.robot.common.FrontsCoordinate;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Mover;
 import org.xenei.robot.common.NavigationSnapshot;
 import org.xenei.robot.common.Position;
+import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.common.mapping.Map;
 import org.xenei.robot.common.messages.Topic;
 import org.xenei.robot.common.planning.Planner;
@@ -20,7 +20,6 @@ import org.xenei.robot.common.planning.Solution;
 import org.xenei.robot.common.planning.Segment;
 import org.xenei.robot.common.planning.TargetStack;
 import org.xenei.robot.common.utils.CoordUtils;
-import org.xenei.robot.common.utils.RobutContext;
 import org.xenei.robot.mapper.rdf.Namespace;
 
 public class PlannerImpl implements Planner  {
@@ -30,6 +29,7 @@ public class PlannerImpl implements Planner  {
     private final Supplier<Position> positionSupplier;
     private final Topic<Mover.MoveTo> moveToTopic;
     private final Topic<Mover.MotorState> motorTopic;
+    private final ScaleInfo scaleInfo;
     private Solution solution;
     private NavigationSnapshot snapshot;
 
@@ -52,46 +52,21 @@ public class PlannerImpl implements Planner  {
         this.map = map;
         this.moveToTopic = map.getContext().bus.moveTo;
         this.motorTopic = map.getContext().bus.motor;
+        this.scaleInfo = map.getContext().scaleInfo;
+        motorTopic.register( motorState -> {if (Mover.MotorState.STOP.equals(motorState)) {
+            selectSegment().ifPresent(nextPosition -> moveToTopic.send(new Mover.MoveTo(nextPosition)));
+        }});
         this.target = new TargetStack();
         this.positionSupplier = positionSupplier;
         this.solution = new Solution();
 
-        this.snapshot = new NavigationSnapshot(positionSupplier.get(), target == null ? null : target.getCoordinate());
-        boolean isIndirect = false;
-        double distance = Double.NaN;
+        this.snapshot = new NavigationSnapshot(positionSupplier.get(), target);
         solution.add(snapshot.position);
         if (snapshot.target != null) {
             setTarget(snapshot.target);
         }
-        map.addCoord(snapshot.position.getCoordinate(), getTarget(), true);
+        map.addCoord(snapshot.position, getTarget(), true);
         LOG.debug("PlannerImpl: {}", snapshot);
-    }
-
-    public void accept(Mover.MotorState motorState) {
-        if (Mover.MotorState.STOP.equals(motorState)) {
-            Position position = positionSupplier.get();
-            solution.add(position);
-            map.setVisited(getFinalTarget(), position.getCoordinate());
-            if (target.isEmpty()) {
-                LOG.debug("Reached final target");
-                return;
-            }
-            Optional<Segment> selected = map.getBestStep(position.getCoordinate());
-            if (selected.isPresent()) {
-                Segment step = selected.get();
-                ;
-                if (!map.areEquivalent(step.getCoordinate(), getTarget())) {
-                    target.push(selected.get().getCoordinate());
-                    if (LOG.isDebugEnabled()) {
-                        LOG.debug("New target registered: " + selected.get());
-                    }
-                } else {
-                    RobutContext ctxt = map.getContext();
-                    Position nextPosition = ctxt.scaleInfo.round(step.nextPosition(position));
-                    moveToTopic.send(new Mover.MoveTo(nextPosition));
-                }
-            }
-        }
     }
 
     @Override
@@ -102,9 +77,9 @@ public class PlannerImpl implements Planner  {
 
     @Override
     public void registerPositionChange(NavigationSnapshot snapshot) {
-        map.addCoord(snapshot.position.getCoordinate(), getFinalTarget(), true )
-                        .thenAccept( step ->
-        step.ifPresent(s -> solution.add(s.getCoordinate())));
+        map.addCoord(snapshot.position, getFinalTarget(), true)
+                .thenAccept(segment ->
+                        segment.ifPresent(s -> solution.add(s)));
     }
 
     @Override
@@ -113,8 +88,9 @@ public class PlannerImpl implements Planner  {
     }
 
     @Override
-    public Optional<Segment> selectTarget() {
+    public Optional<Segment> selectSegment() {
         Position pos = positionSupplier.get();
+        map.setVisited(getFinalTarget(), pos);
         if (pos.equals2D(getTarget(), map.getContext().scaleInfo.getResolution())) {
             LOG.debug("Reached intermediate target");
             map.setVisited(getFinalTarget(), target.pop());
@@ -123,10 +99,10 @@ public class PlannerImpl implements Planner  {
                 return Optional.empty();
             }
         }
-        Optional<Segment> selected = map.getBestStep(pos.getCoordinate());
+        Optional<Segment> selected = map.getBestSegment(pos);
         if (selected.isPresent()) {
-            if (!map.areEquivalent(selected.get().getCoordinate(), getTarget())) {
-                target.push(selected.get().getCoordinate());
+            if (!scaleInfo.areEquivalent(selected.get(), getTarget())) {
+                target.push(selected.get());
                 if (LOG.isDebugEnabled()) {
                     LOG.debug("New target registered: " + selected.get());
                 }
@@ -142,20 +118,20 @@ public class PlannerImpl implements Planner  {
     }
 
     @Override
-    public double setTarget(Coordinate target) {
+    public double setTarget(FrontsCoordinate target) {
         Position pos = positionSupplier.get();
         LOG.info("Setting target to {} starting from {}", target, pos);
-        motorTopic.send(Mover.MotorState.STOP);
+        motorTopic.send(Mover.MotorState.PAUSE);
         this.target.clear();
-        this.target.push(target);
-        map.recalculate(target);
+        this.target.push(map.recalculate(target));
+
         solution = new Solution();
         solution.add(pos);
-        return map.getContext().scaleInfo.round(CoordUtils.calcHeading(pos.getCoordinate(), getTarget()));
+        return map.getContext().scaleInfo.round(CoordUtils.calcHeading(pos, getTarget()));
     }
 
     @Override
-    public double replaceTarget(Coordinate target) {
+    public void replaceTarget(FrontsCoordinate target) {
         Position pos = positionSupplier.get();
         if (this.target.size() != 1) {
             LOG.info("Replacing target to {} with {} while at {}", getTarget(), target, pos);
@@ -170,21 +146,20 @@ public class PlannerImpl implements Planner  {
         }
         this.target.push(target);
         this.snapshot = new NavigationSnapshot(snapshot.position, target);
-        return CoordUtils.calcHeading(pos.getCoordinate(), getTarget());
     }
 
     @Override
-    public Coordinate getTarget() {
+    public FrontsCoordinate getTarget() {
         return target.isEmpty() ? null : target.peek();
     }
 
     @Override
-    public Coordinate getFinalTarget() {
+    public FrontsCoordinate getFinalTarget() {
         return target.isEmpty() ? null : target.get(0);
     }
 
     @Override
-    public Collection<Coordinate> getTargets() {
+    public Collection<FrontsCoordinate> getTargets() {
         return Collections.unmodifiableCollection(target);
     }
 
@@ -192,9 +167,9 @@ public class PlannerImpl implements Planner  {
     public void recordSolution() {
         Solution solution = this.solution;
         this.solution = new Solution();
-        solution.simplify((a, b) -> map.isClearPath(a, b));
+        solution.simplify((a, b) -> map.isClearPath(Location.from(a), Location.from(b)));
         if (solution.stepCount() > 0) {
-            Coordinate[] coords = solution.stream().collect(Collectors.toList()).toArray(new Coordinate[0]);
+            FrontsCoordinate[] coords = solution.stream().toArray(FrontsCoordinate[]::new);
             map.addPath(Namespace.KnownModel, coords);
         }
     }

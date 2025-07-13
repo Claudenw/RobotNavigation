@@ -32,7 +32,7 @@ import org.xenei.robot.rpi.drivers.ULN2003;
 import org.xenei.robot.rpi.drivers.ULN2003.Mode;
 import org.xenei.robot.rpi.sensors.BumpSensorImpl;
 
-public class RpiMover extends BaseMover implements Mover, AutoCloseable {
+public class RpiMover extends BaseMover implements AutoCloseable {
     private final Motor[] motor = new Motor[2];
     private static final int LEFT = 0;
     private static final int RIGHT = 1;
@@ -220,7 +220,7 @@ public class RpiMover extends BaseMover implements Mover, AutoCloseable {
                     boolean keepRunning = ssLeft.step();
                     keepRunning |= ssRight.step();
                     if (!keepRunning) {
-                        accept(Mover.MotorState.STOP);
+                        motorStateTopic.send(Mover.MotorState.STOP);
                     } else {
                         sleep();
                     }

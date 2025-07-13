@@ -5,6 +5,7 @@ import java.util.function.Supplier;
 import org.locationtech.jts.geom.Coordinate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.xenei.robot.common.FrontsCoordinate;
 import org.xenei.robot.common.Position;
 import org.xenei.robot.common.mapping.Map;
 import org.xenei.robot.common.planning.Solution;
@@ -14,7 +15,7 @@ public class DebugViz extends TextViz {
     private static final Logger LOG = LoggerFactory.getLogger(DebugViz.class);
 
     public DebugViz(double scale, Map map, Supplier<Solution> solutionSupplier, Supplier<Position> positionSupplier,
-                    Supplier<Coordinate> targetSupplier) {
+                    Supplier<FrontsCoordinate> targetSupplier) {
         super(scale, map, solutionSupplier, positionSupplier, targetSupplier);
     }
 

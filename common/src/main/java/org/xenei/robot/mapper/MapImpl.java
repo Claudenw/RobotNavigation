@@ -57,7 +57,6 @@ import org.slf4j.LoggerFactory;
 import org.xenei.robot.common.FrontsCoordinate;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Position;
-import org.xenei.robot.common.UnmodifiableCoordinate;
 import org.xenei.robot.common.mapping.Map;
 import org.xenei.robot.common.mapping.MapCoord;
 import org.xenei.robot.common.mapping.Obstacle;
@@ -231,11 +230,11 @@ public class MapImpl implements Map {
 //    }
 
     @Override
-    public CompletableFuture<Optional<Segment>> addCoord(final Coordinate coord, final Coordinate target, final boolean visited) {
-        final MapCoordinate mapCoord = new MapCoordinate(coord);
-        final MapCoordinate targetCoord = target == null ? null : new MapCoordinate(target);
+    public CompletableFuture<Optional<Segment>> addCoord(final FrontsCoordinate coord, final FrontsCoordinate target, final boolean visited) {
+        final MapCoordinate mapCoord = asMapCoordinate(coord);
+        final MapCoordinate targetCoord = asMapCoordinate(target);
         final Double distance = targetCoord == null ? null : mapCoord.distance(targetCoord);
-        final Boolean indirect = targetCoord == null ? null : !this.isClearPath(mapCoord.coord, targetCoord.coord);
+        final Boolean indirect = targetCoord == null ? null : !this.isClearPath(mapCoord, targetCoord);
         UpdateRequest req = new UpdateRequest();
         AskBuilder whereClause = askExists(mapCoord, Namespace.Coord);
         if (!ask(whereClause)) {
@@ -283,7 +282,7 @@ public class MapImpl implements Map {
 
 
     @Override
-    public boolean isObstacle(Coordinate point) {
+    public boolean isObstacle(FrontsCoordinate point) {
         return obstacleHandler.isObstacle(point);
     }
 
@@ -299,7 +298,7 @@ public class MapImpl implements Map {
      * @return the Step for the location.
      */
     public CompletableFuture<Optional<Segment>> getStep(double costToLocation, FrontsCoordinate location) {
-        MapCoordinate coordinate = new MapCoordinate(location.getCoordinate());
+        MapCoordinate coordinate = asMapCoordinate(location);
 
         Var geom = Var.alloc("geom");
         Var dist = Var.alloc("dist");
@@ -347,8 +346,8 @@ public class MapImpl implements Map {
      * @return An array of coordinates on the path.
      */
     @Override
-    public Coordinate[] addPath(Coordinate... coords) {
-        return addPath(Namespace.PlanningModel, Arrays.stream(coords).map(MapCoordinate::new));
+    public void addPath(FrontsCoordinate... coords) {
+        addPath(Namespace.PlanningModel, coords);
     }
 
     /**
@@ -359,8 +358,8 @@ public class MapImpl implements Map {
      * @return An array of coordinates on the path.
      */
     @Override
-    public Coordinate[] addPath(Resource model, Coordinate... coords) {
-        return addPath(model, Arrays.stream(coords).map(MapCoordinate::new));
+    public void addPath(Resource model, FrontsCoordinate... coords) {
+        addPath(model, Arrays.stream(coords).map(this::asMapCoordinate));
     }
 
     /**
@@ -369,11 +368,8 @@ public class MapImpl implements Map {
      * @param coords the coordinates of the path.
      * @return An array of coordinates on the path.
      */
-    private Coordinate[] addPath(Resource model, Stream<MapCoordinate> coords) {
-        List<MapCoordinate> lst = coords.toList();
-        Coordinate[] points = new Coordinate[lst.size()];
-        int[] idx = { 0 };
-        lst.forEach(c -> points[idx[0]++] = c.getCoordinate());
+    private void addPath(Resource model, Stream<MapCoordinate> coords) {
+        Coordinate[] points = coords.map(MapCoordinate::getCoordinate).toArray(Coordinate[]::new);
         Literal path = ctxt.graphGeomFactory.asWKTString(points);
         Resource tn = ResourceFactory.createResource();
         List<Triple> triples = new ArrayList<>();
@@ -381,11 +377,10 @@ public class MapImpl implements Map {
         triples.add(Triple.create(tn.asNode(), Geo.AS_WKT_PROP.asNode(), path.asNode()));
         LOG.debug("Path <{} {}>", points[0], points[points.length - 1]);
         doUpdate(new UpdateBuilder().addInsert(model, triples));
-        return points;
     }
 
     @Override
-    public CompletableFuture<?> cutPath(Coordinate a, Coordinate b) {
+    public CompletableFuture<?> cutPath(FrontsCoordinate a, FrontsCoordinate b) {
         return cutPath(Namespace.PlanningModel, a, b);
     }
 
@@ -400,11 +395,11 @@ public class MapImpl implements Map {
         return ask(askExists(coordinate, type));
     }
 
-    public CompletableFuture<?> cutPath(Resource model, Coordinate a, Coordinate b) {
+    public CompletableFuture<?> cutPath(Resource model, FrontsCoordinate a, FrontsCoordinate b) {
         Var ra = Var.alloc("a");
         Var rb = Var.alloc("b");
-        MapCoordinate mapA = new MapCoordinate(a);
-        MapCoordinate mapB = new MapCoordinate(b);
+        MapCoordinate mapA = asMapCoordinate(a);
+        MapCoordinate mapB = asMapCoordinate(b);
 
         UpdateBuilder ub = new UpdateBuilder().addDelete(model, Namespace.s, Namespace.p, Namespace.o)
                 .addWhere(Namespace.s, Namespace.p, Namespace.o).addWhere(Namespace.s, Namespace.point, ra)
@@ -429,8 +424,8 @@ public class MapImpl implements Map {
     }
 
     @Override
-    public boolean isClearPath(Coordinate from, Coordinate target) {
-        return !ask(getClearPathCalculation(Namespace.s, from, target));
+    public boolean isClearPath(FrontsCoordinate from, FrontsCoordinate target) {
+        return !ask(getClearPathCalculation(Namespace.s, asMapCoordinate(from).getCoordinate(), asMapCoordinate(target).getCoordinate()));
     }
 
     AskBuilder getClearPathCalculation(Var s, Coordinate from, Coordinate target) {
@@ -450,15 +445,15 @@ public class MapImpl implements Map {
      *
      *
      * @param model The model to update.
-     * @param coordinate the node to update
+     * @param coord the node to update
      * @param property the property to update
      * @param value the value to set the property to.
      * @return An optional future if the node was updated, an empty optional otherwise.
      */
-    CompletableFuture<?> updateCoordinate(Resource model, Coordinate coordinate, Property property, Object value) {
-        LOG.debug("updating {} {} {} to {}", model.getLocalName(), CoordUtils.toString(coordinate, 1),
+    CompletableFuture<?> updateCoordinate(Resource model, FrontsCoordinate coord, Property property, Object value) {
+        MapCoordinate mapCoord = asMapCoordinate(coord);
+        LOG.debug("updating {} {} {} to {}", model.getLocalName(), CoordUtils.toString(mapCoord, 1),
                 property.getLocalName(), value);
-        MapCoordinate mapCoord = new MapCoordinate(coordinate);
 
         if (exists(mapCoord, Namespace.Coord)) {
             UpdateRequest req = new UpdateRequest();
@@ -488,7 +483,7 @@ public class MapImpl implements Map {
      * position, or empty if none found.
      */
     @Override
-    public Optional<Segment> getBestStep(Coordinate currentCoords) {
+    public Optional<Segment> getBestSegment(FrontsCoordinate currentCoords) {
         if (data.isEmpty()) {
             LOG.debug("No map points");
             return Optional.empty();
@@ -511,9 +506,10 @@ public class MapImpl implements Map {
     }
 
     @Override
-    public CompletableFuture<?> setVisited(Coordinate finalTarget, Coordinate coord) {
-        CompletableFuture<?> future = updateCoordinate(Namespace.PlanningModel, coord, Namespace.visited, Boolean.TRUE);
-        MapCoordinate mapCoord = new MapCoordinate(coord);
+    public CompletableFuture<?> setVisited(FrontsCoordinate finalTarget, FrontsCoordinate coord) {
+        MapCoordinate mapCoord = asMapCoordinate(coord);
+        CompletableFuture<?> future = updateCoordinate(Namespace.PlanningModel, mapCoord, Namespace.visited, Boolean.TRUE);
+
         UpdateRequest req = new UpdateRequest();
         Resource qA = ctxt.graphGeomFactory.asRDF(mapCoord, Namespace.Coord);
         req.add(new UpdateBuilder().addInsert(Namespace.PlanningModel, qA.getModel()) //
@@ -525,11 +521,11 @@ public class MapImpl implements Map {
     }
 
     @Override
-    public CompletableFuture<Coordinate> recalculate(Coordinate target) {
+    public MapCoordinate recalculate(FrontsCoordinate target) {
         LOG.debug("recalculate: {}", target);
         Var distance = Var.alloc("distance");
         Var wkt = Var.alloc("wkt");
-        MapCoordinate result = new MapCoordinate(target);
+        MapCoordinate result = asMapCoordinate(target);
         Literal targ = ctxt.graphGeomFactory.asWKT(result.getCoordinate());
         // remove all the distance and adjustments and then calculate the distance to
         // the new target
@@ -549,14 +545,15 @@ public class MapImpl implements Map {
                                 .addBind(ctxt.graphGeomFactory.calcDistance(exprF, targ, wkt), distance))
                         .build());
 
-        getCoords().thenAccept( c -> c.stream().filter(mc -> !isClearPath(mc.location.getCoordinate(), target))
+        getCoords().thenAccept( c -> c.stream().filter(mc -> !isClearPath(mc.location, target))
                 .forEach(mc -> req.add(new UpdateBuilder() //
                         .addInsert(Namespace.PlanningModel, Namespace.s, Namespace.isIndirect, true) //
                         .addGraph(Namespace.UnionModel, new WhereBuilder() //
                                 .addWhere(Namespace.s, Geo.AS_WKT_PROP, ctxt.graphGeomFactory.asWKT(mc.geometry))) //
                         .build())));
 
-        return doUpdate(req).thenApply( v -> result.getCoordinate());
+        doUpdate(req);
+        return result;
     }
 
     @Override
@@ -565,8 +562,6 @@ public class MapImpl implements Map {
         Var y = Var.alloc("y");
         Var wkt = Var.alloc("wkt");
         Var indirect = Var.alloc("indirect");
-
-//        System.out.println(MapReports.dumpModel(this, Namespace.PlanningModel));
 
         SelectBuilder sb = new SelectBuilder().addVar(x).addVar(y).addVar(indirect).addVar(wkt) //
                 .from(Namespace.PlanningModel.getURI()) //
@@ -605,7 +600,7 @@ public class MapImpl implements Map {
     }
 
     @Override
-    public Collection<Segment> getSteps(Coordinate currentPosition) {
+    public Collection<Segment> getSegments(FrontsCoordinate currentPosition) {
         return new StepQuery(currentPosition).execute().join().mapWith(builder -> builder.build(ctxt))
                 .toList();
     }
@@ -613,12 +608,7 @@ public class MapImpl implements Map {
     @Override
     public void recordSolution(Solution solution) {
         solution.simplify(this::isClearPath);
-        addPath(Namespace.BaseModel, solution.stream().map(MapCoordinate::new));
-    }
-
-    @Override
-    public boolean areEquivalent(Coordinate a, Coordinate b) {
-        return new MapCoordinate(a).equals2D(new MapCoordinate(b), ctxt.scaleInfo.getResolution());
+        addPath(Namespace.BaseModel, solution.stream().map(this::asMapCoordinate));
     }
 
     Model getModel() {
@@ -626,7 +616,7 @@ public class MapImpl implements Map {
     }
 
     @Override
-    public CompletableFuture<Void> updateIsIndirect(Coordinate finalTarget, Set<Obstacle> newObstacles) {
+    public CompletableFuture<Void> updateIsIndirect(FrontsCoordinate finalTarget, Set<Obstacle> newObstacles) {
         Var isIndirect = Var.alloc("isIndirect");
         Var wkt = Var.alloc("wkt");
         Var x = Var.alloc("x");
@@ -640,20 +630,12 @@ public class MapImpl implements Map {
                         .addOptional(Namespace.s, Namespace.isIndirect, isIndirect) //
                         .addFilter(exprF.not(exprF.bound(isIndirect))));
 
-//        List<Coordinate> candidates = new ArrayList<>();
-//
-//        Predicate<QuerySolution> processor = soln -> {
-//            candidates.add(
-//                    new Coordinate(soln.getLiteral(x.getName()).getDouble(), soln.getLiteral(y.getName()).getDouble()));
-//            return true;
-//        };
-
         return exec(sb).thenApply(resultSet -> {
             List<Literal> updateCoords = new ArrayList<>();
 
             resultSet.forEachRemaining(soln -> {
                 Coordinate c = new Coordinate(soln.getLiteral(x.getName()).getDouble(), soln.getLiteral(y.getName()).getDouble());
-                Geometry path = ctxt.geometryUtils.asPath(ctxt.chassisInfo.radius, c, finalTarget);
+                Geometry path = ctxt.geometryUtils.asPath(ctxt.chassisInfo.radius, c, finalTarget.getCoordinate());
                 for (Obstacle obst : newObstacles) {
                     if (path.distance(obst.geom()) == 0) {
                         updateCoords.add(ctxt.graphGeomFactory.asWKT(c));
@@ -673,39 +655,15 @@ public class MapImpl implements Map {
                 doUpdate(ub);
             }
         });
-
-        //exec(sb, processor).isDone();
-
-//        List<Literal> updateCoords = new ArrayList<>();
-//
-//        for (Coordinate c : candidates) {
-//            Geometry path = ctxt.geometryUtils.asPath(ctxt.chassisInfo.radius, c, finalTarget);
-//            for (Obstacle obst : newObstacles) {
-//                if (path.distance(obst.geom()) == 0) {
-//                    updateCoords.add(ctxt.graphGeomFactory.asWKT(c));
-//                    break;
-//                }
-//            }
-//        }
-//
-//        if (!updateCoords.isEmpty()) {
-//            UpdateBuilder ub = new UpdateBuilder()
-//                    .addInsert(Namespace.PlanningModel, Namespace.s, Namespace.isIndirect, Boolean.TRUE) //
-//                    .addGraph(Namespace.UnionModel, new WhereBuilder() //
-//                            .addWhere(Namespace.s, RDF.type, Namespace.Coord) //
-//                            .addWhere(Namespace.s, Geo.AS_WKT_NODE, wkt)
-//                            .addFilter(exprF.in(wkt, updateCoords.toArray())));
-//            doUpdate(ub);
-//        }
     }
 
     @Override
-    public Obstacle createObstacle(Position startPosition, Location relativeStart, Location relativeEnd) {
+    public Obstacle createObstacle(Position startPosition, FrontsCoordinate relativeStart, FrontsCoordinate relativeEnd) {
         return new ObstacleImpl(startPosition, relativeStart, relativeEnd);
     }
 
     @Override
-    public Obstacle createObstacle(Position startPosition, Location relativeLocation) {
+    public Obstacle createObstacle(Position startPosition, FrontsCoordinate relativeLocation) {
         return new ObstacleImpl(startPosition, relativeLocation);
     }
 
@@ -724,7 +682,7 @@ public class MapImpl implements Map {
     }
 
     @Override
-    public CompletableFuture<Optional<Location>> look(Position from, double heading, int maxRange) {
+    public CompletableFuture<Optional<FrontsCoordinate>> look(Position from, double heading, int maxRange) {
 
         Coordinate target = from.plus(CoordUtils.fromAngle(heading, maxRange));
 
@@ -741,13 +699,6 @@ public class MapImpl implements Map {
                 .addOrderBy(dist, Order.ASCENDING) //
                 .setLimit(1);
 
-//        double[] range = { -1 };
-//
-//        Predicate<QuerySolution> processor = soln -> {
-//            range[0] = soln.getLiteral(dist.getName()).getDouble();
-//            return false;
-//        };
-
         return exec(look).thenApply(resultSet -> {
             double range = resultSet.hasNext() ?
                 resultSet.next().getLiteral(dist.getName()).getDouble() :
@@ -761,31 +712,6 @@ public class MapImpl implements Map {
                 }
             return Optional.ofNullable(location);
         });
-//
-//        Location result = null;
-//
-//        if (range[0] > -1) {
-//            result = Location.from(CoordUtils.fromAngle(heading - from.getHeading(), range[0]));
-//        }
-//        if ( LOG.isDebugEnabled()) {
-//            LOG.debug("Looking {} ({}) from {} returned {}", heading, Math.toDegrees(heading), from, result);
-//        }
-//        return Optional.ofNullable(result);
-    }
-
-    private class MapCoordinate implements FrontsCoordinate {
-
-        UnmodifiableCoordinate coord;
-
-        MapCoordinate(Coordinate coordinate) {
-            coord = UnmodifiableCoordinate.make(adopt(coordinate));
-        }
-
-        @Override
-        public UnmodifiableCoordinate getCoordinate() {
-            return coord;
-        }
-
     }
 
     private class SPARQL {
@@ -841,8 +767,8 @@ public class MapImpl implements Map {
         final AskBuilder checkVisited;
         final Function<ResultSet,ExtendedIterator<StepImpl.Builder>> processor;
 
-        StepQuery(Coordinate currentCoords) {
-            MapCoordinate mapCoords = new MapCoordinate(currentCoords);
+        StepQuery(FrontsCoordinate currentCoords) {
+            MapCoordinate mapCoords = asMapCoordinate(currentCoords);
             wkt = ctxt.graphGeomFactory.asWKT(mapCoords.getCoordinate());
 
             query = new SelectBuilder().addVar(indirectFlg).addVar(cost).addVar(otherWkt).addVar(other).addVar(dist) //
@@ -877,7 +803,7 @@ public class MapImpl implements Map {
                     Literal candidateWkt = ctxt.graphGeomFactory.asWKT(candidate);
                     checkVisited.setVar(otherWkt, candidateWkt);
                     // if not visited and has a clear path
-                    return (!ask(checkVisited) && isClearPath(currentCoords, candidate));
+                    return (!ask(checkVisited) && isClearPath(currentCoords, Location.from(candidate)));
                 }
                 return false;
             };
@@ -891,7 +817,7 @@ public class MapImpl implements Map {
                                     Literal candidateWkt = ctxt.graphGeomFactory.asWKT(candidate);
                                     checkVisited.setVar(otherWkt, candidateWkt);
                                     // if not visited and has a clear path
-                                    if (!ask(checkVisited) && isClearPath(currentCoords, candidate)) {
+                                    if (!ask(checkVisited) && isClearPath(currentCoords, Location.from(candidate))) {
                                         return StepImpl.builder().setCoordinate(candidate)
                                                 .setCost(soln.getLiteral(cost.getName()).getDouble())
                                                 .setDistance(soln.getLiteral(dist.getName()).getDouble()).setGeometry(geom);
@@ -932,7 +858,7 @@ public class MapImpl implements Map {
             this.wkt = wkt;
         }
 
-        ObstacleImpl(Position startPosition, Location relativeStart, Location relativeEnd) {
+        ObstacleImpl(Position startPosition, FrontsCoordinate relativeStart, FrontsCoordinate relativeEnd) {
             Location start = startPosition.nextPosition(relativeStart);
             Location end = startPosition.nextPosition(relativeEnd);
             double d = start.distance(end);
@@ -950,7 +876,7 @@ public class MapImpl implements Map {
             uuid = UUID.randomUUID();
         }
 
-        ObstacleImpl(Position startPosition, Location relativeLocation) {
+        ObstacleImpl(Position startPosition, FrontsCoordinate relativeLocation) {
             Position absoluteObstacle = startPosition.nextPosition(relativeLocation);
             if (Double.isNaN(absoluteObstacle.getHeading())) {
                 System.err.println("NAN");
@@ -1105,8 +1031,8 @@ public class MapImpl implements Map {
             return work;
         }
 
-        boolean isObstacle(Coordinate point) {
-            Literal pointWKT = ctxt.graphGeomFactory.asWKT(point);
+        boolean isObstacle(FrontsCoordinate point) {
+            Literal pointWKT = ctxt.graphGeomFactory.asWKT(point.getCoordinate());
             Var wkt = Var.alloc("wkt");
             AskBuilder ask = new AskBuilder().addGraph(Namespace.UnionModel,
                     new WhereBuilder().addWhere(Namespace.s, RDF.type, Namespace.Obst) //

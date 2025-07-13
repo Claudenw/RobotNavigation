@@ -16,12 +16,12 @@ public class Solution {
         path = new ArrayList<>();
     }
 
-    public Coordinate end() {
+    public FrontsCoordinate end() {
         return get(path.size() - 1);
     }
 
-    private Coordinate get(int idx) {
-        return path.size() > 0 ? path.get(idx).coord : null;
+    private FrontsCoordinate get(int idx) {
+        return !path.isEmpty() ? path.get(idx).coord : null;
     }
 
     public boolean isEmpty() {
@@ -29,11 +29,7 @@ public class Solution {
     }
 
     public void add(FrontsCoordinate fc) {
-        add(fc.getCoordinate());
-    }
-
-    public void add(Coordinate c) {
-        SolutionRecord sr = new SolutionRecord(c);
+        SolutionRecord sr = new SolutionRecord(fc);
         if (!path.contains(sr)) {
             path.add(sr);
         }
@@ -47,19 +43,22 @@ public class Solution {
         if (isEmpty()) {
             return Double.POSITIVE_INFINITY;
         }
-        Coordinate target = end();
-        return recalculateCost(target);
+        return recalculateCost();
     }
 
-    public Coordinate start() {
+    public FrontsCoordinate start() {
         return get(0);
     }
 
-    public Stream<Coordinate> stream() {
+    public Stream<FrontsCoordinate> stream() {
         return path.stream().map(s -> s.coord);
     }
 
-    private double recalculateCost(Coordinate target) {
+    /**
+     * Walks the solution backwards and recalculates the cost for each segment in the solution..
+     * @return the total cost of the solution.
+     */
+    private double recalculateCost() {
         int limit = stepCount();
         SolutionRecord oldPr;
         double accumulator = 0.0;
@@ -74,7 +73,7 @@ public class Solution {
         return accumulator;
     }
 
-    private void removeUnnecessarySteps(BiPredicate<Coordinate, Coordinate> clearCheck) {
+    private void removeUnnecessarySteps(BiPredicate<FrontsCoordinate, FrontsCoordinate> clearCheck) {
         List<SolutionRecord> result = new ArrayList<>();
         result.add(path.get(0));
         int idx = 0;
@@ -109,22 +108,22 @@ public class Solution {
      * @param clearCheck a predicate that returns clear if the path between the two
      * coordinates is clear.
      */
-    public void simplify(BiPredicate<Coordinate, Coordinate> clearCheck) {
+    public void simplify(BiPredicate<FrontsCoordinate, FrontsCoordinate> clearCheck) {
         if (path.size() > 2) {
-            recalculateCost(end());
+            recalculateCost();
             removeUnnecessarySteps(clearCheck);
         }
     }
 
-    private class SolutionRecord {
-        final Coordinate coord;
+    private static class SolutionRecord {
+        final FrontsCoordinate coord;
         final double cost;
 
-        SolutionRecord(Coordinate p) {
+        SolutionRecord(FrontsCoordinate p) {
             this(p, 0.0);
         }
 
-        SolutionRecord(Coordinate p, double cost) {
+        SolutionRecord(FrontsCoordinate p, double cost) {
             this.coord = p;
             this.cost = cost;
         }

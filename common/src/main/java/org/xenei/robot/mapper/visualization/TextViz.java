@@ -23,7 +23,7 @@ public class TextViz implements Map.Visualization {
     final double scale;
     final Supplier<Solution> solutionSupplier;
     final Supplier<Position> positionSupplier;
-    final Supplier<Coordinate> targetSupplier;
+    final Supplier<FrontsCoordinate> targetSupplier;
 
     private static final char OBSTACLE = '#';
     private static final char TARGET = 't';
@@ -39,7 +39,7 @@ public class TextViz implements Map.Visualization {
         this(scale, initializer.map(), initializer.solutionSupplier(), initializer.positionSupplier(), initializer.targetSupplier());
     }
     public TextViz(double scale, Map map, Supplier<Solution> solutionSupplier, Supplier<Position> positionSupplier,
-                   Supplier<Coordinate> targetSupplier) {
+                   Supplier<FrontsCoordinate> targetSupplier) {
         this.scale = scale;
         this.map = map;
         this.positionSupplier = positionSupplier;
@@ -113,17 +113,17 @@ public class TextViz implements Map.Visualization {
         List<CompletableFuture<?>> futures = new ArrayList<>();
         futures.add(map.getObstacles().thenAccept(s -> s.forEach(o -> addGeom(points, o.geom(), OBSTACLE))));
         futures.add(map.getCoords().thenAccept( mc -> mc.forEach(coord -> addGeom(points, coord.geometry, coord.isIndirect ? COORD_INDIRECT : COORD_DIRECT))));
-        List<Coordinate> lst = solutionSupplier.get().stream().toList();
+        List<FrontsCoordinate> lst = solutionSupplier.get().stream().toList();
         for (CompletableFuture<?> future : futures) {
             future.join();
         }
         if (lst.size() > 1) {
-            addGeom(points, geometryUtils.asPath(0.25, lst.toArray(new Coordinate[lst.size()])), PATH);
+            addGeom(points, geometryUtils.asPath(0.25, lst.toArray(new FrontsCoordinate[0])), PATH);
         } else if (lst.size() == 1) {
             addGeom(points, geometryUtils.asPoint(lst.get(0)), PATH);
         }
 
-        Coordinate target = targetSupplier.get();
+        FrontsCoordinate target = targetSupplier.get();
         if (target != null) {
             addGeom(points, geometryUtils.asPoint(target), TARGET);
         }

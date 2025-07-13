@@ -1,12 +1,12 @@
 package org.xenei.robot.mapper.visualization;
 
-import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.GeometryCollection;
 import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.MultiLineString;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
+import org.xenei.robot.common.FrontsCoordinate;
 import org.xenei.robot.common.Position;
 import org.xenei.robot.common.planning.Solution;
 import org.xenei.robot.common.utils.GeometryUtils;
@@ -44,7 +44,7 @@ abstract class VisualizationLibrary<T extends VisualizationLibrary.AbstractDrawi
     }
 
     public java.util.List<T> draw(Map map, Supplier<Solution> solutionSupplier, Supplier<Position> positionSupplier,
-                                  Supplier<Coordinate> targetSupplier) {
+                                  Supplier<FrontsCoordinate> targetSupplier) {
         java.util.List<T> cmds = new ArrayList<>();
         java.util.List<CompletableFuture<?>> futures = new ArrayList<>();
         futures.add(map.getObstacles().thenAccept( obs -> obs.forEach(obst ->
@@ -62,14 +62,14 @@ abstract class VisualizationLibrary<T extends VisualizationLibrary.AbstractDrawi
             cmds.add(getPoly(mapCoord.geometry, mapCoord.isIndirect ? Color.CYAN : Color.BLUE));
         })));
 
-        List<Coordinate> lst = solutionSupplier.get().stream().toList();
+        List<FrontsCoordinate> lst = solutionSupplier.get().stream().toList();
         if (lst.size() > 1) {
-            cmds.add(getPoly(geometryUtils.asPath(0.25, lst.toArray(new Coordinate[lst.size()])), Color.WHITE));
+            cmds.add(getPoly(geometryUtils.asPath(0.25, lst.toArray(new FrontsCoordinate[0])), Color.WHITE));
         } else if (lst.size() == 1) {
             cmds.add(getPoly(geometryUtils.asPolygon(lst.get(0), .25), Color.WHITE));
         }
 
-        Coordinate target = targetSupplier.get();
+        FrontsCoordinate target = targetSupplier.get();
         if (target != null) {
             cmds.add(getPoly(geometryUtils.asPolygon(target, 0.25), Color.GREEN));
         }
@@ -84,7 +84,7 @@ abstract class VisualizationLibrary<T extends VisualizationLibrary.AbstractDrawi
         }
 
         if (target != null) {
-            cmds.add(getPoly(geometryUtils.asPath(map.getContext().chassisInfo.radius, position.getCoordinate(), target), Color.ORANGE));
+            cmds.add(getPoly(geometryUtils.asPath(map.getContext().chassisInfo.radius, position.getCoordinate(), target.getCoordinate()), Color.ORANGE));
         }
         return cmds;
     }

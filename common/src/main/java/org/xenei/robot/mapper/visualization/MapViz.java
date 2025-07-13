@@ -14,6 +14,7 @@ import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
+import org.xenei.robot.common.FrontsCoordinate;
 import org.xenei.robot.common.Position;
 import org.xenei.robot.common.mapping.Map;
 import org.xenei.robot.common.planning.Solution;
@@ -21,7 +22,7 @@ import org.xenei.robot.common.planning.Solution;
 public class MapViz implements Map.Visualization {
     private final Supplier<Solution> solutionSupplier;
     private final Supplier<Position> positionSupplier;
-    private final Supplier<Coordinate> targetSupplier;
+    private final Supplier<FrontsCoordinate> targetSupplier;
     private final Map map;
     private final JTSPanel panel;
     private final int scale;
@@ -33,7 +34,7 @@ public class MapViz implements Map.Visualization {
     }
 
     public MapViz(int scale, Map map, Supplier<Solution> solutionSupplier, Supplier<Position> positionSupplier,
-                   Supplier<Coordinate> targetSupplier) {
+                   Supplier<FrontsCoordinate> targetSupplier) {
         this.map = map;
         this.panel = new JTSPanel();
         this.solutionSupplier = solutionSupplier;
@@ -81,11 +82,11 @@ public class MapViz implements Map.Visualization {
         int offset = (int) Math.max(2 * max / 700, 1);
         for (MapVizDrawingCommand cmd : lst) {
             for (int i = 0; i < cmd.xler.length; i++) {
-                cmd.xler[i] += max;
+                cmd.xler[i] += (int) max;
                 cmd.xler[i] /= offset;
             }
             for (int i = 0; i < cmd.yler.length; i++) {
-                cmd.yler[i] += max;
+                cmd.yler[i] += (int) max;
                 cmd.yler[i] /= offset;
             }
         }

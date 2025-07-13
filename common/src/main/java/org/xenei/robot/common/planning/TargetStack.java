@@ -1,16 +1,17 @@
 package org.xenei.robot.common.planning;
 
 import org.locationtech.jts.geom.Coordinate;
+import org.xenei.robot.common.FrontsCoordinate;
 
 import java.util.Stack;
 
-public class TargetStack extends Stack<Coordinate> {
+public class TargetStack extends Stack<FrontsCoordinate> {
     public TargetStack() {
         super();
     }
 
     @Override
-    public Coordinate push(Coordinate item) {
+    public FrontsCoordinate push(FrontsCoordinate item) {
         if (this.size() == 2) {
             this.pop();
         }

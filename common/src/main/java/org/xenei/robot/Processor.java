@@ -32,17 +32,19 @@ public class Processor {
     private final Supplier<Position> positionSupplier;
     private final RemoteVis remoteVis;
     private final RobutContext.Visualizations visualizations;
-    private final Topic<Mover.MotorState> motorState;
+    private final Topic<Mover.MotorState> motorStateTopic;
+    private final Topic<Mover.MoveTo> moveToTopic;
 
     public Processor(BaseMover mover, Supplier<Position> positionSupplier, Map map) {
         this.ctxt = map.getContext();
         this.visualizations = ctxt.visualizations;
-        this.motorState = ctxt.bus.motor;
+        this.motorStateTopic = ctxt.bus.motor;
+        this.moveToTopic = ctxt.bus.moveTo;
         this.mover = mover;
         this.positionSupplier = () -> ctxt.scaleInfo.round(positionSupplier.get());
         this.map = map;
         this.planner = new PlannerImpl(map, positionSupplier);
-        this.mapper = new MapperImpl(map, positionSupplier, planner::getFinalTarget);
+        this.mapper = new MapperImpl(map, planner::getFinalTarget);
         try {
             this.remoteVis = new RemoteVis(map, planner::getSolution, positionSupplier,
                     planner::getFinalTarget);
@@ -61,7 +63,7 @@ public class Processor {
     }
 
     private boolean checkTarget(NavigationSnapshot snapshot) {
-        if (!mapper.equivalent(snapshot.position, planner.getFinalTarget())) {
+        if (!ctxt.scaleInfo.areEquivalent(snapshot.position, planner.getFinalTarget())) {
             // if we can see the final target go that way.
             if (mapper.isClearPath(snapshot.position, planner.getFinalTarget())) {
                 double newHeading = snapshot.position.headingTo(planner.getFinalTarget());
@@ -114,13 +116,13 @@ public class Processor {
 //    }
 
     public void moveTo(Location finalLocation) {
-        map.addCoord(finalLocation.getCoordinate(), null, false);
-        NavigationSnapshot snapshot = new NavigationSnapshot(positionSupplier.get(), finalLocation.getCoordinate());
+        map.addCoord(finalLocation, null, false);
+        NavigationSnapshot snapshot = new NavigationSnapshot(positionSupplier.get(), finalLocation);
         double heading = planner.setTarget(snapshot.target);
         if (LOG.isDebugEnabled()) {
             LOG.debug("calculated heading {} compare to {}", heading, positionSupplier.get().getHeading());
         }
-        motorState.send(Mover.MotorState.RUN);
+        moveToTopic.send(new Mover.MoveTo(finalLocation));
     }
 //        while (planner.getTarget() != null) {
 //            Optional<Step> opStep = planner.selectTarget();

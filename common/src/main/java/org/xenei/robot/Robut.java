@@ -4,6 +4,7 @@ import org.locationtech.jts.geom.Coordinate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xenei.robot.common.DistanceSensor;
+import org.xenei.robot.common.FrontsCoordinate;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Position;
 import org.xenei.robot.common.mapping.Map;
@@ -28,11 +29,11 @@ public class Robut {
         positionSupplier = mover::position;
         MapImpl map = new MapImpl(ctxt);
         // wire the sensors into the map.
-        distSensor.addListener(new MapDistanceSensorAdapter(map, positionSupplier));
+        ctxt.bus.distance.register(new MapDistanceSensorAdapter(map, positionSupplier));
         // create the processor
         this.processor = new Processor(mover, positionSupplier, map);
         // wire the mapper to the distance sensor
-        distSensor.addListener(processor.getMapper().getRelativeObstacleConsumer());
+        ctxt.bus.distance.register(processor.getMapper().getRelativeObstacleConsumer());
         // schedule the sensors to sense
         ctxt.scheduleAtFixedRate(distSensor, 500, 250, TimeUnit.MILLISECONDS);
     }
@@ -60,7 +61,7 @@ public class Robut {
             }
 
             @Override
-            public Supplier<Coordinate> targetSupplier() {
+            public Supplier<FrontsCoordinate> targetSupplier() {
                 return processor.getPlanner()::getTarget;
             }
         };

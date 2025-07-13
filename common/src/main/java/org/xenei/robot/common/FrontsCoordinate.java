@@ -40,6 +40,24 @@ public interface FrontsCoordinate {
 
     UnmodifiableCoordinate getCoordinate();
 
+    /**
+     * Return the angle in radians from the origin.
+     *
+     * @return the angle in radians from the origin to this coordinate.
+     */
+    default double theta() {
+        return ORIGIN.angleBetween(this);
+    }
+
+    /**
+     * Get the range to the coordinates in meters.
+     *
+     * @return the range to the coordinates.
+     */
+    default double range() {
+        return ORIGIN.distance(this);
+    }
+
     default double getX() {
         return getCoordinate().getX();
     }

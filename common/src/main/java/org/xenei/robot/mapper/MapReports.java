@@ -11,6 +11,7 @@ import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.Resource;
 import org.apache.jena.riot.Lang;
 import org.locationtech.jts.geom.Coordinate;
+import org.xenei.robot.common.FrontsCoordinate;
 import org.xenei.robot.common.mapping.Obstacle;
 import org.xenei.robot.mapper.rdf.Namespace;
 
@@ -73,10 +74,10 @@ public class MapReports {
         return builder.isEmpty() ? "No data" : builder.toString();
     }
 
-    public static String dumpDistance(MapImpl map, Coordinate currentPosition) {
+    public static String dumpDistance(MapImpl map, FrontsCoordinate currentPosition) {
         StringBuilder builder = new StringBuilder().append("'x','y','cost','dist'\n");
-        map.getSteps(currentPosition).forEach(step -> builder.append(String.format("%s,%s,%s,%s\n", //
-                step.getX(), step.getY(), step.cost(), step.distance())));
+        map.getSegments(currentPosition).forEach(segment -> builder.append(String.format("%s,%s,%s,%s\n", //
+                segment.getX(), segment.getY(), segment.cost(), segment.distance())));
 
         return builder.toString();
     }

@@ -7,11 +7,11 @@ import org.xenei.robot.common.utils.CoordUtils;
 
 public interface Location extends FrontsCoordinate {
     /**
-     * The origion for the map (0,0)
+     * The origin for the map (0,0)
      */
-    Location ORIGIN = from(new Coordinate(0, 0));
+    Location ORIGIN = from(FrontsCoordinate.ORIGIN);
     /**
-     * An examplar of an infinite location.
+     * An exemplar of an infinite location.
      * @see CoordUtils#isInfinite(Coordinate)
      * @see FrontsCoordinate#INFINITE
      */
@@ -68,21 +68,21 @@ public interface Location extends FrontsCoordinate {
         return x == 0 ? Double.compare(one.theta(), two.theta()) : x;
     };
 
-    /**
-     * Return the angle in radians from the origin.
-     * 
-     * @return the angle in radians from the origin to this coordinates.
-     */
-    default double theta() {
-        return ORIGIN.angleBetween(this);
-    }
-
-    /**
-     * Get the range to the coordinates in meters.
-     * 
-     * @return the range to the coordinates.
-     */
-    default double range() {
-        return ORIGIN.distance(this);
-    }
+//    /**
+//     * Return the angle in radians from the origin.
+//     *
+//     * @return the angle in radians from the origin to this coordinates.
+//     */
+//    default double theta() {
+//        return ORIGIN.angleBetween(this);
+//    }
+//
+//    /**
+//     * Get the range to the coordinates in meters.
+//     *
+//     * @return the range to the coordinates.
+//     */
+//    default double range() {
+//        return ORIGIN.distance(this);
+//    }
 }

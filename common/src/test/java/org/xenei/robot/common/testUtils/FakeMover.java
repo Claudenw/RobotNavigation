@@ -9,6 +9,8 @@ import org.xenei.robot.common.DeadReckoning;
 import org.xenei.robot.common.Position;
 import org.xenei.robot.common.utils.RobutContext;
 
+import java.util.concurrent.CompletableFuture;
+
 public class FakeMover extends BaseMover {
     private static final Logger LOG = LoggerFactory.getLogger(FakeMover.class);
     private final DeadReckoning deadReckoning;
@@ -32,8 +34,8 @@ public class FakeMover extends BaseMover {
         StepMonitor result = new StepMonitor(left, right);
         try {
             deadReckoning.track(result);
-            accept(MotorState.RUN);
-            ctxt.submit(result);
+            motorStateTopic.send(MotorState.RUN);
+            ctxt.submit(result).join();
         } finally {
             deadReckoning.track(null);
         }
@@ -95,7 +97,7 @@ public class FakeMover extends BaseMover {
                     }
                     sleep();
                 } else {
-                    accept(MotorState.STOP);
+                    motorStateTopic.send(MotorState.STOP);
                 }
             }
         }

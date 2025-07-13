@@ -3,10 +3,10 @@ package org.xenei.robot.mover;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xenei.robot.common.BumpSensor;
+import org.xenei.robot.common.FrontsCoordinate;
 import org.xenei.robot.common.messages.Topic;
 import org.xenei.robot.common.sensor.bump.BumpSensorModel;
 import org.xenei.robot.common.Compass;
-import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Mover;
 import org.xenei.robot.common.Position;
 import org.xenei.robot.common.utils.AngleUtils;
@@ -22,24 +22,29 @@ public abstract class BaseMover implements Mover {
 
     private static final Logger LOG = LoggerFactory.getLogger(BaseMover.class);
 
-    private final AtomicReference<MotorState> motorState;
+    ///  package private for testing
+    final AtomicReference<MotorState> motorState;
     protected final BumpSensorModel bumpSensorModel;
     protected final Compass compass;
     protected final RobutContext ctxt;
     protected final CopyOnWriteArrayList<LogicModule> logicModules;
     protected final Lock logicModuleLock;
+    protected final Topic<MoveTo> moveToTopic;
+    protected final Topic<MotorState> motorStateTopic;
     private final long sleepTime;
-    private final Topic<MotorState> topic;
 
     protected BaseMover(RobutContext ctxt, Compass compass, BumpSensorModel bumpSensorModel) {
         this.ctxt = ctxt;
-        this.topic = ctxt.bus.motor;
+        this.moveToTopic = ctxt.bus.moveTo;;
+        this.motorStateTopic = ctxt.bus.motor;
         this.compass = compass;
         this.bumpSensorModel = bumpSensorModel;
         this.motorState = new AtomicReference<>(MotorState.STOP);
         this.logicModules = new CopyOnWriteArrayList<>();
         this.logicModuleLock = new ReentrantLock();
         this.sleepTime = ctxt.chassisInfo.motorInfo.freq();
+        motorStateTopic.register(this.motorState::set);
+        moveToTopic.register(p -> this.move(p.location()));
     }
 
     /**
@@ -58,7 +63,7 @@ public abstract class BaseMover implements Mover {
             Thread.sleep(sleepTime * steps);
         } catch (InterruptedException e) {
             LOG.warn("Interrupted while waiting for sleep", e);
-            accept(MotorState.STOP);
+            motorStateTopic.send(MotorState.STOP);
         }
     }
 
@@ -80,17 +85,8 @@ public abstract class BaseMover implements Mover {
         return motorState.get();
     }
 
-    public void accept(MotorState motorState) {
-        this.motorState.set(motorState);
-        //topic.send(motorState);
-    }
-
-    public void accept(MoveTo moveTo) {
-        move(moveTo.location());
-    }
-
     @Override
-    final public void move(Location location) {
+    final public void move(FrontsCoordinate location) {
         Position currentPosition = position();
         Position nxt = currentPosition.nextPosition(location);
         setHeading(currentPosition.headingTo(nxt));
@@ -119,7 +115,7 @@ public abstract class BaseMover implements Mover {
      * move the system.
      * @param left number of steps to take on the left side.
      * @param right the number of steps to take on the right side.
-     * @return A SensorLayer if the bumper sensor triggered.
+     * @param lastSensor the last bump sensor reading.
      */
     public abstract void takeSteps(int left, int right, byte lastSensor);
 

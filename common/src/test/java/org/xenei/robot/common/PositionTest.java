@@ -175,7 +175,7 @@ public class PositionTest {
     @ParameterizedTest(name = "{index} {0}")
     @MethodSource("relativeLocationParameters")
     public void relativeLocationTest(Position position, Coordinate absolute, double heading) {
-        Location relative = position.relativeLocation(absolute);
+        Location relative = position.relativeLocation(Location.from(absolute));
         Position p2 = position.nextPosition(relative);
         CoordinateUtils.assertEquivalent(absolute, p2, TOLERANCE);
         assertEquals(AngleUtils.normalize(heading), AngleUtils.normalize(p2.getHeading()), AngleUtils.TOLERANCE);

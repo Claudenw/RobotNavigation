@@ -51,8 +51,6 @@ public class PlannerTest {
 
     final private ArgumentCaptor<Coordinate> coordinateCaptor = ArgumentCaptor.forClass(Coordinate.class);
     final private ArgumentCaptor<Coordinate> targetCaptor = ArgumentCaptor.forClass(Coordinate.class);
-    // private ArgumentCaptor<Step> stepCaptor =
-    // ArgumentCaptor.forClass(Step.class);
     final private ArgumentCaptor<Double> doubleCaptor = ArgumentCaptor.forClass(Double.class);
 
     @Test
@@ -87,10 +85,10 @@ public class PlannerTest {
 
         TestingPositionSupplier supplier = new TestingPositionSupplier(initial);
         underTest = new PlannerImpl(map, supplier, finalLocation);
-        NavigationSnapshot lastSnapshot = new NavigationSnapshot(initial, finalLocation.getCoordinate());
+        NavigationSnapshot lastSnapshot = new NavigationSnapshot(initial, finalLocation);
         Position second = Position.from(1, 1);
 
-        NavigationSnapshot snapshot = new NavigationSnapshot(second, finalLocation.getCoordinate());
+        NavigationSnapshot snapshot = new NavigationSnapshot(second, finalLocation);
         // since there is only one target this will add a position to the target stack
         underTest.registerPositionChange(snapshot);
         assertTrue(lastSnapshot.didChange(snapshot));
@@ -119,7 +117,7 @@ public class PlannerTest {
         Location finalLocation = Location.from(-1, 1);
         Position initial = Position.from(-1, -3);
         TestingPositionSupplier supplier = new TestingPositionSupplier(initial);
-        NavigationSnapshot initialSnapshot = new NavigationSnapshot(initial, finalLocation.getCoordinate());
+        NavigationSnapshot initialSnapshot = new NavigationSnapshot(initial, finalLocation);
 
         underTest = new PlannerImpl(map, supplier, finalLocation);
         NavigationSnapshot snapshot = underTest.getSnapshot();
@@ -149,7 +147,7 @@ public class PlannerTest {
         Coordinate newTarget = new Coordinate(4, 4);
         Position initial = Position.from(-1, -3);
         TestingPositionSupplier supplier = new TestingPositionSupplier(initial);
-        NavigationSnapshot initialSnapshot = new NavigationSnapshot(initial, finalLocation.getCoordinate());
+        NavigationSnapshot initialSnapshot = new NavigationSnapshot(initial, finalLocation);
 
         underTest = new PlannerImpl(map, supplier, finalLocation);
         NavigationSnapshot snapshot = underTest.getSnapshot();
@@ -158,7 +156,7 @@ public class PlannerTest {
         underTest.replaceTarget(newTarget);
         snapshot = underTest.getSnapshot();
         assertTrue(initialSnapshot.didTargetChange(snapshot));
-        assertTrue(newTarget.equals2D(underTest.getTarget()));
+        assertTrue(newTarget.equals2D(underTest.getTarget().getCoordinate()));
         assertEquals(2, underTest.getTargets().size());
         assertTrue(finalLocation.equals2D(underTest.getFinalTarget()));
 
@@ -170,7 +168,7 @@ public class PlannerTest {
         snapshot = underTest.getSnapshot();
         /// END OF EDIT
 
-        assertTrue(newTarget.equals2D(underTest.getTarget()));
+        assertTrue(newTarget.equals2D(underTest.getTarget().getCoordinate()));
         assertEquals(2, underTest.getTargets().size());
         assertTrue(finalLocation.equals2D(underTest.getFinalTarget()));
 
@@ -273,7 +271,7 @@ public class PlannerTest {
             }
 
             @Override
-            public Optional<Segment> getBestStep(Coordinate currentCoords) {
+            public Optional<Segment> getBestSegment(Coordinate currentCoords) {
                 return Optional.ofNullable(stepSupplier.get());
             }
 
@@ -296,21 +294,21 @@ public class PlannerTest {
         underTest = new PlannerImpl(map, positionSupplier, finalLocation);
 
         // first target (step)
-        Optional<Segment> opStep = underTest.selectTarget();
+        Optional<Segment> opStep = underTest.selectSegment();
         assertTrue(opStep.isPresent());
         Segment step = opStep.get();
         CoordinateUtils.assertEquivalent(step, underTest.getTarget());
         assertNull(visitedTarget[0]);
 
         // second target (empty)
-        opStep = underTest.selectTarget();
+        opStep = underTest.selectSegment();
         assertFalse(opStep.isPresent());
         CoordinateUtils.assertEquivalent(step, underTest.getTarget());
         assertNull(visitedTarget[0]);
 
         // change the position to current target location.
         positionSupplier.position = Position.from(underTest.getTarget());
-        opStep = underTest.selectTarget();
+        opStep = underTest.selectSegment();
         assertTrue(opStep.isPresent());
         Segment step2 = opStep.get();
         CoordinateUtils.assertEquivalent(step2, underTest.getTarget());
@@ -325,7 +323,7 @@ public class PlannerTest {
         // solution should have one more entry
         // target should be null
         positionSupplier.position = Position.from(finalLocation);
-        opStep = underTest.selectTarget();
+        opStep = underTest.selectSegment();
         assertFalse(opStep.isPresent());
         CoordinateUtils.assertEquivalent(positionSupplier.position, visitedTarget[0]);
     }
@@ -397,17 +395,17 @@ public class PlannerTest {
         }
 
         @Override
-        public boolean isClearPath(Coordinate source, Coordinate dest) {
+        public boolean isClearPath(FrontsCoordinate source, FrontsCoordinate dest) {
             return true;
         }
 
         @Override
-        public CompletableFuture<Optional<Segment>> addCoord(Coordinate coord, Coordinate target, boolean visited) {
+        public CompletableFuture<Optional<Segment>> addCoord(FrontsCoordinate coord, FrontsCoordinate target, boolean visited) {
             return null;
         }
 
         @Override
-        public Collection<Segment> getSteps(Coordinate position) {
+        public Collection<Segment> getSegments(Coordinate position) {
             return null;
         }
 
@@ -430,13 +428,13 @@ public class PlannerTest {
         }
 
         @Override
-        public CompletableFuture<Coordinate> recalculate(Coordinate target) {
+        public Coordinate recalculate(Coordinate target) {
             // TODO Auto-generated method stub
             return null;
         }
 
         @Override
-        public Optional<Segment> getBestStep(Coordinate currentCoords) {
+        public Optional<Segment> getBestSegment(Coordinate currentCoords) {
             return Optional.empty();
         }
 
@@ -459,7 +457,7 @@ public class PlannerTest {
         }
 
         @Override
-        public CompletableFuture<?> cutPath(Coordinate a, Coordinate b) {
+        public CompletableFuture<?> cutPath(FrontsCoordinate a, FrontsCoordinate b) {
             // TODO Auto-generated method stub
 
             return null;

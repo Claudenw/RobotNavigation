@@ -7,6 +7,10 @@ import org.xenei.robot.common.FrontsCoordinate;
 import org.xenei.robot.common.Position;
 import org.xenei.robot.common.utils.CoordUtils;
 
+/**
+ * An implementation of {@link FrontsCoordinate} that identifies an open path segment
+ * from the current position to Segment coordinate.
+ */
 public interface Segment extends FrontsCoordinate, Comparable<Segment> {
 
     /**
