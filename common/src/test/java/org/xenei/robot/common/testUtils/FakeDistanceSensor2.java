@@ -10,6 +10,7 @@ import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xenei.robot.common.DistanceSensor;
+import org.xenei.robot.common.FrontsCoordinate;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Position;
 import org.xenei.robot.common.mapping.Map;
@@ -51,7 +52,7 @@ public class FakeDistanceSensor2 implements FakeDistanceSensor {
         }
     }
 
-    private Location look(Position position, double heading) {
+    private FrontsCoordinate look(Position position, double heading) {
         if (LOG.isDebugEnabled()) {
             LOG.debug("Scanning heading: {} {}", heading, Math.toDegrees(heading));
         }

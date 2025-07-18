@@ -24,6 +24,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.locationtech.jts.geom.Coordinate;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
+import org.xenei.robot.common.ChassisInfoTest;
 import org.xenei.robot.common.DistanceSensor;
 import org.xenei.robot.common.FrontsCoordinate;
 import org.xenei.robot.common.Location;
@@ -35,7 +36,6 @@ import org.xenei.robot.common.mapping.Mapper;
 import org.xenei.robot.common.mapping.Obstacle;
 import org.xenei.robot.common.planning.Segment;
 import org.xenei.robot.common.testUtils.CoordinateUtils;
-import org.xenei.robot.common.testUtils.TestChassisInfo;
 import org.xenei.robot.common.utils.AngleUtils;
 import org.xenei.robot.common.utils.CoordUtils;
 import org.xenei.robot.common.utils.RobutContext;
@@ -45,7 +45,7 @@ public class MapperImplTest {
     private final ArgumentCaptor<FrontsCoordinate> coordinateCaptor = ArgumentCaptor.forClass(FrontsCoordinate.class);
     private final ArgumentCaptor<Obstacle> obstacleCaptor = ArgumentCaptor.forClass(Obstacle.class);
 
-    private final RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT, TestChassisInfo.DEFAULT);
+    private final RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT, ChassisInfoTest.DEFAULT);
 
     @Test
     public void processSensorDataTest_TooClose() {

@@ -5,6 +5,7 @@ import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import org.xenei.robot.common.ChassisInfoTest;
 import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.common.mapping.MapBuilder;
 import org.xenei.robot.common.mapping.Map;
@@ -98,7 +99,7 @@ public class MapLibrary {
     public static void main(String[] args) throws ParseException {
         CommandLine commandLine = DefaultParser.builder().build().parse(getOptions(), args);
         int mapNumber = commandLine.getParsedOptionValue("m");
-        Map map = new MapImpl(new RobutContext(ScaleInfo.DEFAULT, TestChassisInfo.DEFAULT));
+        Map map = new MapImpl(new RobutContext(ScaleInfo.DEFAULT, ChassisInfoTest.DEFAULT));
         switch (mapNumber) {
             case 1:
                 map1(map);

@@ -1,6 +1,7 @@
 package org.xenei.robot.mapper;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 
@@ -42,9 +43,9 @@ public class PointCloudSorter {
         connections = iMatrix.reduction(IntHalfMatrix.plus);
     }
 
-    public Geometry walk() {
+    public Collection<Geometry> walk() {
 
-        List<Geometry> geoms = new ArrayList<Geometry>();
+        List<Geometry> geoms = new ArrayList<>();
         while (walk(geoms)) {
             // work done above
         }
@@ -53,10 +54,10 @@ public class PointCloudSorter {
         }
         if (geoms.size() == 1) {
             LOG.debug("walk() returned one result");
-            return geoms.get(0);
+        } else {
+            LOG.info("walk() returned a collection of {} results", geoms.size());
         }
-        LOG.info("walk() returned a collection of {} results", geoms.size());
-        return ctxt.geometryFactory.createGeometryCollection(geoms.toArray(new Geometry[geoms.size()]));
+        return geoms;
     }
 
     /**

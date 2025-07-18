@@ -42,7 +42,7 @@ public class SolutionTest {
         assertNull(underTest.end());
         assertNull(underTest.start());
         assertEquals(-1, underTest.stepCount());
-        List<Coordinate> solution = underTest.stream().collect(Collectors.toList());
+        List<FrontsCoordinate> solution = underTest.stream().toList();
         assertTrue(solution.isEmpty());
         assertEquals(Double.POSITIVE_INFINITY, underTest.cost());
     }
@@ -53,7 +53,7 @@ public class SolutionTest {
         assertEquals(new Coordinate(-1, 1), underTest.end());
         assertEquals(new Coordinate(-1, -3), underTest.start());
         assertEquals(expectedSolution.length - 1, underTest.stepCount());
-        List<Coordinate> solution = underTest.stream().collect(Collectors.toList());
+        List<FrontsCoordinate> solution = underTest.stream().collect(Collectors.toList());
         List<Coordinate> expected = Arrays.stream(expectedSolution).collect(Collectors.toList());
         assertEquals(expected, solution);
         assertEquals(expectedCost, underTest.cost());
@@ -78,7 +78,7 @@ public class SolutionTest {
         assertEquals(3, underTest.stepCount());
         assertEquals(new Coordinate(-1, 1), underTest.end());
         assertEquals(new Coordinate(-1, -3), underTest.start());
-        List<Coordinate> solution = underTest.stream().collect(Collectors.toList());
+        List<FrontsCoordinate> solution = underTest.stream().collect(Collectors.toList());
         List<Coordinate> expected = Arrays.stream(expectedSimplification).collect(Collectors.toList());
         assertEquals(expected, solution);
         assertEquals(expectedSimplifiedCost, underTest.cost());

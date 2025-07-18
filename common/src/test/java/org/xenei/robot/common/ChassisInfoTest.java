@@ -7,21 +7,23 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class ChassisInfoTest {
 
+    // wheel size and max speed are unused in unit tests.
+    public static final ChassisInfo DEFAULT = ChassisInfo.builder()
+            .width(0.5).wheelSize(7).motorInfo(new MotorInfo(0.1, 100)).build();
+
+    /**
+     * setup 4 steps to rotate the wheel with a 1M circumstance.
+     */
+    public static final ChassisInfo ONE_METER = ChassisInfo.builder()
+            .width(0.5).wheelSize(1 / Math.PI * 100).motorInfo(new MotorInfo(0.25 * AngleUtils.PI_x_2, 100)).build();
+
     @Test
     void metersPerStepTest() {
-        // setup 4 steps to rotate the wheel with a 1M circumstance.
-        double wheelDiameter = 1 / Math.PI * 100;
-        double stepAngle = 0.25 * AngleUtils.PI_x_2;
-        ChassisInfo chassisInfo  = ChassisInfo.builder().motorInfo(new MotorInfo(stepAngle, 100))
-                        .wheelSize(wheelDiameter).build();
-        assertEquals(0.25, chassisInfo.metersPerStep);
+        assertEquals(0.25,  ONE_METER.metersPerStep);
     }
 
     @Test
     void stepsPerRotationTest() {
-        double stepAngle = 0.25 * AngleUtils.PI_x_2;
-        ChassisInfo chassisInfo  = ChassisInfo.builder().motorInfo(new MotorInfo(stepAngle, 100))
-                .build();
-        assertEquals(4, chassisInfo.stepsPerRotation, 0.001);
+        assertEquals(4, ONE_METER.stepsPerRotation, 0.001);
     }
 }

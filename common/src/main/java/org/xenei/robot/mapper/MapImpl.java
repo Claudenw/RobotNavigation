@@ -425,24 +425,23 @@ public class MapImpl implements Map {
 
     @Override
     public boolean isClearPath(FrontsCoordinate from, FrontsCoordinate target) {
-        return !ask(getClearPathCalculation(Namespace.s, asMapCoordinate(from).getCoordinate(), asMapCoordinate(target).getCoordinate()));
+        return !ask(getClearPathCalculation(Namespace.s, from.getCoordinate(), target.getCoordinate()));
     }
 
-    AskBuilder getClearPathCalculation(Var s, Coordinate from, Coordinate target) {
+    AskBuilder getClearPathCalculation(Var subject, Coordinate from, Coordinate target) {
         LOG.debug("checking clearView from {} to {} ", from, target);
         Literal pathWkt = ctxt.graphGeomFactory.asWKTPath(ctxt.chassisInfo.radius, from, target);
         Var wkt = Var.alloc("wkt");
 
         return new AskBuilder().from(Namespace.UnionModel.getURI()) //
-                .addWhere(s, RDF.type, Namespace.Obst) //
-                .addWhere(s, Geo.AS_WKT_PROP, wkt)
+                .addWhere(subject, RDF.type, Namespace.Obst) //
+                .addWhere(subject, Geo.AS_WKT_PROP, wkt)
                 .addFilter(exprF.eq(ctxt.graphGeomFactory.calcDistance(exprF, pathWkt, wkt), 0));
     }
 
     /**
      * Updates the property of the coordinates record in the model to have the
      * specified value.
-     *
      *
      * @param model The model to update.
      * @param coord the node to update
@@ -557,7 +556,7 @@ public class MapImpl implements Map {
     }
 
     @Override
-    public CompletableFuture<Collection<MapCoord>> getCoords() {
+    public CompletableFuture<Collection<MapCoord>>  getCoords() {
         Var x = Var.alloc("x");
         Var y = Var.alloc("y");
         Var wkt = Var.alloc("wkt");
@@ -572,16 +571,6 @@ public class MapImpl implements Map {
                 .addWhere(Namespace.s, Namespace.y, y);
 
         List<MapCoord> result = new ArrayList<>();
-
-//        Predicate<QuerySolution> processor = soln -> {
-//            Geometry geom = ctxt.graphGeomFactory.fromWkt(soln.getLiteral(wkt.getName()));
-//            Literal litIndirect = soln.getLiteral(indirect.getName());
-//            result.add(new MapCoord( //
-//                    soln.getLiteral(x.getName()).getDouble(), //
-//                    soln.getLiteral(y.getName()).getDouble(), //
-//                    litIndirect == null ? false : litIndirect.getBoolean(), geom));
-//            return true;
-//        };
 
         Consumer<QuerySolution> processor = soln -> {
             Geometry geom = ctxt.graphGeomFactory.fromWkt(soln.getLiteral(wkt.getName()));
@@ -936,7 +925,7 @@ public class MapImpl implements Map {
      * Create a cloud of obsacle points in a single geometry.
      */
     private class ObstacleHandler {
-        private Geometry makeCloud(Obstacle obstacle, Collection<? extends Obstacle> others) {
+        private Collection<Geometry> makeCloud(Obstacle obstacle, Collection<? extends Obstacle> others) {
             Set<Coordinate> cSet = new HashSet<>();
             Consumer<Obstacle> co = o -> cSet.addAll(Arrays.asList(o.geom().getCoordinates()));
             co.accept(obstacle);
@@ -947,7 +936,7 @@ public class MapImpl implements Map {
                 return pcs.walk();
             }
 
-            return ctxt.geometryFactory.createLineString(cSet.toArray(new Coordinate[0]));
+            return List.of(ctxt.geometryFactory.createLineString(cSet.toArray(new Coordinate[0])));
         }
 
         private Set<Obstacle> mergeIntersectOrTouch(Obstacle obstacle, Set<ObstacleImpl> solns) {
@@ -957,12 +946,12 @@ public class MapImpl implements Map {
                 solution.add(obstacle);
             } else if (solns.size() == 1) {
                 Obstacle obs = solns.iterator().next();
-                if (obstacle.geom().coveredBy(obstacle.geom())) {
+                if (obstacle.geom().coveredBy(obs.geom())) {
                     return Collections.emptySet();
                 }
             } else {
                 UpdateRequest req = new UpdateRequest();
-                Geometry result = makeCloud(obstacle, solns);
+                Collection<Geometry> result = makeCloud(obstacle, solns);
                 for (Obstacle obst : solns) {
                     req.add(new UpdateBuilder()
                             .addDelete(Namespace.PlanningModel, obst.rdf(), Namespace.p, Namespace.o)
@@ -971,9 +960,11 @@ public class MapImpl implements Map {
                             .build());
                 }
                 Model merged = ModelFactory.createDefaultModel();
-                ObstacleImpl obst = new ObstacleImpl(result);
-                obst.in(merged);
-                solution.add(obst);
+                for (Geometry g : result) {
+                    ObstacleImpl obst = new ObstacleImpl(g);
+                    obst.in(merged);
+                    solution.add(obst);
+                }
                 req.add(new UpdateBuilder().addInsert(Namespace.PlanningModel, merged).build());
                 doUpdate(req);
             }
@@ -1037,7 +1028,7 @@ public class MapImpl implements Map {
             AskBuilder ask = new AskBuilder().addGraph(Namespace.UnionModel,
                     new WhereBuilder().addWhere(Namespace.s, RDF.type, Namespace.Obst) //
                             .addWhere(Namespace.s, Geo.AS_WKT_PROP, wkt) //
-                            .addFilter(ctxt.graphGeomFactory.intersects(exprF, pointWKT, wkt)));
+                            .addFilter(ctxt.graphGeomFactory.isNearby(exprF, pointWKT, wkt, ctxt.scaleInfo.getResolution())));
             return ask(ask);
         }
 

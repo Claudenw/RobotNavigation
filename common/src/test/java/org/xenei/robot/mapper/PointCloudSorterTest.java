@@ -1,14 +1,15 @@
 package org.xenei.robot.mapper;
 
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
+import org.xenei.robot.common.ChassisInfoTest;
 import org.xenei.robot.common.ScaleInfo;
-import org.xenei.robot.common.testUtils.TestChassisInfo;
 import org.xenei.robot.common.utils.RobutContext;
 
 public class PointCloudSorterTest {
@@ -28,7 +29,7 @@ public class PointCloudSorterTest {
             new Coordinate(0.0, -4.0), new Coordinate(2.0, -4.0), new Coordinate(0.5, -1.0), new Coordinate(-0.5, -1.0),
             new Coordinate(-4.0, -2.5) };
 
-    RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT, TestChassisInfo.DEFAULT);
+    RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT, ChassisInfoTest.DEFAULT);
     
     @Test
     public void walkTest() {
@@ -36,7 +37,7 @@ public class PointCloudSorterTest {
         coords.addAll(Arrays.asList(coordinates));
         PointCloudSorter pcs = new PointCloudSorter(ctxt, coords);
       
-        Geometry g = pcs.walk();
+        Collection<Geometry> g = pcs.walk();
         
     }
 }

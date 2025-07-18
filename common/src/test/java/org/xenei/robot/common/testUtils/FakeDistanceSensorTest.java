@@ -12,6 +12,7 @@ import java.util.function.Supplier;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.locationtech.jts.geom.Geometry;
+import org.xenei.robot.common.ChassisInfoTest;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Position;
 import org.xenei.robot.common.ScaleInfo;
@@ -30,7 +31,7 @@ public class FakeDistanceSensorTest {
     @Disabled
     public void map1Test() {
         TestingPositionSupplier positionSupplier = new TestingPositionSupplier(null);
-        Map map = new MapImpl(new RobutContext(ScaleInfo.DEFAULT, TestChassisInfo.DEFAULT));
+        Map map = new MapImpl(new RobutContext(ScaleInfo.DEFAULT, ChassisInfoTest.DEFAULT));
         underTest = new FakeDistanceSensor1(MapLibrary.map1(map), positionSupplier);
         double x = 13.5;
         double y = 15.5;
@@ -73,7 +74,7 @@ public class FakeDistanceSensorTest {
         Supplier<Position> positionSupplier = new TestingPositionSupplier(Position.from(-1, -3) );
         Solution solution = new Solution();
         solution.add(positionSupplier.get());
-        Map map = new MapImpl(new RobutContext(ScaleInfo.DEFAULT, TestChassisInfo.DEFAULT));
+        Map map = new MapImpl(new RobutContext(ScaleInfo.DEFAULT, ChassisInfoTest.DEFAULT));
         underTest = new FakeDistanceSensor1(MapLibrary.map2(map), positionSupplier);
         MapViz mapViz = new MapViz(1, underTest.map(), () -> solution, positionSupplier, () -> null);
         map.getContext().scheduleAtFixedRate(mapViz::redraw, 0,500, TimeUnit.MILLISECONDS);

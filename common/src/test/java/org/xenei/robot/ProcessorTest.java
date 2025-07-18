@@ -5,10 +5,11 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import org.junit.jupiter.api.Test;
-import org.locationtech.jts.geom.Coordinate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.xenei.robot.common.ChassisInfoTest;
 import org.xenei.robot.common.DistanceSensor;
+import org.xenei.robot.common.FrontsCoordinate;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Mover;
 import org.xenei.robot.common.Position;
@@ -18,7 +19,6 @@ import org.xenei.robot.common.testUtils.FakeDistanceSensor1;
 import org.xenei.robot.common.testUtils.FakeDistanceSensor2;
 import org.xenei.robot.common.testUtils.FakeMover;
 import org.xenei.robot.common.testUtils.MapLibrary;
-import org.xenei.robot.common.testUtils.TestChassisInfo;
 import org.xenei.robot.common.utils.AngleUtils;
 import org.xenei.robot.common.utils.RobutContext;
 import org.xenei.robot.mapper.MapImpl;
@@ -29,7 +29,7 @@ public class ProcessorTest {
     private final RobutContext ctxt;
 
     ProcessorTest() {
-        ctxt = new RobutContext(ScaleInfo.DEFAULT, TestChassisInfo.DEFAULT);
+        ctxt = new RobutContext(ScaleInfo.DEFAULT, ChassisInfoTest.DEFAULT);
     }
 
     private void doTest(Location startCoord, Location finalCoord, FakeMover mover, DistanceSensor sensor) {
@@ -42,7 +42,7 @@ public class ProcessorTest {
         SegmentTracker segmentTracer = new SegmentTracker(ctxt);
         try {
             underTest.moveTo(finalCoord);
-            Coordinate target;
+            FrontsCoordinate target;
             while ((target = underTest.getPlanner().getTarget()) != null) {
                 int stepsToTarget = ctxt.chassisInfo.steps(positionSupplier.get().distance(target));
                 mover.sleep(stepsToTarget);
@@ -56,7 +56,7 @@ public class ProcessorTest {
     public void stepTestMap2() {
         Location startCoord = Location.from(-1, -3);
         FakeMover mover = new FakeMover(ctxt, startCoord.getCoordinate());
-        Map m = new MapImpl(new RobutContext(ScaleInfo.DEFAULT, TestChassisInfo.DEFAULT));
+        Map m = new MapImpl(new RobutContext(ScaleInfo.DEFAULT, ChassisInfoTest.DEFAULT));
         DistanceSensor sensor = new FakeDistanceSensor1(MapLibrary.map2(m), mover::position);
         Location finalCoord = Location.from(-1, 1);
         doTest(startCoord, finalCoord, mover, sensor);
@@ -66,7 +66,7 @@ public class ProcessorTest {
     public void stepTestMap3() {
         Location startCoord = Location.from(-1, -3);
         FakeMover mover = new FakeMover(ctxt, startCoord.getCoordinate());
-        Map m = new MapImpl(new RobutContext(ScaleInfo.DEFAULT, TestChassisInfo.DEFAULT));
+        Map m = new MapImpl(new RobutContext(ScaleInfo.DEFAULT, ChassisInfoTest.DEFAULT));
         DistanceSensor sensor = new FakeDistanceSensor2(MapLibrary.map3(m), AngleUtils.RADIANS_45, mover::position);
         Location finalCoord = Location.from(-1, 1);
         doTest(startCoord, finalCoord, mover, sensor);
@@ -76,7 +76,7 @@ public class ProcessorTest {
     public void stepTestEmptyMap() {
         Location startCoord = Location.from(-1, -3);
         FakeMover mover = new FakeMover(ctxt, startCoord.getCoordinate());
-        Map m = new MapImpl(new RobutContext(ScaleInfo.DEFAULT, TestChassisInfo.DEFAULT));
+        Map m = new MapImpl(new RobutContext(ScaleInfo.DEFAULT, ChassisInfoTest.DEFAULT));
         DistanceSensor sensor = new FakeDistanceSensor1(m, mover::position);
         Location finalCoord = Location.from(-1, 1);
         doTest(startCoord, finalCoord, mover, sensor);
@@ -103,10 +103,10 @@ public class ProcessorTest {
     }
 
     public static void main(String[] args) throws InterruptedException {
-        RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT, TestChassisInfo.DEFAULT);
+        RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT, ChassisInfoTest.DEFAULT);
         Location startCoord = Location.from(-1, -3);
         FakeMover mover = new FakeMover(ctxt, startCoord.getCoordinate());
-        Map m = new MapImpl(new RobutContext(ScaleInfo.DEFAULT, TestChassisInfo.DEFAULT));
+        Map m = new MapImpl(new RobutContext(ScaleInfo.DEFAULT, ChassisInfoTest.DEFAULT));
         DistanceSensor sensor = new FakeDistanceSensor1(MapLibrary.map2(m), mover::position);
         Location finalCoord = Location.from(-1, 1);
         Supplier<Position> positionSupplier = mover::position;

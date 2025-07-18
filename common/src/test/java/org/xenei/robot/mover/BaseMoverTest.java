@@ -3,36 +3,21 @@ package org.xenei.robot.mover;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.xenei.robot.common.BumpSensor;
-import org.xenei.robot.common.ChassisInfo;
 import org.xenei.robot.common.ChassisInfoTest;
-import org.xenei.robot.common.Compass;
 import org.xenei.robot.common.DeadReckoning;
-import org.xenei.robot.common.FrontsCoordinate;
+import org.xenei.robot.common.FrontsCoordinateTest;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Mover;
 import org.xenei.robot.common.Position;
 import org.xenei.robot.common.ScaleInfo;
-import org.xenei.robot.common.messages.Topic;
 import org.xenei.robot.common.sensor.bump.BumpSensorModel;
-import org.xenei.robot.common.testUtils.FakeMover;
-import org.xenei.robot.common.testUtils.TestChassisInfo;
 import org.xenei.robot.common.utils.AngleUtils;
 import org.xenei.robot.common.utils.RobutContext;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
-import java.util.function.Consumer;
-import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -51,7 +36,7 @@ public class BaseMoverTest {
 
     protected BaseMover getInstance() {
         scaleInfo = ScaleInfo.DEFAULT;
-        ctxt = new RobutContext(scaleInfo, TestChassisInfo.DEFAULT);
+        ctxt = new RobutContext(scaleInfo, ChassisInfoTest.DEFAULT);
         deadReckoning = new DeadReckoning(ctxt);
         bumpSensorModel = new BumpSensorModel(ctxt, 8);
         return new BaseMover(ctxt, deadReckoning, bumpSensorModel) {
@@ -100,7 +85,7 @@ public class BaseMoverTest {
     @Test
     void moveTest() {
         underTest.move(Location.from(0, 10));
-        assertTrue(scaleInfo.areEquivalent(Position.from(0, 10, AngleUtils.RADIANS_90), deadReckoning.get()));
+        FrontsCoordinateTest.assertEquals(Position.from(0, 10, AngleUtils.RADIANS_90), deadReckoning.get(), scaleInfo);
         assertEquals(2, stepRecords.size());
         /*
         @Override
@@ -120,7 +105,7 @@ public class BaseMoverTest {
             AngleUtils.RADIANS_225, AngleUtils.RADIANS_270, AngleUtils.RADIANS_315})
     void setHeadingTest(double heading) {
         underTest.setHeading(heading);
-        assertTrue(scaleInfo.areEquivalent(Position.from(Location.ORIGIN, heading), deadReckoning.get()));
+        assertEquals(Position.from(Location.ORIGIN, heading), deadReckoning.get());
     }
 
 

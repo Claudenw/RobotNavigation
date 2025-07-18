@@ -16,15 +16,15 @@ import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
+import org.xenei.robot.common.ChassisInfoTest;
 import org.xenei.robot.common.FrontsCoordinate;
 import org.xenei.robot.common.FrontsCoordinateTest;
 import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.common.testUtils.CoordinateUtils;
-import org.xenei.robot.common.testUtils.TestChassisInfo;
 
 public class GeometryUtilsTest {
 
-    private static RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT, TestChassisInfo.DEFAULT);
+    private static RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT, ChassisInfoTest.DEFAULT);
 
     @ParameterizedTest
     @MethodSource("polygonParameters")

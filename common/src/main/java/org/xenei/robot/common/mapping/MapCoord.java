@@ -14,4 +14,9 @@ public class MapCoord {
         this.geometry = geometry;
     }
 
+    @Override
+    public String toString() {
+        return String.format("MapCoord[%s]", location);
+    }
+
 }

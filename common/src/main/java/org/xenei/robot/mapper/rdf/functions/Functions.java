@@ -20,6 +20,8 @@ public class Functions implements FunctionFactory {
         add(Namespace.touchesF, new FF2((x, y) -> NodeValue.makeBoolean(x.touches(y))));
         add(Namespace.distanceF, new FF2((x, y) -> NodeValue.makeDouble(x.distance(y))));
         add(Namespace.intersectDistF, new FF_IntersectionDistance());
+        add(Namespace.isCoveredByF, new FF2((x, y) -> NodeValue.makeBoolean(x.coveredBy(y))));
+        add(Namespace.coversF, new FF2((x, y) -> NodeValue.makeBoolean(x.covers(y))));
         add(Namespace.nearbyF, new FF_Nearby());
     }
 

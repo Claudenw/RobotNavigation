@@ -10,7 +10,6 @@ import java.util.function.Supplier;
  * Compass that determines position by dead reckoning.
  */
 public class DeadReckoning implements Compass, Supplier<Position> {
-    private static final double STEPS_PER_RADIAN = 640.0 * 10;
     private final AtomicReference<Position> position;
     private StepMonitor currentMonitor;
     private final RobutContext ctxt;
@@ -40,6 +39,10 @@ public class DeadReckoning implements Compass, Supplier<Position> {
 
     @Override
     public Position get() {
+        if (currentMonitor != null) {
+            ThetaAndRange thetaAndRange = ctxt.chassisInfo.thetaAndRange(currentMonitor);
+            return position.get().nextPosition(thetaAndRange);
+        }
         return position.get();
     }
 

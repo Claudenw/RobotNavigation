@@ -34,6 +34,8 @@ public class Namespace {
     public static Resource distanceF = ResourceFactory.createResource(FUNC_URI + "distance");
     public static Resource nearbyF = ResourceFactory.createResource(FUNC_URI + "nearby");
     public static Resource intersectDistF = ResourceFactory.createResource(FUNC_URI + "intersectionDist");
+    public static Resource isCoveredByF = ResourceFactory.createResource(FUNC_URI + "isCoveredBy");
+    public static Resource coversF = ResourceFactory.createResource(FUNC_URI + "covers");
 
     public static final Var s = Var.alloc("s");
     public static final Var p = Var.alloc("p");

@@ -77,6 +77,14 @@ public final class GraphGeomFactory {
         return expF.call(Namespace.touchesF, geo1, geo2);
     }
 
+    public Expr isCoveredBy(ExprFactory expF, Object geo1, Object geo2) {
+        return expF.call(Namespace.isCoveredByF, geo1, geo2);
+    }
+
+    public Expr covers(ExprFactory expF, Object geo1, Object geo2) {
+        return expF.call(Namespace.coversF, geo1, geo2);
+    }
+
     public Expr isNearby(ExprFactory exprF, Object geo1, Object geo2, Object distance) {
         return exprF.call(Namespace.nearbyF, exprF.asExpr(geo1), exprF.asExpr(geo2), exprF.asExpr(distance));
     }

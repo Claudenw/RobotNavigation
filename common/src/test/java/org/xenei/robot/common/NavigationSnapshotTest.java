@@ -19,14 +19,14 @@ import org.locationtech.jts.geom.Coordinate;
 import org.xenei.robot.common.utils.AngleUtils;
 
 public class NavigationSnapshotTest {
-    static final Coordinate target = new Coordinate(2,2);
+    static final FrontsCoordinate target = Location.from(2,2);
     static final Position position = Position.from(1,1,AngleUtils.RADIANS_45);
     static final NavigationSnapshot fullSnapshot = new NavigationSnapshot( position, target);
     static final NavigationSnapshot nullPosition = new NavigationSnapshot( null, target);
     static final NavigationSnapshot nullTarget = new NavigationSnapshot( position, null);
     static final NavigationSnapshot diffHead = new NavigationSnapshot( Position.from(1,1,AngleUtils.RADIANS_90), target);
     static final NavigationSnapshot diffLoc = new NavigationSnapshot( Position.from(1,2,AngleUtils.RADIANS_45), target);
-    static final NavigationSnapshot diffTarget = new NavigationSnapshot(position, new Coordinate(3,3));
+    static final NavigationSnapshot diffTarget = new NavigationSnapshot(position, Location.from(3,3));
      
     private static Map<NavigationSnapshot,String> navMap = new HashMap<>();
     
@@ -61,9 +61,9 @@ public class NavigationSnapshotTest {
     
     @Test
     public void headingTest() {
-        assertEquals( AngleUtils.RADIANS_45, fullSnapshot.heading(), () -> fullSnapshot.toString());
-        assertEquals( Double.NaN, nullPosition.heading(), () -> nullPosition.toString());
-        assertEquals( AngleUtils.RADIANS_45, nullTarget.heading(), () -> nullTarget.toString());
+        assertEquals( AngleUtils.RADIANS_45, fullSnapshot.heading(), fullSnapshot::toString);
+        assertEquals( Double.NaN, nullPosition.heading(), nullPosition::toString);
+        assertEquals( AngleUtils.RADIANS_45, nullTarget.heading(), nullTarget::toString);
     }
 
     @ParameterizedTest

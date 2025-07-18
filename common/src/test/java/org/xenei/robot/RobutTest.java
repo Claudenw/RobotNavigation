@@ -3,6 +3,7 @@ package org.xenei.robot;
 import org.locationtech.jts.geom.Coordinate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.xenei.robot.common.ChassisInfoTest;
 import org.xenei.robot.common.DistanceSensor;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.ScaleInfo;
@@ -11,7 +12,6 @@ import org.xenei.robot.common.testUtils.FakeBumpSensor;
 import org.xenei.robot.common.testUtils.FakeDistanceSensor1;
 import org.xenei.robot.common.testUtils.FakeMover;
 import org.xenei.robot.common.testUtils.MapLibrary;
-import org.xenei.robot.common.testUtils.TestChassisInfo;
 import org.xenei.robot.common.utils.CoordUtils;
 import org.xenei.robot.common.utils.RobutContext;
 import org.xenei.robot.mapper.MapImpl;
@@ -27,7 +27,7 @@ import java.util.concurrent.TimeUnit;
 public class RobutTest {
 
     private static Robut build(Coordinate origin) throws InterruptedException {
-        RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT, TestChassisInfo.DEFAULT);
+        RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT, ChassisInfoTest.DEFAULT);
         FakeMover mover = new FakeMover(ctxt, origin);
         FakeBumpSensor bumpSensor = new FakeBumpSensor();
         BumpSensorLogicModule bumpSensorLogicModule = new BumpSensorLogicModule(ctxt, mover);

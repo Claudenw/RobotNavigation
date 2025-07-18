@@ -9,7 +9,7 @@ public interface DistanceSensor extends Runnable {
 
     record DistanceReading(double theta, double range) {
         public Location getLocation() {return Location.from(CoordUtils.fromAngle(theta, range));}
-        public static DistanceReading from(Location location) {
+        public static DistanceReading from(FrontsCoordinate location) {
             return new DistanceReading(location.theta(), location.range());
         }
         public static DistanceReading from(Coordinate coordinate) {

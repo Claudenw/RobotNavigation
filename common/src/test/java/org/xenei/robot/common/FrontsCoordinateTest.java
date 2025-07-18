@@ -1,7 +1,7 @@
 package org.xenei.robot.common;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.xenei.robot.common.utils.AngleUtils.RADIANS_180;
 import static org.xenei.robot.common.utils.AngleUtils.RADIANS_45;
 
@@ -10,6 +10,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Stream;
 
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -21,6 +22,13 @@ import org.xenei.robot.common.utils.CoordUtils;
 import org.xenei.robot.common.utils.CoordUtilsTest;
 
 public class FrontsCoordinateTest {
+
+    public static void assertEquals(FrontsCoordinate a, FrontsCoordinate b, ScaleInfo scaleInfo) {
+        if (!scaleInfo.areEquivalent(a, b)) {
+            fail(String.format("Expected %s ≈ %s (±%s)", a, b, scaleInfo.getResolution()));
+        }
+    }
+
     private FrontsCoordinate underTest = new FrontsCoordinate() {
 
         @Override
@@ -48,12 +56,12 @@ public class FrontsCoordinateTest {
 
     @Test
     public void getXTest() {
-        assertEquals(4, underTest.getX());
+        Assertions.assertEquals(4, underTest.getX());
     }
 
     @Test
     public void getYTest() {
-        assertEquals(5, underTest.getY());
+        Assertions.assertEquals(5, underTest.getY());
     }
 
     @Test
@@ -69,50 +77,50 @@ public class FrontsCoordinateTest {
     @Test
     public void compareToTest() {
         Coordinate other = new Coordinate(4,5);
-        assertEquals( 0, underTest.compareTo(other) );
-        assertEquals( 0, underTest.compareTo(make(other)) );
+        Assertions.assertEquals( 0, underTest.compareTo(other) );
+        Assertions.assertEquals( 0, underTest.compareTo(make(other)) );
         other = new Coordinate(4.5, 4.5);
-        assertEquals( -1, underTest.compareTo(other) );
-        assertEquals( -1, underTest.compareTo(make(other)) );
+        Assertions.assertEquals( -1, underTest.compareTo(other) );
+        Assertions.assertEquals( -1, underTest.compareTo(make(other)) );
         other = new Coordinate(3.5, 4.5);
-        assertEquals( 1, underTest.compareTo(other) );
-        assertEquals( 1, underTest.compareTo(make(other)) );
+        Assertions.assertEquals( 1, underTest.compareTo(other) );
+        Assertions.assertEquals( 1, underTest.compareTo(make(other)) );
     }
 
     @Test
     public void distanceTest() {
         Coordinate other = new Coordinate(6,5);
-        assertEquals( 2, underTest.distance(other) );
-        assertEquals( 2, underTest.distance(make(other)) );
+        Assertions.assertEquals( 2, underTest.distance(other) );
+        Assertions.assertEquals( 2, underTest.distance(make(other)) );
     }
 
     @Test
     public void angleBetweenTest() {
         Coordinate other = new Coordinate(6,6);
-        assertEquals( 0.463647609000806, underTest.angleBetween(other), AngleUtils.TOLERANCE );
-        assertEquals( 0.463647609000806, underTest.angleBetween(make(other)), AngleUtils.TOLERANCE );
+        Assertions.assertEquals( 0.463647609000806, underTest.angleBetween(other), AngleUtils.TOLERANCE );
+        Assertions.assertEquals( 0.463647609000806, underTest.angleBetween(make(other)), AngleUtils.TOLERANCE );
     }
 
     @Test
     public void minusTest() {
         Coordinate other = new Coordinate(3,5);
         Coordinate result = underTest.minus(other);
-        assertEquals( 1, result.getX());
-        assertEquals( 0, result.getY());
+        Assertions.assertEquals( 1, result.getX());
+        Assertions.assertEquals( 0, result.getY());
         result = underTest.minus(make(other));
-        assertEquals( 1, result.getX());
-        assertEquals( 0, result.getY());
+        Assertions.assertEquals( 1, result.getX());
+        Assertions.assertEquals( 0, result.getY());
     }
 
     @Test
     public void plusTest() {
         Coordinate other = new Coordinate(4,5);
         Coordinate result = underTest.plus(other);
-        assertEquals( 8, result.getX());
-        assertEquals( 10, result.getY());
+        Assertions.assertEquals( 8, result.getX());
+        Assertions.assertEquals( 10, result.getY());
         result = underTest.plus(make(other));
-        assertEquals( 8, result.getX());
-        assertEquals( 10, result.getY());
+        Assertions.assertEquals( 8, result.getX());
+        Assertions.assertEquals( 10, result.getY());
     }
     
     @Test
@@ -130,19 +138,19 @@ public class FrontsCoordinateTest {
     @ParameterizedTest
     @MethodSource("coordPairParameters")
     public void distanceTest(FrontsCoordinate a, FrontsCoordinate b, double expected, double angle) {
-        assertEquals(expected, a.distance(b), AngleUtils.TOLERANCE);
-        assertEquals(expected, b.distance(a), AngleUtils.TOLERANCE);
-        assertEquals(0.0, a.distance(a), AngleUtils.TOLERANCE);
-        assertEquals(0.0, b.distance(b), AngleUtils.TOLERANCE);
+        Assertions.assertEquals(expected, a.distance(b), AngleUtils.TOLERANCE);
+        Assertions.assertEquals(expected, b.distance(a), AngleUtils.TOLERANCE);
+        Assertions.assertEquals(0.0, a.distance(a), AngleUtils.TOLERANCE);
+        Assertions.assertEquals(0.0, b.distance(b), AngleUtils.TOLERANCE);
     }
 
     @ParameterizedTest
     @MethodSource("coordPairParameters")
     public void angleBetweenTest(FrontsCoordinate a, FrontsCoordinate b, double expected, double angle) {
-        assertEquals(AngleUtils.normalize(RADIANS_180 + angle), a.angleBetween(b), AngleUtils.TOLERANCE);
-        assertEquals(angle, b.angleBetween(a), AngleUtils.TOLERANCE);
-        assertEquals(0.0, a.angleBetween(a), AngleUtils.TOLERANCE);
-        assertEquals(0.0, b.angleBetween(b), AngleUtils.TOLERANCE);
+        Assertions.assertEquals(AngleUtils.normalize(RADIANS_180 + angle), a.angleBetween(b), AngleUtils.TOLERANCE);
+        Assertions.assertEquals(angle, b.angleBetween(a), AngleUtils.TOLERANCE);
+        Assertions.assertEquals(0.0, a.angleBetween(a), AngleUtils.TOLERANCE);
+        Assertions.assertEquals(0.0, b.angleBetween(b), AngleUtils.TOLERANCE);
     }
 
     private static void processStream(List<Arguments> lst, double[] args) {

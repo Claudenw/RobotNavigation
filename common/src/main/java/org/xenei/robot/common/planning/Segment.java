@@ -16,10 +16,7 @@ public interface Segment extends FrontsCoordinate, Comparable<Segment> {
     /**
      * The default comparator for Steps
      */
-    Comparator<Segment> compare = (one, two) -> {
-        int x = Double.compare(one.cost(), two.cost());
-        return x == 0 ? CoordUtils.XYCompr.compare(one.getCoordinate(), two.getCoordinate()) : x;
-    };
+    Comparator<Segment> compare = FrontsCoordinate.XYCompr::compare;
 
     /**
      * The cost of this step.

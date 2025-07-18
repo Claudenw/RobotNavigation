@@ -34,7 +34,9 @@ import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.xenei.robot.common.ChassisInfoTest;
 import org.xenei.robot.common.FrontsCoordinate;
+import org.xenei.robot.common.FrontsCoordinateTest;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Position;
 import org.xenei.robot.common.ScaleInfo;
@@ -45,7 +47,6 @@ import org.xenei.robot.common.planning.Segment;
 import org.xenei.robot.common.testUtils.CoordinateUtils;
 import org.xenei.robot.common.testUtils.DebugViz;
 import org.xenei.robot.common.testUtils.MapLibrary;
-import org.xenei.robot.common.testUtils.TestChassisInfo;
 import org.xenei.robot.common.utils.AngleUtils;
 import org.xenei.robot.common.utils.CoordUtils;
 import org.xenei.robot.common.utils.RobutContext;
@@ -56,7 +57,7 @@ public class MapImplTest {
 
     private static final Logger LOG = LoggerFactory.getLogger(MapImplTest.class);
     private static final ScaleInfo scaleInfo = ScaleInfo.DEFAULT;
-    private static final RobutContext ctxt = new RobutContext(scaleInfo, TestChassisInfo.DEFAULT);
+    private static final RobutContext ctxt = new RobutContext(scaleInfo, ChassisInfoTest.DEFAULT);
 
     private MapImpl underTest;
 
@@ -139,10 +140,10 @@ public class MapImplTest {
         result = underTest.addCoord(position, target, false).join();
 
         assertTrue(result.isPresent());
-        Segment step = result.get();
-        assertEquals(4.0d, step.distance());
-        assertEquals(target, step.getCoordinate());
-        assertEquals(4.0d, step.cost());
+        Segment segment = result.get();
+        assertEquals(4.0d, segment.distance());
+        FrontsCoordinateTest.assertEquals(target, segment, scaleInfo);
+        assertEquals(4.0d, segment.cost());
 
         askResult
                 .addWhere(Namespace.s, RDF.type, Namespace.Coord)
@@ -173,10 +174,10 @@ public class MapImplTest {
 
         Optional<Segment> result = underTest.addCoord(position, target, true).join();
         assertTrue(result.isPresent());
-        Segment step = result.get();
-        assertEquals(4.0d, step.distance());
-        assertEquals(target, step.getCoordinate());
-        assertEquals(4.0d, step.cost());
+        Segment segment = result.get();
+        assertEquals(4.0d, segment.distance());
+        FrontsCoordinateTest.assertEquals(target, segment, scaleInfo);
+        assertEquals(4.0d, segment.cost());
 
         AskBuilder askResult = new AskBuilder()
                 .addWhere(Namespace.s, RDF.type, Namespace.Coord)
@@ -318,7 +319,7 @@ public class MapImplTest {
         assertEquals(expected.size(), records.size());
 
         for (MapCoord pr : records) {
-            assertTrue(expected.contains(pr.location.getCoordinate()), () -> "Unexpected Target " + pr);
+            assertTrue(expected.contains(pr.location), () -> "Unexpected Target " + pr);
         }
     }
 
@@ -493,9 +494,9 @@ public class MapImplTest {
         FrontsCoordinate a = Location.from(-3, -4);
         FrontsCoordinate b = Location.from(-3, -2);
 
-        assertFalse(underTest.isClearPath(Location.from(a), Location.from(b)));
+        assertFalse(underTest.isClearPath(Location.from(a), Location.from(b)), "Did not expect clear path");
         b = Location.from(-4, -4);
-        assertTrue(underTest.isClearPath(Location.from(a), Location.from(b)));
+        assertTrue(underTest.isClearPath(Location.from(a), Location.from(b)), "Expected clear path");
     }
 
     @Test
@@ -586,20 +587,30 @@ public class MapImplTest {
         underTest = new MapImpl(ctxt);
         Position pos = Position.from(position, 0);
         Location relative = Location.from(1, 0);
+        Position pos1 = position.nextPosition(relative);
         Obstacle obst = underTest.createObstacle(pos, relative);
         underTest.addObstacle(obst);
+        assertTrue(underTest.isObstacle(pos1), "Did not find 1 " + pos1);
+
         relative = Location.from(1, 1);
+        Position pos2 = position.nextPosition(relative);
         Obstacle obst2 = underTest.createObstacle(pos, relative);
         underTest.addObstacle(obst2);
+        assertTrue(underTest.isObstacle(pos2), "Did not find 2 " + pos2);
+
         relative = Location.from(CoordUtils.fromAngle(AngleUtils.RADIANS_45 / 2, 1));
+        Position pos3 = position.nextPosition(relative);
         Obstacle obst3 = underTest.createObstacle(pos, relative);
         underTest.addObstacle(obst3);
+        assertTrue(underTest.isObstacle(pos3), "Did not find 3 " + pos3);
+
         for (Coordinate c : obst.geom().getCoordinates())
-            assertTrue(underTest.isObstacle(Location.from(c)), "Did not find c");
+            assertTrue(underTest.isObstacle(Location.from(c)), "Did not find 1 coordinate " + c);
         for (Coordinate c : obst2.geom().getCoordinates())
-            assertTrue(underTest.isObstacle(Location.from(c)), "Did not find c");
+            assertTrue(underTest.isObstacle(Location.from(c)), "Did not find 2 coordinate " + c);
+        System.out.println(MapReports.dumpModel(underTest.getModel()));
         for (Coordinate c : obst3.geom().getCoordinates())
-            assertTrue(underTest.isObstacle(Location.from(c)), "Did not find c");
+            assertTrue(underTest.isObstacle(Location.from(c)), "Did not find 3 coordinate " + c);
     }
 
     @Test

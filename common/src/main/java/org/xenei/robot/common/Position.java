@@ -12,7 +12,7 @@ import org.xenei.robot.common.utils.RobutContext;
  * A position is a location and a heading.
  */
 public interface Position extends Location {
-    static Position ORIGINAL = Position.from(Location.ORIGIN, 0.0);
+    Position ORIGIN = Position.from(Location.ORIGIN, 0.0);
     /**
      * Create a position from a coordinate and a heading
      * @param coordinate the coordinate for the position.

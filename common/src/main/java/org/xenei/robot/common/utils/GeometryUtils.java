@@ -73,7 +73,7 @@ public class GeometryUtils {
     }
 
     public Geometry asPath(double buffer, Collection<Coordinate> points) {
-        return asPath(buffer, points.toArray(new Coordinate[points.size()]));
+        return asPath(buffer, points.toArray(new Coordinate[0]));
     }
 
     public Geometry asPath(double buffer, FrontsCoordinate... points) {

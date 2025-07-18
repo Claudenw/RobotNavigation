@@ -26,6 +26,7 @@ import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
+import org.xenei.robot.common.ChassisInfoTest;
 import org.xenei.robot.common.FrontsCoordinate;
 import org.xenei.robot.common.FrontsCoordinateTest;
 import org.xenei.robot.common.Location;
@@ -40,17 +41,16 @@ import org.xenei.robot.common.planning.Planner;
 import org.xenei.robot.common.planning.Solution;
 import org.xenei.robot.common.planning.Segment;
 import org.xenei.robot.common.testUtils.CoordinateUtils;
-import org.xenei.robot.common.testUtils.TestChassisInfo;
 import org.xenei.robot.common.testUtils.TestingPositionSupplier;
 import org.xenei.robot.common.utils.AngleUtils;
 import org.xenei.robot.common.utils.RobutContext;
 
 public class PlannerTest {
-    final private RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT, TestChassisInfo.DEFAULT);
+    final private RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT, ChassisInfoTest.DEFAULT);
     private Planner underTest;
 
-    final private ArgumentCaptor<Coordinate> coordinateCaptor = ArgumentCaptor.forClass(Coordinate.class);
-    final private ArgumentCaptor<Coordinate> targetCaptor = ArgumentCaptor.forClass(Coordinate.class);
+    final private ArgumentCaptor<FrontsCoordinate> coordinateCaptor = ArgumentCaptor.forClass(FrontsCoordinate.class);
+    final private ArgumentCaptor<FrontsCoordinate> targetCaptor = ArgumentCaptor.forClass(FrontsCoordinate.class);
     final private ArgumentCaptor<Double> doubleCaptor = ArgumentCaptor.forClass(Double.class);
 
     @Test
@@ -77,7 +77,7 @@ public class PlannerTest {
         when(step.getCoordinate()).thenReturn(UnmodifiableCoordinate.make(new Coordinate(1, 1)));
         Map map = Mockito.mock(Map.class);
         when(map.getContext()).thenReturn(ctxt);
-        when(map.addCoord(any(Coordinate.class), any(Coordinate.class), anyBoolean()))
+        when(map.addCoord(any(FrontsCoordinate.class), any(FrontsCoordinate.class), anyBoolean()))
                 .thenReturn(CompletableFuture.completedFuture(Optional.of(step)));
 
         Location finalLocation = Location.from(-1, 1);
@@ -94,13 +94,13 @@ public class PlannerTest {
         assertTrue(lastSnapshot.didChange(snapshot));
 
         verify(map, times(2)).addCoord(coordinateCaptor.capture(), targetCaptor.capture(), anyBoolean());
-        List<Coordinate> lst = coordinateCaptor.getAllValues();
+        List<FrontsCoordinate> lst = coordinateCaptor.getAllValues();
         assertTrue(initial.equals2D(lst.get(0)));
         assertTrue(second.equals2D(lst.get(1)));
 
         // verify solution has 2 items
         Solution solution = underTest.getSolution();
-        List<Coordinate> sol = solution.stream().toList();
+        List<FrontsCoordinate> sol = solution.stream().toList();
         assertEquals(2, sol.size());
         assertTrue(initial.equals2D(sol.get(0)));
         assertTrue(second.equals2D(lst.get(1)));
@@ -111,7 +111,7 @@ public class PlannerTest {
         Segment step = Mockito.mock(Segment.class);
         Map map = Mockito.mock(Map.class);
         when(map.getContext()).thenReturn(ctxt);
-        when(map.addCoord(any(Coordinate.class), any(Coordinate.class), anyBoolean()))
+        when(map.addCoord(any(FrontsCoordinate.class), any(FrontsCoordinate.class), anyBoolean()))
                 .thenReturn(CompletableFuture.completedFuture(Optional.of(step)));
 
         Location finalLocation = Location.from(-1, 1);
@@ -133,7 +133,7 @@ public class PlannerTest {
 
         // verify solution has 1 item
         Solution solution = underTest.getSolution();
-        List<Coordinate> sol = solution.stream().toList();
+        List<FrontsCoordinate> sol = solution.stream().toList();
         assertEquals(1, sol.size());
         assertTrue(supplier.position.equals2D(sol.get(0)));
     }
@@ -144,7 +144,7 @@ public class PlannerTest {
         when(map.getContext()).thenReturn(ctxt);
 
         Location finalLocation = Location.from(-1, 1);
-        Coordinate newTarget = new Coordinate(4, 4);
+        FrontsCoordinate newTarget = Location.from(4, 4);
         Position initial = Position.from(-1, -3);
         TestingPositionSupplier supplier = new TestingPositionSupplier(initial);
         NavigationSnapshot initialSnapshot = new NavigationSnapshot(initial, finalLocation);
@@ -161,7 +161,7 @@ public class PlannerTest {
         assertTrue(finalLocation.equals2D(underTest.getFinalTarget()));
 
         // this should continue with 2 targets
-        newTarget = new Coordinate(5, 5);
+        newTarget = Location.from(5, 5);
         initialSnapshot = snapshot;
         // this should make 2 targets
         underTest.replaceTarget(newTarget);
@@ -174,7 +174,7 @@ public class PlannerTest {
 
         // verify solution has 1 item
         Solution solution = underTest.getSolution();
-        List<Coordinate> sol = solution.stream().toList();
+        List<FrontsCoordinate> sol = solution.stream().toList();
         assertEquals(1, sol.size());
         assertTrue(initial.equals2D(sol.get(0)));
     }
@@ -199,7 +199,7 @@ public class PlannerTest {
     @Test
     public void recalculateCostsTest() {
 
-        RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT, TestChassisInfo.DEFAULT);
+        RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT, ChassisInfoTest.DEFAULT);
         Map map = Mockito.mock(Map.class);
         when(map.getContext()).thenReturn(ctxt);
 
@@ -207,13 +207,13 @@ public class PlannerTest {
         Position initial = Position.from(-1, -3);
         TestingPositionSupplier supplier = new TestingPositionSupplier(initial);
         underTest = new PlannerImpl(map, supplier, finalCoord);
-        Coordinate newTarget = new Coordinate(4, 4);
+        FrontsCoordinate newTarget = Location.from(4, 4);
         underTest.replaceTarget(newTarget);
         underTest.recalculateCosts();
 
         // verify recalculate was called once for each target
         verify(map, times(2)).recalculate(coordinateCaptor.capture());
-        List<Coordinate> lst = coordinateCaptor.getAllValues();
+        List<FrontsCoordinate> lst = coordinateCaptor.getAllValues();
         assertTrue(finalCoord.equals2D(lst.get(0)));
         assertTrue(newTarget.equals2D(lst.get(1)));
 
@@ -223,7 +223,7 @@ public class PlannerTest {
 
         // verify solution has 1 item
         Solution solution = underTest.getSolution();
-        List<Coordinate> sol = solution.stream().toList();
+        List<FrontsCoordinate> sol = solution.stream().toList();
         assertEquals(1, sol.size());
         assertTrue(initial.equals2D(sol.get(0)));
     }
@@ -262,21 +262,21 @@ public class PlannerTest {
 
         StepSupplier coordStepSupplier = new StepSupplier();
 
-        final Coordinate[] visitedTarget = { null };
+        final FrontsCoordinate[] visitedTarget = { null };
 
         Map map = new TestingMap() {
             @Override
-            public CompletableFuture<Optional<Segment>> addCoord(Coordinate coord, Coordinate target, boolean visited) {
+            public CompletableFuture<Optional<Segment>> addCoord(FrontsCoordinate coord, FrontsCoordinate target, boolean visited) {
                 return CompletableFuture.completedFuture(Optional.ofNullable(coordStepSupplier.get()));
             }
 
             @Override
-            public Optional<Segment> getBestSegment(Coordinate currentCoords) {
+            public Optional<Segment> getBestSegment(FrontsCoordinate currentCoords) {
                 return Optional.ofNullable(stepSupplier.get());
             }
 
             @Override
-            public CompletableFuture<?> setVisited(Coordinate finalTarget, Coordinate coord) {
+            public CompletableFuture<?> setVisited(FrontsCoordinate finalTarget, FrontsCoordinate coord) {
                 if (underTest.getFinalTarget() == null) {
                     assertEquals(finalTarget, coord);
                 } else {
@@ -391,6 +391,31 @@ public class PlannerTest {
         }
 
         @Override
+        public CompletableFuture<Void> updateIsIndirect(FrontsCoordinate finalTarget, Set<Obstacle> newObstacles) {
+            return null;
+        }
+
+        @Override
+        public Obstacle createObstacle(Position startPosition, FrontsCoordinate relativeLocation) {
+            return null;
+        }
+
+        @Override
+        public Obstacle createObstacle(Position startPosition, FrontsCoordinate relativeStart, FrontsCoordinate relativeEnd) {
+            return null;
+        }
+
+        @Override
+        public CompletableFuture<?> setVisited(FrontsCoordinate finalTarget, FrontsCoordinate coord) {
+            return null;
+        }
+
+        @Override
+        public CompletableFuture<Optional<FrontsCoordinate>> look(Position position, double heading, int maxRange) {
+            return null;
+        }
+
+        @Override
         public void clear(String mapLayer) {
         }
 
@@ -405,7 +430,7 @@ public class PlannerTest {
         }
 
         @Override
-        public Collection<Segment> getSegments(Coordinate position) {
+        public Collection<Segment> getSegments(FrontsCoordinate position) {
             return null;
         }
 
@@ -416,30 +441,26 @@ public class PlannerTest {
         }
 
         @Override
-        public Coordinate[] addPath(Coordinate... coords) {
+        public void addPath(FrontsCoordinate... coords) {
             // TODO Auto-generated method stub
+        }
+
+        @Override
+        public void addPath(Resource model, FrontsCoordinate... coords) {
+        }
+
+        @Override
+        public MapCoordinate recalculate(FrontsCoordinate target) {
             return null;
         }
 
         @Override
-        public Coordinate[] addPath(Resource model, Coordinate... coords) {
-            // TODO Auto-generated method stub
-            return null;
-        }
-
-        @Override
-        public Coordinate recalculate(Coordinate target) {
-            // TODO Auto-generated method stub
-            return null;
-        }
-
-        @Override
-        public Optional<Segment> getBestSegment(Coordinate currentCoords) {
+        public Optional<Segment> getBestSegment(FrontsCoordinate currentCoords) {
             return Optional.empty();
         }
 
         @Override
-        public boolean isObstacle(Coordinate coord) {
+        public boolean isObstacle(FrontsCoordinate coord) {
             // TODO Auto-generated method stub
             return false;
         }
@@ -467,44 +488,6 @@ public class PlannerTest {
         public void recordSolution(Solution solution) {
             // TODO Auto-generated method stub
 
-        }
-
-        @Override
-        public boolean areEquivalent(Coordinate a, Coordinate b) {
-            // TODO Auto-generated method stub
-            return false;
-        }
-
-        @Override
-        public CompletableFuture<Void> updateIsIndirect(Coordinate finalTarget, Set<Obstacle> newObstacles) {
-            // TODO Auto-generated method stub
-
-            return null;
-        }
-
-        @Override
-        public Obstacle createObstacle(Position startPosition, Location relativeLocation) {
-            // TODO Auto-generated method stub
-            return null;
-        }
-
-        @Override
-        public Obstacle createObstacle(Position startPosition, Location relativeStartLocation, Location relativeEndLocation) {
-            // TODO Auto-generated method stub
-            return null;
-        }
-
-        @Override
-        public CompletableFuture<?> setVisited(Coordinate finalTarget, Coordinate coord) {
-            // TODO Auto-generated method stub
-
-            return null;
-        }
-
-        @Override
-        public CompletableFuture<Optional<Location>> look(Position position, double heading, int maxRange) {
-            // TODO Auto-generated method stub
-            return CompletableFuture.completedFuture(Optional.empty());
         }
     }
 
