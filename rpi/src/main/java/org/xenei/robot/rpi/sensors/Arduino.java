@@ -10,8 +10,12 @@ import java.util.function.Supplier;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.xenei.robot.common.ChassisInfo;
 import org.xenei.robot.common.DistanceSensor;
 import org.xenei.robot.common.Position;
+import org.xenei.robot.common.ScaleInfo;
+import org.xenei.robot.common.messages.Topic;
+import org.xenei.robot.common.utils.RobutContext;
 import org.xenei.robot.common.utils.TimingUtils;
 
 import com.diozero.api.I2CDevice;
@@ -24,32 +28,22 @@ public class Arduino implements DistanceSensor {
     private final I2CDevice device;
     private final byte[] buffer;
     private final ShortBuffer sb;
-    private final CopyOnWriteArrayList<Consumer<DistanceSensor.Readings>> listeners;
+    Topic<DistanceSensor.Readings> topic;
     private final Supplier<Position> positionSupplier;
 
     private static final Logger LOG = LoggerFactory.getLogger(Arduino.class);
 
-    public Arduino(Supplier<Position> positionSupplier) {
+    public Arduino(Topic<Readings> topic, Supplier<Position> positionSupplier) {
+        this.topic = topic;
         this.positionSupplier = positionSupplier;
         device = new I2CDevice(CONTROLLER, ADDRESS);
         buffer = new byte[2];
         sb = ByteBuffer.wrap(buffer).order(ByteOrder.LITTLE_ENDIAN).asShortBuffer();
-        listeners = new CopyOnWriteArrayList<>();
     }
 
     @Override
     public double maxRange() {
         return 1.0;
-    }
-
-    @Override
-    public void addListener(Consumer<Readings> listener) {
-        listeners.add(listener);
-    }
-
-    @Override
-    public void removeListener(Consumer<Readings> listener) {
-        listeners.remove(listener);
     }
 
     public void run() {
@@ -69,9 +63,7 @@ public class Arduino implements DistanceSensor {
                 if (range < maxRange()) {
                     DistanceReading reading = new DistanceReading(0, timing / TIME_TO_M);
                     Readings readings = new Readings(position, List.of(reading));
-                    for (Consumer<Readings> listener : listeners) {
-                        listener.accept(readings);
-                    }
+                    topic.send(readings);
                 }
             }
         } else {
@@ -80,10 +72,11 @@ public class Arduino implements DistanceSensor {
     }
 
     public static void main(String[] args) {
-        Arduino sensor = new Arduino( () -> Position.from(0, 0));
-        sensor.addListener(dr -> dr.readings().forEach(System.out::println));
+        RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT, ChassisInfo.builder().build());
+        Arduino sensor = new Arduino(ctxt.bus.distance, () -> Position.from(0, 0));
+        ctxt.bus.distance.register(dr -> dr.readings().forEach(System.out::println));
         while (true) {
-            System.out.println("Senseing");
+            System.out.println("Sensing");
             sensor.run();
             TimingUtils.delay(500);
         }

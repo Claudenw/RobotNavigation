@@ -95,7 +95,7 @@ public class RpiMover extends BaseMover implements AutoCloseable {
             BumpSensorImpl bumpSensor = new BumpSensorImpl(ctxt);
             ctxt.scheduleAtFixedRate(bumpSensor, 500, 42, TimeUnit.MILLISECONDS);
             try (RpiMover mover = new RpiMover(ctxt, null, new Coordinate(0, 0))) {
-                bumpSensor.addListener(mover.getBumpSensorListener());
+                bumpSensor.register(mover.getBumpSensorListener());
                 Options options = getOptions();
                 BufferedReader bufferReader = new BufferedReader(new InputStreamReader(System.in));
                 new HelpFormatter().printHelp(RpiMover.class.getCanonicalName(), getOptions());

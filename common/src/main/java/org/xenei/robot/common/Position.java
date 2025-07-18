@@ -140,17 +140,17 @@ public interface Position extends Location {
      * heading.
      */
     default Position nextPosition(FrontsCoordinate relativeCoordinates) {
-        if (relativeCoordinates.range() == 0) {
+        if (relativeCoordinates.range() == 0  && relativeCoordinates.theta() == 0) {
             return this;
         }
 
-        double range = relativeCoordinates.range();
-        double thetar = relativeCoordinates.theta();
-        double thetah = this.getHeading();
+        double relativeTheta = relativeCoordinates.theta();
+        double headingTheta = this.getHeading();
 
-        double apime = AngleUtils.normalize(thetah + thetar);
-        Coordinate a = this.plus(CoordUtils.fromAngle(apime, range));
-        return Position.from(a, apime);
+        double newHeading = AngleUtils.normalize(headingTheta + relativeTheta);
+        ThetaAndRange relativePosition = new ThetaAndRange(newHeading, relativeCoordinates.range());
+        Coordinate newCoord = this.plus(relativePosition);
+        return Position.from(newCoord, newHeading);
     }
 
     /**

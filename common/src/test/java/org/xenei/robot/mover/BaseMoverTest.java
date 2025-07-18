@@ -1,5 +1,6 @@
 package org.xenei.robot.mover;
 
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -10,22 +11,47 @@ import org.xenei.robot.common.FrontsCoordinateTest;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Mover;
 import org.xenei.robot.common.Position;
+import org.xenei.robot.common.PositionTest;
 import org.xenei.robot.common.ScaleInfo;
+import org.xenei.robot.common.StepMonitor;
 import org.xenei.robot.common.sensor.bump.BumpSensorModel;
 import org.xenei.robot.common.utils.AngleUtils;
 import org.xenei.robot.common.utils.RobutContext;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.Assert.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.fail;
 
 public class BaseMoverTest {
-    protected record StepRecord(int left, int right, byte lastSensor){};
+    protected record StepRecord(int left, int right, byte lastSensor) implements StepMonitor {
+
+        @Override
+        public double leftRotation() {
+            return ChassisInfoTest.DEFAULT.rotation(left());
+        }
+
+        @Override
+        public double rightRotation() {
+            return ChassisInfoTest.DEFAULT.rotation(right());
+        }
+
+        @Override
+        public int leftSteps() {
+            return left();
+        }
+
+        @Override
+        public int rightSteps() {
+            return right();
+        }
+    };
 
     protected BaseMover underTest;
     protected List<StepRecord> stepRecords = new ArrayList<>();
@@ -47,7 +73,9 @@ public class BaseMoverTest {
 
             @Override
             public void takeSteps(int left, int right, byte lastSensor) {
-                stepRecords.add(new StepRecord(left, right, lastSensor));
+                StepRecord record = new StepRecord(left, right, lastSensor);
+                stepRecords.add(record);
+                deadReckoning.track(record);
             }
         };
     }
@@ -67,10 +95,48 @@ public class BaseMoverTest {
 
     @Test
     public void LogicModuleTest() {
-        TestLogicModule logicModule = new TestLogicModule();
+        // verifies that the lock works as expected.
+        TestLogicModule logicModule = new TestLogicModule() {
+        };
+        TestLogicModule logicModule2 = new TestLogicModule() {
+        };
         underTest.register(logicModule);
+        underTest.register(logicModule2);
         assertNotNull(logicModule.lock);
-        fail("What should this test");
+        assertNotNull(logicModule2.lock);
+
+        CompletableFuture<?> future =ctxt.submit(() -> {
+            try {
+                Assertions.assertTrue(logicModule.lock.tryLock(1, TimeUnit.SECONDS));
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            } finally {
+                logicModule.lock.unlock();
+            }
+        });
+
+        ctxt.submit(() -> {
+            try {
+                Assertions.assertFalse(logicModule.lock.tryLock(250, TimeUnit.MILLISECONDS));
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            } finally {
+                logicModule.lock.unlock();
+            }
+        });
+
+        future.join();
+
+        ctxt.submit(() -> {
+            try {
+                Assertions.assertTrue(logicModule.lock.tryLock(250, TimeUnit.MILLISECONDS));
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            } finally {
+                logicModule.lock.unlock();
+            }
+        });
     }
 
     @Test
@@ -87,17 +153,12 @@ public class BaseMoverTest {
         underTest.move(Location.from(0, 10));
         FrontsCoordinateTest.assertEquals(Position.from(0, 10, AngleUtils.RADIANS_90), deadReckoning.get(), scaleInfo);
         assertEquals(2, stepRecords.size());
-        /*
-        @Override
-        final public void move(FrontsCoordinate location) {
-            Position currentPosition = position();
-            Position nxt = currentPosition.nextPosition(location);
-            setHeading(currentPosition.headingTo(nxt));
-            int rangeSteps = ctxt.chassisInfo.steps(location.range());
-            takeSteps(rangeSteps, rangeSteps, (byte)0);
-        }
-*/
-        fail("not implemented yet");
+        StepRecord record = stepRecords.get(0);
+        assertEquals(0, record.left() + record.right());
+        record = stepRecords.get(1);
+        assertEquals(record.left(), record.right());
+        double actual = scaleInfo.scale(ChassisInfoTest.DEFAULT.metersPerStep * record.left());
+        assertEquals(10.0, actual, scaleInfo.getResolution());
     }
 
     @ParameterizedTest
@@ -105,7 +166,7 @@ public class BaseMoverTest {
             AngleUtils.RADIANS_225, AngleUtils.RADIANS_270, AngleUtils.RADIANS_315})
     void setHeadingTest(double heading) {
         underTest.setHeading(heading);
-        assertEquals(Position.from(Location.ORIGIN, heading), deadReckoning.get());
+        PositionTest.assertEquals(Position.from(Location.ORIGIN, heading), underTest.position(), scaleInfo);
     }
 
 

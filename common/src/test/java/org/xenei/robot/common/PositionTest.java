@@ -1,8 +1,8 @@
 package org.xenei.robot.common;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.xenei.robot.common.utils.AngleUtils.RADIANS_135;
 import static org.xenei.robot.common.utils.AngleUtils.RADIANS_180;
 import static org.xenei.robot.common.utils.AngleUtils.RADIANS_225;
@@ -17,12 +17,14 @@ import java.util.List;
 import java.util.stream.Stream;
 
 import org.apache.commons.math3.util.Precision;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.util.NumberUtil;
 import org.xenei.robot.common.testUtils.CoordinateUtils;
 import org.xenei.robot.common.utils.AngleUtils;
 import org.xenei.robot.common.utils.CoordUtils;
@@ -30,13 +32,20 @@ import org.xenei.robot.common.utils.RobutContext;
 
 public class PositionTest {
 
+    public static void assertEquals(Position a, Position b, ScaleInfo scaleInfo) {
+        if (!scaleInfo.areEquivalent(a, b) || !NumberUtil.equalsWithTolerance(AngleUtils.normalize(a.getHeading()),
+                AngleUtils.normalize(b.getHeading()), scaleInfo.getResolution())) {
+            fail(String.format("Expected %s ≈ %s (±%s)", a, b, scaleInfo.getResolution()));
+        }
+    }
+
     private final static double TOLERANCE = 0.000000000001;
 
-    private static double[] angles = { 0, RADIANS_45, RADIANS_90, RADIANS_135, RADIANS_180, RADIANS_225, RADIANS_270,
+    private static final double[] angles = { 0, RADIANS_45, RADIANS_90, RADIANS_135, RADIANS_180, RADIANS_225, RADIANS_270,
             RADIANS_315 };
 
     private Position initial;
-    private static RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT, ChassisInfoTest.DEFAULT);
+    private static final RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT, ChassisInfoTest.DEFAULT);
 
     @BeforeEach
     public void setup() {
@@ -47,41 +56,41 @@ public class PositionTest {
     public void zigZagTest() {
         Location cmd = Location.from(CoordUtils.fromAngle(RADIANS_45, 2));
         Position nxt = initial.nextPosition(cmd);
-        assertEquals(RADIANS_45, nxt.getHeading(), AngleUtils.TOLERANCE);
-        assertEquals(SQRT2, nxt.getX(), TOLERANCE);
-        assertEquals(SQRT2, nxt.getY(), TOLERANCE);
+        Assertions.assertEquals(RADIANS_45, nxt.getHeading(), AngleUtils.TOLERANCE);
+        Assertions.assertEquals(SQRT2, nxt.getX(), TOLERANCE);
+        Assertions.assertEquals(SQRT2, nxt.getY(), TOLERANCE);
 
         cmd = Location.from(CoordUtils.fromAngle(-RADIANS_45, 2));
         nxt = nxt.nextPosition(cmd);
 
-        assertEquals(SQRT2 + 2, nxt.getX(), TOLERANCE);
-        assertEquals(SQRT2, nxt.getY(), TOLERANCE);
-        assertEquals(0.0, nxt.getHeading(), AngleUtils.TOLERANCE);
+        Assertions.assertEquals(SQRT2 + 2, nxt.getX(), TOLERANCE);
+        Assertions.assertEquals(SQRT2, nxt.getY(), TOLERANCE);
+        Assertions.assertEquals(0.0, nxt.getHeading(), AngleUtils.TOLERANCE);
     }
 
     @Test
     public void boxTest() {
         Location cmd = Location.from(CoordUtils.fromAngle(RADIANS_45, 2));
         Position nxt = initial.nextPosition(cmd);
-        assertEquals(RADIANS_45, nxt.getHeading(), AngleUtils.TOLERANCE);
-        assertEquals(SQRT2, nxt.getX(), TOLERANCE);
-        assertEquals(SQRT2, nxt.getY(), TOLERANCE);
+        Assertions.assertEquals(RADIANS_45, nxt.getHeading(), AngleUtils.TOLERANCE);
+        Assertions.assertEquals(SQRT2, nxt.getX(), TOLERANCE);
+        Assertions.assertEquals(SQRT2, nxt.getY(), TOLERANCE);
 
         cmd = Location.from(CoordUtils.fromAngle(RADIANS_90, 2));
         nxt = nxt.nextPosition(cmd);
-        assertEquals(RADIANS_135, nxt.getHeading(), AngleUtils.TOLERANCE);
-        assertEquals(0.0, nxt.getX(), TOLERANCE);
-        assertEquals(SQRT2 * 2, nxt.getY(), TOLERANCE);
+        Assertions.assertEquals(RADIANS_135, nxt.getHeading(), AngleUtils.TOLERANCE);
+        Assertions.assertEquals(0.0, nxt.getX(), TOLERANCE);
+        Assertions.assertEquals(SQRT2 * 2, nxt.getY(), TOLERANCE);
 
         nxt = nxt.nextPosition(cmd);
-        assertEquals(RADIANS_225, nxt.getHeading(), AngleUtils.TOLERANCE);
-        assertEquals(-SQRT2, nxt.getX(), TOLERANCE);
-        assertEquals(SQRT2, nxt.getY(), TOLERANCE);
+        Assertions.assertEquals(RADIANS_225, nxt.getHeading(), AngleUtils.TOLERANCE);
+        Assertions.assertEquals(-SQRT2, nxt.getX(), TOLERANCE);
+        Assertions.assertEquals(SQRT2, nxt.getY(), TOLERANCE);
 
         nxt = nxt.nextPosition(cmd);
-        assertEquals(RADIANS_315, nxt.getHeading(), AngleUtils.TOLERANCE);
-        assertEquals(0, nxt.getX(), TOLERANCE);
-        assertEquals(0, nxt.getY(), TOLERANCE);
+        Assertions.assertEquals(RADIANS_315, nxt.getHeading(), AngleUtils.TOLERANCE);
+        Assertions.assertEquals(0, nxt.getX(), TOLERANCE);
+        Assertions.assertEquals(0, nxt.getY(), TOLERANCE);
     }
 
     @ParameterizedTest(name = "{index} {0}")
@@ -114,43 +123,42 @@ public class PositionTest {
 
     @ParameterizedTest(name = "{index} {0}")
     @MethodSource("nextPositionParameters")
-    public void nextPositionTest(Position p, Location relative, Location expected, double radians) {
+    public void nextPositionTest(Position p, Location relative, Position expected) {
         Position t = p.nextPosition(relative);
-        CoordinateUtils.assertEquivalent(expected, t, TOLERANCE);
-        assertEquals(radians, t.getHeading(), ScaleInfo.DEFAULT.getResolution());
+        assertEquals(expected, t, ScaleInfo.DEFAULT);
     }
 
     private static Stream<Arguments> nextPositionParameters() {
         List<Arguments> args = new ArrayList<>();
 
-        args.add(Arguments.of(Position.from(0, 0, 0), Location.from(1, 0), Location.from(1, 0), 0));
-        args.add(Arguments.of(Position.from(0, 0, 0), Location.from(1, 1), Location.from(1, 1), RADIANS_45));
-        args.add(Arguments.of(Position.from(0, 0, 0), Location.from(0, 1), Location.from(0, 1), RADIANS_90));
-        args.add(Arguments.of(Position.from(0, 0, 0), Location.from(-1, 1), Location.from(-1, 1), RADIANS_135));
-        args.add(Arguments.of(Position.from(0, 0, 0), Location.from(-1, 0), Location.from(-1, 0), RADIANS_180));
-        args.add(Arguments.of(Position.from(0, 0, 0), Location.from(-1, -1), Location.from(-1, -1), RADIANS_225));
-        args.add(Arguments.of(Position.from(0, 0, 0), Location.from(0, -1), Location.from(0, -1), RADIANS_270));
-        args.add(Arguments.of(Position.from(0, 0, 0), Location.from(1, -1), Location.from(1, -1), RADIANS_315));
+        args.add(Arguments.of(Position.from(0, 0, 0), Location.from(1, 0), Position.from(1, 0, 0)));
+        args.add(Arguments.of(Position.from(0, 0, 0), Location.from(1, 1), Position.from(1, 1, RADIANS_45)));
+        args.add(Arguments.of(Position.from(0, 0, 0), Location.from(0, 1), Position.from(0, 1, RADIANS_90)));
+        args.add(Arguments.of(Position.from(0, 0, 0), Location.from(-1, 1), Position.from(-1, 1, RADIANS_135)));
+        args.add(Arguments.of(Position.from(0, 0, 0), Location.from(-1, 0), Position.from(-1, 0, RADIANS_180)));
+        args.add(Arguments.of(Position.from(0, 0, 0), Location.from(-1, -1), Position.from(-1, -1, RADIANS_225)));
+        args.add(Arguments.of(Position.from(0, 0, 0), Location.from(0, -1), Position.from(0, -1, RADIANS_270)));
+        args.add(Arguments.of(Position.from(0, 0, 0), Location.from(1, -1), Position.from(1, -1, RADIANS_315)));
 
-        args.add(Arguments.of(Position.from(0, 0, 0), Location.from(Precision.EPSILON, 0),
-                Location.from(Precision.EPSILON, 0), 0));
-        args.add(Arguments.of(Position.from(0, 0, 0), Location.from(Precision.EPSILON, Precision.EPSILON),
-                Location.from(Precision.EPSILON, Precision.EPSILON), RADIANS_45));
-        args.add(Arguments.of(Position.from(0, 0, 0), Location.from(0, Precision.EPSILON),
-                Location.from(0, Precision.EPSILON), RADIANS_90));
-        args.add(Arguments.of(Position.from(0, 0, 0), Location.from(-Precision.EPSILON, Precision.EPSILON),
-                Location.from(-Precision.EPSILON, Precision.EPSILON), RADIANS_135));
-        args.add(Arguments.of(Position.from(0, 0, 0), Location.from(-Precision.EPSILON, 0),
-                Location.from(-Precision.EPSILON, 0), RADIANS_180));
-        args.add(Arguments.of(Position.from(0, 0, 0), Location.from(-Precision.EPSILON, -Precision.EPSILON),
-                Location.from(-Precision.EPSILON, -Precision.EPSILON), RADIANS_225));
-        args.add(Arguments.of(Position.from(0, 0, 0), Location.from(0, -Precision.EPSILON),
-                Location.from(0, -Precision.EPSILON), RADIANS_270));
-        args.add(Arguments.of(Position.from(0, 0, 0), Location.from(Precision.EPSILON, -Precision.EPSILON),
-                Location.from(Precision.EPSILON, -Precision.EPSILON), RADIANS_315));
+        args.add(Arguments.of(Position.ORIGIN, Location.from(Precision.EPSILON, 0),
+                Position.from(Precision.EPSILON, 0, 0)));
+        args.add(Arguments.of(Position.ORIGIN, Location.from(Precision.EPSILON, Precision.EPSILON),
+                Position.from(Precision.EPSILON, Precision.EPSILON, RADIANS_45)));
+        args.add(Arguments.of(Position.ORIGIN, Location.from(0, Precision.EPSILON),
+                Position.from(0, Precision.EPSILON, RADIANS_90)));
+        args.add(Arguments.of(Position.ORIGIN, Location.from(-Precision.EPSILON, Precision.EPSILON),
+                Position.from(-Precision.EPSILON, Precision.EPSILON, RADIANS_135)));
+        args.add(Arguments.of(Position.ORIGIN, Location.from(-Precision.EPSILON, 0),
+                Position.from(-Precision.EPSILON, 0, RADIANS_180)));
+        args.add(Arguments.of(Position.ORIGIN, Location.from(-Precision.EPSILON, -Precision.EPSILON),
+                Position.from(-Precision.EPSILON, -Precision.EPSILON, RADIANS_225)));
+        args.add(Arguments.of(Position.ORIGIN, Location.from(0, -Precision.EPSILON),
+                Position.from(0, -Precision.EPSILON, RADIANS_270)));
+        args.add(Arguments.of(Position.ORIGIN, Location.from(Precision.EPSILON, -Precision.EPSILON),
+                Position.from(Precision.EPSILON, -Precision.EPSILON, RADIANS_315)));
 
-        args.add(Arguments.of(Position.from(-1, -3, RADIANS_90), Location.from(0.5, 3.0), Location.from(-4.0, -2.5),
-                2.976443976175166));
+        args.add(Arguments.of(Position.from(-1, -3, RADIANS_90), Location.from(0.5, 3.0),
+                Position.from(-4.0, -2.5,2.976443976175166)));
 
         return args.stream();
     }
@@ -158,7 +166,7 @@ public class PositionTest {
     @ParameterizedTest(name = "{index} {0}")
     @MethodSource("headingParameters")
     public void headingTest(Position p, Coordinate c, double expected) {
-        assertEquals(expected, p.headingTo(c), ScaleInfo.DEFAULT.getResolution());
+        Assertions.assertEquals(expected, p.headingTo(c), ScaleInfo.DEFAULT.getResolution());
     }
 
     public static Stream<Arguments> headingParameters() {
@@ -177,7 +185,7 @@ public class PositionTest {
         Location relative = position.relativeLocation(Location.from(absolute));
         Position p2 = position.nextPosition(relative);
         CoordinateUtils.assertEquivalent(absolute, p2, TOLERANCE);
-        assertEquals(AngleUtils.normalize(heading), AngleUtils.normalize(p2.getHeading()), AngleUtils.TOLERANCE);
+        Assertions.assertEquals(AngleUtils.normalize(heading), AngleUtils.normalize(p2.getHeading()), AngleUtils.TOLERANCE);
     }
 
     private static Arguments makeRelativeLocArguments(Position p, Coordinate c) {

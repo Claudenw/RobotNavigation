@@ -25,12 +25,12 @@ public class FakeBumpSensor implements BumpSensor {
     }
 
     @Override
-    public void addListener(Consumer<BumpSensor.BumpState> listener) {
-        listeners.add(listener);
+    public void register(Consumer<BumpSensor.BumpState> consumer) {
+        listeners.add(consumer);
     }
 
     @Override
-    public void removeListener(Consumer<BumpSensor.BumpState> listener) {
-        listeners.remove(listener);
+    public void unregister(Consumer<BumpSensor.BumpState> consumer) {
+        listeners.remove(consumer);
     }
 }

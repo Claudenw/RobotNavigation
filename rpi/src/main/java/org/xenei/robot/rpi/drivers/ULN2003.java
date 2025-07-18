@@ -11,7 +11,6 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.HelpFormatter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.xenei.robot.common.ChassisInfo;
 import org.xenei.robot.common.MotorInfo;
 import org.xenei.robot.rpi.utils.DigitalOutputDeviceFactory;
 
@@ -143,6 +142,11 @@ public class ULN2003 implements Motor {
             LOG.debug("Preparing task {} steps:{} rpm:{}", this, steps, stepsPerMinute / (int)motorInfo.stepsPerRotation());
         }
         return  new SteppingStatusImpl(steps, msPerStep);
+    }
+
+    @Override
+    public double stepsPerRotation() {
+        return motorInfo.stepsPerRotation();
     }
 
 

@@ -1,22 +1,17 @@
 package org.xenei.robot.rpi;
 
 import java.io.BufferedReader;
-import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.Scanner;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Supplier;
 
 import org.locationtech.jts.geom.Coordinate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.xenei.robot.Processor;
 import org.xenei.robot.Robut;
-import org.xenei.robot.common.AbortedException;
 import org.xenei.robot.common.ChassisInfo;
 import org.xenei.robot.common.DistanceSensor;
 import org.xenei.robot.common.Location;
-import org.xenei.robot.common.Mover;
 import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.common.utils.CoordUtils;
 import org.xenei.robot.common.utils.RobutContext;
@@ -42,7 +37,7 @@ public class RobutBuilder {
         BaseMover mover = new RpiMover(ctxt, new CompassImpl(), origin);
         BumpSensorImpl bumpSensor = new BumpSensorImpl(ctxt);
         BumpSensorLogicModule bumpSensorLogicModule = new BumpSensorLogicModule(ctxt, mover);
-        DistanceSensor distSensor = new Arduino(mover::position);
+        DistanceSensor distSensor = new Arduino(ctxt.bus.distance, mover::position);
         try {
             return new Robut(ctxt, distSensor, mover);
         } finally {

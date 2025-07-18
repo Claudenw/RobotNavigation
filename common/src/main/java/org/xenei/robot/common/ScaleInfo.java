@@ -3,7 +3,6 @@ package org.xenei.robot.common;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.PrecisionModel;
 import org.xenei.robot.common.utils.DoubleUtils;
-import org.xenei.robot.mapper.MapImpl;
 
 public final class ScaleInfo {
 
@@ -23,6 +22,11 @@ public final class ScaleInfo {
     private final int modulusFactor;
     private final PrecisionModel precisionModel;
 
+    /**
+     * Constructor.
+     * @param resolution the resolution of the map in meters.
+     * @param scale the scale of the map in meters.
+     */
     private ScaleInfo(double resolution, double scale) {
         this.scale = scale;
         this.resolution = resolution;

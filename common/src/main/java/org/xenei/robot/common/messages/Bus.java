@@ -4,7 +4,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xenei.robot.common.DistanceSensor;
 import org.xenei.robot.common.Mover;
-import org.xenei.robot.common.mapping.Mapper;
 import org.xenei.robot.common.utils.RobutContext;
 import org.xenei.robot.ml.SensorLayer;
 
@@ -28,7 +27,7 @@ public class Bus {
         private Logger log;
         private final CopyOnWriteArrayList<Consumer<T>> listeners;
 
-        private TopicImpl() {
+        public TopicImpl() {
             this.listeners = new CopyOnWriteArrayList<>();
         }
 

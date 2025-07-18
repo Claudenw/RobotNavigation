@@ -34,14 +34,16 @@ public class DeadReckoning implements Compass, Supplier<Position> {
 
     @Override
     public double heading() {
+        if (currentMonitor != null) {
+            return position.get().getHeading() + ctxt.chassisInfo.theta(currentMonitor.leftSteps(), currentMonitor.rightSteps());
+        }
         return position.get().getHeading();
     }
 
     @Override
     public Position get() {
         if (currentMonitor != null) {
-            ThetaAndRange thetaAndRange = ctxt.chassisInfo.thetaAndRange(currentMonitor);
-            return position.get().nextPosition(thetaAndRange);
+            return position.get().nextPosition(ctxt.chassisInfo.thetaAndRange(currentMonitor));
         }
         return position.get();
     }
@@ -64,22 +66,6 @@ public class DeadReckoning implements Compass, Supplier<Position> {
         return 2;
     }
 
-    double calcRange(double leftArc, double rightArc) {
-        if (leftArc >= 0) {
-            if (rightArc >= 0) {
-                return 2*leftArc - rightArc;
-            } else {
-                return leftArc + rightArc;
-            }
-        } else {
-            if (rightArc >= 0) {
-                return leftArc + rightArc;
-            } else {
-                return 2 * leftArc - rightArc;
-            }
-        }
-    }
-
     /**
      * Track heading based on the step monitor.
      * @param stepMonitor
@@ -87,7 +73,7 @@ public class DeadReckoning implements Compass, Supplier<Position> {
     public void track(StepMonitor stepMonitor) {
         if (currentMonitor != null) {
             if (currentMonitor.hasStepDifferential()) {
-                position.getAndUpdate(p -> p.nextPosition(ctxt.chassisInfo.thetaAndRange(stepMonitor)));
+                position.getAndUpdate(p -> p.nextPosition(ctxt.chassisInfo.thetaAndRange(currentMonitor)));
             } else {
                 double range =  ctxt.chassisInfo.range(currentMonitor.leftRotation());
                 position.getAndUpdate(p -> p.nextPosition(range));

@@ -12,6 +12,20 @@ public interface BumpSensor extends Runnable {
         }
     };
 
+
+    /**
+     * Registers a consumer that will listen to this bump sensor.
+     * @param consumer the consumer of the BumpState.
+     */
+    void register(Consumer<BumpState> consumer);
+
+    /**
+     * Unregisters a conumer from this sensor.
+     * @param consumer the consumer to unregister.
+     */
+    void unregister(Consumer<BumpState> consumer);
+
+
     final class BumpState {
         private final byte value;
         public BumpState(byte value) {
@@ -34,8 +48,4 @@ public interface BumpSensor extends Runnable {
             return (int) value;
         }
     }
-
-    void addListener(Consumer<BumpState> listener);
-
-    void removeListener(Consumer<BumpState> listener);
 }
