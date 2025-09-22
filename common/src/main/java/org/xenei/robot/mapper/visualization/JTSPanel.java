@@ -1,13 +1,8 @@
 package org.xenei.robot.mapper.visualization;
 
-import org.xenei.robot.common.DistanceSensor;
-
 import java.awt.Color;
 import java.awt.Graphics;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.function.Consumer;
 
 import javax.swing.JPanel;
 
@@ -19,49 +14,49 @@ import javax.swing.JPanel;
 @SuppressWarnings("serial")
 public class JTSPanel extends JPanel {
 
-    private final CopyOnWriteArrayList<DrawingCommand> drawPathCommand = new CopyOnWriteArrayList<>();
+	private final CopyOnWriteArrayList<DrawingCommand> drawPathCommand = new CopyOnWriteArrayList<>();
 
-    public JTSPanel() {
-        setSize(900, 900);
-    }
+	public JTSPanel() {
+		setSize(900, 900);
+	}
 
-    @Override
-    public void paintComponent(Graphics g) {
-        super.paintComponent(g);
+	@Override
+	public void paintComponent(Graphics g) {
+		super.paintComponent(g);
 
-        g.setColor(Color.darkGray);
+		g.setColor(Color.darkGray);
 
-        g.fillRect(0, 0, 1000, 1000);
+		g.fillRect(0, 0, 1000, 1000);
 
-        g.setColor(Color.WHITE);
+		g.setColor(Color.WHITE);
 
-        g.fillRect(10, 10, 4, 4);
+		g.fillRect(10, 10, 4, 4);
 
-        g.drawLine(10, 10, 10, 1000);
+		g.drawLine(10, 10, 10, 1000);
 
-        g.drawLine(10, 10, 1000, 10);
+		g.drawLine(10, 10, 1000, 10);
 
-        for (int i = 10; i <= 1000; i += 50) {
+		for (int i = 10; i <= 1000; i += 50) {
 
-            g.drawString(Integer.toString(i), i, 10);
+			g.drawString(Integer.toString(i), i, 10);
 
-            g.drawString(Integer.toString(i), 10, i);
-        }
+			g.drawString(Integer.toString(i), 10, i);
+		}
 
-        g.setColor(Color.BLACK);
+		g.setColor(Color.BLACK);
 
-        for (DrawingCommand drawingCommand : drawPathCommand) {
-            drawingCommand.doDrawing(g);
-        }
+		for (DrawingCommand drawingCommand : drawPathCommand) {
+			drawingCommand.doDrawing(g);
+		}
 
-    }
+	}
 
-    public void addDrawCommand(DrawingCommand c) {
-        this.drawPathCommand.add(c);
-    }
+	public void addDrawCommand(DrawingCommand c) {
+		this.drawPathCommand.add(c);
+	}
 
-    public void clear() {
-        this.drawPathCommand.clear();
-    }
+	public void clear() {
+		this.drawPathCommand.clear();
+	}
 
 }

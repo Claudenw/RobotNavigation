@@ -20,87 +20,86 @@ import java.util.function.Supplier;
 
 abstract class VisualizationLibrary<T extends VisualizationLibrary.AbstractDrawingCommand> {
 
-    private final GeometryUtils geometryUtils;
-    protected VisualizationLibrary(GeometryUtils geometryUtils) {
-        this.geometryUtils = geometryUtils;
-    }
+	private final GeometryUtils geometryUtils;
+	protected VisualizationLibrary(GeometryUtils geometryUtils) {
+		this.geometryUtils = geometryUtils;
+	}
 
-    abstract protected T drawPoint(Point geom, Color color);
-    abstract protected T drawPolygon(Polygon geom, Color color);
-    abstract protected T drawLine(Geometry geom, Color color);
-    abstract protected T drawString(Geometry geom, Color color);
+	abstract protected T drawPoint(Point geom, Color color);
+	abstract protected T drawPolygon(Polygon geom, Color color);
+	abstract protected T drawLine(Geometry geom, Color color);
+	abstract protected T drawString(Geometry geom, Color color);
 
-    T getPoly(Geometry geom, Color color) {
-        if (geom instanceof Point) {
-            return drawPoint((Point)geom, color);
-        }
-        if (geom instanceof Polygon) {
-            return drawPolygon((Polygon)geom, color);
-        }
-        if (geom instanceof LineString || geom instanceof MultiLineString) {
-            return drawLine(geom, color);
-        }
-        return drawString(geom, color);
-    }
+	T getPoly(Geometry geom, Color color) {
+		if (geom instanceof Point) {
+			return drawPoint((Point) geom, color);
+		}
+		if (geom instanceof Polygon) {
+			return drawPolygon((Polygon) geom, color);
+		}
+		if (geom instanceof LineString || geom instanceof MultiLineString) {
+			return drawLine(geom, color);
+		}
+		return drawString(geom, color);
+	}
 
-    public java.util.List<T> draw(Map map, Supplier<Solution> solutionSupplier, Supplier<Position> positionSupplier,
-                                  Supplier<FrontsCoordinate> targetSupplier) {
-        java.util.List<T> cmds = new ArrayList<>();
-        java.util.List<CompletableFuture<?>> futures = new ArrayList<>();
-        futures.add(map.getObstacles().thenAccept( obs -> obs.forEach(obst ->
-        {
-            if (obst.geom() instanceof GeometryCollection gCollection) {
-                for (int i = 0; i < gCollection.getNumGeometries(); i++) {
-                    cmds.add(getPoly(gCollection.getGeometryN(i), Color.RED));
-                }
-            } else {
-                cmds.add(getPoly(obst.geom(), Color.RED));
-            }
-        })));
+	public java.util.List<T> draw(Map map, Supplier<Solution> solutionSupplier, Supplier<Position> positionSupplier,
+			Supplier<FrontsCoordinate> targetSupplier) {
+		java.util.List<T> cmds = new ArrayList<>();
+		java.util.List<CompletableFuture<?>> futures = new ArrayList<>();
+		futures.add(map.getObstacles().thenAccept(obs -> obs.forEach(obst -> {
+			if (obst.geom() instanceof GeometryCollection gCollection) {
+				for (int i = 0; i < gCollection.getNumGeometries(); i++) {
+					cmds.add(getPoly(gCollection.getGeometryN(i), Color.RED));
+				}
+			} else {
+				cmds.add(getPoly(obst.geom(), Color.RED));
+			}
+		})));
 
-        futures.add(map.getCoords().thenAccept( coords -> coords.forEach( mapCoord -> {
-            cmds.add(getPoly(mapCoord.geometry, mapCoord.isIndirect ? Color.CYAN : Color.BLUE));
-        })));
+		futures.add(map.getCoords().thenAccept(coords -> coords.forEach(mapCoord -> {
+			cmds.add(getPoly(mapCoord.geometry, mapCoord.isIndirect ? Color.CYAN : Color.BLUE));
+		})));
 
-        List<FrontsCoordinate> lst = solutionSupplier.get().stream().toList();
-        if (lst.size() > 1) {
-            cmds.add(getPoly(geometryUtils.asPath(0.25, lst.toArray(new FrontsCoordinate[0])), Color.WHITE));
-        } else if (lst.size() == 1) {
-            cmds.add(getPoly(geometryUtils.asPolygon(lst.get(0), .25), Color.WHITE));
-        }
+		List<FrontsCoordinate> lst = solutionSupplier.get().stream().toList();
+		if (lst.size() > 1) {
+			cmds.add(getPoly(geometryUtils.asPath(0.25, lst.toArray(new FrontsCoordinate[0])), Color.WHITE));
+		} else if (lst.size() == 1) {
+			cmds.add(getPoly(geometryUtils.asPolygon(lst.get(0), .25), Color.WHITE));
+		}
 
-        FrontsCoordinate target = targetSupplier.get();
-        if (target != null) {
-            cmds.add(getPoly(geometryUtils.asPolygon(target, 0.25), Color.GREEN));
-        }
+		FrontsCoordinate target = targetSupplier.get();
+		if (target != null) {
+			cmds.add(getPoly(geometryUtils.asPolygon(target, 0.25), Color.GREEN));
+		}
 
-        for (CompletableFuture<?> f : futures) {
-            f.join();
-        }
+		for (CompletableFuture<?> f : futures) {
+			f.join();
+		}
 
-        Position position = positionSupplier.get();
-        if (position != null) {
-            cmds.add(getPoly(geometryUtils.asPolygon(position, 0.25), Color.ORANGE));
-        }
+		Position position = positionSupplier.get();
+		if (position != null) {
+			cmds.add(getPoly(geometryUtils.asPolygon(position, 0.25), Color.ORANGE));
+		}
 
-        if (target != null) {
-            cmds.add(getPoly(geometryUtils.asPath(map.getContext().chassisInfo.radius, position.getCoordinate(), target.getCoordinate()), Color.ORANGE));
-        }
-        return cmds;
-    }
+		if (target != null) {
+			cmds.add(getPoly(geometryUtils.asPath(map.getContext().chassisInfo.radius, position.getCoordinate(),
+					target.getCoordinate()), Color.ORANGE));
+		}
+		return cmds;
+	}
 
+	/**
+	 *
+	 * @see <a href="https://www.smartycoder.com">smartycpder</a>
+	 *
+	 */
+	abstract static class AbstractDrawingCommand {
 
-    /**
-     *
-     * @see <a href="https://www.smartycoder.com">smartycpder</a>
-     *
-     */
-    abstract static class AbstractDrawingCommand  {
+		protected Color color;
 
-        protected Color color;
-
-        AbstractDrawingCommand(Geometry geom, Color color) {
-            this.color = color;
-        }
-    }
+		AbstractDrawingCommand(Geometry geom, Color color) {
+			this.color = color;
+		}
+	}
 }

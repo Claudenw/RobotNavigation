@@ -26,352 +26,354 @@ import org.slf4j.LoggerFactory;
 
 public class WktDataType extends BaseDatatype {
 
-    private GeometryFactory factory;
-    private Map<String, Geometry> cache;
+	private GeometryFactory factory;
+	private Map<String, Geometry> cache;
 
-    private enum SupportedTypes {
-        point(Point.class), linestring(LineString.class), linearring(LinearRing.class), polygon(Polygon.class),
-        multipoint(MultiPoint.class), multilinestring(MultiLineString.class), multipolygon(MultiPolygon.class),
-        geometrycollection(GeometryCollection.class);
+	private enum SupportedTypes {
+		point(Point.class), linestring(LineString.class), linearring(LinearRing.class), polygon(
+				Polygon.class), multipoint(MultiPoint.class), multilinestring(MultiLineString.class), multipolygon(
+						MultiPolygon.class), geometrycollection(GeometryCollection.class);
 
-        Class<?> supporting;
-        
-        SupportedTypes(Class<?> supporting) {
-            this.supporting = supporting;
-        }
-    };
+		Class<?> supporting;
 
-    public WktDataType(GeometryFactory factory, Map<String, Geometry> cache) {
-        super(URI);
-        this.factory = factory;
-        this.cache = cache;
-        TypeMapper typeMapper = TypeMapper.getInstance();
-        typeMapper.registerDatatype(this);
-        for (SupportedTypes type : SupportedTypes.values()) {
-            typeMapper.registerDatatype( new Wrapped(type));
-        }
-    }
+		SupportedTypes(Class<?> supporting) {
+			this.supporting = supporting;
+		}
+	};
 
-    static final Logger LOGGER = LoggerFactory.getLogger(WKTDatatype.class);
+	public WktDataType(GeometryFactory factory, Map<String, Geometry> cache) {
+		super(URI);
+		this.factory = factory;
+		this.cache = cache;
+		TypeMapper typeMapper = TypeMapper.getInstance();
+		typeMapper.registerDatatype(this);
+		for (SupportedTypes type : SupportedTypes.values()) {
+			typeMapper.registerDatatype(new Wrapped(type));
+		}
+	}
 
-    /**
-     * The default WKT type URI.
-     */
-    public static final String URI = Geo.WKT;// Namespace.URI + ":datatype:wktLiteral";
+	static final Logger LOGGER = LoggerFactory.getLogger(WKTDatatype.class);
 
-    /**
-     * A static instance of WKTDatatype.
-     */
-    static WktDataType INSTANCE;
+	/**
+	 * The default WKT type URI.
+	 */
+	public static final String URI = Geo.WKT;// Namespace.URI + ":datatype:wktLiteral";
 
-    /**
-     * Returns the java class which is used to represent value instances of this
-     * datatype.
-     */
-    @Override
-    public Class<?> getJavaClass() {
-        return Geometry.class;
-    }
+	/**
+	 * A static instance of WKTDatatype.
+	 */
+	static WktDataType INSTANCE;
 
-    @Override
-    public String unparse(Object geometry) {
-        if (geometry instanceof Geometry) {
-            Geometry geom = (Geometry) geometry;
-            String result = geom.toText();
-            if (cache != null) {
-                cache.put(result, geom);
-            }
-            return result;
-        } 
-        throw new DatatypeFormatException(
-                "Object to unparse " + WktDataType.class.getSimpleName() + " is not a Geometry: " + geometry);
-    }
+	/**
+	 * Returns the java class which is used to represent value instances of this
+	 * datatype.
+	 */
+	@Override
+	public Class<?> getJavaClass() {
+		return Geometry.class;
+	}
 
-    @Override
-    public Geometry parse(String literalForm) throws DatatypeFormatException {
-        if (cache != null) {
-            Geometry geom = cache.get(literalForm);
-            if (geom != null) {
-                return geom;
-            }
-        }
+	@Override
+	public String unparse(Object geometry) {
+		if (geometry instanceof Geometry) {
+			Geometry geom = (Geometry) geometry;
+			String result = geom.toText();
+			if (cache != null) {
+				cache.put(result, geom);
+			}
+			return result;
+		}
+		throw new DatatypeFormatException(
+				"Object to unparse " + WktDataType.class.getSimpleName() + " is not a Geometry: " + geometry);
+	}
 
-        WKTTextSRS wktTextSRS = new WKTTextSRS(literalForm);
+	@Override
+	public Geometry parse(String literalForm) throws DatatypeFormatException {
+		if (cache != null) {
+			Geometry geom = cache.get(literalForm);
+			if (geom != null) {
+				return geom;
+			}
+		}
 
-        String wktText = wktTextSRS.wktText;
-        String goemetryType = "point";
-        String dimension = "";
-        String coordinates = null;
+		WKTTextSRS wktTextSRS = new WKTTextSRS(literalForm);
 
-        if (!wktText.equals("")) {
+		String wktText = wktTextSRS.wktText;
+		String goemetryType = "point";
+		String dimension = "";
+		String coordinates = null;
 
-            wktText = wktText.trim();
-            wktText = wktText.toLowerCase();
+		if (!wktText.equals("")) {
 
-            String[] parts = wktText.split("\\(", 2);
+			wktText = wktText.trim();
+			wktText = wktText.toLowerCase();
 
-            String remainder;
-            if (parts.length == 1) { // Check for "empty" keyword and remove.
-                remainder = parts[0].replace("empty", "").trim();
-            } else {
-                int coordinatesStart = wktText.indexOf("(");
-                coordinates = wktText.substring(coordinatesStart);
-                remainder = parts[0].trim();
-            }
+			String[] parts = wktText.split("\\(", 2);
 
-            int firstSpace = remainder.indexOf(" ");
+			String remainder;
+			if (parts.length == 1) { // Check for "empty" keyword and remove.
+				remainder = parts[0].replace("empty", "").trim();
+			} else {
+				int coordinatesStart = wktText.indexOf("(");
+				coordinates = wktText.substring(coordinatesStart);
+				remainder = parts[0].trim();
+			}
 
-            if (firstSpace != -1) {
-                goemetryType = remainder.substring(0, firstSpace);
-                dimension = remainder.substring(firstSpace + 1);
-            } else {
-                goemetryType = remainder;
-            }
-        }
+			int firstSpace = remainder.indexOf(" ");
 
-        if (wktTextSRS.srsURI != null) {
-            LOGGER.warn("SRS specified in " + WktDataType.class.getSimpleName() + " is ignored: " + literalForm);
-        }
-        if (coordinates == null) {
-            throw new DatatypeFormatException("coordinates must be specified in " + WktDataType.class.getSimpleName());
-        }
-        try {
-            Geometry geom = buildGeometry(SupportedTypes.valueOf(goemetryType), coordinates, convertDimensionString(dimension));
-            if (cache != null) {
-                cache.put(literalForm, geom);
-            }
-            return geom;
-        } catch (IllegalArgumentException e) {
-            throw new DatatypeFormatException("Geometry type not supported: " + goemetryType);
-        }
-        
-    }
+			if (firstSpace != -1) {
+				goemetryType = remainder.substring(0, firstSpace);
+				dimension = remainder.substring(firstSpace + 1);
+			} else {
+				goemetryType = remainder;
+			}
+		}
 
-    private static CoordinateSequenceDimensions convertDimensionString(String dimensionsString) {
+		if (wktTextSRS.srsURI != null) {
+			LOGGER.warn("SRS specified in " + WktDataType.class.getSimpleName() + " is ignored: " + literalForm);
+		}
+		if (coordinates == null) {
+			throw new DatatypeFormatException("coordinates must be specified in " + WktDataType.class.getSimpleName());
+		}
+		try {
+			Geometry geom = buildGeometry(SupportedTypes.valueOf(goemetryType), coordinates,
+					convertDimensionString(dimension));
+			if (cache != null) {
+				cache.put(literalForm, geom);
+			}
+			return geom;
+		} catch (IllegalArgumentException e) {
+			throw new DatatypeFormatException("Geometry type not supported: " + goemetryType);
+		}
 
-        CoordinateSequenceDimensions dims;
-        switch (dimensionsString) {
-        case "zm":
-            dims = CoordinateSequenceDimensions.XYZM;
-            break;
-        case "z":
-            dims = CoordinateSequenceDimensions.XYZ;
-            break;
-        case "m":
-            dims = CoordinateSequenceDimensions.XYM;
-            break;
-        default:
-            dims = CoordinateSequenceDimensions.XY;
-            break;
-        }
-        return dims;
-    }
+	}
 
-    private Geometry buildGeometry(SupportedTypes geometryType, String coordinates, CoordinateSequenceDimensions dims)
-            throws DatatypeFormatException {
+	private static CoordinateSequenceDimensions convertDimensionString(String dimensionsString) {
 
-        try {
-            Geometry geo = null;
-            switch (geometryType) {
-            case point:
-                CustomCoordinateSequence pointSequence = new CustomCoordinateSequence(dims, clean(coordinates));
-                geo = factory.createPoint(pointSequence);
-                break;
-            case linestring:
-                CustomCoordinateSequence lineSequence = new CustomCoordinateSequence(dims, clean(coordinates));
-                geo = factory.createLineString(lineSequence);
-                break;
-            case linearring:
-                CustomCoordinateSequence linearSequence = new CustomCoordinateSequence(dims, clean(coordinates));
-                geo = factory.createLinearRing(linearSequence);
-                break;
-            case polygon:
-                geo = buildPolygon(dims, coordinates);
-                break;
-            case multipoint:
-                CustomCoordinateSequence multiPointSequence = new CustomCoordinateSequence(dims, clean(coordinates));
-                geo = factory.createMultiPoint(multiPointSequence);
-                break;
-            case multilinestring:
-                geo = buildMultiLineString(dims, coordinates);
-                break;
-            case multipolygon:
-                geo = buildMultiPolygon(dims, coordinates);
-                break;
-            case geometrycollection:
-                geo = buildGeometryCollection(coordinates);
-                break;
-            }
-            return geo;
-        } catch (ArrayIndexOutOfBoundsException ex) {
-            throw new DatatypeFormatException("Build WKT Geometry Exception - Type: " + geometryType + ", Coordinates: "
-                    + coordinates + ". " + ex.getMessage());
-        }
-    }
+		CoordinateSequenceDimensions dims;
+		switch (dimensionsString) {
+			case "zm" :
+				dims = CoordinateSequenceDimensions.XYZM;
+				break;
+			case "z" :
+				dims = CoordinateSequenceDimensions.XYZ;
+				break;
+			case "m" :
+				dims = CoordinateSequenceDimensions.XYM;
+				break;
+			default :
+				dims = CoordinateSequenceDimensions.XY;
+				break;
+		}
+		return dims;
+	}
 
-    private String clean(String unclean) {
-        return unclean.replace(")", "").replace("(", "").trim();
-    }
+	private Geometry buildGeometry(SupportedTypes geometryType, String coordinates, CoordinateSequenceDimensions dims)
+			throws DatatypeFormatException {
 
-    private Geometry buildMultiLineString(CoordinateSequenceDimensions dims, String coordinates) {
+		try {
+			Geometry geo = null;
+			switch (geometryType) {
+				case point :
+					CustomCoordinateSequence pointSequence = new CustomCoordinateSequence(dims, clean(coordinates));
+					geo = factory.createPoint(pointSequence);
+					break;
+				case linestring :
+					CustomCoordinateSequence lineSequence = new CustomCoordinateSequence(dims, clean(coordinates));
+					geo = factory.createLineString(lineSequence);
+					break;
+				case linearring :
+					CustomCoordinateSequence linearSequence = new CustomCoordinateSequence(dims, clean(coordinates));
+					geo = factory.createLinearRing(linearSequence);
+					break;
+				case polygon :
+					geo = buildPolygon(dims, coordinates);
+					break;
+				case multipoint :
+					CustomCoordinateSequence multiPointSequence = new CustomCoordinateSequence(dims,
+							clean(coordinates));
+					geo = factory.createMultiPoint(multiPointSequence);
+					break;
+				case multilinestring :
+					geo = buildMultiLineString(dims, coordinates);
+					break;
+				case multipolygon :
+					geo = buildMultiPolygon(dims, coordinates);
+					break;
+				case geometrycollection :
+					geo = buildGeometryCollection(coordinates);
+					break;
+			}
+			return geo;
+		} catch (ArrayIndexOutOfBoundsException ex) {
+			throw new DatatypeFormatException("Build WKT Geometry Exception - Type: " + geometryType + ", Coordinates: "
+					+ coordinates + ". " + ex.getMessage());
+		}
+	}
 
-        if (coordinates.isEmpty()) {
-            return factory.createMultiLineString(new LineString[0]);
-        }
+	private String clean(String unclean) {
+		return unclean.replace(")", "").replace("(", "").trim();
+	}
 
-        String[] splitCoordinates = splitCoordinates(coordinates);
-        LineString[] lineStrings = splitLineStrings(dims, splitCoordinates);
-        return factory.createMultiLineString(lineStrings);
-    }
+	private Geometry buildMultiLineString(CoordinateSequenceDimensions dims, String coordinates) {
 
-    private Geometry buildMultiPolygon(CoordinateSequenceDimensions dims, String coordinates) {
+		if (coordinates.isEmpty()) {
+			return factory.createMultiLineString(new LineString[0]);
+		}
 
-        if (coordinates.isEmpty()) {
-            return factory.createMultiPolygon(new Polygon[0]);
-        }
+		String[] splitCoordinates = splitCoordinates(coordinates);
+		LineString[] lineStrings = splitLineStrings(dims, splitCoordinates);
+		return factory.createMultiLineString(lineStrings);
+	}
 
-        String trimmed = coordinates.replace(")) ,", ")),");
-        String[] multiCoordinates = trimmed.split("\\)\\),");
-        Polygon[] polygons = new Polygon[multiCoordinates.length];
-        for (int i = 0; i < multiCoordinates.length; i++) {
-            polygons[i] = buildPolygon(dims, multiCoordinates[i]);
-        }
+	private Geometry buildMultiPolygon(CoordinateSequenceDimensions dims, String coordinates) {
 
-        return factory.createMultiPolygon(polygons);
-    }
+		if (coordinates.isEmpty()) {
+			return factory.createMultiPolygon(new Polygon[0]);
+		}
 
-    private Polygon buildPolygon(CoordinateSequenceDimensions dims, String coordinates) {
+		String trimmed = coordinates.replace(")) ,", ")),");
+		String[] multiCoordinates = trimmed.split("\\)\\),");
+		Polygon[] polygons = new Polygon[multiCoordinates.length];
+		for (int i = 0; i < multiCoordinates.length; i++) {
+			polygons[i] = buildPolygon(dims, multiCoordinates[i]);
+		}
 
-        Polygon polygon;
+		return factory.createMultiPolygon(polygons);
+	}
 
-        String[] splitCoordinates = splitCoordinates(coordinates);
-        if (splitCoordinates.length == 1) { // Polygon without holes.
-            CustomCoordinateSequence shellSequence = new CustomCoordinateSequence(dims, clean(coordinates));
-            polygon = factory.createPolygon(shellSequence);
-        } else { // Polygon with holes
-            String shellCoordinates = splitCoordinates[0];
+	private Polygon buildPolygon(CoordinateSequenceDimensions dims, String coordinates) {
 
-            CustomCoordinateSequence shellSequence = new CustomCoordinateSequence(dims, clean(shellCoordinates));
-            LinearRing shellLinearRing = factory.createLinearRing(shellSequence);
+		Polygon polygon;
 
-            String[] splitHoleCoordinates = Arrays.copyOfRange(splitCoordinates, 1, splitCoordinates.length);
-            LinearRing[] holesLinearRing = splitLinearRings(dims, splitHoleCoordinates);
+		String[] splitCoordinates = splitCoordinates(coordinates);
+		if (splitCoordinates.length == 1) { // Polygon without holes.
+			CustomCoordinateSequence shellSequence = new CustomCoordinateSequence(dims, clean(coordinates));
+			polygon = factory.createPolygon(shellSequence);
+		} else { // Polygon with holes
+			String shellCoordinates = splitCoordinates[0];
 
-            polygon = factory.createPolygon(shellLinearRing, holesLinearRing);
+			CustomCoordinateSequence shellSequence = new CustomCoordinateSequence(dims, clean(shellCoordinates));
+			LinearRing shellLinearRing = factory.createLinearRing(shellSequence);
 
-        }
-        return polygon;
-    }
+			String[] splitHoleCoordinates = Arrays.copyOfRange(splitCoordinates, 1, splitCoordinates.length);
+			LinearRing[] holesLinearRing = splitLinearRings(dims, splitHoleCoordinates);
 
-    private Geometry buildGeometryCollection(String coordinates) throws DatatypeFormatException {
+			polygon = factory.createPolygon(shellLinearRing, holesLinearRing);
 
-        if (coordinates.isEmpty()) {
-            return factory.createGeometryCollection(new Geometry[0]);
-        }
+		}
+		return polygon;
+	}
 
-        // Split coordinates
-        String tidied = coordinates.substring(1, coordinates.length() - 1);
-        tidied = tidied.replaceAll("[\\ ]?,[\\ ]?", ","); // Remove spaces around commas
-        String[] partCoordinates = tidied.split("\\),(?=[^\\(])"); // Split whenever there is a ), but not ),(
+	private Geometry buildGeometryCollection(String coordinates) throws DatatypeFormatException {
 
-        Geometry[] geometries = new Geometry[partCoordinates.length];
+		if (coordinates.isEmpty()) {
+			return factory.createGeometryCollection(new Geometry[0]);
+		}
 
-        for (int i = 0; i < partCoordinates.length; i++) {
-            geometries[i] = parse(partCoordinates[i]);
-        }
-        return factory.createGeometryCollection(geometries);
-    }
+		// Split coordinates
+		String tidied = coordinates.substring(1, coordinates.length() - 1);
+		tidied = tidied.replaceAll("[\\ ]?,[\\ ]?", ","); // Remove spaces around commas
+		String[] partCoordinates = tidied.split("\\),(?=[^\\(])"); // Split whenever there is a ), but not ),(
 
-    private String[] splitCoordinates(String coordinates) {
+		Geometry[] geometries = new Geometry[partCoordinates.length];
 
-        String trimmed = coordinates.replace(") ,", "),");
-        return trimmed.split("\\),");
+		for (int i = 0; i < partCoordinates.length; i++) {
+			geometries[i] = parse(partCoordinates[i]);
+		}
+		return factory.createGeometryCollection(geometries);
+	}
 
-    }
+	private String[] splitCoordinates(String coordinates) {
 
-    private LineString[] splitLineStrings(CoordinateSequenceDimensions dims, String[] splitCoordinates) {
+		String trimmed = coordinates.replace(") ,", "),");
+		return trimmed.split("\\),");
 
-        LineString[] lineStrings = new LineString[splitCoordinates.length];
+	}
 
-        for (int i = 0; i < splitCoordinates.length; i++) {
-            CustomCoordinateSequence sequence = new CustomCoordinateSequence(dims, clean(splitCoordinates[i]));
-            LineString lineString = factory.createLineString(sequence);
-            lineStrings[i] = lineString;
-        }
+	private LineString[] splitLineStrings(CoordinateSequenceDimensions dims, String[] splitCoordinates) {
 
-        return lineStrings;
+		LineString[] lineStrings = new LineString[splitCoordinates.length];
 
-    }
+		for (int i = 0; i < splitCoordinates.length; i++) {
+			CustomCoordinateSequence sequence = new CustomCoordinateSequence(dims, clean(splitCoordinates[i]));
+			LineString lineString = factory.createLineString(sequence);
+			lineStrings[i] = lineString;
+		}
 
-    private LinearRing[] splitLinearRings(CoordinateSequenceDimensions dims, String[] splitCoordinates) {
+		return lineStrings;
 
-        LinearRing[] linearRings = new LinearRing[splitCoordinates.length];
+	}
 
-        for (int i = 0; i < splitCoordinates.length; i++) {
-            CustomCoordinateSequence sequence = new CustomCoordinateSequence(dims, clean(splitCoordinates[i]));
-            LinearRing linearRing = factory.createLinearRing(sequence);
-            linearRings[i] = linearRing;
-        }
+	private LinearRing[] splitLinearRings(CoordinateSequenceDimensions dims, String[] splitCoordinates) {
 
-        return linearRings;
+		LinearRing[] linearRings = new LinearRing[splitCoordinates.length];
 
-    }
+		for (int i = 0; i < splitCoordinates.length; i++) {
+			CustomCoordinateSequence sequence = new CustomCoordinateSequence(dims, clean(splitCoordinates[i]));
+			LinearRing linearRing = factory.createLinearRing(sequence);
+			linearRings[i] = linearRing;
+		}
 
-    private static class WKTTextSRS {
+		return linearRings;
 
-        private final String wktText;
-        private final String srsURI;
+	}
 
-        public WKTTextSRS(String wktLiteral) {
-            int startSRS = wktLiteral.indexOf("<");
-            int endSRS = wktLiteral.indexOf(">");
+	private static class WKTTextSRS {
 
-            // Check that both chevrons are located and extract SRS_URI name, otherwise
-            // default.
-            if (startSRS != -1 && endSRS != -1) {
-                srsURI = wktLiteral.substring(startSRS + 1, endSRS);
-                wktText = wktLiteral.substring(endSRS + 1);
-            } else {
-                srsURI = null;
-                wktText = wktLiteral;
-            }
-        }
+		private final String wktText;
+		private final String srsURI;
 
-        @SuppressWarnings("unused")
-        public String getWktText() {
-            return wktText;
-        }
+		public WKTTextSRS(String wktLiteral) {
+			int startSRS = wktLiteral.indexOf("<");
+			int endSRS = wktLiteral.indexOf(">");
 
-        @SuppressWarnings("unused")
-        public String getSrsURI() {
-            return srsURI;
-        }
+			// Check that both chevrons are located and extract SRS_URI name, otherwise
+			// default.
+			if (startSRS != -1 && endSRS != -1) {
+				srsURI = wktLiteral.substring(startSRS + 1, endSRS);
+				wktText = wktLiteral.substring(endSRS + 1);
+			} else {
+				srsURI = null;
+				wktText = wktLiteral;
+			}
+		}
 
-    }
-    
-    private class Wrapped extends BaseDatatype {
-        SupportedTypes type;
-        
-        Wrapped(SupportedTypes type) {
-            super(Namespace.URI+":SupportedTypes:" + type);
-            this.type = type;
-        }
-          @Override
-          public RDFDatatype normalizeSubType(Object value, RDFDatatype dt) {
-              return WktDataType.this;
-          }
-          @Override
-        public Class<?> getJavaClass() {
-            return type.supporting;
-        }
+		@SuppressWarnings("unused")
+		public String getWktText() {
+			return wktText;
+		}
 
-        @Override
-          public String unparse(Object geometry) {
-              return WktDataType.this.unparse(geometry);
-          }
-          @Override
-          public Geometry parse(String literalForm) throws DatatypeFormatException {
-              return WktDataType.this.parse(literalForm);
-          }
-      }
+		@SuppressWarnings("unused")
+		public String getSrsURI() {
+			return srsURI;
+		}
+
+	}
+
+	private class Wrapped extends BaseDatatype {
+		SupportedTypes type;
+
+		Wrapped(SupportedTypes type) {
+			super(Namespace.URI + ":SupportedTypes:" + type);
+			this.type = type;
+		}
+		@Override
+		public RDFDatatype normalizeSubType(Object value, RDFDatatype dt) {
+			return WktDataType.this;
+		}
+		@Override
+		public Class<?> getJavaClass() {
+			return type.supporting;
+		}
+
+		@Override
+		public String unparse(Object geometry) {
+			return WktDataType.this.unparse(geometry);
+		}
+		@Override
+		public Geometry parse(String literalForm) throws DatatypeFormatException {
+			return WktDataType.this.parse(literalForm);
+		}
+	}
 }

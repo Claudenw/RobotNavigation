@@ -17,37 +17,37 @@ import org.xenei.robot.common.utils.CoordUtilsTest;
 
 public class LocationTest {
 
-    @ParameterizedTest
-    @MethodSource("coordPairParameters")
-    public void rangeAndThetaTest(Location a, double expected, double angle) {
-        assertEquals(expected, a.range(), AngleUtils.TOLERANCE);
-        assertEquals(angle, a.theta(), AngleUtils.TOLERANCE);
-    }
+	@ParameterizedTest
+	@MethodSource("coordPairParameters")
+	public void rangeAndThetaTest(Location a, double expected, double angle) {
+		assertEquals(expected, a.range(), AngleUtils.TOLERANCE);
+		assertEquals(angle, a.theta(), AngleUtils.TOLERANCE);
+	}
 
-    private static void processStream(List<Arguments> lst, double[] args) {
-        Location l = Location.from(args[CoordUtilsTest.X], args[CoordUtilsTest.Y]);
-        lst.add(Arguments.of(l, args[CoordUtilsTest.RANGE], args[CoordUtilsTest.RAD]));
+	private static void processStream(List<Arguments> lst, double[] args) {
+		Location l = Location.from(args[CoordUtilsTest.X], args[CoordUtilsTest.Y]);
+		lst.add(Arguments.of(l, args[CoordUtilsTest.RANGE], args[CoordUtilsTest.RAD]));
 
-        l = Location.from(CoordUtils.fromAngle(args[CoordUtilsTest.RAD], args[CoordUtilsTest.RANGE]));
-        lst.add(Arguments.of(l, args[CoordUtilsTest.RANGE], args[CoordUtilsTest.RAD]));
+		l = Location.from(CoordUtils.fromAngle(args[CoordUtilsTest.RAD], args[CoordUtilsTest.RANGE]));
+		lst.add(Arguments.of(l, args[CoordUtilsTest.RANGE], args[CoordUtilsTest.RAD]));
 
-        l = Location.from(CoordUtils.fromAngle(Math.toRadians(args[CoordUtilsTest.DEG]), args[CoordUtilsTest.RANGE]));
-        lst.add(Arguments.of(l, args[CoordUtilsTest.RANGE], args[CoordUtilsTest.RAD]));
+		l = Location.from(CoordUtils.fromAngle(Math.toRadians(args[CoordUtilsTest.DEG]), args[CoordUtilsTest.RANGE]));
+		lst.add(Arguments.of(l, args[CoordUtilsTest.RANGE], args[CoordUtilsTest.RAD]));
 
-    }
+	}
 
-    private static Stream<Arguments> coordPairParameters() {
+	private static Stream<Arguments> coordPairParameters() {
 
-        List<Arguments> lst = new ArrayList<Arguments>();
+		List<Arguments> lst = new ArrayList<Arguments>();
 
-        Arrays.stream(CoordUtilsTest.arguments()).forEach(s -> processStream(lst, s));
+		Arrays.stream(CoordUtilsTest.arguments()).forEach(s -> processStream(lst, s));
 
-        return Stream.of(lst.toArray(new Arguments[0]));
-    }
-    
-    @Test
-    public void thetaTest() {
-        Location underTest = Location.from(0,5);
-        System.out.println( underTest.theta() );
-    }
+		return Stream.of(lst.toArray(new Arguments[0]));
+	}
+
+	@Test
+	public void thetaTest() {
+		Location underTest = Location.from(0, 5);
+		System.out.println(underTest.theta());
+	}
 }

@@ -17,55 +17,54 @@ import org.xenei.robot.common.utils.CoordUtils;
 import org.xenei.robot.common.utils.RobutContext;
 
 public class FakeMoverTest {
-    private static final double DELTA = 0.00000000001;
+	private double delta = 0.00000000001;
 
-    private final double sqrt2 = Math.sqrt(2.0);
-    private FakeMover underTest;
+	private final double sqrt2 = Math.sqrt(2.0);
+	private FakeMover underTest;
+	private RobutContext ctxt;
 
-    @BeforeEach
-    public void setup() {
+	@BeforeEach
+	public void setup() {
+		ctxt = new RobutContext(ScaleInfo.DEFAULT, ChassisInfoTest.DEFAULT);
+		underTest = new FakeMover(ctxt, new CoordinateXY(0, 0));
+		delta = 1 / Math.pow(10, ctxt.scaleInfo.decimalPlaces() + 1);
+	}
 
-        RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT, ChassisInfoTest.DEFAULT);
-        underTest = new FakeMover(ctxt, new CoordinateXY(0, 0));
-    }
+	@Test
+	public void zigZagTest() {
+		Location move = Location.from(CoordUtils.fromAngle(RADIANS_45, 2));
+		underTest.move(move);
+		assertEquals(RADIANS_45, underTest.position().getHeading(), delta);
+		ctxt.scaleInfo.areEquivalent(Location.from(sqrt2, sqrt2), underTest.position());
 
-    @Test
-    public void zigZagTest() {
-        Location move = Location.from(CoordUtils.fromAngle(RADIANS_45, 2));
-        underTest.move(move);
-        assertEquals(RADIANS_45, underTest.position().getHeading(), DELTA);
-        assertEquals(sqrt2, underTest.position().getX(), DELTA);
-        assertEquals(sqrt2, underTest.position().getY(), DELTA);
+		move = Location.from(CoordUtils.fromAngle(-RADIANS_45, 2));
+		underTest.move(move);
+		assertEquals(0.0, underTest.position().getHeading(), delta);
+		ctxt.scaleInfo.areEquivalent(Location.from(sqrt2 + 2, sqrt2), underTest.position());
+	}
 
-        move = Location.from(CoordUtils.fromAngle(-RADIANS_45, 2));
-        underTest.move(move);
-        assertEquals(sqrt2 + 2, underTest.position().getX(), DELTA);
-        assertEquals(sqrt2, underTest.position().getY(), DELTA);
-        assertEquals(0.0, underTest.position().getHeading(), DELTA);
-    }
+	@Test
+	public void boxTest() {
+		Location move = Location.from(sqrt2, sqrt2);
+		underTest.move(move);
+		System.out.println(underTest.position());
+		assertEquals(RADIANS_45, underTest.position().getHeading(), delta);
+		ctxt.scaleInfo.areEquivalent(move, underTest.position());
 
-    @Test
-    public void boxTest() {
-        Location move = Location.from(sqrt2, sqrt2);
-        underTest.move(move);
-        assertEquals(RADIANS_45, underTest.position().getHeading(), DELTA);
-        assertEquals(sqrt2, underTest.position().getX(), DELTA);
-        assertEquals(sqrt2, underTest.position().getY(), DELTA);
+		move = Location.from(CoordUtils.fromAngle(AngleUtils.RADIANS_90, 2));
+		underTest.move(move);
+		System.out.println(underTest.position());
+		assertEquals(RADIANS_135, underTest.position().getHeading(), delta);
+		ctxt.scaleInfo.areEquivalent(Location.from(0.0, sqrt2), underTest.position());
 
-        move = Location.from(CoordUtils.fromAngle(AngleUtils.RADIANS_90, 2));
-        underTest.move(move);
-        assertEquals(RADIANS_135, underTest.position().getHeading(), DELTA);
-        assertEquals(0.0, underTest.position().getX(), DELTA);
-        assertEquals(sqrt2 * 2, underTest.position().getY(), DELTA);
+		underTest.move(move);
+		System.out.println(underTest.position());
+		assertEquals(RADIANS_225, underTest.position().getHeading(), delta);
+		ctxt.scaleInfo.areEquivalent(Location.from(-sqrt2, sqrt2), underTest.position());
 
-        underTest.move(move);
-        assertEquals(RADIANS_225, underTest.position().getHeading(), DELTA);
-        assertEquals(-sqrt2, underTest.position().getX(), DELTA);
-        assertEquals(sqrt2, underTest.position().getY(), DELTA);
-
-        underTest.move(move);
-        assertEquals(RADIANS_315, underTest.position().getHeading(), DELTA);
-        assertEquals(0, underTest.position().getX(), DELTA);
-        assertEquals(0, underTest.position().getY(), DELTA);
-    }
+		underTest.move(move);
+		System.out.println(underTest.position());
+		assertEquals(RADIANS_315, underTest.position().getHeading(), delta);
+		ctxt.scaleInfo.areEquivalent(Location.ORIGIN, underTest.position());
+	}
 }

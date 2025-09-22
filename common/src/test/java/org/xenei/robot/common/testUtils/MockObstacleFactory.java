@@ -10,44 +10,44 @@ import org.xenei.robot.common.mapping.Obstacle;
 
 public class MockObstacleFactory {
 
-    private MockObstacleFactory() {
-    }
+	private MockObstacleFactory() {
+	}
 
-    public static Obstacle from(Literal wkt) {
-        return new Obstacle() {
+	public static Obstacle from(Literal wkt) {
+		return new Obstacle() {
 
-            @Override
-            public Literal wkt() {
-                return wkt;
-            }
+			@Override
+			public Literal wkt() {
+				return wkt;
+			}
 
-            @Override
-            public Geometry geom() {
-                throw new NotImplementedException();
-            }
+			@Override
+			public Geometry geom() {
+				throw new NotImplementedException();
+			}
 
-            @Override
-            public UUID uuid() {
-                throw new NotImplementedException();
-            }
+			@Override
+			public UUID uuid() {
+				throw new NotImplementedException();
+			}
 
-            @Override
-            public Resource rdf() {
-                throw new NotImplementedException();
-            }
+			@Override
+			public Resource rdf() {
+				throw new NotImplementedException();
+			}
 
-            @Override
-            public int hashCode() {
-                return Obstacle.hashCode(this);
-            }
+			@Override
+			public int hashCode() {
+				return Obstacle.hashCode(this);
+			}
 
-            @Override
-            public boolean equals(Object o) {
-                return Obstacle.equalsImpl(this, o);
-            }
+			@Override
+			public boolean equals(Object o) {
+				return Obstacle.equalsImpl(this, o);
+			}
 
-        };
+		};
 
-    }
+	}
 
 }

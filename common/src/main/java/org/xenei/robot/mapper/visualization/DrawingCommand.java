@@ -8,5 +8,5 @@ import java.awt.Graphics;
  *
  */
 public interface DrawingCommand {
-    void doDrawing(Graphics g);
+	void doDrawing(Graphics g);
 }

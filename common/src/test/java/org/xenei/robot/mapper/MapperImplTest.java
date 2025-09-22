@@ -3,133 +3,100 @@ package org.xenei.robot.mapper;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyBoolean;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
-import java.util.Set;
-import java.util.concurrent.Callable;
-import java.util.concurrent.CompletableFuture;
 import java.util.stream.Stream;
 
+import org.apache.jena.arq.querybuilder.AskBuilder;
+import org.apache.jena.arq.querybuilder.WhereBuilder;
+import org.apache.jena.vocabulary.RDF;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.locationtech.jts.geom.Coordinate;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Mockito;
 import org.xenei.robot.common.ChassisInfoTest;
 import org.xenei.robot.common.DistanceSensor;
-import org.xenei.robot.common.FrontsCoordinate;
 import org.xenei.robot.common.Location;
-import org.xenei.robot.common.NavigationSnapshot;
 import org.xenei.robot.common.Position;
 import org.xenei.robot.common.ScaleInfo;
-import org.xenei.robot.common.mapping.Map;
 import org.xenei.robot.common.mapping.Mapper;
-import org.xenei.robot.common.mapping.Obstacle;
-import org.xenei.robot.common.planning.Segment;
-import org.xenei.robot.common.testUtils.CoordinateUtils;
 import org.xenei.robot.common.utils.AngleUtils;
 import org.xenei.robot.common.utils.CoordUtils;
 import org.xenei.robot.common.utils.RobutContext;
+import org.xenei.robot.mapper.map.MapImpl;
+import org.xenei.robot.mapper.rdf.Namespace;
 
 public class MapperImplTest {
+	private final RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT, ChassisInfoTest.DEFAULT);
+	private final MapImpl map = new MapImpl(ctxt);
 
-    private final ArgumentCaptor<FrontsCoordinate> coordinateCaptor = ArgumentCaptor.forClass(FrontsCoordinate.class);
-    private final ArgumentCaptor<Obstacle> obstacleCaptor = ArgumentCaptor.forClass(Obstacle.class);
+	@BeforeEach
+	public void setup() {
+		map.clear(Namespace.PlanningModel.getURI());
+	}
 
-    private final RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT, ChassisInfoTest.DEFAULT);
+	@Test
+	public void processSensorDataTest_TooClose() throws InterruptedException {
 
-    @Test
-    public void processSensorDataTest_TooClose() {
+		Position currentPosition = Position.from(-1, -3, AngleUtils.RADIANS_90);
+		Location target = Location.from(-1, 1);
+		Coordinate mapValue = new Coordinate(5, 5);
 
-        Position currentPosition = Position.from(-1, -3, AngleUtils.RADIANS_90);
-        Location target = Location.from(-1, 1);
-        Obstacle obstacle = Mockito.mock(Obstacle.class);
-        Coordinate mapValue = new Coordinate(5, 5);
+		Mapper underTest = new MapperImpl(map, () -> target);
 
-        Map map = Mockito.mock(Map.class);
-        when(map.getContext()).thenReturn(ctxt);
-        Mapper underTest = new MapperImpl(map, () -> target);
+		Coordinate expectedObstacle = CoordUtils.fromAngle(0, 2 * map.getContext().scaleInfo.getResolution());
+		Coordinate unexpectedObstacle = CoordUtils.fromAngle(0, map.getContext().scaleInfo.getResolution());
+		// an obstacle within one radius away is too close so no target generated.
+		underTest.getRelativeObstacleConsumer()
+				.accept(new DistanceSensor.Readings(currentPosition,
+						List.of(DistanceSensor.DistanceReading.from(unexpectedObstacle),
+								DistanceSensor.DistanceReading.from(expectedObstacle))));
 
-        // an obstacle one unit away is too close so no target generated.
-        underTest.getRelativeObstacleConsumer().accept(
-                new DistanceSensor.Readings(currentPosition, List.of(DistanceSensor.DistanceReading.from(CoordUtils.fromAngle(0, 1)))));
+		Thread.sleep(2000);
+		System.out.println(MapReports.dumpModel(map));
 
-        Location[] obstacles = { Location.from(CoordUtils.fromAngle(0, 1)) };
-        NavigationSnapshot snapshot = new NavigationSnapshot(currentPosition, target);
+		await().atMost(2, SECONDS).untilAsserted(() -> assertEquals(1, map.getObstacles().join().size()));
+		assertFalse(map.isObstacle(Location.from(-1, 1 + map.getContext().scaleInfo.getResolution())));
+		assertTrue(map.isObstacle(Location.from(-1, -2)));
+	}
 
-        verify(map, times(0)).isObstacle(any(FrontsCoordinate.class));
-        verify(map, times(0)).addCoord(any(FrontsCoordinate.class), any(FrontsCoordinate.class), anyBoolean());
-    }
+	private static Stream<Arguments> sensorData() {
+		List<Arguments> lst = new ArrayList<>();
+		Coordinate sensorReading = CoordUtils.fromAngle(0, 2);
+		// results are the center of the cell.
+		lst.add(Arguments.of(0, sensorReading, new Coordinate(2, 0), new Coordinate(1.5, 0))); // along x coord
+		lst.add(Arguments.of(90, sensorReading, new Coordinate(0, 2), new Coordinate(0, 1.5))); // down Y coord
+		lst.add(Arguments.of(180, sensorReading, new Coordinate(-2, 0), new Coordinate(-1.5, 0))); // backwards on x
+																									// coord
+		lst.add(Arguments.of(270, sensorReading, new Coordinate(0, -2), new Coordinate(0, -1.5))); // up Y coord
+		return lst.stream();
+	}
 
+	@ParameterizedTest(name = "{0}")
+	@MethodSource("sensorData")
+	void processSensorDataTest(final double heading, final Coordinate sensorReading, final Coordinate expectedObstacle,
+			final Coordinate expectedCoord) {
 
-    private static Stream<Arguments> sensorData() {
-        List<Arguments> lst = new ArrayList<>();
-        Coordinate sensorReading = CoordUtils.fromAngle(0, 2);
-        // results are the center of the cell.
-        lst.add(Arguments.of(0, sensorReading, new Coordinate(1.5, 0))); // along x coord
-        lst.add(Arguments.of(90, sensorReading, new Coordinate(0, 1.5))); // down Y ccoord
-        lst.add(Arguments.of(180, sensorReading, new Coordinate(-1.5, 0))); // backwards on x coord
-        lst.add(Arguments.of(270, sensorReading, new Coordinate(0, -1.5))); //up Y coord
-        return lst.stream();
-    }
+		Position currentPosition = Position.from(-0, 0, Math.toRadians(heading));
+		Location target = Location.from(10, 10);
 
-    @ParameterizedTest(name = "{0}")
-    @MethodSource("sensorData")
-    void processSensorDataTest(final double degrees, final Coordinate sensorReading, final Coordinate candidate) {
+		Mapper underTest = new MapperImpl(map, () -> target);
 
-        Position currentPosition = Position.from(-0, 0, Math.toRadians(degrees));
-        Location target = Location.from(10, 10);
-        Segment segment = Mockito.mock(Segment.class);
+		// process data
+		underTest.getRelativeObstacleConsumer().accept(new DistanceSensor.Readings(currentPosition,
+				List.of(DistanceSensor.DistanceReading.from(sensorReading))));
 
-        Obstacle obstacle = Mockito.mock(Obstacle.class);
-        Map map = Mockito.mock(Map.class);
-        when(map.getContext()).thenReturn(ctxt);
-        when(map.createObstacle(any(Position.class), any(Location.class))).thenReturn(obstacle);
-        when(map.addObstacle(any())).thenReturn(Set.of(obstacle));
-        when(map.adopt(any(Coordinate.class))).thenAnswer( context -> Map.adopt(context.getArgument(0, Coordinate.class), ctxt.scaleInfo));
-        when(map.isObstacle(any(FrontsCoordinate.class))).thenReturn(false);
-        when(map.addCoord(any(FrontsCoordinate.class), any(FrontsCoordinate.class), anyBoolean()))
-                .thenReturn(CompletableFuture.completedFuture(Optional.of(segment)));
-        when(map.isClearPath(any(FrontsCoordinate.class), any(FrontsCoordinate.class))).thenReturn(false);
+		await().atMost(2, SECONDS).untilAsserted(() -> assertTrue(map.isObstacle(Location.from(expectedObstacle))));
 
-        Mapper underTest = new MapperImpl(map, () -> target);
+		AskBuilder ask = new AskBuilder().addGraph(Namespace.PlanningModel, new WhereBuilder()
+				.addWhere(Namespace.s, Namespace.x, expectedCoord.x).addWhere(Namespace.s, Namespace.y, expectedCoord.y)
+				.addWhere(Namespace.s, Namespace.isIndirect, false).addWhere(Namespace.s, RDF.type, Namespace.Coord));
+		await().atMost(2, SECONDS).untilAsserted(() -> assertTrue(map.ask(ask)));
 
-        // process data
-        underTest.getRelativeObstacleConsumer().accept(
-                new DistanceSensor.Readings(currentPosition, List.of(DistanceSensor.DistanceReading.from(CoordUtils.fromAngle(0, 2)))));
-
-
-        ArgumentCaptor<Boolean> one = ArgumentCaptor.forClass(Boolean.class);
-        ArgumentCaptor<FrontsCoordinate> targetCaptor = ArgumentCaptor.forClass(FrontsCoordinate.class);
-        Callable<Boolean> mockitoTest = () -> {
-            try {
-                verify(map).addCoord(coordinateCaptor.capture(), targetCaptor.capture(), one.capture());
-                return true;
-            }
-            catch(AssertionError ae) {
-                return false;
-            }
-        };
-        await().atMost(5, SECONDS).until(mockitoTest);
-
-        verify(map).isObstacle(coordinateCaptor.capture());
-        CoordinateUtils.assertEquivalent(candidate, coordinateCaptor.getValue());
-
-        // verify obstacle was added
-        verify(map).addObstacle(obstacleCaptor.capture());
-        assertEquals(obstacle, obstacleCaptor.getValue());
-
-        // verify coord was added
-        verify(map).addCoord(coordinateCaptor.capture(), targetCaptor.capture(), one.capture());
-        CoordinateUtils.assertEquivalent(candidate, coordinateCaptor.getValue());
-    }
+	}
 }

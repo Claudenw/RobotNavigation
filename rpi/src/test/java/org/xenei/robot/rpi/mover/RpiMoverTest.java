@@ -26,208 +26,209 @@ import org.xenei.robot.rpi.drivers.Motor;
 
 public class RpiMoverTest {
 
-    private static final Logger LOG = LoggerFactory.getLogger(RpiMoverTest.class);
-    RpiMover underTest;
+	private static final Logger LOG = LoggerFactory.getLogger(RpiMoverTest.class);
+	RpiMover underTest;
 
-    @ParameterizedTest(name = "{index} {0}")
-    @MethodSource("setHeadingParameters")
-    public void setHeadingTest(String name, double radiusFactor, double angle ) throws InterruptedException {
-        TestingCompass compass = new TestingCompass(0);
-        
-        RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT, TestChassisInfo.DEFAULT);
-        TestingMotor left = new TestingMotor(1,TestChassisInfo.DEFAULT.radius*radiusFactor, compass);
-        TestingMotor right = new TestingMotor(-1,TestChassisInfo.DEFAULT.radius*radiusFactor, compass);
-        Coordinate coords = new Coordinate( 0,0 );
-        underTest = new RpiMover(ctxt, compass, coords, left, right );
-        
-        underTest.setHeading(0);
-        assertEquals( 0, underTest.position().getHeading());
-        underTest.setHeading(angle);
-        assertTrue(DoubleUtils.eq( angle, underTest.position().getHeading(), 0.01));
-        CoordinateUtils.assertEquivalent(coords, underTest.position().getCoordinate(), 0.01);
-        assertEquals(2, left.runCount);
-        assertEquals(2, right.runCount);
-//        if (radiusFactor < 1.0)
-//        {
-//            assertTrue(underTest.getHeadingFactor() > TestChassisInfo.DEFAULT.radius);
-//        }
-//        if (radiusFactor > 1.0) {
-//            assertTrue(underTest.getHeadingFactor() < TestChassisInfo.DEFAULT.radius);
-//        }
-    }
-    
-    public static Stream<Arguments> setHeadingParameters() {
-        List<Arguments> lst = new ArrayList<>();
-        
-        lst.add(Arguments.of("UnderShoot-Left", 1.5, AngleUtils.RADIANS_45));
-        lst.add(Arguments.of("UnderShoot-Right", 1.5, -AngleUtils.RADIANS_90));
-        lst.add(Arguments.of("OverShoot-Left", .5, AngleUtils.RADIANS_45));
-        lst.add(Arguments.of("OverShoot-Right", .5, -AngleUtils.RADIANS_90));
-        return lst.stream();
-    }
+	@ParameterizedTest(name = "{index} {0}")
+	@MethodSource("setHeadingParameters")
+	public void setHeadingTest(String name, double radiusFactor, double angle) throws InterruptedException {
+		TestingCompass compass = new TestingCompass(0);
 
-    @Test
-    public void setHeadingTest_Zero() throws InterruptedException {
-        TestingCompass compass = new TestingCompass(0);
-        
-        RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT, TestChassisInfo.DEFAULT);
-        TestingMotor left = new TestingMotor(1,TestChassisInfo.DEFAULT.radius, compass);
-        TestingMotor right = new TestingMotor(-1,TestChassisInfo.DEFAULT.radius, compass);
-        Coordinate coords = new Coordinate( 0,0 );
-        underTest = new RpiMover(ctxt, compass, coords, left, right );
-        
-        underTest.setHeading(0);
-        assertEquals( 0, underTest.position().getHeading());
-        assertTrue(DoubleUtils.eq( 0, underTest.position().getHeading(), 0.01));
-        assertEquals(coords, underTest.position().getCoordinate());
-        assertEquals(0, left.runCount);
-        assertEquals(0, right.runCount);
-        //assertEquals(TestChassisInfo.DEFAULT.radius, underTest.getHeadingFactor());
-    }
-    
-    class TestingCompass implements Compass {
-        double heading;
+		RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT, TestChassisInfo.DEFAULT);
+		TestingMotor left = new TestingMotor(1, TestChassisInfo.DEFAULT.radius * radiusFactor, compass);
+		TestingMotor right = new TestingMotor(-1, TestChassisInfo.DEFAULT.radius * radiusFactor, compass);
+		Coordinate coords = new Coordinate(0, 0);
+		underTest = new RpiMover(ctxt, compass, coords, left, right);
 
-        TestingCompass(double heading) {
-            this.heading = heading;
-        }
+		underTest.setHeading(0);
+		assertEquals(0, underTest.position().getHeading());
+		underTest.setHeading(angle);
+		assertTrue(DoubleUtils.eq(angle, underTest.position().getHeading(), 0.01));
+		CoordinateUtils.assertEquivalent(coords, underTest.position().getCoordinate(), 0.01);
+		assertEquals(2, left.runCount);
+		assertEquals(2, right.runCount);
+		// if (radiusFactor < 1.0)
+		// {
+		// assertTrue(underTest.getHeadingFactor() > TestChassisInfo.DEFAULT.radius);
+		// }
+		// if (radiusFactor > 1.0) {
+		// assertTrue(underTest.getHeadingFactor() < TestChassisInfo.DEFAULT.radius);
+		// }
+	}
 
-        @Override
-        public double heading() {
-            return heading;
-        }
+	public static Stream<Arguments> setHeadingParameters() {
+		List<Arguments> lst = new ArrayList<>();
 
-        @Override
-        public double instantaneousHeading() {
-            return 0;
-        }
+		lst.add(Arguments.of("UnderShoot-Left", 1.5, AngleUtils.RADIANS_45));
+		lst.add(Arguments.of("UnderShoot-Right", 1.5, -AngleUtils.RADIANS_90));
+		lst.add(Arguments.of("OverShoot-Left", .5, AngleUtils.RADIANS_45));
+		lst.add(Arguments.of("OverShoot-Right", .5, -AngleUtils.RADIANS_90));
+		return lst.stream();
+	}
 
-        public synchronized void increment(double value) {
-            heading += value;
-        }
-        
-        @Override
-        public double sd()
-        {
-            return 0.1;
-        }
-        
-        public int decimalPlaces() {
-            throw new NotImplementedException();
-        }
-    }
-    
-    class TestingMotor implements Motor {
-        double angleFactor;
-        TestingCompass compass;
-        int positiveAngleFactor;
-        int runCount = 0;
-        
-        public TestingMotor(int positiveAngleFactor, double angleFactor, TestingCompass compass) {
-            this.angleFactor = angleFactor;
-            this.compass = compass;
-            this.positiveAngleFactor = positiveAngleFactor;
-        }
+	@Test
+	public void setHeadingTest_Zero() throws InterruptedException {
+		TestingCompass compass = new TestingCompass(0);
 
-        @Override
-        public int getMaxRpm() {
-            return 300;
-        }
+		RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT, TestChassisInfo.DEFAULT);
+		TestingMotor left = new TestingMotor(1, TestChassisInfo.DEFAULT.radius, compass);
+		TestingMotor right = new TestingMotor(-1, TestChassisInfo.DEFAULT.radius, compass);
+		Coordinate coords = new Coordinate(0, 0);
+		underTest = new RpiMover(ctxt, compass, coords, left, right);
 
-        @Override
-        public void close() throws Exception {
-            // TODO Auto-generated method stub
-            
-        }
+		underTest.setHeading(0);
+		assertEquals(0, underTest.position().getHeading());
+		assertTrue(DoubleUtils.eq(0, underTest.position().getHeading(), 0.01));
+		assertEquals(coords, underTest.position().getCoordinate());
+		assertEquals(0, left.runCount);
+		assertEquals(0, right.runCount);
+		// assertEquals(TestChassisInfo.DEFAULT.radius, underTest.getHeadingFactor());
+	}
 
-        @Override
-        public SteppingStatus prepareRun(int steps, int rpm) {
-            long msPerStep = 50;
-            int mySteps = (int) Math.round(steps * (angleFactor/TestChassisInfo.DEFAULT.radius));
-            ++runCount;
-            SteppingStatusImpl result = new SteppingStatusImpl(positiveAngleFactor, mySteps, msPerStep);
-            
-            LOG.debug("Preparing task {} steps:{} rpm:{}", this, mySteps, rpm);
+	class TestingCompass implements Compass {
+		double heading;
 
-            return result;
-        }
+		TestingCompass(double heading) {
+			this.heading = heading;
+		}
 
-        @Override
-        public double stepsPerRotation() {
-            return 360;
-        }
+		@Override
+		public double heading() {
+			return heading;
+		}
 
-        @Override
-        public void stop() {
-            // TODO Auto-generated method stub
-            
-        }
-        private int limit(int value, int min, int max) {
-            return (value < min) ? min : (value > max) ? max : value;
-        }
-        
-        public class SteppingStatusImpl implements Motor.SteppingStatus {
-            private volatile int  count;
-            private final int initialCounter;
-            private final boolean fwd;
-            private final long msPerStep;
-            private final int positiveAngleFactor;
-            
-            SteppingStatusImpl(int positiveAngleFactor, int steps, long msPerStep) {
-                initialCounter = Math.abs(limit(steps, -32768, 32767));
-                count = initialCounter;
-                fwd = steps >= 0;
-                this.msPerStep = msPerStep;
-                this.positiveAngleFactor = positiveAngleFactor;
-                LOG.debug("SteppingStatus created for %s steps", count);
-            }
+		@Override
+		public double instantaneousHeading() {
+			return 0;
+		}
 
-            @Override
-            public long millisecondsPerStep() {
-                return 250;
-            }
+		public synchronized void increment(double value) {
+			heading += value;
+		}
 
-            @Override
-            public boolean step() {
-                try {
-                    Thread.sleep(msPerStep);
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
-                }
-                compass.increment(positiveAngleFactor*Math.toRadians(0.5)*(fwd ? count : -count));
-                count = 0;
-                LOG.info("SteppingStatus complete.  count:{} initial counter:{}", count, initialCounter);
-                return false;
-            }
+		@Override
+		public double sd() {
+			return 0.1;
+		}
 
-            @Override
-            public boolean isComplete() {
-                return true;
-            }
+		public int decimalPlaces() {
+			throw new NotImplementedException();
+		}
+	}
 
-            /**
-             * Gets the number of steps taken in a forward direction.
-             * @return the number of steps taken, negative for reverse travel.
-             */
-            public int fwdSteps() {
-                return (initialCounter-count) * (fwd ? 1 : -1);
-            }
-            
-            public double fwdRotation() {
-                return fwdSteps() / stepsPerRotation(); 
-            }
+	class TestingMotor implements Motor {
+		double angleFactor;
+		TestingCompass compass;
+		int positiveAngleFactor;
+		int runCount = 0;
 
-            @Override
-            public double stepsPerRotation() {
-                return 4;
-            }
+		public TestingMotor(int positiveAngleFactor, double angleFactor, TestingCompass compass) {
+			this.angleFactor = angleFactor;
+			this.compass = compass;
+			this.positiveAngleFactor = positiveAngleFactor;
+		}
 
-            @Override
-            public String toString() {
-                return String.format( "SteppingStatus %s steps:%s rotation:%s", this.hashCode(), fwdSteps(), fwdRotation());
-            }
-        }
-        
-    }
+		@Override
+		public int getMaxRpm() {
+			return 300;
+		}
+
+		@Override
+		public void close() throws Exception {
+			// TODO Auto-generated method stub
+
+		}
+
+		@Override
+		public SteppingStatus prepareRun(int steps, int rpm) {
+			long msPerStep = 50;
+			int mySteps = (int) Math.round(steps * (angleFactor / TestChassisInfo.DEFAULT.radius));
+			++runCount;
+			SteppingStatusImpl result = new SteppingStatusImpl(positiveAngleFactor, mySteps, msPerStep);
+
+			LOG.debug("Preparing task {} steps:{} rpm:{}", this, mySteps, rpm);
+
+			return result;
+		}
+
+		@Override
+		public double stepsPerRotation() {
+			return 360;
+		}
+
+		@Override
+		public void stop() {
+			// TODO Auto-generated method stub
+
+		}
+		private int limit(int value, int min, int max) {
+			return (value < min) ? min : (value > max) ? max : value;
+		}
+
+		public class SteppingStatusImpl implements Motor.SteppingStatus {
+			private volatile int count;
+			private final int initialCounter;
+			private final boolean fwd;
+			private final long msPerStep;
+			private final int positiveAngleFactor;
+
+			SteppingStatusImpl(int positiveAngleFactor, int steps, long msPerStep) {
+				initialCounter = Math.abs(limit(steps, -32768, 32767));
+				count = initialCounter;
+				fwd = steps >= 0;
+				this.msPerStep = msPerStep;
+				this.positiveAngleFactor = positiveAngleFactor;
+				LOG.debug("SteppingStatus created for %s steps", count);
+			}
+
+			@Override
+			public long millisecondsPerStep() {
+				return 250;
+			}
+
+			@Override
+			public boolean step() {
+				try {
+					Thread.sleep(msPerStep);
+				} catch (InterruptedException e) {
+					throw new RuntimeException(e);
+				}
+				compass.increment(positiveAngleFactor * Math.toRadians(0.5) * (fwd ? count : -count));
+				count = 0;
+				LOG.info("SteppingStatus complete.  count:{} initial counter:{}", count, initialCounter);
+				return false;
+			}
+
+			@Override
+			public boolean isComplete() {
+				return true;
+			}
+
+			/**
+			 * Gets the number of steps taken in a forward direction.
+			 * 
+			 * @return the number of steps taken, negative for reverse travel.
+			 */
+			public int fwdSteps() {
+				return (initialCounter - count) * (fwd ? 1 : -1);
+			}
+
+			public double fwdRotation() {
+				return fwdSteps() / stepsPerRotation();
+			}
+
+			@Override
+			public double stepsPerRotation() {
+				return 4;
+			}
+
+			@Override
+			public String toString() {
+				return String.format("SteppingStatus %s steps:%s rotation:%s", this.hashCode(), fwdSteps(),
+						fwdRotation());
+			}
+		}
+
+	}
 
 }

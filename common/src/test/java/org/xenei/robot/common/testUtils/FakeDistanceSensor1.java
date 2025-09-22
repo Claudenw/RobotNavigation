@@ -21,98 +21,98 @@ import org.xenei.robot.common.mapping.Map;
 import org.xenei.robot.common.messages.Topic;
 
 public class FakeDistanceSensor1 implements FakeDistanceSensor {
-    private static final Logger LOG = LoggerFactory.getLogger(FakeDistanceSensor1.class);
-    private static final int BLOCKSIZE = 17;
-    private static final double RADIANS = Math.toRadians(360.0 / BLOCKSIZE);
-    private final Map map;
-    private static final double MAX_RANGE = 5;
-    private final Supplier<Position> positionSupplier;
-    private final Topic<DistanceSensor.Readings> distanceTopic;
-    private final LinkedHashMap<Position, DistanceReading[]> history = new LinkedHashMap<>();
+	private static final Logger LOG = LoggerFactory.getLogger(FakeDistanceSensor1.class);
+	private static final int BLOCKSIZE = 17;
+	private static final double RADIANS = Math.toRadians(360.0 / BLOCKSIZE);
+	private final Map map;
+	private static final double MAX_RANGE = 5;
+	private final Supplier<Position> positionSupplier;
+	private final Topic<DistanceSensor.Readings> distanceTopic;
+	private final LinkedHashMap<Position, DistanceReading[]> history = new LinkedHashMap<>();
 
-    public FakeDistanceSensor1(Map map, Supplier<Position> positionSupplier) {
-        this.map = map;
-        this.positionSupplier = positionSupplier;
-        this.distanceTopic = map.getContext().bus.distance;
-    }
+	public FakeDistanceSensor1(Map map, Supplier<Position> positionSupplier) {
+		this.map = map;
+		this.positionSupplier = positionSupplier;
+		this.distanceTopic = map.getContext().bus.distance;
+	}
 
-    @Override
-    public Map map() {
-        return map;
-    }
+	@Override
+	public Map map() {
+		return map;
+	}
 
-    public void writeHistory(OutputStream out) {
-        try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(out))) {
-            for (java.util.Map.Entry<Position, DistanceReading[]> entry : history.entrySet()) {
-                Position pos = entry.getKey();
-                StringBuilder sb = new StringBuilder(
-                        String.format("%s,%s,%s", pos.getX(), pos.getY(), pos.getHeading()));
-                for (DistanceReading l : entry.getValue()) {
-                    sb.append(String.format(",%s,%s", l.theta(), l.range()));
-                }
-                writer.write(sb.append('\n').toString());
-            }
-        } catch (IOException e) {
-            LOG.error("Unable to write history", e);
-        }
-    }
+	public void writeHistory(OutputStream out) {
+		try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(out))) {
+			for (java.util.Map.Entry<Position, DistanceReading[]> entry : history.entrySet()) {
+				Position pos = entry.getKey();
+				StringBuilder sb = new StringBuilder(
+						String.format("%s,%s,%s", pos.getX(), pos.getY(), pos.getHeading()));
+				for (DistanceReading l : entry.getValue()) {
+					sb.append(String.format(",%s,%s", l.theta(), l.range()));
+				}
+				writer.write(sb.append('\n').toString());
+			}
+		} catch (IOException e) {
+			LOG.error("Unable to write history", e);
+		}
+	}
 
-    public void readHistory(InputStream in) {
-        for (String s : IOUtils.readLines(in, Charset.defaultCharset())) {
-            String[] numbers = s.split(",");
-            int i = 0;
-            double x = Double.parseDouble(numbers[i++]);
-            double y = Double.parseDouble(numbers[i++]);
-            double heading = Double.parseDouble(numbers[i++]);
-            Position position = Position.from(x, y, heading);
-            int limit = (numbers.length - 3) / 2;
-            DistanceReading[] locations = new DistanceReading[limit];
-            double theta;
-            double range;
-            for (int j = 0; j < limit; j++) {
-                theta = Double.parseDouble(numbers[i++]);
-                range = Double.parseDouble(numbers[i++]);
-                locations[j] = new DistanceReading(theta, range);
-            }
-            history.put(position, locations);
-        }
-    }
+	public void readHistory(InputStream in) {
+		for (String s : IOUtils.readLines(in, Charset.defaultCharset())) {
+			String[] numbers = s.split(",");
+			int i = 0;
+			double x = Double.parseDouble(numbers[i++]);
+			double y = Double.parseDouble(numbers[i++]);
+			double heading = Double.parseDouble(numbers[i++]);
+			Position position = Position.from(x, y, heading);
+			int limit = (numbers.length - 3) / 2;
+			DistanceReading[] locations = new DistanceReading[limit];
+			double theta;
+			double range;
+			for (int j = 0; j < limit; j++) {
+				theta = Double.parseDouble(numbers[i++]);
+				range = Double.parseDouble(numbers[i++]);
+				locations[j] = new DistanceReading(theta, range);
+			}
+			history.put(position, locations);
+		}
+	}
 
-    public Location[] replay(int idx) {
-        return history.values().toArray(new Location[0][0])[idx];
-    }
+	public Location[] replay(int idx) {
+		return history.values().toArray(new Location[0][0])[idx];
+	}
 
-    @Override
-    public void run() {
-        Position position = positionSupplier.get();
-        DistanceReading[] result = history.get(position);
-        if (result == null) {
-            result = new DistanceReading[BLOCKSIZE];
-            for (int i = 0; i < BLOCKSIZE; i++) {
-                result[i] = look(position, position.getHeading() + (RADIANS * i));
-                if (LOG.isDebugEnabled()) {
-                    LOG.debug("Reading {}: {}", i, result[i]);
-                }
-            }
-            history.put(position, result);
-            try {
-                writeHistory(new FileOutputStream("/tmp/sensorData.txt"));
-            } catch (IOException e) {
-                LOG.error("Can not write sensor data");
-            }
-        }
-        distanceTopic.send(new Readings(position, Arrays.asList(result)));
-    }
+	@Override
+	public void run() {
+		Position position = positionSupplier.get();
+		DistanceReading[] result = history.get(position);
+		if (result == null) {
+			result = new DistanceReading[BLOCKSIZE];
+			for (int i = 0; i < BLOCKSIZE; i++) {
+				result[i] = look(position, position.getHeading() + (RADIANS * i));
+				if (LOG.isDebugEnabled()) {
+					LOG.debug("Reading {}: {}", i, result[i]);
+				}
+			}
+			history.put(position, result);
+			try {
+				writeHistory(new FileOutputStream("/tmp/sensorData.txt"));
+			} catch (IOException e) {
+				LOG.error("Can not write sensor data");
+			}
+		}
+		distanceTopic.send(new Readings(position, Arrays.asList(result)));
+	}
 
-    private DistanceReading look(Position position, double heading) {
-        if (LOG.isDebugEnabled()) {
-            LOG.debug("Scanning heading: {} {}", heading, Math.toDegrees(heading));
-        }
-        return DistanceReading.from(map.look(position, heading, (int)maxRange()).join().orElse(Location.INFINITE));
-    }
+	private DistanceReading look(Position position, double heading) {
+		if (LOG.isDebugEnabled()) {
+			LOG.debug("Scanning heading: {} {}", heading, Math.toDegrees(heading));
+		}
+		return DistanceReading.from(map.look(position, heading, (int) maxRange()).join().orElse(Location.INFINITE));
+	}
 
-    @Override
-    public double maxRange() {
-        return MAX_RANGE;
-    }
+	@Override
+	public double maxRange() {
+		return MAX_RANGE;
+	}
 }
