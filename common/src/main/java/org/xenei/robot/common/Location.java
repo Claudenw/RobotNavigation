@@ -1,92 +1,44 @@
 package org.xenei.robot.common;
 
-import java.util.Comparator;
-
 import org.locationtech.jts.geom.Coordinate;
 import org.xenei.robot.common.utils.CoordUtils;
 
-public interface Location extends FrontsCoordinate {
-	/**
-	 * The origin for the map (0,0)
-	 */
-	Location ORIGIN = from(FrontsCoordinate.ORIGIN);
-	/**
-	 * An exemplar of an infinite location.
-	 * 
-	 * @see CoordUtils#isInfinite(Coordinate)
-	 * @see FrontsCoordinate#INFINITE
-	 */
-	Location INFINITE = from(FrontsCoordinate.INFINITE);
+public class Location implements LocationI<Location> {
+    /**
+     * The origin for the map (0,0)
+     */
+    public static final Location ORIGIN = new Location(FrontsCoordinate.ORIGIN);
+    /**
+     * An exemplar of an infinite location.
+     *
+     * @see CoordUtils#isInfinite(Coordinate)
+     * @see FrontsCoordinate#INFINITE
+     */
+    public static final Location INFINITE = new Location(FrontsCoordinate.INFINITE);
 
-	static Location from(Coordinate c) {
-		return new Location() {
-			UnmodifiableCoordinate coord = UnmodifiableCoordinate.make(c);
+    private final UnmodifiableCoordinate coordinate;
 
-			@Override
-			public UnmodifiableCoordinate getCoordinate() {
-				return coord;
-			}
+    public Location(FrontsCoordinate coordinate) {
+        this(coordinate.getCoordinate());
+    }
 
-			@Override
-			public String toString() {
-				return String.format("Location[ %s r:%.2f]", CoordUtils.toString(getCoordinate(), 4), range());
-			}
-		};
-	}
+    public Location(Coordinate coordinate) {
+        this.coordinate = UnmodifiableCoordinate.make(coordinate);
+    }
 
-	/**
-	 * Construct coordinates from a Point.
-	 * 
-	 * @param p
-	 *            The point representing the X and Y positions
-	 */
-	static Location from(FrontsCoordinate p) {
-		return from(p.getCoordinate());
-	}
+    @Override
+    public Location buildLocation(Coordinate coordinate) {
+        return new Location(coordinate);
+    }
 
-	/**
-	 * Construct coordinates from X and Y positions.
-	 * 
-	 * @param x
-	 *            the X position.
-	 * @param y
-	 *            the Y position.
-	 */
-	static Location from(double x, double y) {
-		return from(new Coordinate(x, y));
-	}
+    @Override
+    public UnmodifiableCoordinate unmodifiableCoordinate() {
+        return coordinate;
+    }
 
-	/**
-	 * Compares Coordinates by angle and then range.
-	 */
-	Comparator<Location> ThetaCompr = (one, two) -> {
-		int x = Double.compare(one.theta(), two.theta());
-		return x == 0 ? Double.compare(one.range(), two.range()) : x;
-	};
+    @Override
+    public String toString() {
+        return String.format("Location[ %s r:%.2f]", CoordUtils.toString(getCoordinate(), 4), range());
+    }
 
-	/**
-	 * Compares Coordinates by range and then angle.
-	 */
-	Comparator<Location> RangeCompr = (one, two) -> {
-		int x = Double.compare(one.range(), two.range());
-		return x == 0 ? Double.compare(one.theta(), two.theta()) : x;
-	};
-
-	// /**
-	// * Return the angle in radians from the origin.
-	// *
-	// * @return the angle in radians from the origin to this coordinates.
-	// */
-	// default double theta() {
-	// return ORIGIN.angleBetween(this);
-	// }
-	//
-	// /**
-	// * Get the range to the coordinates in meters.
-	// *
-	// * @return the range to the coordinates.
-	// */
-	// default double range() {
-	// return ORIGIN.distance(this);
-	// }
 }

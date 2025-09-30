@@ -15,58 +15,58 @@ import java.util.function.Consumer;
 
 public class Bus {
 
-	public final Topic<SensorLayer> bump = new TopicImpl<SensorLayer>();
-	public final Topic<DistanceSensor.Readings> distance = new TopicImpl<DistanceSensor.Readings>();
-	public final Topic<Mover.MotorState> motor = new TopicImpl<Mover.MotorState>();
-	public final Topic<Mover.MoveTo> moveTo = new TopicImpl<Mover.MoveTo>();
+    public final Topic<SensorLayer> bump = new TopicImpl<SensorLayer>();
+    public final Topic<DistanceSensor.Readings> distance = new TopicImpl<DistanceSensor.Readings>();
+    public final Topic<Mover.MotorState> motor = new TopicImpl<Mover.MotorState>();
+    public final Topic<Mover.MoveTo> moveTo = new TopicImpl<Mover.MoveTo>();
 
-	private final RobutContext ctxt;
-	public Bus(RobutContext ctxt) {
-		this.ctxt = ctxt;
-	}
+    private final RobutContext ctxt;
+    public Bus(RobutContext ctxt) {
+        this.ctxt = ctxt;
+    }
 
-	public Collection<Topic<?>> topics() {
-		return List.of(bump, distance, motor, moveTo);
-	}
+    public Collection<Topic<?>> topics() {
+        return List.of(bump, distance, motor, moveTo);
+    }
 
-	public class TopicImpl<T> implements Topic<T> {
-		private Logger log;
-		private final CopyOnWriteArrayList<Consumer<T>> listeners;
+    public class TopicImpl<T> implements Topic<T> {
+        private Logger log;
+        private final CopyOnWriteArrayList<Consumer<T>> listeners;
 
-		public TopicImpl() {
-			this.listeners = new CopyOnWriteArrayList<>();
-		}
+        public TopicImpl() {
+            this.listeners = new CopyOnWriteArrayList<>();
+        }
 
-		public void register(Consumer<T> p) {
-			listeners.add(p);
-		}
+        public void register(Consumer<T> p) {
+            listeners.add(p);
+        }
 
-		public void unregister(Consumer<T> p) {
-			listeners.remove(p);
-		}
+        public void unregister(Consumer<T> p) {
+            listeners.remove(p);
+        }
 
-		public void send(T message) {
-			if (log == null) {
-				log = LoggerFactory.getLogger(message.getClass());
-			}
-			if (log.isDebugEnabled()) {
-				log.debug("{} event: {} sent to {} listeners", message.getClass().getSimpleName(), message,
-						listeners.size());
-			}
-			listeners.forEach(p -> ctxt.submit(() -> p.accept(message)));
-		}
+        public void send(T message) {
+            if (log == null) {
+                log = LoggerFactory.getLogger(message.getClass());
+            }
+            if (log.isDebugEnabled()) {
+                log.debug("{} event: {} sent to {} listeners", message.getClass().getSimpleName(), message,
+                        listeners.size());
+            }
+            listeners.forEach(p -> ctxt.submit(() -> p.accept(message)));
+        }
 
-		public Consumer<T> register(Appendable out) {
-			Consumer<T> result = t -> {
-				try {
-					out.append(String.format("%s: %s%n", t.getClass(), t));
-				} catch (IOException e) {
-					throw new RuntimeException(e);
-				}
-			};
-			register(result);
-			return result;
-		}
-	}
+        public Consumer<T> register(Appendable out) {
+            Consumer<T> result = t -> {
+                try {
+                    out.append(String.format("%s: %s%n", t.getClass(), t));
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            };
+            register(result);
+            return result;
+        }
+    }
 
 }

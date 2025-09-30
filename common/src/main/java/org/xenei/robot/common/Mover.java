@@ -9,42 +9,42 @@ import java.util.concurrent.locks.Lock;
  * reached, stop.
  */
 public interface Mover {
-	enum MotorState {
-		RUN, PAUSE, STOP
-	}
-	record MoveTo(FrontsCoordinate location) {
-	};
+    enum MotorState {
+        RUN, PAUSE, STOP
+    }
+    record MoveTo(FrontsCoordinate location) {
+    };
 
-	/**
-	 * Move to the specified location
-	 * 
-	 * @param location
-	 *            The relative location to move to.
-	 */
-	void move(FrontsCoordinate location);
+    /**
+     * Move to the specified location
+     *
+     * @param location
+     *            The relative location to move to.
+     */
+    void move(FrontsCoordinate location);
 
-	/**
-	 * @return the current absolute position.
-	 */
-	Position position();
+    /**
+     * @return the current absolute position.
+     */
+    Position position();
 
-	/**
-	 * Sets the absolute heading for the mover.
-	 * 
-	 * @param heading
-	 *            the absolute heading specified in radians.
-	 */
-	void setHeading(double heading);
+    /**
+     * Sets the absolute heading for the mover.
+     *
+     * @param heading
+     *            the absolute heading specified in radians.
+     */
+    void setHeading(double heading);
 
-	/**
-	 * Register a logic module operating on this mover.
-	 * 
-	 * @param logicModule
-	 *            the logic module to register.
-	 */
-	void register(LogicModule logicModule);
+    /**
+     * Register a logic module operating on this mover.
+     *
+     * @param logicModule
+     *            the logic module to register.
+     */
+    void register(LogicModule logicModule);
 
-	interface LogicModule {
-		void setLock(Lock lock);
-	}
+    interface LogicModule {
+        void setLock(Lock lock);
+    }
 }

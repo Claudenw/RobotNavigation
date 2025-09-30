@@ -10,30 +10,30 @@ import org.xenei.robot.common.utils.RobutContext;
 import org.xenei.robot.mapper.rdf.WktDataType;
 
 public class FF_Nearby extends FunctionBase3 {
-	private WktDataType dataType;
+    private WktDataType dataType;
 
-	protected FF_Nearby() {
-	}
+    protected FF_Nearby() {
+    }
 
-	@Override
-	public void build(String uri, ExprList args, Context context) {
+    @Override
+    public void build(String uri, ExprList args, Context context) {
 
-		dataType = (WktDataType) TypeMapper.getInstance().getTypeByClass(Geometry.class);
+        dataType = (WktDataType) TypeMapper.getInstance().getTypeByClass(Geometry.class);
 
-		if (context.get(RobutContext.symbol) == null) {
-			throw new IllegalStateException("Robot context not set in Jena context");
-		}
-		checkBuild(uri, args);
-	}
+        if (context.get(RobutContext.symbol) == null) {
+            throw new IllegalStateException("Robot context not set in Jena context");
+        }
+        checkBuild(uri, args);
+    }
 
-	@Override
-	public NodeValue exec(NodeValue v1, NodeValue v2, NodeValue v3) {
-		Geometry gw1 = dataType.parse(v1.getNode().getLiteralLexicalForm());
-		Geometry gw2 = dataType.parse(v2.getNode().getLiteralLexicalForm());
-		try {
-			return NodeValue.makeBoolean(gw1.isWithinDistance(gw2, v3.getDouble()));
-		} catch (Exception e) {
-			throw new GeometryException(e);
-		}
-	}
+    @Override
+    public NodeValue exec(NodeValue v1, NodeValue v2, NodeValue v3) {
+        Geometry gw1 = dataType.parse(v1.getNode().getLiteralLexicalForm());
+        Geometry gw2 = dataType.parse(v2.getNode().getLiteralLexicalForm());
+        try {
+            return NodeValue.makeBoolean(gw1.isWithinDistance(gw2, v3.getDouble()));
+        } catch (Exception e) {
+            throw new GeometryException(e);
+        }
+    }
 }

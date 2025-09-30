@@ -6,31 +6,31 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 
 public class FakeBumpSensor implements BumpSensor {
-	private byte bumpReading;
-	private final CopyOnWriteArrayList<Consumer<BumpSensor.BumpState>> listeners;
+    private byte bumpReading;
+    private final CopyOnWriteArrayList<Consumer<BumpSensor.BumpState>> listeners;
 
-	public FakeBumpSensor() {
-		listeners = new CopyOnWriteArrayList<>();
-		bumpReading = 0;
-	}
+    public FakeBumpSensor() {
+        listeners = new CopyOnWriteArrayList<>();
+        bumpReading = 0;
+    }
 
-	public void trigger(byte reading) {
-		bumpReading = reading;
-	}
+    public void trigger(byte reading) {
+        bumpReading = reading;
+    }
 
-	@Override
-	public void run() {
-		BumpSensor.BumpState value = new BumpSensor.BumpState(bumpReading);
-		listeners.forEach(l -> l.accept(value));
-	}
+    @Override
+    public void run() {
+        BumpSensor.BumpState value = new BumpSensor.BumpState(bumpReading);
+        listeners.forEach(l -> l.accept(value));
+    }
 
-	@Override
-	public void register(Consumer<BumpSensor.BumpState> consumer) {
-		listeners.add(consumer);
-	}
+    @Override
+    public void register(Consumer<BumpSensor.BumpState> consumer) {
+        listeners.add(consumer);
+    }
 
-	@Override
-	public void unregister(Consumer<BumpSensor.BumpState> consumer) {
-		listeners.remove(consumer);
-	}
+    @Override
+    public void unregister(Consumer<BumpSensor.BumpState> consumer) {
+        listeners.remove(consumer);
+    }
 }

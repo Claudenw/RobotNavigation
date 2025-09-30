@@ -12,39 +12,39 @@ import org.xenei.robot.mapper.rdf.Namespace;
 
 public class Functions implements FunctionFactory {
 
-	public Map<String, Function> map = new HashMap<String, Function>();
+    public Map<String, Function> map = new HashMap<String, Function>();
 
-	public Functions() {
-		add(Namespace.overlapsF, new FF2((x, y) -> NodeValue.makeBoolean(x.overlaps(y))));
-		add(Namespace.intersectsF, new FF2((x, y) -> NodeValue.makeBoolean(x.intersects(y))));
-		add(Namespace.touchesF, new FF2((x, y) -> NodeValue.makeBoolean(x.touches(y))));
-		add(Namespace.distanceF, new FF2((x, y) -> NodeValue.makeDouble(x.distance(y))));
-		add(Namespace.intersectDistF, new FF_IntersectionDistance());
-		add(Namespace.isCoveredByF, new FF2((x, y) -> NodeValue.makeBoolean(x.coveredBy(y))));
-		add(Namespace.coversF, new FF2((x, y) -> NodeValue.makeBoolean(x.covers(y))));
-		add(Namespace.nearbyF, new FF_Nearby());
-	}
+    public Functions() {
+        add(Namespace.overlapsF, new FF2((x, y) -> NodeValue.makeBoolean(x.overlaps(y))));
+        add(Namespace.intersectsF, new FF2((x, y) -> NodeValue.makeBoolean(x.intersects(y))));
+        add(Namespace.touchesF, new FF2((x, y) -> NodeValue.makeBoolean(x.touches(y))));
+        add(Namespace.distanceF, new FF2((x, y) -> NodeValue.makeDouble(x.distance(y))));
+        add(Namespace.intersectDistF, new FF_IntersectionDistance());
+        add(Namespace.isCoveredByF, new FF2((x, y) -> NodeValue.makeBoolean(x.coveredBy(y))));
+        add(Namespace.coversF, new FF2((x, y) -> NodeValue.makeBoolean(x.covers(y))));
+        add(Namespace.nearbyF, new FF_Nearby());
+    }
 
-	public void add(Resource url, Function func) {
-		map.put(url.getURI(), func);
-	}
+    public void add(Resource url, Function func) {
+        map.put(url.getURI(), func);
+    }
 
-	public void add(String url, Function func) {
-		map.put(url, func);
-	}
+    public void add(String url, Function func) {
+        map.put(url, func);
+    }
 
-	@Override
-	public Function create(String uri) {
-		return map.get(uri);
-	}
+    @Override
+    public Function create(String uri) {
+        return map.get(uri);
+    }
 
-	public void register() {
-		FunctionRegistry registry = FunctionRegistry.get();
-		map.keySet().forEach(e -> registry.put(e, this));
-	}
+    public void register() {
+        FunctionRegistry registry = FunctionRegistry.get();
+        map.keySet().forEach(e -> registry.put(e, this));
+    }
 
-	public void remove() {
-		FunctionRegistry registry = FunctionRegistry.get();
-		map.keySet().forEach(e -> registry.remove(e));
-	}
+    public void remove() {
+        FunctionRegistry registry = FunctionRegistry.get();
+        map.keySet().forEach(e -> registry.remove(e));
+    }
 }

@@ -2,15 +2,15 @@ package org.xenei.robot.common;
 
 public interface StepMonitor {
 
-	default boolean hasStepDifferential() {
-		return leftSteps() != rightSteps();
-	};
+    default boolean hasStepDifferential() {
+        return leftSteps() != rightSteps();
+    };
 
-	double leftRotation();
+    double leftRotation();
 
-	double rightRotation();
+    double rightRotation();
 
-	int leftSteps();
+    int leftSteps();
 
-	int rightSteps();
+    int rightSteps();
 }

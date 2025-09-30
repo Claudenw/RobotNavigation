@@ -11,43 +11,48 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.locationtech.jts.geom.Coordinate;
 import org.xenei.robot.common.utils.AngleUtils;
 import org.xenei.robot.common.utils.CoordUtils;
 import org.xenei.robot.common.utils.CoordUtilsTest;
 
 public class LocationTest {
 
-	@ParameterizedTest
-	@MethodSource("coordPairParameters")
-	public void rangeAndThetaTest(Location a, double expected, double angle) {
-		assertEquals(expected, a.range(), AngleUtils.TOLERANCE);
-		assertEquals(angle, a.theta(), AngleUtils.TOLERANCE);
-	}
+    @ParameterizedTest
+    @MethodSource("coordPairParameters")
+    public void rangeAndThetaTest(Location a, double expected, double angle) {
+        assertEquals(expected, a.range(), AngleUtils.TOLERANCE);
+        assertEquals(angle, a.theta(), AngleUtils.TOLERANCE);
+    }
 
-	private static void processStream(List<Arguments> lst, double[] args) {
-		Location l = Location.from(args[CoordUtilsTest.X], args[CoordUtilsTest.Y]);
-		lst.add(Arguments.of(l, args[CoordUtilsTest.RANGE], args[CoordUtilsTest.RAD]));
+    private static Location makeLoc(double x, double y) {
+        return new Location(new Coordinate(x, y));
+    }
 
-		l = Location.from(CoordUtils.fromAngle(args[CoordUtilsTest.RAD], args[CoordUtilsTest.RANGE]));
-		lst.add(Arguments.of(l, args[CoordUtilsTest.RANGE], args[CoordUtilsTest.RAD]));
+    private static void processStream(List<Arguments> lst, double[] args) {
+        Location l = new Location(new Coordinate(args[CoordUtilsTest.X], args[CoordUtilsTest.Y]));
+        lst.add(Arguments.of(l, args[CoordUtilsTest.RANGE], args[CoordUtilsTest.RAD]));
 
-		l = Location.from(CoordUtils.fromAngle(Math.toRadians(args[CoordUtilsTest.DEG]), args[CoordUtilsTest.RANGE]));
-		lst.add(Arguments.of(l, args[CoordUtilsTest.RANGE], args[CoordUtilsTest.RAD]));
+        l = new Location(CoordUtils.fromAngle(args[CoordUtilsTest.RAD], args[CoordUtilsTest.RANGE]));
+        lst.add(Arguments.of(l, args[CoordUtilsTest.RANGE], args[CoordUtilsTest.RAD]));
 
-	}
+        l = new Location(CoordUtils.fromAngle(Math.toRadians(args[CoordUtilsTest.DEG]), args[CoordUtilsTest.RANGE]));
+        lst.add(Arguments.of(l, args[CoordUtilsTest.RANGE], args[CoordUtilsTest.RAD]));
 
-	private static Stream<Arguments> coordPairParameters() {
+    }
 
-		List<Arguments> lst = new ArrayList<Arguments>();
+    private static Stream<Arguments> coordPairParameters() {
 
-		Arrays.stream(CoordUtilsTest.arguments()).forEach(s -> processStream(lst, s));
+        List<Arguments> lst = new ArrayList<Arguments>();
 
-		return Stream.of(lst.toArray(new Arguments[0]));
-	}
+        Arrays.stream(CoordUtilsTest.arguments()).forEach(s -> processStream(lst, s));
 
-	@Test
-	public void thetaTest() {
-		Location underTest = Location.from(0, 5);
-		System.out.println(underTest.theta());
-	}
+        return Stream.of(lst.toArray(new Arguments[0]));
+    }
+
+    @Test
+    public void thetaTest() {
+        Location underTest = new Location(new Coordinate(0, 5));
+        System.out.println(underTest.theta());
+    }
 }

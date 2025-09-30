@@ -167,6 +167,10 @@
             <java>
               <eclipse/>
               <removeUnusedImports/>
+              <indent>
+                <spaces>true</spaces>
+              </indent>
+              <trimTrailingWhitespace/>
             </java>
             <pom>
               <sortPom/>
