@@ -63,11 +63,6 @@ public final class ScaleInfo {
         return a.equals2D(b, resolution);
     }
 
-    @Deprecated
-    public double getHalfResolution() {
-        return resolution / 2;
-    }
-
     /**
      * Gets the number of decimal places in the display.
      *

@@ -48,15 +48,18 @@ import org.apache.jena.vocabulary.RDF;
 import org.apache.sis.util.collection.WeakValueHashMap;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.geom.Point;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xenei.robot.common.FrontsCoordinate;
+import org.xenei.robot.common.GeometricObject;
 import org.xenei.robot.common.ObstacleI;
 import org.xenei.robot.common.PositionI;
 import org.xenei.robot.common.mapping.Map;
 import org.xenei.robot.common.planning.Solution;
 import org.xenei.robot.common.planning.Segment;
 import org.xenei.robot.common.utils.CoordUtils;
+import org.xenei.robot.common.utils.DoubleUtils;
 import org.xenei.robot.common.utils.RobutContext;
 import org.xenei.robot.mapper.MapReports;
 import org.xenei.robot.mapper.PointCloudSorter;
@@ -852,18 +855,12 @@ public class MapImpl implements Map<MapLocation, MapPosition, MapObstacle> {
      * Create a cloud of obstacle points in a single geometry.
      */
     private class ObstacleHandler {
-        private Collection<Geometry> makeCloud(Obstacle obstacle, Collection<? extends Obstacle> others) {
-            Set<Coordinate> cSet = new HashSet<>();
-            Consumer<Obstacle> co = o -> cSet.addAll(Arrays.asList(o.getGeometry().getCoordinates()));
-            co.accept(obstacle);
-            others.forEach(co);
+        private RobutContext ctxt = MapImpl.this.ctxt;
 
-            if (cSet.size() > 2) {
-                PointCloudSorter pcs = new PointCloudSorter(MapImpl.this.getContext(), cSet);
-                return pcs.walk();
-            }
-
-            return List.of(ctxt.geometryFactory.createLineString(cSet.toArray(new Coordinate[0])));
+        private Geometry makeCloud(Obstacle obstacle, Collection<? extends Obstacle> others) {
+            Set<Point> points = new HashSet<>(obstacle.getPoints());
+            others.stream().map(GeometricObject::getPoints).forEach(points::addAll);
+            return new PointCloudSorter(ctxt.scaleInfo.getResolution() * DoubleUtils.SQRT2).process(points);
         }
 
         private Set<MapObstacle> mergeIntersectOrTouch(MapObstacle obstacle, Set<MapObstacle> solns) {
@@ -878,7 +875,7 @@ public class MapImpl implements Map<MapLocation, MapPosition, MapObstacle> {
                 }
             } else {
                 UpdateRequest req = new UpdateRequest();
-                Collection<Geometry> result = makeCloud(obstacle, solns);
+                Geometry result = makeCloud(obstacle, solns);
                 for (MapObstacle obst : solns) {
                     req.add(new UpdateBuilder().addDelete(Namespace.PlanningModel, obst.rdf(), Namespace.p, Namespace.o)
                             .addGraph(Namespace.UnionModel,
@@ -886,11 +883,9 @@ public class MapImpl implements Map<MapLocation, MapPosition, MapObstacle> {
                             .build());
                 }
                 Model merged = ModelFactory.createDefaultModel();
-                for (Geometry g : result) {
-                    MapObstacle obst = new MapObstacle(ctxt, g);
-                    obst.in(merged);
-                    solution.add(obst);
-                }
+                MapObstacle obst = new MapObstacle(ctxt, result);
+                obst.in(merged);
+                solution.add(obst);
                 req.add(new UpdateBuilder().addInsert(Namespace.PlanningModel, merged).build());
                 doUpdate(req);
             }

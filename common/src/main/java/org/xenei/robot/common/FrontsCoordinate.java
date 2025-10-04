@@ -3,9 +3,11 @@ package org.xenei.robot.common;
 import java.util.Comparator;
 
 import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.geom.GeometryFactory;
 import org.xenei.robot.common.utils.CoordUtils;
 
-public interface FrontsCoordinate {
+public interface FrontsCoordinate extends GeometricObject {
 
     FrontsCoordinate ORIGIN = new FrontsCoordinate() {
         final UnmodifiableCoordinate zero = UnmodifiableCoordinate.make(new Coordinate(0, 0));
@@ -40,6 +42,10 @@ public interface FrontsCoordinate {
     };
 
     UnmodifiableCoordinate getCoordinate();
+
+    default Geometry getGeometry() {
+        return new GeometryFactory(ScaleInfo.DEFAULT.getPrecisionModel()).createPoint(getCoordinate());
+    }
 
     /**
      * Return the angle in radians from the origin.

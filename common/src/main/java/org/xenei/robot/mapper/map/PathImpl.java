@@ -12,6 +12,8 @@ import org.apache.jena.rdf.model.ResourceFactory;
 import org.apache.jena.sparql.core.Var;
 import org.apache.jena.vocabulary.RDF;
 import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.geom.LineString;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xenei.robot.common.FrontsCoordinate;
@@ -23,20 +25,20 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class PathImpl implements Map.Path {
     private static final Logger LOG = LoggerFactory.getLogger(PathImpl.class);
     private final MapImpl map;
-    private final List<MapLocation> path;
     private final Literal geometry;
+    private final LineString lines;
 
     PathImpl(MapImpl map, final Stream<? extends FrontsCoordinate> coords) {
         this.map = map;
-        path = coords.map(map::asMapCoordinate).filter(Objects::nonNull).collect(Collectors.toList());
+        List<MapLocation> path = coords.map(map::asMapCoordinate).filter(Objects::nonNull).toList();
         Coordinate[] points = path.stream().map(MapLocation::getCoordinate).toArray(Coordinate[]::new);
         geometry = map.getContext().graphGeomFactory.asWKTString(points);
+        lines = map.getContext().geometryFactory.createLineString(points);
         LOG.debug("Path <{} {}>", points[0], points[points.length - 1]);
     }
 
@@ -61,4 +63,8 @@ public class PathImpl implements Map.Path {
         return map.ask(ask);
     }
 
+    @Override
+    public Geometry getGeometry() {
+        return lines;
+    }
 }

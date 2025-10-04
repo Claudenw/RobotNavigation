@@ -3,7 +3,7 @@ package org.xenei.robot.common;
 import org.xenei.robot.common.utils.DoubleUtils;
 
 /**
- * An immutable snapsot of a position and target.
+ * An immutable snapshot of a position and target.
  */
 public class NavigationSnapshot {
     public final PositionI<?, ?> position;
@@ -97,13 +97,17 @@ public class NavigationSnapshot {
      *
      * @param positionToCheck
      *            the position to check against.
-     * @return true if locatoin has changed.
+     * @return true if location has changed.
      */
     boolean didLocationChange(PositionI<?, ?> positionToCheck) {
         if (position == null) {
             return (positionToCheck != null);
         }
-        return positionToCheck == null || Position.Compr.compare(position, positionToCheck) != 0;
+        if (positionToCheck == null) {
+        } else {
+            boolean result = LocationI.ThetaCompr.compare(position, positionToCheck) != 0;
+        }
+        return positionToCheck == null || LocationI.ThetaCompr.compare(position, positionToCheck) != 0;
     }
 
     /**
@@ -128,7 +132,7 @@ public class NavigationSnapshot {
         if (target == null) {
             return (coordinateToCheck != null);
         }
-        return FrontsCoordinate.XYCompr.compare(target, coordinateToCheck) != 0;
+        return coordinateToCheck == null || FrontsCoordinate.XYCompr.compare(target, coordinateToCheck) != 0;
     }
 
     @Override

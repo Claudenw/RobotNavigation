@@ -1,8 +1,13 @@
 package org.xenei.robot.common;
 
 import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.geom.GeometryFactory;
+import org.locationtech.jts.geom.Point;
 
+import java.util.Arrays;
 import java.util.Comparator;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public interface GeometricObject {
     Comparator<GeometricObject> comp = (x, y) -> x.getGeometry().compareTo(y.getGeometry());
@@ -34,4 +39,9 @@ public interface GeometricObject {
      * @return the geometry for the object.
      */
     Geometry getGeometry();
+
+    default Set<Point> getPoints() {
+        GeometryFactory factory = getGeometry().getFactory();
+        return Arrays.stream(getGeometry().getCoordinates()).map(factory::createPoint).collect(Collectors.toSet());
+    }
 }

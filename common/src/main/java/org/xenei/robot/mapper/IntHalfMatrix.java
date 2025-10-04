@@ -1,5 +1,10 @@
 package org.xenei.robot.mapper;
 
+/**
+ * A matrix of int where x[a,b] == x[b,a]. Only half the matrix is kept in
+ * memory.
+ */
+
 public class IntHalfMatrix {
     int[][] matrix;
 

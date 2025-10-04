@@ -1,5 +1,9 @@
 package org.xenei.robot.mapper;
 
+/**
+ * A matrix of double where x[a,b] == x[b,a]. Only half the matrix is kept in
+ * memory.
+ */
 public class DoubleHalfMatrix {
     double[][] matrix;
 

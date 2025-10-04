@@ -297,6 +297,6 @@ public interface Map<L extends Map.Loc<L>, P extends Map.Pos<L, P>, M extends Ma
     interface Obstacle extends ObstacleI {
     }
 
-    interface Path {
+    interface Path extends GeometricObject {
     }
 }

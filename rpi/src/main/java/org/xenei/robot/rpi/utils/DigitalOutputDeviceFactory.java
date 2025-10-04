@@ -4,5 +4,5 @@ import com.diozero.api.DigitalOutputDevice;
 
 @FunctionalInterface
 public interface DigitalOutputDeviceFactory {
-	DigitalOutputDevice build(int gpio);
+    DigitalOutputDevice build(int gpio);
 }
