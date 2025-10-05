@@ -1,6 +1,8 @@
 package org.xenei.robot.mapper.map;
 
+import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 import org.apache.jena.geosparql.implementation.vocabulary.Geo;
 import org.apache.jena.rdf.model.Literal;
@@ -20,6 +22,7 @@ import org.xenei.robot.mapper.rdf.Namespace;
  */
 public class MapObstacle extends Obstacle implements Map.Obstacle {
     private final Literal wkt;
+    private CompletableFuture<?> future;
 
     private static UUID parseUUID(Resource rdf) {
         return UUID.fromString(rdf.getURI().substring("urn:uuid:".length()));

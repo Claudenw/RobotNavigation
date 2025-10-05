@@ -72,7 +72,7 @@ public class MapperImpl implements Mapper {
             Map.Loc<?> candidate = map.asMapCoordinate(currentPosition.nextPosition(relativeCoord));
             // if it is not an obstacle add it.
             if (!map.isObstacle(candidate)) {
-                map.addObstacle(map.createObstacle(currentPosition, relativeObstacle));
+                map.createObstacle(currentPosition, relativeObstacle);
             }
             candidate.addTarget(map.asMapCoordinate(targetSupplier.get()));
         }

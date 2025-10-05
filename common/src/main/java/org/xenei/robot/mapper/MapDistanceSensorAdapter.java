@@ -29,7 +29,6 @@ public class MapDistanceSensorAdapter implements Consumer<DistanceSensor.Reading
         ScaleInfo scaleInfo = map.getContext().scaleInfo;
         readings.readings().stream().map(reading -> scaleInfo.round(reading.getLocation()))
                 .filter(relativeLocation -> !relativeLocation.isNaN() && !relativeLocation.isInfinite())
-                .map(relativeLocation -> map.createObstacle(readings.origin(), relativeLocation))
-                .forEach(map::addObstacle);
+                .forEach(relativeLocation -> map.createObstacle(readings.origin(), relativeLocation));
     }
 }

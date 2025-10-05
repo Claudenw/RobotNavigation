@@ -81,10 +81,6 @@ public class MapImplTest {
 
     Solution solution;
 
-    public static List<FrontsCoordinate> obstacleList() {
-        return Arrays.asList(obstacles);
-    }
-
     @BeforeAll
     public static void setupPaths() {
         for (FrontsCoordinate e : coordinates) {
@@ -101,8 +97,8 @@ public class MapImplTest {
         cMap = new DebugViz(1, underTest, () -> solution, () -> position, () -> target);
 
         List<CompletableFuture<?>> futures = new ArrayList<>();
-        futures.add(underTest.addCoord(position, target, false));
-        Arrays.stream(coordinates).forEach(c -> futures.add(underTest.addCoord(c, target, false)));
+        underTest.addCoord(position, target, false);
+        Arrays.stream(coordinates).forEach(coordinate -> underTest.addCoord(coordinate, target, false));
         for (CompletableFuture<?> f : futures) {
             f.join();
         }
@@ -114,7 +110,7 @@ public class MapImplTest {
         underTest = new MapImpl(ctxt);
         target = makeLoc(-1, 1);
 
-        Optional<Segment> result = underTest.addCoord(position, null, false).join();
+        Optional<Segment> result = underTest.addCoord(position, null, false);
         assertFalse(result.isPresent());
 
         AskBuilder askResult = new AskBuilder().addWhere(Namespace.s, RDF.type, Namespace.Coord)
@@ -133,7 +129,7 @@ public class MapImplTest {
         askFalse.addWhere(Namespace.s, Namespace.distance, Namespace.o);
         assertFalse(underTest.ask(askFalse));
 
-        result = underTest.addCoord(position, target, false).join();
+        result = underTest.addCoord(position, target, false);
 
         assertTrue(result.isPresent());
         Segment segment = result.get();
@@ -152,7 +148,7 @@ public class MapImplTest {
         askFalse.addWhere(Namespace.s, Namespace.visited, Namespace.o);
         assertFalse(underTest.ask(askFalse));
 
-        result = underTest.addCoord(position, null, true).join();
+        result = underTest.addCoord(position, null, true);
         assertFalse(result.isPresent());
 
         // System.out.println(MapReports.dumpModel(underTest, Namespace.PlanningModel));
@@ -166,7 +162,7 @@ public class MapImplTest {
         underTest = new MapImpl(ctxt);
         target = makeLoc(-1, 1);
 
-        Optional<Segment> result = underTest.addCoord(position, target, true).join();
+        Optional<Segment> result = underTest.addCoord(position, target, true);
         assertTrue(result.isPresent());
         Segment segment = result.get();
         assertEquals(4.0d, segment.distance());
@@ -187,11 +183,12 @@ public class MapImplTest {
         underTest = new MapImpl(ctxt);
         target = makeLoc(-1, 1);
 
-        underTest.addObstacle(new Obstacle(ctxt.geometryFactory.createPoint(new Coordinate(-1, -2))));
+        underTest.createObstacle(new Coordinate(-1, -2)).join();
 
-        Optional<Segment> result = underTest.addCoord(position, target, true).join();
+        Optional<Segment> result = underTest.addCoord(position, target, true);
         ctxt.awaitQuiescence(5, SECONDS);
 
+        System.out.println(MapReports.dumpModel(underTest.getModel()));
         assertTrue(result.isPresent());
         Segment segment = result.get();
         assertEquals(4.0d, segment.distance());
@@ -483,7 +480,7 @@ public class MapImplTest {
     public void clearViewTest() {
         underTest = new MapImpl(ctxt);
 
-        underTest.addObstacle(underTest.createObstacle(position, position.relativeLocation(makeLoc(-3, -3))));
+        underTest.createObstacle(position, position.relativeLocation(makeLoc(-3, -3))).join();
         FrontsCoordinate a = makeLoc(-3, -4);
         FrontsCoordinate b = makeLoc(-3, -2);
 
@@ -497,7 +494,7 @@ public class MapImplTest {
         // verify inserting a node near map coord shows up at map coord
         underTest = new MapImpl(ctxt);
         Location target = position.nextPosition(makeLoc(0, 11));
-        Segment step = underTest.addCoord(position, target, false).join().orElseThrow();
+        Segment step = underTest.addCoord(position, target, false).orElseThrow();
         assertEquals(11, step.cost());
         String result = MapReports.dumpModel(underTest, Namespace.PlanningModel);
         AskBuilder ask = new AskBuilder().addGraph(Namespace.PlanningModel, new WhereBuilder() //
@@ -513,7 +510,7 @@ public class MapImplTest {
         double incr = ctxt.scaleInfo.getResolution() / 2;
         FrontsCoordinate p2 = makeLoc(position.getX() + incr, position.getY() + incr);
         assertNotEquals(position, p2);
-        step = underTest.addCoord(p2, target, false).join().orElseThrow();
+        step = underTest.addCoord(p2, target, false).orElseThrow();
         assertTrue(underTest.ask(ask));
         assertEquals(11, step.cost());
         SelectBuilder sb = new SelectBuilder().from(Namespace.PlanningModel).addVar("count(*)", "?x")
@@ -525,8 +522,8 @@ public class MapImplTest {
     @Test
     public void testAddPath() {
         underTest = new MapImpl(ctxt);
-        assertTrue(underTest.addCoord(position, target, false).join().isPresent());
-        assertTrue(underTest.addCoord(coordinates[0], target, false).join().isPresent());
+        assertTrue(underTest.addCoord(position, target, false).isPresent());
+        assertTrue(underTest.addCoord(coordinates[0], target, false).isPresent());
         underTest.addPath(position, coordinates[0]);
         ctxt.awaitQuiescence(30, TimeUnit.SECONDS);
 
@@ -544,7 +541,7 @@ public class MapImplTest {
     public void createObstacleTest() {
         underTest = new MapImpl(ctxt);
         Location relative = makeLoc(1, 0);
-        MapObstacle obst = underTest.createObstacle(position, relative);
+        MapObstacle obst = underTest.createObstacle(position, relative).join();
         Coordinate[] lst = obst.getGeometry().getCoordinates();
         assertEquals(1, lst.length);
         CoordinateUtils.assertEquivalent(makeLoc(0, -3), lst[0], ctxt.scaleInfo.getResolution());
@@ -555,19 +552,13 @@ public class MapImplTest {
     public void addObstacleTest() {
         underTest = new MapImpl(ctxt);
         Location relative = makeLoc(ctxt.scaleInfo.getResolution(), 0);
-        MapObstacle obst = underTest.createObstacle(position, relative);
-        Set<MapObstacle> result = underTest.addObstacle(obst);
-        assertEquals(1, result.size());
-        assertEquals(obst, result.iterator().next());
-
+        MapObstacle obst = underTest.createObstacle(position, relative).join();
+        assertTrue(underTest.isObstacle(position.nextPosition(relative)));
         relative = makeLoc(0, ctxt.scaleInfo.getResolution());
-        MapObstacle obst2 = underTest.createObstacle(position, relative);
-        result = underTest.addObstacle(obst2);
+        MapObstacle obst2 = underTest.createObstacle(position, relative).join();
         double halfResolution = ctxt.scaleInfo.getResolution() / 2;
         relative = makeLoc(halfResolution, halfResolution);
-        MapObstacle obst3 = underTest.createObstacle(position, relative);
-        result = underTest.addObstacle(obst3);
-
+        MapObstacle obst3 = underTest.createObstacle(position, relative).join();
         assertEquals(1, underTest.getObstacles().join().size());
     }
 
@@ -576,25 +567,18 @@ public class MapImplTest {
         underTest = new MapImpl(ctxt);
         Location relative = makeLoc(1, 0);
         Position pos1 = position.nextPosition(relative);
-        Obstacle obst = underTest.createObstacle(position, relative);
-        underTest.addObstacle(obst);
-        await().atMost(Duration.ofSeconds(1))
-                .untilAsserted(() -> assertTrue(underTest.isObstacle(pos1), "Did not find 1 " + pos1));
+        Obstacle obst = underTest.createObstacle(position, relative).join();
+        assertTrue(underTest.isObstacle(pos1), "Did not find 1 " + pos1);
 
         relative = makeLoc(1, 1);
         Position pos2 = position.nextPosition(relative);
-        Obstacle obst2 = underTest.createObstacle(position, relative);
-        Set<MapObstacle> obstacles = underTest.addObstacle(obst2);
-
-        await().atMost(Duration.ofSeconds(1))
-                .untilAsserted(() -> assertTrue(underTest.isObstacle(pos2), "Did not find 2 " + pos2));
+        Obstacle obst2 = underTest.createObstacle(position, relative).join();
+        assertTrue(underTest.isObstacle(pos2), "Did not find 2 " + pos2);
 
         relative = new Location(CoordUtils.fromAngle(AngleUtils.RADIANS_45 / 2, 1));
         Position pos3 = position.nextPosition(relative);
-        Obstacle obst3 = underTest.createObstacle(position, relative);
-        underTest.addObstacle(obst3);
-        await().atMost(Duration.ofSeconds(1))
-                .untilAsserted(() -> assertTrue(underTest.isObstacle(pos3), "Did not find 3 " + pos3));
+        Obstacle obst3 = underTest.createObstacle(position, relative).join();
+        assertTrue(underTest.isObstacle(pos3), "Did not find 3 " + pos3);
 
         for (Coordinate c : obst.getGeometry().getCoordinates())
             assertTrue(underTest.isObstacle(new Location(c)), "Did not find 1 coordinate " + c);

@@ -19,7 +19,7 @@ public class MapBuilder {
     }
 
     public MapBuilder set(int x, int y) {
-        map.addObstacle(new Obstacle(map.getContext().geometryUtils.asPoint(new Coordinate(x, y))));
+        map.createObstacle(new Coordinate(x, y));
         return this;
     }
 
@@ -29,12 +29,12 @@ public class MapBuilder {
 
     private MapBuilder set(Coordinate first, Coordinate last, Type type) {
         switch (type) {
-
             case Obstacle :
-                map.addObstacle(new Obstacle(map.getContext().geometryUtils.asLine(first, last)));
+                new Obstacle(map.getContext().geometryUtils.asLine(first, last));
                 break;
             case Path :
                 map.addPath(new Location(first), new Location(last));
+                break;
         }
         return this;
     }

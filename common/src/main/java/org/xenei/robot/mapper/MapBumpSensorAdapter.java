@@ -69,7 +69,7 @@ public class MapBumpSensorAdapter implements Consumer<BumpSensor.BumpState> {
                 Pair<Double, Double> thetas = ANGLES.get(state);
                 Location relativeStart = new Location(scaleInfo.round(CoordUtils.fromAngle(thetas.getLeft(), range)));
                 Location relativeEnd = new Location(scaleInfo.round(CoordUtils.fromAngle(thetas.getRight(), range)));
-                map.addObstacle(map.createObstacle(position, relativeStart, relativeEnd));
+                map.createObstacle(position, relativeStart, relativeEnd);
             }
         }
     }
