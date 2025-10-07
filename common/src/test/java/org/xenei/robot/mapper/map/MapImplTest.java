@@ -13,7 +13,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
@@ -39,6 +38,7 @@ import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Obstacle;
 import org.xenei.robot.common.Position;
 import org.xenei.robot.common.ScaleInfo;
+import org.xenei.robot.common.mapping.MapBuilder;
 import org.xenei.robot.common.planning.Solution;
 import org.xenei.robot.common.planning.Segment;
 import org.xenei.robot.common.testUtils.CoordinateUtils;
@@ -591,13 +591,29 @@ public class MapImplTest {
 
     @Test
     public void isClearPathTest() {
-        setup();
+        underTest = new MapImpl(ctxt);
+        underTest.createObstacle(MapLocation.ORIGIN.getCoordinate()).join();
+
+        final Location target = makeLoc(0, -1);
+        final Position position = new Position(new Coordinate(0, 1), 0);
+        solution = new Solution();
+        solution.add(position);
+        cMap = new DebugViz(1, underTest, () -> solution, () -> position, () -> target);
+
+
+        assertFalse(underTest.isClearPath(position, target), () -> "\n" + cMap);
+        assertFalse(underTest.isClearPath(target, position), () -> "\n" + cMap);
+
         cMap.redraw();
 
-        assertFalse(underTest.isClearPath(new Location(position), new Location(target)));
-        assertFalse(underTest.isClearPath(makeLoc(-2, -2), new Location(target)));
-        assertTrue(underTest.isClearPath(makeLoc(-2, -2), new Location(position)));
-        assertFalse(underTest.isClearPath(makeLoc(2, -1), makeLoc(-4, -1)));
+        final Location target2 = makeLoc(0, 2);
+        cMap = new DebugViz(1, underTest, () -> solution, () -> position, () -> target2);
+
+        assertTrue(underTest.isClearPath(position, target2), () -> "\n" + cMap);
+        assertTrue(underTest.isClearPath(target2, position), () -> "\n" + cMap);
+
+        cMap.redraw();
+
     }
 
     @Test

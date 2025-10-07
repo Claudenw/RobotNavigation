@@ -36,6 +36,7 @@ import org.apache.jena.rdf.model.Literal;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.rdf.model.Resource;
+import org.apache.jena.rdf.model.ResourceFactory;
 import org.apache.jena.shared.Lock;
 import org.apache.jena.shared.PrefixMapping;
 import org.apache.jena.sparql.core.Var;
@@ -48,12 +49,14 @@ import org.apache.jena.vocabulary.RDF;
 import org.apache.sis.util.collection.WeakValueHashMap;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.Point;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xenei.robot.common.FrontsCoordinate;
 import org.xenei.robot.common.GeometricObject;
 import org.xenei.robot.common.ObstacleI;
+import org.xenei.robot.common.Position;
 import org.xenei.robot.common.PositionI;
 import org.xenei.robot.common.mapping.Map;
 import org.xenei.robot.common.planning.Solution;
@@ -78,12 +81,17 @@ public class MapImpl implements Map<MapLocation, MapPosition, MapObstacle> {
                 .setNsPrefixes(PrefixMapping.Standard).setNsPrefix("robut", Namespace.URI);
     }
 
-    private final static WeakValueHashMap<Coordinate, MapLocation> COORDINATE_MAPLOCATION_MAP = new WeakValueHashMap<>(Coordinate.class);
+    private final static WeakValueHashMap<Coordinate, MapLocation> COORDINATE_MAPLOCATION_MAP = new WeakValueHashMap<>(
+            Coordinate.class);
 
     private MapLocation recordOnMapCoordinate(Coordinate onMap) {
         return COORDINATE_MAPLOCATION_MAP.compute(onMap,
-                (k,v) -> v == null ? new MapLocation(MapImpl.this, onMap) : v);
+                (k, v) -> v == null ? new MapLocation(MapImpl.this, onMap) : v);
 
+    }
+
+    public Coordinate scaleCoordinate(Coordinate coordinate) {
+        return this.getContext().scaleInfo.round(coordinate);
     }
 
     @Override
@@ -94,7 +102,7 @@ public class MapImpl implements Map<MapLocation, MapPosition, MapObstacle> {
         if (coordinate instanceof MapLocation) {
             return (MapLocation) coordinate;
         }
-        Coordinate onMap = this.getContext().scaleInfo.round(coordinate.getCoordinate());
+        Coordinate onMap = scaleCoordinate(coordinate.getCoordinate());
         return recordOnMapCoordinate(onMap);
     }
 
@@ -145,8 +153,11 @@ public class MapImpl implements Map<MapLocation, MapPosition, MapObstacle> {
     }
 
     /**
-     * Alias for {@link #updateSubModel(Resource, boolean)} with forceComplete = {@code false}.
-     * @param resource the resource to write.  Must have a {@link Model} attached.
+     * Alias for {@link #updateSubModel(Resource, boolean)} with forceComplete =
+     * {@code false}.
+     *
+     * @param resource
+     *            the resource to write. Must have a {@link Model} attached.
      * @return a CompletableFuture containing the resource.
      */
     CompletableFuture<Resource> updateSubModel(Resource resource) {
@@ -154,11 +165,15 @@ public class MapImpl implements Map<MapLocation, MapPosition, MapObstacle> {
     }
 
     /**
-     * Updates the Resource in the PlanningModel to contain all the data associated with the resource.
-     * The resource must have a model attached.
-     * @param resource the resource to write.  Must have a {@link Model} attached.
-     * @param forceComplete if {@code true} the CompletableFuture will not return until the update is complete.
-     *                      if {@code false} the update will occur in the background.
+     * Updates the Resource in the PlanningModel to contain all the data associated
+     * with the resource. The resource must have a model attached.
+     *
+     * @param resource
+     *            the resource to write. Must have a {@link Model} attached.
+     * @param forceComplete
+     *            if {@code true} the CompletableFuture will not return until the
+     *            update is complete. if {@code false} the update will occur in the
+     *            background.
      * @return a CompletableFuture containing the resource.
      */
     CompletableFuture<Resource> updateSubModel(Resource resource, boolean forceComplete) {
@@ -168,25 +183,38 @@ public class MapImpl implements Map<MapLocation, MapPosition, MapObstacle> {
         UpdateRequest req = new UpdateRequest()
                 .add(new UpdateBuilder().addDelete(Namespace.PlanningModel, resource, Namespace.p, Namespace.o)
                         .addWhere(resource, Namespace.p, Namespace.o).build())
-                .add(new UpdateBuilder()
-                        .addInsert(Namespace.PlanningModel, resource.getModel()).build());
+                .add(new UpdateBuilder().addInsert(Namespace.PlanningModel, resource.getModel()).build());
         CompletableFuture<?> future = doUpdate(req);
-        return forceComplete ? future.thenApply( x -> resource) : CompletableFuture.completedFuture(resource);
+        return forceComplete ? future.thenApply(x -> resource) : CompletableFuture.completedFuture(resource);
     }
 
     /**
-     * Read the resource and all properties and return it as a Resource with a {@link Model} containing all the
-     * properties attached.
-     * @param resource the Resource to read.
+     * Read the resource and all properties and return it as a Resource with a
+     * {@link Model} containing all the properties attached.
+     *
+     * @param resource
+     *            the Resource to read.
      * @return a CompletableFuture containing the Resource with the Model.
      */
     CompletableFuture<Resource> readSubModel(Resource resource) {
-        return construct(new ConstructBuilder()
-                .addConstruct(resource, Namespace.p, Namespace.o)
-                .addGraph(Namespace.UnionModel, new WhereBuilder()
-                        .addWhere(resource, Namespace.p, Namespace.o)))
-                .thenApply(m -> m.createResource(resource));
+        return construct(new ConstructBuilder().addConstruct(resource, Namespace.p, Namespace.o)
+                .addGraph(Namespace.UnionModel, new WhereBuilder().addWhere(resource, Namespace.p, Namespace.o)))
+                .thenApply(m -> m.getResource(resource.getURI()));
     }
+
+    /**
+     * Read the resource and all properties and return it as a Resource with a
+     * {@link Model} containing all the properties attached.
+     *
+     * @param resource
+     *            the Resource to read.
+     * @return a CompletableFuture containing the Resource with the Model.
+     */
+    CompletableFuture<Resource> deleteSubModel(Resource resource) {
+        return doUpdate(new UpdateBuilder().addDelete(Namespace.PlanningModel, resource, Namespace.p, Namespace.o)
+                .addWhere(resource, Namespace.p, Namespace.o)).thenApply(m -> resource);
+    }
+
 
     @Override
     public void clear(String namedGraph) {
@@ -270,9 +298,9 @@ public class MapImpl implements Map<MapLocation, MapPosition, MapObstacle> {
     }
 
     CompletableFuture<Model> construct(ConstructBuilder select) {
-        return ctxt.submit( () -> {
+        return ctxt.submit(() -> {
             try (LockHandler ignore = new LockHandler(Lock.READ);
-                 QueryExecution qexec = QueryExecutionFactory.create(select.build(), data)) {
+                    QueryExecution qexec = QueryExecutionFactory.create(select.build(), data)) {
                 return qexec.execConstruct();
             }
         });
@@ -343,7 +371,7 @@ public class MapImpl implements Map<MapLocation, MapPosition, MapObstacle> {
         mapCoord.setVisited();
         Segment segment = null;
         if (target != null) {
-            Map.TargetData targetData = mapCoord.addTarget(target);
+            Map.TargetData targetData = mapCoord.addTarget(target).join();
             final double cost = targetData.indirect() ? targetData.distance() * 2 : targetData.distance();
             segment = SegmentImpl.builder().setCoordinate(targetData.getTarget()).setDistance(targetData.distance())
                     .setCost(cost).build(ctxt);
@@ -351,8 +379,8 @@ public class MapImpl implements Map<MapLocation, MapPosition, MapObstacle> {
         return Optional.ofNullable(segment);
     }
 
-    private CompletableFuture<MapObstacle> addObstacle(ObstacleI obst) {
-        return ctxt.submit(() -> obstacleHandler.addObstacle(obst));
+    private CompletableFuture<MapObstacle> addObstacle(Geometry geometry) {
+        return ctxt.submit(() -> obstacleHandler.addObstacle(new MapObstacle(ctxt, geometry)));
     }
 
     @Override
@@ -619,20 +647,34 @@ public class MapImpl implements Map<MapLocation, MapPosition, MapObstacle> {
 
     @Override
     public CompletableFuture<MapObstacle> createObstacle(Coordinate location) {
-        return addObstacle(new MapObstacle(ctxt, ctxt.geometryUtils.asPoint(new Coordinate(location.getX(), location.getY()))));
+        return addObstacle(ctxt.geometryUtils.asPoint(new Coordinate(location.getX(), location.getY())));
     }
 
     @Override
     public CompletableFuture<MapObstacle> createObstacle(PositionI<?, ?> startPosition, FrontsCoordinate relativeStart,
             FrontsCoordinate relativeEnd) {
-        return addObstacle(new MapObstacle(ctxt, ctxt.geometryUtils.asLine(startPosition.nextPosition(relativeStart),
-                startPosition.nextPosition(relativeEnd))));
+        return createObstacle(startPosition.nextPosition(relativeStart).getCoordinate(),
+                startPosition.nextPosition(relativeEnd).getCoordinate());
     }
 
     @Override
-    public CompletableFuture<MapObstacle> createObstacle(PositionI<?, ?> startPosition, FrontsCoordinate relativeCoordinate) {
-        return addObstacle(new MapObstacle(ctxt,
-                ctxt.geometryUtils.asPoint(asMapPosition(startPosition).nextPosition(relativeCoordinate))));
+    public CompletableFuture<MapObstacle> createObstacle(Coordinate first, Coordinate last) {
+        List<LineString> lst = new ArrayList<>();
+        Position p = new Position(first, CoordUtils.calcHeading(first, last));
+        Position p2;
+        do {
+            p2 = p.nextPosition(ctxt.scaleInfo.getResolution());
+            lst.add(ctxt.geometryUtils.asLine(p, p2));
+            p = p2;
+        } while (p.distance(last) > ctxt.scaleInfo.getResolution());
+        lst.add(ctxt.geometryUtils.asLine(p.getCoordinate(), last));
+        return addObstacle(ctxt.geometryFactory.createMultiLineString(lst.toArray(new LineString[0])));
+    }
+
+    @Override
+    public CompletableFuture<MapObstacle> createObstacle(PositionI<?, ?> startPosition,
+            FrontsCoordinate relativeCoordinate) {
+        return addObstacle(ctxt.geometryUtils.asPoint(asMapPosition(startPosition).nextPosition(relativeCoordinate)));
     }
 
     private class LockHandler implements AutoCloseable {
@@ -914,20 +956,20 @@ public class MapImpl implements Map<MapLocation, MapPosition, MapObstacle> {
         }
 
         private MapObstacle mergeIntersectOrTouch(MapObstacle obstacle, Set<MapObstacle> solns) {
-                UpdateRequest req = new UpdateRequest();
-                Geometry result = makeCloud(obstacle, solns);
+            UpdateRequest req = new UpdateRequest();
+            Geometry result = makeCloud(obstacle, solns);
 
-                for (MapObstacle obst : solns) {
-                    req.add(new UpdateBuilder().addDelete(Namespace.PlanningModel, obst.rdf(), Namespace.p, Namespace.o)
-                            .addGraph(Namespace.UnionModel,
-                                    new WhereBuilder().addWhere(obst.rdf(), Namespace.p, Namespace.o))
-                            .build());
-                }
-                Model merged = ModelFactory.createDefaultModel();
-                MapObstacle obst = new MapObstacle(ctxt, result);
-                obst.in(merged);
-                req.add(new UpdateBuilder().addInsert(Namespace.PlanningModel, merged).build());
-                doUpdate(req);
+            for (MapObstacle obst : solns) {
+                req.add(new UpdateBuilder().addDelete(Namespace.PlanningModel, obst.rdf(), Namespace.p, Namespace.o)
+                        .addGraph(Namespace.UnionModel,
+                                new WhereBuilder().addWhere(obst.rdf(), Namespace.p, Namespace.o))
+                        .build());
+            }
+            Model merged = ModelFactory.createDefaultModel();
+            MapObstacle obst = new MapObstacle(ctxt, result);
+            obst.in(merged);
+            req.add(new UpdateBuilder().addInsert(Namespace.PlanningModel, merged).build());
+            doUpdate(req);
 
             return obst;
         }
@@ -935,15 +977,14 @@ public class MapImpl implements Map<MapLocation, MapPosition, MapObstacle> {
         /**
          * Creates adds an obstacle to the map.
          *
-         * @param obst
-         *            the absolute position of the obstacle.
+         * @param mapObstacle
+         *            the obstacle to add.
          * @return
          */
-        MapObstacle addObstacle(ObstacleI obst) {
+        MapObstacle addObstacle(MapObstacle mapObstacle) {
             // find all Obstacles that this obstacle will intersect or touch
             // if there are any, merge them together.
             // if not just write this on to the graph.
-            MapObstacle mapObstacle = asMapObstacle(obst);
             Var wkt = Var.alloc("wkt");
 
             SelectBuilder selectBuilder = new SelectBuilder().setDistinct(true).addVar(Namespace.s).addVar(wkt)
@@ -952,7 +993,6 @@ public class MapImpl implements Map<MapLocation, MapPosition, MapObstacle> {
                     .addWhere(Namespace.s, RDF.type, Namespace.Obst) //
                     .addFilter(ctxt.graphGeomFactory.isNearby(exprF, mapObstacle.wkt(), wkt,
                             ctxt.scaleInfo.getResolution()));
-
 
             Set<MapObstacle> solns = new HashSet<>();
             exec(selectBuilder).thenAccept(resultSet -> resultSet.forEachRemaining(soln -> {
@@ -964,8 +1004,7 @@ public class MapImpl implements Map<MapLocation, MapPosition, MapObstacle> {
                 Model merged = ModelFactory.createDefaultModel();
                 mapObstacle.in(merged);
                 doUpdate(new UpdateRequest()
-                        .add(new UpdateBuilder().addInsert(Namespace.PlanningModel, merged).build()));
-                ;
+                        .add(new UpdateBuilder().addInsert(Namespace.PlanningModel, merged).build()));;
             } else {
                 mapObstacle = mergeIntersectOrTouch(mapObstacle, solns);
             }
@@ -975,17 +1014,15 @@ public class MapImpl implements Map<MapLocation, MapPosition, MapObstacle> {
             Var otherWkt = Var.alloc("otherWkt");
             Var varX = Var.alloc("x");
             Var varY = Var.alloc("y");
-            SelectBuilder sb = new SelectBuilder()
-                    .addWhere(Namespace.s, RDF.type, Namespace.Coord)
-                    .addWhere(Namespace.s, Namespace.x, varX)
-                    .addWhere(Namespace.s, Namespace.y, varY)
+            SelectBuilder sb = new SelectBuilder().addWhere(Namespace.s, RDF.type, Namespace.Coord)
+                    .addWhere(Namespace.s, Namespace.x, varX).addWhere(Namespace.s, Namespace.y, varY)
                     .addWhere(Namespace.s, Geo.AS_WKT_NODE, otherWkt)
                     .addFilter(exprF.lt(ctxt.graphGeomFactory.calcDistance(exprF, mapObstacle.wkt(), otherWkt),
                             ctxt.chassisInfo.radius));
             Set<MapLocation> deletedCoords = new HashSet<>();
             exec(sb).thenAccept(resultSet -> resultSet.forEachRemaining(soln -> {
-                MapLocation mapLocation = asMapCoordinate(
-                        new Coordinate(soln.getLiteral(varX.getName()).getDouble(), soln.getLiteral(varY.getName()).getDouble()));
+                MapLocation mapLocation = asMapCoordinate(new Coordinate(soln.getLiteral(varX.getName()).getDouble(),
+                        soln.getLiteral(varY.getName()).getDouble()));
                 deletedCoords.add(mapLocation);
             }));
 
@@ -995,12 +1032,17 @@ public class MapImpl implements Map<MapLocation, MapPosition, MapObstacle> {
 
             Object toTarget = Converters.makeNodeOrPath("(" + Namespace.target.asNode() + "/*)", getPrefixMapping());
 
-            deletedCoords.forEach(mapLocation -> req.add(new UpdateBuilder()
-                            .addDelete(Namespace.PlanningModel, mapLocation.getUrn().asNode(), toTarget, Namespace.o)
-                            .addWhere(mapLocation.getUrn(), toTarget, Namespace.o).build())
-                    .add(new UpdateBuilder()
-                            .addDelete(Namespace.PlanningModel, mapLocation.getUrn().asNode(), Namespace.p, Namespace.o)
-                            .addWhere(mapLocation.getUrn(), Namespace.p, Namespace.o).build()));
+            deletedCoords
+                    .forEach(
+                            mapLocation -> req
+                                    .add(new UpdateBuilder()
+                                            .addDelete(Namespace.PlanningModel, mapLocation.getUrn().asNode(), toTarget,
+                                                    Namespace.o)
+                                            .addWhere(mapLocation.getUrn(), toTarget, Namespace.o).build())
+                                    .add(new UpdateBuilder()
+                                            .addDelete(Namespace.PlanningModel, mapLocation.getUrn().asNode(),
+                                                    Namespace.p, Namespace.o)
+                                            .addWhere(mapLocation.getUrn(), Namespace.p, Namespace.o).build()));
 
             doUpdate(req);
 

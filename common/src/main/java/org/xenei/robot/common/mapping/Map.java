@@ -19,7 +19,7 @@ import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.common.planning.Solution;
 import org.xenei.robot.common.planning.Segment;
 import org.xenei.robot.common.utils.RobutContext;
-import org.xenei.robot.mapper.map.MapObstacle;
+import org.xenei.robot.mapper.map.MapLocation;
 import org.xenei.robot.mapper.rdf.Namespace;
 
 public interface Map<L extends Map.Loc<L>, P extends Map.Pos<L, P>, M extends Map.Obstacle> {
@@ -152,14 +152,14 @@ public interface Map<L extends Map.Loc<L>, P extends Map.Pos<L, P>, M extends Ma
      */
     boolean isObstacle(FrontsCoordinate coord);
 
-//    /**
-//     * Adds an obstacle to the planning graph.
-//     *
-//     * @param obstacle
-//     *            the obstacle to add.
-//     * @return the set of new obstacles.
-//     */
-//    CompletableFuture<M> addObstacle(ObstacleI obstacle);
+    // /**
+    // * Adds an obstacle to the planning graph.
+    // *
+    // * @param obstacle
+    // * the obstacle to add.
+    // * @return the set of new obstacles.
+    // */
+    // CompletableFuture<M> addObstacle(ObstacleI obstacle);
 
     /**
      * Gets the geometry for all the known obstacles.
@@ -222,18 +222,30 @@ public interface Map<L extends Map.Loc<L>, P extends Map.Pos<L, P>, M extends Ma
     /**
      * Create an Obstacle.
      *
-     * @param location    The position of the object.
-     * @param relativeLocation the relative location of the obstacle from the start position.
+     * @param location
+     *            The position of the object.
      * @return An obstacle.
      */
     CompletableFuture<M> createObstacle(Coordinate location);
 
+    /**
+     * Create an Obstacle.
+     *
+     * @param start
+     *            The starting position of the object.
+     * @param end
+     *            The endpint position of the object.
+     * @return An obstacle.
+     */
+    CompletableFuture<M> createObstacle(Coordinate start, Coordinate end);
 
     /**
      * Create an Obstacle.
      *
-     * @param startPosition    The position from which we locate the obstacle.
-     * @param relativeLocation the relative location of the obstacle from the start position.
+     * @param startPosition
+     *            The position from which we locate the obstacle.
+     * @param relativeLocation
+     *            the relative location of the obstacle from the start position.
      * @return An obstacle.
      */
     CompletableFuture<M> createObstacle(PositionI<?, ?> startPosition, FrontsCoordinate relativeLocation);
@@ -249,7 +261,8 @@ public interface Map<L extends Map.Loc<L>, P extends Map.Pos<L, P>, M extends Ma
      *            the relative ending location of the obstacle.
      * @return An obstacle.
      */
-    CompletableFuture<M> createObstacle(PositionI<?, ?> startPosition, FrontsCoordinate relativeStart, FrontsCoordinate relativeEnd);
+    CompletableFuture<M> createObstacle(PositionI<?, ?> startPosition, FrontsCoordinate relativeStart,
+            FrontsCoordinate relativeEnd);
 
     /**
      * Sets the coordinate as visited in the map.
@@ -295,12 +308,11 @@ public interface Map<L extends Map.Loc<L>, P extends Map.Pos<L, P>, M extends Ma
         boolean indirect();
     }
 
-
     /**
      * A coordinate that has been quantized into a map coordinate.
      */
     interface Loc<L extends Loc<L>> extends LocationI<L>, GeometricObject {
-        TargetData addTarget(FrontsCoordinate target);
+        CompletableFuture<? extends Map.TargetData> addTarget(FrontsCoordinate target);
         boolean isIndirect(FrontsCoordinate target);
     }
 

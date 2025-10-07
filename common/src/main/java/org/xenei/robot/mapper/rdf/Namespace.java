@@ -11,6 +11,7 @@ public class Namespace {
     public static final String URI = "urn:org.xenei.robut:";
     public static final String FUNC_URI = URI + "function:";
     public static final String MODEL_URI = URI + "model:";
+    public static final String CLASS_URI = "urn:org.xenei.robut:class:";
 
     public static final Resource UnionModel = ResourceFactory.createResource("urn:x-arq:UnionGraph");
     public static final Resource BaseModel = ResourceFactory.createResource(MODEL_URI + "BaseModel");

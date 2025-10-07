@@ -108,8 +108,7 @@ public class TextViz implements Map.Visualization {
         }
     }
 
-    @Override
-    public void redraw() {
+    public StringBuilder render() {
         FrontsCoordinate target = targetSupplier.get();
         GeometryUtils geometryUtils = map.getContext().geometryUtils;
         SortedSet<Coord> points = new TreeSet<>();
@@ -135,12 +134,22 @@ public class TextViz implements Map.Visualization {
         if (position != null) {
             addGeom(points, geometryUtils.asPoint(position), POSITION);
         }
-        output(stringBuilder(points));
+        return stringBuilder(points);
+    }
+
+    @Override
+    public void redraw() {
+        output(render());
     }
 
     protected void output(StringBuilder sb) {
         System.out.println();
         System.out.println(sb);
+    }
+
+    @Override
+    public String toString() {
+        return render().toString();
     }
 
     // a location in the map

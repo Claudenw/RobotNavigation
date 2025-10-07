@@ -49,7 +49,7 @@ public class CoordUtils {
      * @param b
      * @return
      */
-    public static final Coordinate add(Coordinate a, Coordinate b) {
+    public static Coordinate add(Coordinate a, Coordinate b) {
         return new Coordinate(a.getX() + b.getX(), a.getY() + b.getY());
     }
 
@@ -60,7 +60,7 @@ public class CoordUtils {
      * @param b
      * @return
      */
-    public static final Coordinate subtract(Coordinate a, Coordinate b) {
+    public static Coordinate subtract(Coordinate a, Coordinate b) {
         return new Coordinate(a.getX() - b.getX(), a.getY() - b.getY());
     }
 
@@ -82,8 +82,12 @@ public class CoordUtils {
         return AngleUtils.normalize(theta + Math.PI);
     }
 
-    public static double calcHeading(FrontsCoordinate from, FrontsCoordinate to) {
+    public static double calcHeading(Coordinate from, Coordinate to) {
         return AngleUtils.normalize(Math.atan2(to.getY() - from.getY(), to.getX() - from.getX()));
+    }
+
+    public static double calcHeading(FrontsCoordinate from, FrontsCoordinate to) {
+        return calcHeading(from.getCoordinate(), to.getCoordinate());
     }
 
     /**
