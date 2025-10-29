@@ -3,8 +3,9 @@ package org.xenei.robot.common.planning;
 import java.util.Collection;
 import java.util.Optional;
 
-import org.xenei.robot.common.FrontsCoordinate;
-import org.xenei.robot.common.NavigationSnapshot;
+import org.xenei.robot.common.Location;
+import org.xenei.robot.common.mapping.MapCoordinate;
+import org.xenei.robot.common.mapping.NavigationSnapshot;
 
 public interface Planner {
 
@@ -14,14 +15,14 @@ public interface Planner {
      * @return the coordinates of the target., or {@code null} if there is no
      *         target.
      */
-    FrontsCoordinate getTarget();
+    Location getTarget();
 
     /**
      * Gets the final target that this planner is working toward.
      *
      * @return the Final target.
      */
-    FrontsCoordinate getFinalTarget();
+    Location getFinalTarget();
 
     /**
      * Gets the planning targets. This is a stack of targets where bottom of the
@@ -30,7 +31,7 @@ public interface Planner {
      *
      * @return the Target stack.
      */
-    Collection<? extends FrontsCoordinate> getTargets();
+    Collection<? extends Location> getTargets();
 
     /**
      * Set the target for the planner. Setting the target causes the current plan to
@@ -40,7 +41,7 @@ public interface Planner {
      *            The coordinates to head toward.
      * @return the heading to the target.
      */
-    double setTarget(FrontsCoordinate target);
+    double setTarget(Location target);
 
     /**
      * Replaces the current planner target without clearing the current plan. If the
@@ -49,7 +50,7 @@ public interface Planner {
      * @param target
      *            The coordinates to head toward.
      */
-    void replaceTarget(FrontsCoordinate target);
+    void replaceTarget(Location target);
 
     /**
      * Gets the current solution. May be incomplete.
@@ -76,10 +77,10 @@ public interface Planner {
      */
     void registerPositionChange(NavigationSnapshot snapshot);
 
-    /**
-     * Recalculate all the costs for movement.
-     */
-    void recalculateCosts();
+//    /**
+//     * Recalculate all the costs for movement.
+//     */
+//    void recalculateCosts();
 
     /**
      * Gets the current NavigationSnapshot the planner is working with.

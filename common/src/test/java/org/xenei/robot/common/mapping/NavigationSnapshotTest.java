@@ -1,11 +1,10 @@
-package org.xenei.robot.common;
+package org.xenei.robot.common.mapping;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.function.BiPredicate;
 import java.util.stream.Stream;
@@ -16,39 +15,39 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.locationtech.jts.geom.Coordinate;
+import org.xenei.robot.common.ChassisInfoTest;
+import org.xenei.robot.common.Location;
+import org.xenei.robot.common.Position;
+import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.common.utils.AngleUtils;
+import org.xenei.robot.common.utils.RobutContext;
+
+import javax.measure.Quantity;
 
 public class NavigationSnapshotTest {
-    static final FrontsCoordinate target = makeLoc(2, 2);
-    static final Position position = makePos(1, 1, AngleUtils.RADIANS_45);
-    static final NavigationSnapshot fullSnapshot = new NavigationSnapshot(position, target);
-    static final NavigationSnapshot nullPosition = new NavigationSnapshot(null, target);
-    static final NavigationSnapshot nullTarget = new NavigationSnapshot(position, null);
-    static final NavigationSnapshot diffHead = new NavigationSnapshot(makePos(1, 1, AngleUtils.RADIANS_90), target);
-    static final NavigationSnapshot diffLoc = new NavigationSnapshot(makePos(1, 2, AngleUtils.RADIANS_45), target);
-    static final NavigationSnapshot diffTarget = new NavigationSnapshot(position, makeLoc(3, 3));
-
-    private static Map<NavigationSnapshot, String> navMap = new HashMap<>();
-
-    private static Location makeLoc(double x, double y) {
-        return new Location(new Coordinate(x, y));
-    }
-
-    private static Position makePos(double x, double y, double heading) {
-        return new Position(new Coordinate(x, y), heading);
-    }
-
-    @BeforeAll
-    public static void setup() {
-        navMap.put(fullSnapshot, "full");
-        navMap.put(nullPosition, "nullPos");
-        navMap.put(nullTarget, "nullTarg");
-        navMap.put(diffHead, "diffhead");
-        navMap.put(diffLoc, "diffLoc");
-        navMap.put(diffTarget, "diffTarg");
-    }
 
     private static Stream<Arguments> baseParams(BiPredicate<NavigationSnapshot, NavigationSnapshot> test) {
+        final Map map = new Map(new RobutContext(ScaleInfo.DEFAULT, ChassisInfoTest.DEFAULT), new MapTest.TestingStorage());
+        final MapLocation target = map.asMapLocation(new Coordinate(2, 2));
+        final MapPosition position = map.asMapPosition(new Coordinate(1, 1), AngleUtils.RADIANS_45);
+
+        final NavigationSnapshot fullSnapshot = new NavigationSnapshot(position, target);
+        final NavigationSnapshot nullPosition = new NavigationSnapshot(null, target);
+        final NavigationSnapshot nullTarget = new NavigationSnapshot(position, null);
+        final NavigationSnapshot diffHead = new NavigationSnapshot(map.asMapPosition(new Coordinate(1, 1), AngleUtils.RADIANS_90), target);
+        final NavigationSnapshot diffLoc = new NavigationSnapshot(map.asMapPosition(new Coordinate(1, 2), AngleUtils.RADIANS_45), target);
+        final NavigationSnapshot diffTarget = new NavigationSnapshot(position, map.asMapLocation(new Coordinate(3, 3)));
+
+        final java.util.Map<NavigationSnapshot, String> navMap = new HashMap<>();
+
+
+            navMap.put(fullSnapshot, "full");
+            navMap.put(nullPosition, "nullPos");
+            navMap.put(nullTarget, "nullTarg");
+            navMap.put(diffHead, "diffhead");
+            navMap.put(diffLoc, "diffLoc");
+            navMap.put(diffTarget, "diffTarg");
+
         List<Arguments> lst = new ArrayList<>();
 
         BiPredicate<NavigationSnapshot, NavigationSnapshot> filter = (x, y) -> {
@@ -69,6 +68,13 @@ public class NavigationSnapshotTest {
 
     @Test
     public void headingTest() {
+        final Map map = new Map(new RobutContext(ScaleInfo.DEFAULT, ChassisInfoTest.DEFAULT), new MapTest.TestingStorage());
+        final MapLocation target = map.asMapLocation(new Coordinate(2, 2));
+        final MapPosition position = map.asMapPosition(new Coordinate(1, 1), AngleUtils.RADIANS_45);
+        final NavigationSnapshot fullSnapshot = new NavigationSnapshot(position, target);
+        final NavigationSnapshot nullPosition = new NavigationSnapshot(null, target);
+        final NavigationSnapshot nullTarget = new NavigationSnapshot(position, null);
+
         assertEquals(AngleUtils.RADIANS_45, fullSnapshot.heading(), fullSnapshot::toString);
         assertEquals(Double.NaN, nullPosition.heading(), nullPosition::toString);
         assertEquals(AngleUtils.RADIANS_45, nullTarget.heading(), nullTarget::toString);
@@ -84,21 +90,6 @@ public class NavigationSnapshotTest {
         return baseParams((x, y) -> x != y);
     }
 
-    //
-    // /**
-    // * Checks for change in position or target.
-    // * @param positionToCheck the position to check against.
-    // * @param targetToCheck the target to check against.
-    // * @return true if location, heading, or target has changed.
-    // */
-    // public boolean didChange(Position positionToCheck, Coordinate targetToCheck)
-    // {
-    // return didHeadingChange(positionToCheck)
-    // || didLocationChange(positionToCheck)
-    // || didTargetChange(targetToCheck);
-    // }
-    //
-    //
 
     @ParameterizedTest
     @MethodSource("headingChangeParams")

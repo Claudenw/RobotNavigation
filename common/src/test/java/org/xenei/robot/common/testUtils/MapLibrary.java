@@ -9,14 +9,14 @@ import org.xenei.robot.common.ChassisInfoTest;
 import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.common.mapping.MapBuilder;
 import org.xenei.robot.common.mapping.Map;
+import org.xenei.robot.common.mapping.MapTest;
 import org.xenei.robot.common.planning.Solution;
 import org.xenei.robot.common.utils.RobutContext;
-import org.xenei.robot.mapper.map.MapImpl;
 import org.xenei.robot.mapper.visualization.TextViz;
 
 public class MapLibrary {
 
-    public static Map<?, ?, ?> map1(Map<?, ?, ?> map) {
+    public static Map map1(Map map) {
         MapBuilder b = new MapBuilder(map);
 
         b.setX(-1, -1, 14, MapBuilder.Type.Obstacle);
@@ -67,7 +67,7 @@ public class MapLibrary {
         return b.build();
     }
 
-    public static Map<?, ?, ?> map2(Map<?, ?, ?> map) {
+    public static Map map2(Map map) {
         MapBuilder b = new MapBuilder(map);
 
         b.border(-5, -5, 9, 9);
@@ -99,7 +99,7 @@ public class MapLibrary {
     public static void main(String[] args) throws ParseException {
         CommandLine commandLine = DefaultParser.builder().build().parse(getOptions(), args);
         int mapNumber = commandLine.getParsedOptionValue("m");
-        Map<?, ?, ?> map = new MapImpl(new RobutContext(ScaleInfo.DEFAULT, ChassisInfoTest.DEFAULT));
+        Map map = new Map(new RobutContext(ScaleInfo.DEFAULT, ChassisInfoTest.DEFAULT), new MapTest.TestingStorage());
         switch (mapNumber) {
             case 1 :
                 map1(map);
@@ -115,12 +115,12 @@ public class MapLibrary {
                 System.exit(1);
         }
         if (commandLine.hasOption("v")) {
-            TextViz textVis = new TextViz(1, map, () -> new Solution(), () -> null, () -> null);
+            TextViz textVis = new TextViz(1, map, Solution::new, () -> null, () -> null);
             textVis.redraw();
         }
         if (commandLine.hasOption("o")) {
             System.out.println(" =========== Obstacles ==========");
-            map.getObstacles().thenAccept(s -> s.forEach(o -> System.out.println(o))).join();
+            map.getObstacles().thenAccept(s -> s.forEach(System.out::println)).join();
         }
     }
 

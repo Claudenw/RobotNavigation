@@ -1,6 +1,7 @@
 package org.xenei.robot.planner;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -16,15 +17,19 @@ import java.util.function.Supplier;
 import org.apache.jena.arq.querybuilder.AskBuilder;
 import org.apache.jena.arq.querybuilder.WhereBuilder;
 import org.apache.jena.sparql.core.Var;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.locationtech.jts.geom.Coordinate;
-import org.locationtech.jts.geom.Geometry;
 import org.mockito.ArgumentCaptor;
 import org.xenei.robot.common.ChassisInfoTest;
-import org.xenei.robot.common.FrontsCoordinate;
-import org.xenei.robot.common.FrontsCoordinateTest;
+import org.xenei.robot.common.mapping.Map;
+import org.xenei.robot.common.mapping.MapCoordinate;
 import org.xenei.robot.common.Location;
-import org.xenei.robot.common.NavigationSnapshot;
+import org.xenei.robot.common.mapping.MapLocation;
+import org.xenei.robot.common.mapping.MapPosition;
+import org.xenei.robot.common.mapping.MapTargetData;
+import org.xenei.robot.common.mapping.MapTest;
+import org.xenei.robot.common.mapping.NavigationSnapshot;
 import org.xenei.robot.common.Position;
 import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.common.UnmodifiableCoordinate;
@@ -35,34 +40,41 @@ import org.xenei.robot.common.testUtils.CoordinateUtils;
 import org.xenei.robot.common.testUtils.TestingPositionSupplier;
 import org.xenei.robot.common.utils.AngleUtils;
 import org.xenei.robot.common.utils.RobutContext;
-import org.xenei.robot.mapper.map.MapImpl;
 import org.xenei.robot.mapper.rdf.Namespace;
 
 public class PlannerImplTest {
     final private RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT, ChassisInfoTest.DEFAULT);
     private Planner underTest;
-    private final MapImpl map = new MapImpl(ctxt);
+    private Map map;
+    private MapTest.TestingStorage testingStorage;
 
-    final private ArgumentCaptor<FrontsCoordinate> coordinateCaptor = ArgumentCaptor.forClass(FrontsCoordinate.class);
-    final private ArgumentCaptor<FrontsCoordinate> targetCaptor = ArgumentCaptor.forClass(FrontsCoordinate.class);
+
+    final private ArgumentCaptor<MapCoordinate> coordinateCaptor = ArgumentCaptor.forClass(MapCoordinate.class);
+    final private ArgumentCaptor<MapCoordinate> targetCaptor = ArgumentCaptor.forClass(MapCoordinate.class);
 
     private Location makeLoc(double x, double y) {
-        return new Location(new Coordinate(x, y));
+        return Location.asLocation(new Coordinate(x, y));
     }
 
-    private Position makePosition(double x, double y) {
-        return new Position(new Coordinate(x, y), 0);
+    private MapPosition makePosition(double x, double y) {
+        return map.asMapPosition(new Coordinate(x, y), 0);
     }
 
     private Position makePosition(Location loc) {
-        return new Position(loc.getCoordinate(), 0);
+        return Position.asPosition(loc, 0);
+    }
+
+    @BeforeEach
+    void setup() {
+        testingStorage = new MapTest.TestingStorage();
+        map = new Map(ctxt, new MapTest.TestingStorage());
     }
 
     @Test
     void setTargetTest() {
-        FrontsCoordinate fc = FrontsCoordinateTest.make(1, 1);
+        MapCoordinate fc = map.asMapCoordinate(new Coordinate(1, 1));
 
-        TestingPositionSupplier supplier = new TestingPositionSupplier(Position.ORIGIN);
+        TestingPositionSupplier supplier = new TestingPositionSupplier(Position.asPosition(Location.ORIGIN, 0));
         underTest = new PlannerImpl(map, supplier);
 
         assertEquals(ctxt.scaleInfo.round(AngleUtils.RADIANS_45), underTest.setTarget(fc));
@@ -75,8 +87,8 @@ public class PlannerImplTest {
 
     @Test
     void registerPositionChangeTest() {
-        Location finalLocation = makeLoc(-1, 1);
-        Position initial = makePosition(-1, -3);
+        MapLocation finalLocation = map.asMapLocation(new Coordinate(-1, 1));
+        MapPosition initial = map.asMapPosition(new Coordinate(-1, -3), 0);
 
         TestingPositionSupplier supplier = new TestingPositionSupplier(initial);
         underTest = new PlannerImpl(map, supplier, finalLocation);
@@ -85,7 +97,7 @@ public class PlannerImplTest {
         NavigationSnapshot lastSnapshot = new NavigationSnapshot(initial, finalLocation);
 
         // set next position.
-        Position second = makePosition(1, 1);
+        MapPosition second = map.asMapPosition(new Coordinate(1, 1), 0);
         NavigationSnapshot snapshot = new NavigationSnapshot(second, finalLocation);
         // since there is only one target this will add a position to the target stack
         underTest.registerPositionChange(snapshot);
@@ -95,7 +107,7 @@ public class PlannerImplTest {
 
         // verify solution has 2 items (1 step)
         await().atMost(2, SECONDS).untilAsserted(() -> assertEquals(1, underTest.getSolution().stepCount()));
-        List<FrontsCoordinate> sol = underTest.getSolution().stream().toList();
+        List<MapCoordinate> sol = underTest.getSolution().stream().toList();
         assertEquals(2, sol.size());
         assertEquals(initial.getCoordinate(), sol.get(0).getCoordinate());
         assertEquals(finalLocation.getCoordinate(), sol.get(1).getCoordinate());
@@ -103,10 +115,9 @@ public class PlannerImplTest {
 
     @Test
     public void replaceTargetTest() {
-
-        Location finalLocation = makeLoc(-1, 1);
-        FrontsCoordinate newTarget = makeLoc(4, 4);
-        Position initial = makePosition(-1, -3);
+        MapLocation finalLocation = map.asMapLocation(new Coordinate(-1, 1));
+        MapCoordinate newTarget = map.asMapCoordinate(new Coordinate(4, 4));
+        MapPosition initial = map.asMapPosition(new Coordinate(-1, -3), 0);
         TestingPositionSupplier supplier = new TestingPositionSupplier(initial);
         NavigationSnapshot initialSnapshot = new NavigationSnapshot(initial, finalLocation);
 
@@ -125,28 +136,23 @@ public class PlannerImplTest {
 
     @Test
     public void recalculateCostsTest() throws InterruptedException {
-        Location finalCoord = makeLoc(-1, 1);
-        Position initial = makePosition(-1, -3);
+        Location finalCoord = Location.asLocation(new Coordinate(-1, 1));
+        Position initial = Position.asPosition(new Coordinate(-1, -3), 0);
         TestingPositionSupplier supplier = new TestingPositionSupplier(initial);
         underTest = new PlannerImpl(map, supplier, finalCoord);
 
-        Var dist = Var.alloc("?dist");
-        final AskBuilder ask = new AskBuilder().addGraph(Namespace.PlanningModel,
-                new WhereBuilder().addWhere(Namespace.s, Namespace.distance, dist)
-                        .addWhere(Namespace.s, Namespace.x, -1.0).addWhere(Namespace.s, Namespace.y, -3.0));
-        ask.setVar(dist, 4.0);
-        await().atMost(2, SECONDS).untilAsserted(() -> map.ask(ask));
+        MapLocation location = map.asMapLocation(new Coordinate(-1, -3));
+        MapTargetData targetData = location.getTargetData(map.asMapLocation(finalCoord));
+        assertThat(targetData.distance()).isEqualTo(4.0); // ctxt.scaleInfo.scale(4.0)?
 
-        FrontsCoordinate newTarget = makeLoc(4, 4);
+        MapCoordinate newTarget = map.asMapCoordinate(new Coordinate(4, 4));
         underTest.replaceTarget(newTarget);
-        underTest.recalculateCosts();
-
-        ask.setVar(dist, Math.sqrt(74));
-        await().atMost(2, SECONDS).untilAsserted(() -> map.ask(ask));
+        targetData = location.getTargetData(map.asMapLocation(newTarget));
+        assertThat(targetData.distance()).isEqualTo(ctxt.scaleInfo.scale(Math.sqrt(74)));
 
         // verify solution has 1 item
         Solution solution = underTest.getSolution();
-        List<FrontsCoordinate> sol = solution.stream().toList();
+        List<MapCoordinate> sol = solution.stream().toList();
         assertEquals(1, sol.size());
         assertEquals(initial.getCoordinate(), sol.get(0).getCoordinate());
         assertEquals(0.0, solution.cost());
@@ -180,7 +186,7 @@ public class PlannerImplTest {
         CoordinateUtils.assertEquivalent(optionalSegment.get(), underTest.getTarget());
 
         // second target (segment = stepLocation)
-        map.addCoord(stepLocation, finalLocation, false);
+        map.asMapLocation(stepLocation).getTargetData(map.asMapLocation(finalLocation));
         optionalSegment = underTest.selectSegment();
         assertTrue(optionalSegment.isPresent());
         CoordinateUtils.assertEquivalent(optionalSegment.get(), stepLocation);
@@ -215,41 +221,41 @@ public class PlannerImplTest {
         }
     }
 
-    private static class TestingStep implements Segment {
-        UnmodifiableCoordinate coord;
-        double cost;
-        double distance;
-
-        TestingStep(double x, double y, double cost, double distance) {
-            coord = UnmodifiableCoordinate.make(new Coordinate(x, y));
-            this.cost = cost;
-            this.distance = distance;
-        }
-
-        @Override
-        public UnmodifiableCoordinate getCoordinate() {
-            return coord;
-        }
-
-        @Override
-        public int compareTo(Segment o) {
-            return Segment.compare.compare(this, o);
-        }
-
-        @Override
-        public double cost() {
-            return cost;
-        }
-
-        @Override
-        public double distance() {
-            return distance;
-        }
-
-        @Override
-        public Geometry getGeometry() {
-            return null;
-        }
-
-    }
+//    private static class TestingStep implements Segment {
+//        UnmodifiableCoordinate coord;
+//        double cost;
+//        double distance;
+//
+//        TestingStep(double x, double y, double cost, double distance) {
+//            coord = UnmodifiableCoordinate.make(new Coordinate(x, y));
+//            this.cost = cost;
+//            this.distance = distance;
+//        }
+//
+//        @Override
+//        public UnmodifiableCoordinate getCoordinate() {
+//            return coord;
+//        }
+//
+//        @Override
+//        public int compareTo(Segment o) {
+//            return Segment.COMPARATOR.compare(this, o);
+//        }
+//
+//        @Override
+//        public double cost() {
+//            return cost;
+//        }
+//
+//        @Override
+//        public double distance() {
+//            return distance;
+//        }
+//
+//        @Override
+//        public Geometry getWkt() {
+//            return null;
+//        }
+//
+//    }
 }

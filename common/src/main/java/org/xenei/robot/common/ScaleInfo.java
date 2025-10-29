@@ -1,13 +1,17 @@
 package org.xenei.robot.common;
 
 import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.PrecisionModel;
+import org.xenei.robot.common.mapping.MapCoordinate;
+import org.xenei.robot.common.mapping.MapPosition;
 import org.xenei.robot.common.utils.DoubleUtils;
 
 public final class ScaleInfo {
 
-    private static double DEFAULT_RESOLUTION = 0.5;
-    private static double DEFAULT_SCALE = 1.0;
+    private static final double DEFAULT_RESOLUTION = 0.5;
+    private static final double DEFAULT_SCALE = 1.0;
 
     public static final ScaleInfo DEFAULT = new ScaleInfo(DEFAULT_RESOLUTION, DEFAULT_SCALE);
 
@@ -59,7 +63,22 @@ public final class ScaleInfo {
      * @return {@code true} if the coordinates are the same within the resolution
      *         the scale.
      */
-    public boolean areEquivalent(FrontsCoordinate a, FrontsCoordinate b) {
+    public boolean areEquivalent(Location a, Location b) {
+        return areEquivalent(a.getCoordinate(), b.getCoordinate());
+    }
+
+    /**
+     * Determines if 2 coordinates are equivalent within the resolution of the
+     * scale.
+     *
+     * @param a
+     *            the first coordinate.
+     * @param b
+     *            the second coordinate.
+     * @return {@code true} if the coordinates are the same within the resolution
+     *         the scale.
+     */
+    public boolean areEquivalent(Coordinate a, Coordinate b) {
         return a.equals2D(b, resolution);
     }
 
@@ -94,10 +113,10 @@ public final class ScaleInfo {
      *            the original position
      * @return the position with rounded positions.
      */
-    public <P extends PositionI<?, P>> P round(P pos) {
+    public Position round(Position pos) {
         return pos.isInfinite()
                 ? pos
-                : pos.buildPosition(new Coordinate(round(pos.getX()), round(pos.getY())), round(pos.getHeading()));
+                : Position.asPosition(new Coordinate(round(pos.getX()), round(pos.getY())), round(pos.getHeading()));
     }
 
     /**
@@ -107,8 +126,8 @@ public final class ScaleInfo {
      *            the original location
      * @return the position with rounded positions.
      */
-    public <L extends LocationI<L>> L round(L location) {
-        return location.isInfinite() ? location : location.buildLocation(round(location.getCoordinate()));
+    public Location round(Location location) {
+        return location.isInfinite() ? location : Location.asLocation(round(location.getCoordinate()));
     }
 
     /**
@@ -136,6 +155,10 @@ public final class ScaleInfo {
             scaledValue *= -1;
         }
         return DoubleUtils.round(scaledValue / truncationFactor, decimalPlaces);
+    }
+
+    public Coordinate scale(Coordinate coordinate) {
+        return new Coordinate(scale(coordinate.getX()), scale(coordinate.getY()));
     }
 
     public static class Builder {

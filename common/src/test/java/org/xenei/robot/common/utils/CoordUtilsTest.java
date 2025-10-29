@@ -1,6 +1,7 @@
 package org.xenei.robot.common.utils;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.xenei.robot.common.utils.AngleUtils.RADIANS_135;
 import static org.xenei.robot.common.utils.AngleUtils.RADIANS_180;
 import static org.xenei.robot.common.utils.AngleUtils.RADIANS_225;
@@ -13,10 +14,13 @@ import static org.xenei.robot.common.utils.DoubleUtils.SQRT2;
 import java.util.Arrays;
 import java.util.stream.Stream;
 
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.locationtech.jts.geom.Coordinate;
+import org.xenei.robot.common.Location;
 
 public class CoordUtilsTest {
     public static final double DELTA = 0.0000001;
@@ -90,4 +94,41 @@ public class CoordUtilsTest {
         assertEquals(x, underTest.getX(), DELTA);
         assertEquals(y, underTest.getY(), DELTA);
     }
+
+    @Test
+    void minusTest() {
+        Coordinate underTest = new Coordinate(4, 5);
+        Coordinate other = new Coordinate(3, 5);
+        Coordinate result = CoordUtils.minus(underTest, other);
+        Assertions.assertEquals(1, result.getX());
+        Assertions.assertEquals(0, result.getY());
+    }
+
+    @Test
+    void plusTest() {
+        Coordinate underTest = new Coordinate(4, 5);
+        Coordinate other = new Coordinate(4, 5);
+        Coordinate result = CoordUtils.plus(underTest, other);
+        Assertions.assertEquals(8, result.getX());
+        Assertions.assertEquals(10, result.getY());
+    }
+
+    @ParameterizedTest
+    @MethodSource("triCoordinates")
+    public void plusAndMinusTest(Coordinate a, Coordinate b, Coordinate c) {
+        assertTrue(c.equals2D(CoordUtils.plus(a, b), 0.00001));
+        assertTrue(c.equals2D(CoordUtils.plus(b, a), 0.00001));
+        assertTrue(a.equals2D(CoordUtils.minus(c, b), 0.00001));
+        assertTrue(b.equals2D(CoordUtils.minus(c, a), 0.00001));
+    }
+
+    private static Stream<Arguments> triCoordinates() {
+        return Stream.of(Arguments.of(new Coordinate(-2, 3), new Coordinate(6, 1), new Coordinate(4, 4)),
+                Arguments.of(new Coordinate(CoordUtils.fromAngle(0.7853981633974483, 2)),
+                        new Coordinate(CoordUtils.fromAngle(0, 2.8284271247461903)),
+                        new Coordinate(CoordUtils.fromAngle(0.3217505543966422, 4.47213595499958))),
+                Arguments.of(new Coordinate(0, 0), new Coordinate(CoordUtils.fromAngle(RADIANS_45, 1)),
+                        new Coordinate(CoordUtils.fromAngle(RADIANS_45, 1))));
+    }
+
 }

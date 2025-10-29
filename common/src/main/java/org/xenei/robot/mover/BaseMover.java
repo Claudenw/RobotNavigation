@@ -3,12 +3,12 @@ package org.xenei.robot.mover;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xenei.robot.common.BumpSensor;
-import org.xenei.robot.common.FrontsCoordinate;
+import org.xenei.robot.common.Location;
+import org.xenei.robot.common.Position;
 import org.xenei.robot.common.messages.Topic;
 import org.xenei.robot.common.sensor.bump.BumpSensorModel;
 import org.xenei.robot.common.Compass;
 import org.xenei.robot.common.Mover;
-import org.xenei.robot.common.Position;
 import org.xenei.robot.common.utils.AngleUtils;
 import org.xenei.robot.common.utils.RobutContext;
 
@@ -35,7 +35,7 @@ public abstract class BaseMover implements Mover {
 
     protected BaseMover(RobutContext ctxt, Compass compass, BumpSensorModel bumpSensorModel) {
         this.ctxt = ctxt;
-        this.moveToTopic = ctxt.bus.moveTo;;
+        this.moveToTopic = ctxt.bus.moveTo;
         this.motorStateTopic = ctxt.bus.motor;
         this.compass = compass;
         this.bumpSensorModel = bumpSensorModel;
@@ -89,9 +89,9 @@ public abstract class BaseMover implements Mover {
     }
 
     @Override
-    final public void move(FrontsCoordinate location) {
+    final public void move(Location location) {
         Position currentPosition = position();
-        Position nxt = currentPosition.nextPosition(location);
+        Position nxt = Position.PositionUtils.nextPosition(currentPosition, location);
         setHeading(currentPosition.headingTo(nxt));
         int rangeSteps = ctxt.chassisInfo.steps(location.range());
         takeSteps(rangeSteps, rangeSteps, (byte) 0);

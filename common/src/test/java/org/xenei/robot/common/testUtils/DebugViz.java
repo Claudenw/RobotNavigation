@@ -4,8 +4,8 @@ import java.util.function.Supplier;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.xenei.robot.common.FrontsCoordinate;
-import org.xenei.robot.common.PositionI;
+import org.xenei.robot.common.Location;
+import org.xenei.robot.common.Position;
 import org.xenei.robot.common.mapping.Map;
 import org.xenei.robot.common.planning.Solution;
 import org.xenei.robot.mapper.visualization.TextViz;
@@ -13,8 +13,8 @@ import org.xenei.robot.mapper.visualization.TextViz;
 public class DebugViz extends TextViz {
     private static final Logger LOG = LoggerFactory.getLogger(DebugViz.class);
 
-    public DebugViz(double scale, Map<?, ?, ?> map, Supplier<Solution> solutionSupplier,
-            Supplier<PositionI<?, ?>> positionSupplier, Supplier<FrontsCoordinate> targetSupplier) {
+    public DebugViz(double scale, Map map, Supplier<Solution> solutionSupplier,
+                    Supplier<Position> positionSupplier, Supplier<Location> targetSupplier) {
         super(scale, map, solutionSupplier, positionSupplier, targetSupplier);
     }
 

@@ -8,13 +8,13 @@ import org.xenei.robot.common.DistanceSensor;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.common.mapping.Map;
+import org.xenei.robot.common.mapping.MapTest;
 import org.xenei.robot.common.testUtils.FakeBumpSensor;
 import org.xenei.robot.common.testUtils.FakeDistanceSensor1;
 import org.xenei.robot.common.testUtils.FakeMover;
 import org.xenei.robot.common.testUtils.MapLibrary;
 import org.xenei.robot.common.utils.CoordUtils;
 import org.xenei.robot.common.utils.RobutContext;
-import org.xenei.robot.mapper.map.MapImpl;
 import org.xenei.robot.mapper.visualization.MapViz;
 import org.xenei.robot.mover.BumpSensorLogicModule;
 
@@ -30,7 +30,7 @@ public class RobutTest {
         FakeMover mover = new FakeMover(ctxt, origin);
         FakeBumpSensor bumpSensor = new FakeBumpSensor();
         BumpSensorLogicModule bumpSensorLogicModule = new BumpSensorLogicModule(ctxt, mover);
-        Map sensorMap = new MapImpl(ctxt);
+        Map sensorMap = new Map(ctxt, new MapTest.TestingStorage());
         DistanceSensor distSensor = new FakeDistanceSensor1(MapLibrary.map2(sensorMap), mover::position);
 
         Robut robut = new Robut(ctxt, distSensor, mover);
@@ -58,7 +58,7 @@ public class RobutTest {
             double range = in.nextDouble();
             LOG.debug("Attempting {} {}", angle, range);
             double theta = Math.toRadians(angle);
-            Location relativeLocation = new Location(CoordUtils.fromAngle(theta, range));
+            Location relativeLocation = Location.asLocation(CoordUtils.fromAngle(theta, range));
             robut.moveTo(relativeLocation);
         }
     }

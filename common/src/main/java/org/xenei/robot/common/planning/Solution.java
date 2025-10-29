@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.function.BiPredicate;
 import java.util.stream.Stream;
 
-import org.xenei.robot.common.FrontsCoordinate;
+import org.xenei.robot.common.mapping.MapCoordinate;
 
 public class Solution {
 
@@ -15,11 +15,11 @@ public class Solution {
         path = new ArrayList<>();
     }
 
-    public FrontsCoordinate end() {
+    public MapCoordinate end() {
         return get(path.size() - 1);
     }
 
-    private FrontsCoordinate get(int idx) {
+    private MapCoordinate get(int idx) {
         return !path.isEmpty() ? path.get(idx).coord : null;
     }
 
@@ -33,7 +33,7 @@ public class Solution {
      * @param coordinate
      *            the coordinate to add.
      */
-    public void add(FrontsCoordinate coordinate) {
+    public void add(MapCoordinate coordinate) {
         SolutionRecord sr = new SolutionRecord(coordinate);
         if (!path.contains(sr)) {
             path.add(sr);
@@ -51,11 +51,11 @@ public class Solution {
         return recalculateCost();
     }
 
-    public FrontsCoordinate start() {
+    public MapCoordinate start() {
         return get(0);
     }
 
-    public Stream<FrontsCoordinate> stream() {
+    public Stream<MapCoordinate> stream() {
         return path.stream().map(s -> s.coord);
     }
 
@@ -80,7 +80,7 @@ public class Solution {
         return accumulator;
     }
 
-    private void removeUnnecessarySteps(BiPredicate<FrontsCoordinate, FrontsCoordinate> clearCheck) {
+    private void removeUnnecessarySteps(BiPredicate<MapCoordinate, MapCoordinate> clearCheck) {
         List<SolutionRecord> result = new ArrayList<>();
         result.add(path.get(0));
         int idx = 0;
@@ -116,7 +116,7 @@ public class Solution {
      *            a predicate that returns clear if the path between the two
      *            coordinates is clear.
      */
-    public void simplify(BiPredicate<FrontsCoordinate, FrontsCoordinate> clearCheck) {
+    public void simplify(BiPredicate<MapCoordinate, MapCoordinate> clearCheck) {
         if (path.size() > 2) {
             recalculateCost();
             removeUnnecessarySteps(clearCheck);
@@ -124,14 +124,14 @@ public class Solution {
     }
 
     private static class SolutionRecord {
-        final FrontsCoordinate coord;
+        final MapCoordinate coord;
         final double cost;
 
-        SolutionRecord(FrontsCoordinate p) {
+        SolutionRecord(MapCoordinate p) {
             this(p, 0.0);
         }
 
-        SolutionRecord(FrontsCoordinate p, double cost) {
+        SolutionRecord(MapCoordinate p, double cost) {
             this.coord = p;
             this.cost = cost;
         }

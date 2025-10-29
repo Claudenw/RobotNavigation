@@ -10,7 +10,7 @@ import java.util.Iterator;
 import java.util.function.Supplier;
 
 import org.locationtech.jts.geom.Coordinate;
-import org.xenei.robot.common.FrontsCoordinate;
+import org.xenei.robot.common.mapping.MapCoordinate;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.utils.CoordUtils;
 
@@ -19,17 +19,17 @@ public class CoordinateUtils {
     private CoordinateUtils() {
     }
 
-    public static Location[] sortedArray(Collection<FrontsCoordinate> collect) {
+    public static Location[] sortedArray(Collection<MapCoordinate> collect) {
         return sortedArray(collect.toArray(new Location[0]));
     }
 
     public static Location[] sortedArray(Location[] collect) {
-        Arrays.sort(collect, FrontsCoordinate.XYCompr);
+        Arrays.sort(collect, MapCoordinate.XYCompr);
         return collect;
     }
 
     private static Coordinate asCoordinate(Object o) {
-        return (o instanceof Coordinate) ? (Coordinate) o : ((FrontsCoordinate) o).getCoordinate();
+        return (o instanceof Coordinate) ? (Coordinate) o : ((MapCoordinate) o).getCoordinate();
     }
 
     public static void assertEquivalent(Object a, Object b, double delta, Supplier<String> prefix) {
@@ -62,18 +62,18 @@ public class CoordinateUtils {
         assertNotEquivalent(a, b, 0);
     }
 
-    public static void assertEquivalent(Collection<FrontsCoordinate> one, Collection<FrontsCoordinate> two,
-            double delta) {
+    public static void assertEquivalent(Collection<MapCoordinate> one, Collection<MapCoordinate> two,
+                                        double delta) {
         assertEquals(one.size(), two.size(), () -> "differing sizes");
-        Iterator<FrontsCoordinate> iter1 = one.iterator();
-        Iterator<FrontsCoordinate> iter2 = two.iterator();
+        Iterator<MapCoordinate> iter1 = one.iterator();
+        Iterator<MapCoordinate> iter2 = two.iterator();
         for (int i = 0; i < one.size(); i++) {
             final int idx = i;
             assertEquivalent(iter1.next(), iter2.next(), delta, () -> "Error at " + idx);
         }
     }
 
-    public static void assertEquivalent(FrontsCoordinate[] one, FrontsCoordinate[] two, double delta) {
+    public static void assertEquivalent(MapCoordinate[] one, MapCoordinate[] two, double delta) {
         assertEquals(one.length, two.length, () -> "differing sizes");
         for (int i = 0; i < one.length; i++) {
             final int idx = i;

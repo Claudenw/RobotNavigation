@@ -18,12 +18,24 @@
     <junit.platform.version>1.13.3</junit.platform.version>
     <logback.version>1.2.3</logback.version>
     <jena.version>5.1.0</jena.version>
+    <guava.version>33.5.0-jre</guava.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <ver.mockito>5.6.0</ver.mockito>
     <diozero.ver>1.4.1</diozero.ver>
   </properties>
   <dependencyManagement>
     <dependencies>
+      <dependency>
+        <groupId>com.google.guava</groupId>
+        <artifactId>guava</artifactId>
+        <version>33.5.0-jre</version>
+      </dependency>
+      <dependency>
+        <groupId>org.assertj</groupId>
+        <artifactId>assertj-core</artifactId>
+        <version>3.27.6</version>
+        <scope>test</scope>
+      </dependency>
       <dependency>
         <groupId>org.junit.jupiter</groupId>
         <artifactId>junit-jupiter-api</artifactId>

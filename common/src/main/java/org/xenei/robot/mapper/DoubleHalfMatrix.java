@@ -7,7 +7,7 @@ package org.xenei.robot.mapper;
 public class DoubleHalfMatrix {
     double[][] matrix;
 
-    DoubleHalfMatrix(int size) {
+    public DoubleHalfMatrix(int size) {
         matrix = new double[size][];
         for (int i = 0; i < size; i++) {
             matrix[i] = new double[size - i];

@@ -13,19 +13,8 @@ public interface Compass {
      *         correct heading.
      */
     default Position getPosition(Coordinate location) {
-        return new Position(location, heading());
-    }
-
-    /**
-     * Sets calculates a position (sets the heading) from a location.
-     *
-     * @param location
-     *            the location.
-     * @return the Position
-     */
-    default Position getPosition(FrontsCoordinate location) {
-        return new Position(location.getCoordinate(), heading());
-    }
+        return Position.asPosition(location, heading());
+    };
 
     /**
      * the current heading. This may be an averaged value over several readings and

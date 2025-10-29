@@ -2,17 +2,17 @@ package org.xenei.robot.common.testUtils;
 
 import java.util.function.Supplier;
 
-import org.xenei.robot.common.PositionI;
+import org.xenei.robot.common.Position;
 
-public class TestingPositionSupplier implements Supplier<PositionI<?, ?>> {
-    public PositionI<?, ?> position;
+public class TestingPositionSupplier implements Supplier<Position> {
+    public Position position;
 
-    public TestingPositionSupplier(PositionI<?, ?> initial) {
+    public TestingPositionSupplier(Position initial) {
         position = initial;
     }
 
     @Override
-    public PositionI<?, ?> get() {
+    public Position get() {
         return position;
     }
 }

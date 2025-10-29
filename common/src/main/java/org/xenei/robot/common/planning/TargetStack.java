@@ -1,21 +1,19 @@
 package org.xenei.robot.common.planning;
 
-import org.xenei.robot.common.FrontsCoordinate;
-
 import java.util.Stack;
 
-public class TargetStack extends Stack<FrontsCoordinate> {
+public class TargetStack extends Stack<Segment> {
     public TargetStack() {
         super();
     }
 
     @Override
-    public FrontsCoordinate push(FrontsCoordinate item) {
+    public Segment push(Segment item) {
         if (this.size() == 2) {
             this.pop();
         }
         if (this.contains(item)) {
-            while (!item.equals2D(this.pop())) {
+            while (!item.getNextLocation().sameCoordinates(this.pop().getNextLocation())) {
                 // all activity in the while statement
             }
         }

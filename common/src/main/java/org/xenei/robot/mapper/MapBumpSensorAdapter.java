@@ -1,11 +1,11 @@
 package org.xenei.robot.mapper;
 
 import org.apache.commons.lang3.tuple.Pair;
+import org.locationtech.jts.geom.Coordinate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xenei.robot.common.BumpSensor;
-import org.xenei.robot.common.Location;
-import org.xenei.robot.common.PositionI;
+import org.xenei.robot.common.Position;
 import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.common.mapping.Map;
 import org.xenei.robot.common.utils.AngleUtils;
@@ -17,8 +17,8 @@ import java.util.function.Supplier;
 
 public class MapBumpSensorAdapter implements Consumer<BumpSensor.BumpState> {
     private static final Logger LOG = LoggerFactory.getLogger(MapBumpSensorAdapter.class);
-    private final Map<?, ?, ?> map;
-    private final Supplier<PositionI<?, ?>> positionSupplier;
+    private final Map map;
+    private final Supplier<Position> positionSupplier;
 
     private final static HashMap<BumpSensor.State, Pair<Double, Double>> ANGLES = new HashMap<>();
     static {
@@ -48,7 +48,7 @@ public class MapBumpSensorAdapter implements Consumer<BumpSensor.BumpState> {
         ANGLES.put(BumpSensor.State.LEFT_FRONT_CORNER, Pair.of(start, end));
     }
 
-    public MapBumpSensorAdapter(final Map map, Supplier<PositionI<?, ?>> positionSupplier) {
+    public MapBumpSensorAdapter(final Map map, Supplier<Position> positionSupplier) {
         this.map = map;
         this.positionSupplier = positionSupplier;
     }
@@ -58,7 +58,7 @@ public class MapBumpSensorAdapter implements Consumer<BumpSensor.BumpState> {
         if (bumpState.getValue() == 0) {
             return;
         }
-        PositionI<?, ?> position = positionSupplier.get();
+        Position position = positionSupplier.get();
         LOG.debug("Sense position: {}", position);
 
         ScaleInfo scaleInfo = map.getContext().scaleInfo;
@@ -67,9 +67,9 @@ public class MapBumpSensorAdapter implements Consumer<BumpSensor.BumpState> {
         for (BumpSensor.State state : BumpSensor.State.values()) {
             if (bumpState.is(state)) {
                 Pair<Double, Double> thetas = ANGLES.get(state);
-                Location relativeStart = new Location(scaleInfo.round(CoordUtils.fromAngle(thetas.getLeft(), range)));
-                Location relativeEnd = new Location(scaleInfo.round(CoordUtils.fromAngle(thetas.getRight(), range)));
-                map.createObstacle(position, relativeStart, relativeEnd);
+                Coordinate start = CoordUtils.add(position.getCoordinate(), CoordUtils.fromAngle(thetas.getLeft(), range));
+                Coordinate end = CoordUtils.add(position.getCoordinate(), CoordUtils.fromAngle(thetas.getRight(), range));
+                map.createObstacleInBackground(map.asMapCoordinate(start), map.asMapCoordinate(end));
             }
         }
     }

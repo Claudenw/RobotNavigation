@@ -1,18 +1,14 @@
 package org.xenei.robot.mapper;
 
-import static java.util.concurrent.TimeUnit.SECONDS;
-import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Stream;
 
-import org.apache.jena.arq.querybuilder.AskBuilder;
-import org.apache.jena.arq.querybuilder.WhereBuilder;
-import org.apache.jena.vocabulary.RDF;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -24,50 +20,50 @@ import org.xenei.robot.common.DistanceSensor;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Position;
 import org.xenei.robot.common.ScaleInfo;
+import org.xenei.robot.common.mapping.Map;
+import org.xenei.robot.common.mapping.MapLocation;
+import org.xenei.robot.common.mapping.MapTest;
 import org.xenei.robot.common.mapping.Mapper;
+import org.xenei.robot.common.mapping.ThetaAndRange;
 import org.xenei.robot.common.utils.AngleUtils;
-import org.xenei.robot.common.utils.CoordUtils;
 import org.xenei.robot.common.utils.RobutContext;
-import org.xenei.robot.mapper.map.MapImpl;
-import org.xenei.robot.mapper.rdf.Namespace;
 
 public class MapperImplTest {
     private final RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT, ChassisInfoTest.DEFAULT);
-    private final MapImpl map = new MapImpl(ctxt);
+    private MapTest.TestingStorage testingStorage;
+    private Map map;
 
     @BeforeEach
     public void setup() {
-        map.clear(Namespace.PlanningModel.getURI());
+        testingStorage = new MapTest.TestingStorage();
+        map = new Map(ctxt, testingStorage);
     }
 
     @Test
     public void processSensorDataTest_TooClose() throws InterruptedException {
 
-        Position currentPosition = new Position(new Coordinate(-1, -3), AngleUtils.RADIANS_90);
-        Location target = new Location(new Coordinate(-1, 1));
+        Position currentPosition = Position.asPosition(new Coordinate(-1, -3), AngleUtils.RADIANS_90);
+        Location target = Location.asLocation(new Coordinate(-1, 1));
         Coordinate mapValue = new Coordinate(5, 5);
 
         Mapper underTest = new MapperImpl(map, () -> target);
 
-        Coordinate expectedObstacle = CoordUtils.fromAngle(0, 2 * map.getContext().scaleInfo.getResolution());
-        Coordinate unexpectedObstacle = CoordUtils.fromAngle(0, map.getContext().scaleInfo.getResolution());
+        ThetaAndRange expectedObstacle = new ThetaAndRange(0, 2 * map.getContext().scaleInfo.getResolution());
+        ThetaAndRange unexpectedObstacle = new ThetaAndRange(0, map.getContext().scaleInfo.getResolution());
         // an obstacle within one radius away is too close so no target generated.
         underTest.getRelativeObstacleConsumer()
-                .accept(new DistanceSensor.Readings(currentPosition,
-                        List.of(DistanceSensor.DistanceReading.from(unexpectedObstacle),
-                                DistanceSensor.DistanceReading.from(expectedObstacle))));
+                .accept(new DistanceSensor.Readings(currentPosition, List.of(unexpectedObstacle, expectedObstacle)));
 
-        Thread.sleep(2000);
-        System.out.println(MapReports.dumpModel(map));
+        //System.out.println(MapReports.dumpModel(map));
 
-        await().atMost(2, SECONDS).untilAsserted(() -> assertEquals(1, map.getObstacles().join().size()));
-        assertFalse(map.isObstacle(new Location(new Coordinate(-1, 1 + map.getContext().scaleInfo.getResolution()))));
-        assertTrue(map.isObstacle(new Location(new Coordinate(-1, -2))));
+        assertEquals(1, map.getObstacles().join().count());
+        assertFalse(map.isObstacle(map.asMapCoordinate(new Coordinate(-1, 1 + map.getContext().scaleInfo.getResolution()))));
+        assertTrue(map.isObstacle(map.asMapCoordinate((new Coordinate(-1, -2)))));
     }
 
     private static Stream<Arguments> sensorData() {
         List<Arguments> lst = new ArrayList<>();
-        Coordinate sensorReading = CoordUtils.fromAngle(0, 2);
+        Location sensorReading = new ThetaAndRange(0, 2);
         // results are the center of the cell.
         lst.add(Arguments.of(0, sensorReading, new Coordinate(2, 0), new Coordinate(1.5, 0))); // along x coord
         lst.add(Arguments.of(90, sensorReading, new Coordinate(0, 2), new Coordinate(0, 1.5))); // down Y coord
@@ -82,21 +78,20 @@ public class MapperImplTest {
     void processSensorDataTest(final double heading, final Coordinate sensorReading, final Coordinate expectedObstacle,
             final Coordinate expectedCoord) {
 
-        Position currentPosition = new Position(new Coordinate(-0, 0), Math.toRadians(heading));
-        Location target = new Location(new Coordinate(10, 10));
+        Position currentPosition = Position.asPosition(new Coordinate(-0, 0), Math.toRadians(heading));
+        Location target = Location.asLocation(new Coordinate(10, 10));
 
         Mapper underTest = new MapperImpl(map, () -> target);
 
         // process data
         underTest.getRelativeObstacleConsumer().accept(new DistanceSensor.Readings(currentPosition,
-                List.of(DistanceSensor.DistanceReading.from(sensorReading))));
+                List.of(Location.asLocation(sensorReading))));
 
-        await().atMost(2, SECONDS).untilAsserted(() -> assertTrue(map.isObstacle(new Location(expectedObstacle))));
+        assertTrue(map.isObstacle(map.asMapCoordinate(expectedObstacle)));
 
-        AskBuilder ask = new AskBuilder().addGraph(Namespace.PlanningModel, new WhereBuilder()
-                .addWhere(Namespace.s, Namespace.x, expectedCoord.x).addWhere(Namespace.s, Namespace.y, expectedCoord.y)
-                .addWhere(Namespace.s, Namespace.isIndirect, false).addWhere(Namespace.s, RDF.type, Namespace.Coord));
-        await().atMost(2, SECONDS).untilAsserted(() -> assertTrue(map.ask(ask)));
-
+        Optional<MapLocation> optional = map.getLocations().join().filter(loc -> loc.sameCoordinates(expectedCoord)).findFirst();
+        assertTrue(optional.isPresent());
+        MapLocation mapLocation = optional.get();
+        assertTrue(mapLocation.isIndirect(map.asMapLocation(target)));
     }
 }

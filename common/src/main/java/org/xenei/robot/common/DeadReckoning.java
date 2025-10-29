@@ -1,5 +1,10 @@
 package org.xenei.robot.common;
 
+import org.locationtech.jts.geom.Coordinate;
+import org.xenei.robot.common.mapping.Map;
+import org.xenei.robot.common.mapping.ThetaAndRange;
+import org.xenei.robot.common.utils.AngleUtils;
+import org.xenei.robot.common.utils.CoordUtils;
 import org.xenei.robot.common.utils.DoubleUtils;
 import org.xenei.robot.common.utils.RobutContext;
 
@@ -12,29 +17,30 @@ import java.util.function.Supplier;
 public class DeadReckoning implements Compass, Supplier<Position> {
     private final AtomicReference<Position> position;
     private StepMonitor currentMonitor;
+    private Map map;
     private final RobutContext ctxt;
 
     /**
      * Constructor that defaults to position at origin with heading of 0.
      *
      * @param ctxt
-     *            the robut context to work with.
+     *            the RobutContext to work in.
      */
     public DeadReckoning(RobutContext ctxt) {
-        this(ctxt, Position.ORIGIN);
+        this( ctxt, Position.asPosition(Location.ORIGIN, 0));
     }
 
     /**
-     * Constructor.
+     * Constructor that defaults to position at origin with heading of 0.
      *
      * @param ctxt
-     *            the robut context to work with.
-     * @param initialPosition
-     *            the inital position.
+     *            the RobutContext to work in.
+     * @param position The position to start at.
      */
-    public DeadReckoning(RobutContext ctxt, Position initialPosition) {
+    public DeadReckoning(RobutContext ctxt, Position position) {
+        //this.map = map;
         this.ctxt = ctxt;
-        position = new AtomicReference<>(initialPosition);
+        this.position = new AtomicReference<>(position);
     }
 
     @Override
@@ -46,10 +52,20 @@ public class DeadReckoning implements Compass, Supplier<Position> {
         return position.get().getHeading();
     }
 
+    Position nextPosition(Position start, ThetaAndRange relativeCoordinates) {
+        if (relativeCoordinates.range() == 0 && relativeCoordinates.theta() == 0) {
+            return start;
+        }
+        double newHeading = AngleUtils.normalize(start.getHeading() + relativeCoordinates.theta());
+        Coordinate newCoordinate = CoordUtils.fromAngle(newHeading, relativeCoordinates.range());
+
+        return Position.asPosition(newCoordinate, newHeading);
+    }
+
     @Override
     public Position get() {
         if (currentMonitor != null) {
-            return position.get().nextPosition(ctxt.chassisInfo.thetaAndRange(currentMonitor));
+            return nextPosition(position.get(), ctxt.chassisInfo.thetaAndRange(currentMonitor));
         }
         return position.get();
     }
@@ -81,10 +97,10 @@ public class DeadReckoning implements Compass, Supplier<Position> {
     public void track(StepMonitor stepMonitor) {
         if (currentMonitor != null) {
             if (currentMonitor.hasStepDifferential()) {
-                position.getAndUpdate(p -> p.nextPosition(ctxt.chassisInfo.thetaAndRange(currentMonitor)));
+                position.getAndUpdate(p -> Position.PositionUtils.nextPosition(p, ctxt.chassisInfo.thetaAndRange(currentMonitor)));
             } else {
                 double range = ctxt.chassisInfo.range(currentMonitor.leftRotation());
-                position.getAndUpdate(p -> p.nextPosition(range));
+                position.getAndUpdate(p -> Position.PositionUtils.nextPosition(p, range));
             }
         }
         this.currentMonitor = stepMonitor;

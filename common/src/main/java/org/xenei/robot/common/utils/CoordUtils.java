@@ -3,9 +3,11 @@ package org.xenei.robot.common.utils;
 import java.util.Comparator;
 
 import org.locationtech.jts.geom.Coordinate;
-import org.xenei.robot.common.FrontsCoordinate;
+import org.xenei.robot.common.Location;
+import org.xenei.robot.common.mapping.MapCoordinate;
+import org.xenei.robot.common.mapping.ThetaAndRange;
 
-public class CoordUtils {
+public final class CoordUtils {
     private CoordUtils() {
     }
 
@@ -20,11 +22,11 @@ public class CoordUtils {
         return String.format(fmt, p.getX(), p.getY());
     }
 
-    public static String toString(FrontsCoordinate p) {
+    public static String toString(MapCoordinate p) {
         return String.format("{%f,%f}", p.getX(), p.getY());
     }
 
-    public static String toString(FrontsCoordinate p, int precision) {
+    public static String toString(MapCoordinate p, int precision) {
         String fmt = String.format("{%%.%sf, %%.%sf}", precision, precision);
         return String.format(fmt, p.getX(), p.getY());
     }
@@ -64,6 +66,12 @@ public class CoordUtils {
         return new Coordinate(a.getX() - b.getX(), a.getY() - b.getY());
     }
 
+    /**
+     * Caclulates the theta of a line passing through the 2 points.
+     * @param a the first point
+     * @param b the second point.
+     * @return the angle of the line passing thorugh the points.
+     */
     public static double angleBetween(Coordinate a, Coordinate b) {
         Coordinate diff = subtract(a, b);
         if (diff.getX() == 0 && diff.getY() == 0) {
@@ -86,7 +94,7 @@ public class CoordUtils {
         return AngleUtils.normalize(Math.atan2(to.getY() - from.getY(), to.getX() - from.getX()));
     }
 
-    public static double calcHeading(FrontsCoordinate from, FrontsCoordinate to) {
+    public static double calcHeading(MapCoordinate from, MapCoordinate to) {
         return calcHeading(from.getCoordinate(), to.getCoordinate());
     }
 
@@ -112,4 +120,19 @@ public class CoordUtils {
         return (Double.isNaN(coord.getX()) || Double.isNaN(coord.getY()));
     }
 
+    public static Coordinate minus(Coordinate a, Coordinate b) {
+        return new Coordinate(a.getX() - b.getX(), a.getY() - b.getY());
+    }
+
+    public static Coordinate plus(Coordinate a, Coordinate b) {
+        return new Coordinate(a.getX() + b.getX(), a.getY() + b.getY());
+    }
+
+    public static Coordinate nextCoordinate(Coordinate a, double heading, double scaledRange) {
+        return plus(a, CoordUtils.fromAngle(heading, scaledRange));
+    }
+
+    public static Coordinate nextCoordinate(Coordinate a, ThetaAndRange thetaAndRange) {
+        return nextCoordinate(a, thetaAndRange.theta(), thetaAndRange.range());
+    }
 }

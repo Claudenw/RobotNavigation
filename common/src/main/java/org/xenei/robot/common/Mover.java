@@ -1,5 +1,7 @@
 package org.xenei.robot.common;
 
+import org.xenei.robot.common.mapping.MapCoordinate;
+
 import java.util.concurrent.locks.Lock;
 
 /**
@@ -12,8 +14,9 @@ public interface Mover {
     enum MotorState {
         RUN, PAUSE, STOP
     }
-    record MoveTo(FrontsCoordinate location) {
-    };
+
+    record MoveTo(MapCoordinate location) {
+    }
 
     /**
      * Move to the specified location
@@ -21,7 +24,7 @@ public interface Mover {
      * @param location
      *            The relative location to move to.
      */
-    void move(FrontsCoordinate location);
+    void move(Location location);
 
     /**
      * @return the current absolute position.

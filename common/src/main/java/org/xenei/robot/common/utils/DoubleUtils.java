@@ -5,7 +5,7 @@ import java.math.RoundingMode;
 
 import org.apache.commons.math3.util.Precision;
 
-public class DoubleUtils {
+public final class DoubleUtils {
 
     public static final double SQRT2 = Math.sqrt(2.0);
     public static final double DEFAULT_TOLERANCE = Precision.EPSILON;

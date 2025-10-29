@@ -1,34 +1,24 @@
 package org.xenei.robot.common.mapping;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 
 import org.locationtech.jts.geom.Coordinate;
-import org.locationtech.jts.geom.LineSegment;
-import org.locationtech.jts.geom.LineString;
-import org.xenei.robot.common.Location;
-import org.xenei.robot.common.Obstacle;
-import org.xenei.robot.common.Position;
-import org.xenei.robot.common.utils.CoordUtils;
+
 
 public class MapBuilder {
 
-    private final Map<?, ?, ?> map;
-    private final List<CompletableFuture<?>> futures = new ArrayList<>();
+    private final Map map;
 
     public enum Type {
         Obstacle, Path
-    };
+    }
 
-    public MapBuilder(Map<?, ?, ?> map) {
+    public MapBuilder(Map map) {
         this.map = map;
     }
 
     public MapBuilder set(int x, int y) {
-        futures.add(map.createObstacle(new Coordinate(x, y)));
+        map.createObstacle(new Coordinate(x, y));
         return this;
     }
 
@@ -39,10 +29,11 @@ public class MapBuilder {
     private MapBuilder set(Coordinate first, Coordinate last, Type type) {
         switch (type) {
             case Obstacle :
-                futures.add(map.createObstacle(first, last));
+                map.createObstacle(first, last);
                 break;
             case Path :
-                futures.add(map.addPath(new Location(first), new Location(last)));
+                List<MapLocation> locations = List.of(map.asMapLocation(map.asMapCoordinate(first)), map.asMapLocation(map.asMapCoordinate(last)));
+                map.addPath(locations.stream());
                 break;
         }
         return this;
@@ -60,8 +51,7 @@ public class MapBuilder {
         return this;
     }
 
-    public Map<?, ?, ?> build() {
-        futures.forEach(CompletableFuture::join);
+    public Map build() {
         return map;
     }
 }

@@ -1,26 +1,41 @@
 package org.xenei.robot.common;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
 
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.locationtech.jts.util.NumberUtil;
+import org.xenei.robot.common.utils.AngleUtils;
 
 public class ScaleInfoTest {
+
+    public static void assertEquals(ScaleInfo scaleInfo, Location a, Location b) {
+        assertTrue(scaleInfo.areEquivalent(a, b), () -> String.format("%s != %s", a, b));
+    }
+
+    public static void assertEquals(ScaleInfo scaleInfo, Position a, Position b) {
+        if (!scaleInfo.areEquivalent(a, b) || !NumberUtil.equalsWithTolerance(AngleUtils.normalize(a.getHeading()),
+                AngleUtils.normalize(b.getHeading()), scaleInfo.getResolution())) {
+            fail(String.format("Expected %s ≈ %s (±%s)", a, b, scaleInfo.getResolution()));
+        }
+    }
 
     @ParameterizedTest(name = "{index} - {2}")
     @MethodSource("scaleParameters")
     public void scaleTest(ScaleInfo underTest, double expected, double arg) {
-        assertEquals(expected, underTest.scale(arg));
+        Assertions.assertEquals(expected, underTest.scale(arg));
     }
 
     private static Stream<Arguments> scaleParameters() {
         ScaleInfo underTest = ScaleInfo.builder().setResolution(0.5).setScale(1).build();
-        List<Arguments> lst = new ArrayList<Arguments>();
+        List<Arguments> lst = new ArrayList<>();
 
         lst.add(Arguments.of(underTest, 3.0, 3.0));
         lst.add(Arguments.of(underTest, 3.5, 3.5));
@@ -51,12 +66,12 @@ public class ScaleInfoTest {
     @ParameterizedTest(name = "{index} - {2}")
     @MethodSource("precisionParameters")
     public void preciseTest(ScaleInfo underTest, double expected, double value) {
-        assertEquals(expected, underTest.round(value));
+        Assertions.assertEquals(expected, underTest.round(value));
     }
 
     private static Stream<Arguments> precisionParameters() {
         ScaleInfo underTest = ScaleInfo.DEFAULT;
-        List<Arguments> lst = new ArrayList<Arguments>();
+        List<Arguments> lst = new ArrayList<>();
 
         lst.add(Arguments.of(underTest, 3.0, 3.0));
         lst.add(Arguments.of(underTest, 3.5, 3.5));

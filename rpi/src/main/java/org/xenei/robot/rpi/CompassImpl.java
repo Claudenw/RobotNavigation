@@ -5,9 +5,11 @@ import java.util.TimerTask;
 import java.util.concurrent.atomic.DoubleAdder;
 import java.util.concurrent.locks.ReentrantLock;
 
+import org.locationtech.jts.geom.Coordinate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xenei.robot.common.Compass;
+import org.xenei.robot.common.Position;
 import org.xenei.robot.common.utils.AngleUtils;
 import org.xenei.robot.common.utils.DoubleUtils;
 import org.xenei.robot.rpi.sensors.mmc3416xpj.MMC3416xPJ;
@@ -19,8 +21,8 @@ public class CompassImpl implements Compass {
     private final static int SAMPLE_SIZE = 10;
     private final static int POLL_INTERVAL = 250;
     private final Values[] samples;
-    private DoubleAdder totalRadians;
-    private int position = 0;
+    private final DoubleAdder totalRadians;
+    private int position;
     private final Timer timer;
     private final ReentrantLock lock;
     private static final int accuracy = 2;
@@ -101,6 +103,11 @@ public class CompassImpl implements Compass {
     @Override
     public int decimalPlaces() {
         return accuracy;
+    }
+
+    @Override
+    public Position getPosition(Coordinate location) {
+        return Position.asPosition(location, heading());
     }
 
     @Override

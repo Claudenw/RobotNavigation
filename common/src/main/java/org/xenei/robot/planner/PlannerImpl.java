@@ -1,38 +1,39 @@
 package org.xenei.robot.planner;
 
 import java.util.Collection;
-import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.xenei.robot.common.FrontsCoordinate;
+import org.xenei.robot.common.Position;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Mover;
-import org.xenei.robot.common.NavigationSnapshot;
-import org.xenei.robot.common.PositionI;
-import org.xenei.robot.common.ScaleInfo;
+import org.xenei.robot.common.mapping.MapLocation;
+import org.xenei.robot.common.mapping.MapPath;
+import org.xenei.robot.common.mapping.MapTargetData;
+import org.xenei.robot.common.mapping.NavigationSnapshot;
 import org.xenei.robot.common.mapping.Map;
+import org.xenei.robot.common.mapping.MapPosition;
 import org.xenei.robot.common.messages.Topic;
 import org.xenei.robot.common.planning.Planner;
 import org.xenei.robot.common.planning.Solution;
 import org.xenei.robot.common.planning.Segment;
 import org.xenei.robot.common.planning.TargetStack;
-import org.xenei.robot.common.utils.CoordUtils;
-import org.xenei.robot.mapper.SegmentImpl;
-import org.xenei.robot.mapper.rdf.Namespace;
+
 
 public class PlannerImpl implements Planner {
     private static final Logger LOG = LoggerFactory.getLogger(PlannerImpl.class);
     private final TargetStack target;
-    private final Map<?, ?, ?> map;
-    private final Supplier<PositionI<?, ?>> positionSupplier;
+    private final Map map;
+    private final Supplier<? extends Position> positionSupplier;
     private final Topic<Mover.MoveTo> moveToTopic;
     private final Topic<Mover.MotorState> motorTopic;
-    private final ScaleInfo scaleInfo;
     private Solution solution;
     private NavigationSnapshot snapshot;
+    private MapPath onPath;
 
     /**
      * Constructs a planner.
@@ -42,7 +43,7 @@ public class PlannerImpl implements Planner {
      * @param positionSupplier
      *            a provider of the current position.
      */
-    public PlannerImpl(Map<?, ?, ?> map, Supplier<PositionI<?, ?>> positionSupplier) {
+    public PlannerImpl(Map map, Supplier<? extends Position> positionSupplier) {
         this(map, positionSupplier, null);
     }
 
@@ -56,27 +57,26 @@ public class PlannerImpl implements Planner {
      * @param target
      *            the coordinates of the target to reach.
      */
-    public PlannerImpl(Map<?, ?, ?> map, Supplier<PositionI<?, ?>> positionSupplier, Location target) {
+    public PlannerImpl(Map map, Supplier<? extends Position> positionSupplier, Location target) {
         this.map = map;
+        this.onPath = null;
         this.moveToTopic = map.getContext().bus.moveTo;
         this.motorTopic = map.getContext().bus.motor;
-        this.scaleInfo = map.getContext().scaleInfo;
         motorTopic.register(motorState -> {
             if (Mover.MotorState.STOP.equals(motorState)) {
-                selectSegment().ifPresent(nextPosition -> moveToTopic.send(new Mover.MoveTo(nextPosition)));
+                selectSegment().ifPresent(segment -> moveToTopic.send(new Mover.MoveTo(segment.getNextLocation())));
             }
         });
         this.target = new TargetStack();
         this.positionSupplier = positionSupplier;
         this.solution = new Solution();
 
-        this.snapshot = new NavigationSnapshot(positionSupplier.get(), map.asMapCoordinate(target));
-        solution.add(map.asMapCoordinate(snapshot.position));
+        this.snapshot = new NavigationSnapshot(map.asMapPosition(positionSupplier.get()), map.asMapLocation(target));
+        solution.add(snapshot.position);
         if (snapshot.target != null) {
             setTarget(snapshot.target);
         }
 
-        map.asMapPosition(snapshot.position).addTarget(snapshot.target);
         LOG.debug("PlannerImpl: {}", snapshot);
     }
 
@@ -87,7 +87,11 @@ public class PlannerImpl implements Planner {
 
     @Override
     public void registerPositionChange(NavigationSnapshot snapshot) {
-        map.addCoord(snapshot.position, getFinalTarget(), true).ifPresent(solution::add);
+        snapshot.position.setVisited();
+        MapTargetData targetData = snapshot.position.getTargetData(getFinalTarget());
+        if (!targetData.indirect()) {
+            solution.add(getFinalTarget());
+        }
     }
 
     @Override
@@ -97,83 +101,126 @@ public class PlannerImpl implements Planner {
 
     @Override
     public Optional<Segment> selectSegment() {
-        PositionI<?, ?> pos = positionSupplier.get();
-        map.setVisited(pos);
-        if (scaleInfo.areEquivalent(pos, getTarget())) {
-            LOG.debug("Reached intermediate target");
-            map.setVisited(target.pop());
-            if (target.isEmpty()) {
-                LOG.debug("Reached final target");
-                return Optional.empty();
-            }
-        }
-        Optional<Segment> selected = map.getBestSegment(pos);
+        MapPosition position = map.asMapPosition(positionSupplier.get());
+        Optional<Segment> selected = selectSegment(position);
+
         if (selected.isPresent()) {
             Segment segment = selected.get();
-            if (!scaleInfo.areEquivalent(segment, getTarget())) {
+            if (!segment.getNextLocation().sameCoordinates(getTarget())) {
                 target.push(segment);
                 if (LOG.isDebugEnabled()) {
                     LOG.debug("New target registered: " + selected.get());
                 }
             }
         } else {
-            double dist = pos.distance(target.peek());
-            selected = Optional.of(SegmentImpl.builder().setCoordinate(target.peek()).setCost(dist).setDistance(dist)
-                    .build(map.getContext()));
+            double dist = position.distance(target.peek().getNextLocation());
+            selected = Optional.of(new Segment(target.peek().getNextLocation(), dist, dist));
         }
         return selected;
     }
 
-    @Override
-    public void recalculateCosts() {
-        // recalculate the distances
-        map.recalculate(target.peek());
+    private Optional<Segment> selectSegment(MapPosition position) {
+        position.setVisited();
+
+        if (position.sameCoordinates(getTarget())) {
+            LOG.debug("Reached intermediate target");
+            target.pop().getNextLocation().setVisited();
+            if (target.isEmpty()) {
+                LOG.debug("Reached final target");
+                return Optional.empty();
+            }
+        }
+
+        Optional<Segment> result = onPath != null ? onPath.getSegment(position) : Optional.empty();
+
+        result = result.or(() -> {
+                    if (position.hasPath(getFinalTarget())) {
+                        onPath = position.getPath(getFinalTarget());
+                        return onPath.getSegment(position);
+                    }
+                    return Optional.empty();
+                });
+
+        return result.or(() -> explore(position));
     }
 
+    private Optional<Segment> explore(MapPosition position) {
+        double cost = Double.POSITIVE_INFINITY;
+        MapLocation newTarget = null;
+        double distance = Double.POSITIVE_INFINITY;
+
+
+        Collection<MapLocation> candidateLocations = position.getCandidateLocations(getFinalTarget()).collect(Collectors.toSet());
+        for (MapLocation potentialTarget : candidateLocations) {
+            MapTargetData potentialTargetData = position.getTargetData(potentialTarget);
+            if (!potentialTargetData.indirect()) {
+                MapTargetData finalTargetData = potentialTarget.getTargetData(getFinalTarget());
+                double potentialCost = potentialTargetData.asSegment(position).cost() + finalTargetData.asSegment(position).cost();
+                if (potentialCost < cost) {
+                    cost = potentialCost;
+                    distance = potentialTargetData.distance();
+                    newTarget = potentialTarget;
+                }
+            }
+        }
+        if (newTarget == null) {
+            return Optional.empty();
+        }
+        Segment segment = new Segment(newTarget, cost, distance);
+        return Optional.of(segment);
+    }
+
+//    @Override
+//    public void recalculateCosts() {
+//        // recalculate the distances
+//        map.recalculate(target.peek());
+//    }
+
     @Override
-    public double setTarget(FrontsCoordinate target) {
-        PositionI<?, ?> pos = positionSupplier.get();
+    public double setTarget(Location target) {
+        Position pos = positionSupplier.get();
         LOG.info("Setting target to {} starting from {}", target, pos);
         motorTopic.send(Mover.MotorState.PAUSE);
         this.target.clear();
-        this.target.push(map.recalculate(target));
+        //this.target.push(map.recalculate(target));
 
         solution = new Solution();
-        solution.add(map.asMapCoordinate(pos));
-        return map.getContext().scaleInfo.round(CoordUtils.calcHeading(pos, getTarget()));
+        solution.add(map.asMapLocation(pos));
+
+        return pos.headingTo(target);
     }
 
     @Override
-    public void replaceTarget(FrontsCoordinate target) {
-        PositionI<?, ?> pos = positionSupplier.get();
-        if (this.target.size() != 1) {
-            LOG.info("Replacing target to {} with {} while at {}", getTarget(), target, pos);
-            if (this.target.get(0).equals2D(target)) {
+    public void replaceTarget(Location newLocation) {
+        MapLocation newTarget = map.asMapLocation(newLocation);
+        if (!map.getContext().scaleInfo.areEquivalent(getTarget(), newTarget)) {
+            if (this.target.size() == 1) {
                 this.target.clear();
-                this.target.push(target);
+                this.target.push(new Segment(newTarget, 0, 0));
             } else {
+                LOG.info("Replacing target to {} with {} while at {}", getTarget(), newTarget, Position.PositionUtils.toString(positionSupplier.get()));
                 this.target.pop();
+                final MapTargetData mapTargetData = getTarget().getTargetData(newTarget);
+                double cost = mapTargetData.indirect() ? 2 * mapTargetData.distance() : mapTargetData.distance();
+                this.target.push(new Segment(newTarget, cost, mapTargetData.distance()));
             }
-        } else {
-            LOG.info("Adding target to {} to {}", target, getTarget());
+            this.snapshot = new NavigationSnapshot(snapshot.position, map.asMapLocation(newTarget));
         }
-        this.target.push(target);
-        this.snapshot = new NavigationSnapshot(snapshot.position, target);
     }
 
     @Override
-    public FrontsCoordinate getTarget() {
-        return target.isEmpty() ? null : target.peek();
+    public MapLocation getTarget() {
+        return target.isEmpty() ? null : target.peek().getNextLocation();
     }
 
     @Override
-    public FrontsCoordinate getFinalTarget() {
-        return target.isEmpty() ? null : target.get(0);
+    public MapLocation getFinalTarget() {
+        return target.isEmpty() ? null : target.get(0).getNextLocation();
     }
 
     @Override
-    public Collection<FrontsCoordinate> getTargets() {
-        return Collections.unmodifiableCollection(target);
+    public List<? extends Location> getTargets() {
+        return target.stream().map(Segment::getNextLocation).toList();
     }
 
     @Override
@@ -182,8 +229,7 @@ public class PlannerImpl implements Planner {
         this.solution = new Solution();
         solution.simplify(map::isClearPath);
         if (solution.stepCount() > 0) {
-            FrontsCoordinate[] coords = solution.stream().toArray(FrontsCoordinate[]::new);
-            map.addPath(Namespace.KnownModel, coords);
+            map.addPath(solution.stream().map(map::asMapLocation));
         }
     }
 

@@ -6,8 +6,11 @@ import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.MultiLineString;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
-import org.xenei.robot.common.FrontsCoordinate;
-import org.xenei.robot.common.PositionI;
+import org.xenei.robot.common.Location;
+import org.xenei.robot.common.Position;
+import org.xenei.robot.common.mapping.MapCoordinate;
+import org.xenei.robot.common.mapping.MapLocation;
+import org.xenei.robot.common.mapping.MapPosition;
 import org.xenei.robot.common.planning.Solution;
 import org.xenei.robot.common.utils.GeometryUtils;
 import org.xenei.robot.common.mapping.Map;
@@ -43,11 +46,11 @@ abstract class VisualizationLibrary<T extends VisualizationLibrary.AbstractDrawi
         return drawString(geom, color);
     }
 
-    public java.util.List<T> draw(Map<?, ?, ?> map, Supplier<Solution> solutionSupplier,
-            Supplier<PositionI<?, ?>> positionSupplier, Supplier<FrontsCoordinate> targetSupplier) {
+    public java.util.List<T> draw(Map map, Supplier<Solution> solutionSupplier,
+                                  Supplier<Position> positionSupplier, Supplier<Location> targetSupplier) {
         java.util.List<T> cmds = new ArrayList<>();
         java.util.List<CompletableFuture<?>> futures = new ArrayList<>();
-        FrontsCoordinate target = targetSupplier.get();
+        MapLocation target = map.asMapLocation(targetSupplier.get());
         futures.add(map.getObstacles().thenAccept(obs -> obs.forEach(obst -> {
             if (obst.getGeometry() instanceof GeometryCollection gCollection) {
                 for (int i = 0; i < gCollection.getNumGeometries(); i++) {
@@ -58,13 +61,13 @@ abstract class VisualizationLibrary<T extends VisualizationLibrary.AbstractDrawi
             }
         })));
 
-        futures.add(map.getCoords().thenAccept(coords -> coords.forEach(mapCoord -> {
+        futures.add(map.getLocations().thenAccept(coords -> coords.forEach(mapCoord -> {
             cmds.add(getPoly(mapCoord.getGeometry(), mapCoord.isIndirect(target) ? Color.CYAN : Color.BLUE));
         })));
 
-        List<FrontsCoordinate> lst = solutionSupplier.get().stream().toList();
+        List<MapCoordinate> lst = solutionSupplier.get().stream().toList();
         if (lst.size() > 1) {
-            cmds.add(getPoly(geometryUtils.asPath(0.25, lst.toArray(new FrontsCoordinate[0])), Color.WHITE));
+            cmds.add(getPoly(geometryUtils.asPath(0.25, lst.toArray(new MapCoordinate[0])), Color.WHITE));
         } else if (lst.size() == 1) {
             cmds.add(getPoly(geometryUtils.asPolygon(lst.get(0), .25), Color.WHITE));
         }
@@ -77,14 +80,14 @@ abstract class VisualizationLibrary<T extends VisualizationLibrary.AbstractDrawi
             f.join();
         }
 
-        PositionI<?, ?> position = positionSupplier.get();
+        Position position = positionSupplier.get();
         if (position != null) {
-            cmds.add(getPoly(geometryUtils.asPolygon(position, 0.25), Color.ORANGE));
-        }
+            cmds.add(getPoly(geometryUtils.asPolygon(position.getCoordinate(), 0.25), Color.ORANGE));
 
-        if (target != null) {
-            cmds.add(getPoly(geometryUtils.asPath(map.getContext().chassisInfo.radius, position.getCoordinate(),
-                    target.getCoordinate()), Color.ORANGE));
+            if (target != null) {
+                cmds.add(getPoly(geometryUtils.asPath(map.getContext().chassisInfo.radius, position.getCoordinate(),
+                        target.getCoordinate()), Color.ORANGE));
+            }
         }
         return cmds;
     }

@@ -1,18 +1,25 @@
 package org.xenei.robot;
 
 import java.io.IOException;
+import java.util.Collection;
+import java.util.Optional;
 import java.util.function.Supplier;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.xenei.robot.common.LocationI;
+import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Mover;
-import org.xenei.robot.common.NavigationSnapshot;
-import org.xenei.robot.common.PositionI;
+import org.xenei.robot.common.Position;
+import org.xenei.robot.common.mapping.MapCoordinate;
+import org.xenei.robot.common.mapping.MapLocation;
+import org.xenei.robot.common.mapping.NavigationSnapshot;
 import org.xenei.robot.common.mapping.Map;
+import org.xenei.robot.common.mapping.MapPosition;
 import org.xenei.robot.common.mapping.Mapper;
 import org.xenei.robot.common.messages.Topic;
 import org.xenei.robot.common.planning.Planner;
+import org.xenei.robot.common.planning.Segment;
+import org.xenei.robot.common.planning.Solution;
 import org.xenei.robot.common.utils.DoubleUtils;
 import org.xenei.robot.common.utils.RobutContext;
 import org.xenei.robot.mapper.MapperImpl;
@@ -23,26 +30,26 @@ import org.xenei.robot.planner.PlannerImpl;
 public class Processor {
     private static final Logger LOG = LoggerFactory.getLogger(Processor.class);
 
-    public final Map<?, ?, ?> map;
+    public final Map map;
     private final RobutContext ctxt;
-    public final Planner planner;
+    protected final MappedPlanner planner;
     private final Mapper mapper;
-    private final BaseMover mover;
-    private final Supplier<PositionI<?, ?>> positionSupplier;
+    private final MappedMover mover;
+    private final Supplier<MapPosition> positionSupplier;
     private final RemoteVis remoteVis;
     private final RobutContext.Visualizations visualizations;
     private final Topic<Mover.MotorState> motorStateTopic;
     private final Topic<Mover.MoveTo> moveToTopic;
 
-    public Processor(BaseMover mover, Supplier<PositionI<?, ?>> positionSupplier, Map<?, ?, ?> map) {
+    public Processor(BaseMover mover, Supplier<Position> positionSupplier, Map map) {
         this.ctxt = map.getContext();
         this.visualizations = ctxt.visualizations;
         this.motorStateTopic = ctxt.bus.motor;
         this.moveToTopic = ctxt.bus.moveTo;
-        this.mover = mover;
-        this.positionSupplier = positionSupplier;
+        this.mover = new MappedMover(mover);
+        this.positionSupplier = () -> map.asMapPosition(positionSupplier.get());
         this.map = map;
-        this.planner = new PlannerImpl(map, positionSupplier);
+        this.planner = new MappedPlanner(new PlannerImpl(map, this.positionSupplier));
         this.mapper = new MapperImpl(map, planner::getFinalTarget);
         try {
             this.remoteVis = new RemoteVis(map, planner::getSolution, positionSupplier, planner::getFinalTarget);
@@ -116,14 +123,14 @@ public class Processor {
     // return snapshot;
     // }
 
-    public void moveTo(LocationI<?> finalLocation) {
-        Map.Loc<?> mapLocation = map.asMapCoordinate(finalLocation);
-        NavigationSnapshot snapshot = new NavigationSnapshot(positionSupplier.get(), mapLocation);
+    public void moveTo(Location finalLocation) {
+        MapLocation mapLocation = map.asMapLocation(finalLocation);
+        NavigationSnapshot snapshot = new NavigationSnapshot(map.asMapPosition(positionSupplier.get()), mapLocation);
         double heading = planner.setTarget(snapshot.target);
         if (LOG.isDebugEnabled()) {
             LOG.debug("calculated heading {} compare to {}", heading, positionSupplier.get().getHeading());
         }
-        moveToTopic.send(new Mover.MoveTo(finalLocation));
+        moveToTopic.send(new Mover.MoveTo(mapLocation));
     }
     // while (planner.getTarget() != null) {
     // Optional<Step> opStep = planner.selectTarget();
@@ -152,4 +159,94 @@ public class Processor {
     // planner.recordSolution();
     // }
 
+    class MappedMover implements Mover {
+        private final Mover delegate;
+
+        public MappedMover(Mover delegate) {
+            this.delegate = delegate;
+        }
+
+        @Override
+        public void move(Location location) {
+            delegate.move(location);
+        }
+
+        @Override
+        public MapPosition position() {
+            return map.asMapPosition(delegate.position());
+        }
+
+        @Override
+        public void setHeading(double heading) {
+            delegate.setHeading(heading);
+        }
+
+        @Override
+        public void register(LogicModule logicModule) {
+            delegate.register(logicModule);
+        }
+    }
+
+    public class MappedPlanner implements Planner {
+        private final Planner delegate;
+
+        public MappedPlanner(Planner delegate) {
+            this.delegate = delegate;
+        }
+
+        @Override
+        public MapLocation getTarget() {
+            return map.asMapLocation(delegate.getTarget());
+        }
+
+        @Override
+        public MapLocation getFinalTarget() {
+            return map.asMapLocation(delegate.getFinalTarget());
+        }
+
+        @Override
+        public Collection<? extends MapCoordinate> getTargets() {
+            return delegate.getTargets().stream().map(map::asMapCoordinate).toList();
+        }
+
+        @Override
+        public double setTarget(Location target) {
+            return delegate.setTarget(map.asMapLocation(target));
+        }
+
+        @Override
+        public void replaceTarget(Location target) {
+            delegate.replaceTarget(map.asMapLocation(target));
+        }
+
+        @Override
+        public Solution getSolution() {
+            return delegate.getSolution();
+        }
+
+        @Override
+        public void recordSolution() {
+            delegate.recordSolution();
+        }
+
+        @Override
+        public Optional<Segment> selectSegment() {
+            return delegate.selectSegment();
+        }
+
+        @Override
+        public void registerPositionChange(NavigationSnapshot snapshot) {
+            delegate.registerPositionChange(snapshot);
+        }
+
+//        @Override
+//        public void recalculateCosts() {
+//            delegate.recalculateCosts();
+//        }
+
+        @Override
+        public NavigationSnapshot getSnapshot() {
+            return delegate.getSnapshot();
+        }
+    }
 }

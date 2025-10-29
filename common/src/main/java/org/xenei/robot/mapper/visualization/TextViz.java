@@ -8,22 +8,26 @@ import java.util.TreeSet;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
 
+import org.apache.commons.lang3.ObjectUtils;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.GeometryCollection;
-import org.xenei.robot.common.FrontsCoordinate;
-import org.xenei.robot.common.PositionI;
+import org.xenei.robot.common.Location;
+import org.xenei.robot.common.Position;
+import org.xenei.robot.common.mapping.MapCoordinate;
 import org.xenei.robot.common.UnmodifiableCoordinate;
 import org.xenei.robot.common.mapping.Map;
+import org.xenei.robot.common.mapping.MapLocation;
+import org.xenei.robot.common.mapping.MapPosition;
 import org.xenei.robot.common.planning.Solution;
 import org.xenei.robot.common.utils.GeometryUtils;
 
 public class TextViz implements Map.Visualization {
-    final Map<?, ?, ?> map;
+    final Map map;
     final double scale;
     final Supplier<Solution> solutionSupplier;
-    final Supplier<PositionI<?, ?>> positionSupplier;
-    final Supplier<FrontsCoordinate> targetSupplier;
+    final Supplier<Position> positionSupplier;
+    final Supplier<Location> targetSupplier;
 
     private static final char OBSTACLE = '#';
     private static final char TARGET = 't';
@@ -39,8 +43,8 @@ public class TextViz implements Map.Visualization {
         this(scale, initializer.map(), initializer.solutionSupplier(), initializer.positionSupplier(),
                 initializer.targetSupplier());
     }
-    public TextViz(double scale, Map<?, ?, ?> map, Supplier<Solution> solutionSupplier,
-            Supplier<PositionI<?, ?>> positionSupplier, Supplier<FrontsCoordinate> targetSupplier) {
+    public TextViz(double scale, Map map, Supplier<Solution> solutionSupplier,
+                   Supplier<Position> positionSupplier, Supplier<Location> targetSupplier) {
         this.scale = scale;
         this.map = map;
         this.positionSupplier = positionSupplier;
@@ -65,7 +69,7 @@ public class TextViz implements Map.Visualization {
      */
     private StringBuilder stringBuilder(SortedSet<Coord> points) {
         StringBuilder sb = new StringBuilder();
-        int minX = points.stream().map(c -> asInt(c.getX())).min(Integer::compare).get();
+        int minX = points.stream().map(c -> asInt(c.getX())).min(Integer::compare).orElse(1);
         Coord row = points.first();
         int rowY = asInt(row.getY());
         StringBuilder rowBuilder = new StringBuilder();
@@ -78,9 +82,7 @@ public class TextViz implements Map.Visualization {
             }
             int x = asInt(point.getX()) - minX;
             if (x > -rowBuilder.length()) {
-                for (int i = rowBuilder.length(); i < x; i++) {
-                    rowBuilder.append(' ');
-                }
+                rowBuilder.append(" ".repeat(Math.max(0, x - rowBuilder.length())));
             }
             rowBuilder.append(point.c);
         }
@@ -88,10 +90,8 @@ public class TextViz implements Map.Visualization {
         return sb;
     }
 
-    public void addGeom(SortedSet<Coord> points, Geometry geom, char c) {
-        if (geom instanceof GeometryCollection) {
-            GeometryCollection gCollection = (GeometryCollection) geom;
-
+    void addGeom(SortedSet<Coord> points, Geometry geom, char c) {
+        if (geom instanceof GeometryCollection gCollection) {
             for (int i = 0; i < gCollection.getNumGeometries(); i++) {
                 addGeom(points, gCollection.getGeometryN(i), c);
             }
@@ -109,30 +109,30 @@ public class TextViz implements Map.Visualization {
     }
 
     public StringBuilder render() {
-        FrontsCoordinate target = targetSupplier.get();
-        GeometryUtils geometryUtils = map.getContext().geometryUtils;
-        SortedSet<Coord> points = new TreeSet<>();
-        List<CompletableFuture<?>> futures = new ArrayList<>();
-        futures.add(map.getObstacles().thenAccept(s -> s.forEach(o -> addGeom(points, o.getGeometry(), OBSTACLE))));
-        futures.add(map.getCoords().thenAccept(mc -> mc.forEach(coord -> addGeom(points, coord.getGeometry(),
-                coord.isIndirect(target) ? COORD_INDIRECT : COORD_DIRECT))));
-        List<FrontsCoordinate> lst = solutionSupplier.get().stream().toList();
-        for (CompletableFuture<?> future : futures) {
+        final Location target = targetSupplier.get();
+        final MapLocation mapTarget = target == null ? null : map.asMapLocation(targetSupplier.get());
+        final GeometryUtils geometryUtils = map.getContext().geometryUtils;
+        final SortedSet<Coord> points = new TreeSet<>();
+        CompletableFuture<?> future = CompletableFuture.allOf(
+        map.getObstacles().thenAccept(s -> s.forEach(o -> addGeom(points, o.getGeometry(), OBSTACLE))),
+        map.getLocations().thenAccept(coordList -> coordList.forEach(coord -> addGeom(points, coord.getGeometry(),
+                target != null && coord.isIndirect(mapTarget) ? COORD_INDIRECT : COORD_DIRECT))));
+        final List<MapCoordinate> lst = solutionSupplier.get().stream().toList();
             future.join();
-        }
+
         if (lst.size() > 1) {
-            addGeom(points, geometryUtils.asPath(0.25, lst.toArray(new FrontsCoordinate[0])), PATH);
+            addGeom(points, geometryUtils.asPath(0.25, lst.toArray(new MapCoordinate[0])), PATH);
         } else if (lst.size() == 1) {
             addGeom(points, geometryUtils.asPoint(lst.get(0)), PATH);
         }
 
-        if (target != null) {
-            addGeom(points, geometryUtils.asPoint(target), TARGET);
+        if (mapTarget != null) {
+            addGeom(points, mapTarget.getGeometry(), TARGET);
         }
 
-        PositionI<?, ?> position = positionSupplier.get();
+        Position position = positionSupplier.get();
         if (position != null) {
-            addGeom(points, geometryUtils.asPoint(position), POSITION);
+            addGeom(points, map.asMapPosition(position).getGeometry(), POSITION);
         }
         return stringBuilder(points);
     }
@@ -153,7 +153,7 @@ public class TextViz implements Map.Visualization {
     }
 
     // a location in the map
-    class Coord implements Comparable<Coord>, FrontsCoordinate {
+    class Coord implements Comparable<Coord>, Location {
         public final UnmodifiableCoordinate coordinate;
         public char c;
 
@@ -162,7 +162,7 @@ public class TextViz implements Map.Visualization {
             this.c = c;
         }
 
-        public Coord(FrontsCoordinate coords, char c) {
+        public Coord(Location coords, char c) {
             this(coords.getCoordinate(), c);
         }
 

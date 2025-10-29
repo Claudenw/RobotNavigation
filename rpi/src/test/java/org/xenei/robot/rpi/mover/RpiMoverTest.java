@@ -31,7 +31,7 @@ public class RpiMoverTest {
 
     @ParameterizedTest(name = "{index} {0}")
     @MethodSource("setHeadingParameters")
-    public void setHeadingTest(String name, double radiusFactor, double angle) throws InterruptedException {
+    public void setHeadingTest(String name, double radiusFactor, double angle) {
         TestingCompass compass = new TestingCompass(0);
 
         RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT, TestChassisInfo.DEFAULT);
@@ -67,7 +67,7 @@ public class RpiMoverTest {
     }
 
     @Test
-    public void setHeadingTest_Zero() throws InterruptedException {
+    public void setHeadingTest_Zero() {
         TestingCompass compass = new TestingCompass(0);
 
         RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT, TestChassisInfo.DEFAULT);
@@ -85,7 +85,7 @@ public class RpiMoverTest {
         // assertEquals(TestChassisInfo.DEFAULT.radius, underTest.getHeadingFactor());
     }
 
-    class TestingCompass implements Compass {
+    static class TestingCompass implements Compass {
         double heading;
 
         TestingCompass(double heading) {
@@ -116,7 +116,7 @@ public class RpiMoverTest {
         }
     }
 
-    class TestingMotor implements Motor {
+    static class TestingMotor implements Motor {
         double angleFactor;
         TestingCompass compass;
         int positiveAngleFactor;
@@ -134,7 +134,7 @@ public class RpiMoverTest {
         }
 
         @Override
-        public void close() throws Exception {
+        public void close() {
             // TODO Auto-generated method stub
 
         }
@@ -162,7 +162,7 @@ public class RpiMoverTest {
 
         }
         private int limit(int value, int min, int max) {
-            return (value < min) ? min : (value > max) ? max : value;
+            return (value < min) ? min : Math.min(value, max);
         }
 
         public class SteppingStatusImpl implements Motor.SteppingStatus {
@@ -178,7 +178,7 @@ public class RpiMoverTest {
                 fwd = steps >= 0;
                 this.msPerStep = msPerStep;
                 this.positiveAngleFactor = positiveAngleFactor;
-                LOG.debug("SteppingStatus created for %s steps", count);
+                LOG.debug("SteppingStatus created for {} steps", count);
             }
 
             @Override

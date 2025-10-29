@@ -14,16 +14,17 @@ import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
-import org.xenei.robot.common.FrontsCoordinate;
-import org.xenei.robot.common.PositionI;
+import org.xenei.robot.common.Location;
+import org.xenei.robot.common.Position;
+import org.xenei.robot.common.mapping.MapCoordinate;
 import org.xenei.robot.common.mapping.Map;
 import org.xenei.robot.common.planning.Solution;
 
 public class MapViz implements Map.Visualization {
     private final Supplier<Solution> solutionSupplier;
-    private final Supplier<PositionI<?, ?>> positionSupplier;
-    private final Supplier<FrontsCoordinate> targetSupplier;
-    private final Map<?, ?, ?> map;
+    private final Supplier<Position> positionSupplier;
+    private final Supplier<Location> targetSupplier;
+    private final Map map;
     private final JTSPanel panel;
     private final int scale;
     private final int buffer;
@@ -34,8 +35,8 @@ public class MapViz implements Map.Visualization {
                 initializer.targetSupplier());
     }
 
-    public MapViz(int scale, Map<?, ?, ?> map, Supplier<Solution> solutionSupplier,
-            Supplier<PositionI<?, ?>> positionSupplier, Supplier<FrontsCoordinate> targetSupplier) {
+    public MapViz(int scale, Map map, Supplier<Solution> solutionSupplier,
+            Supplier<Position> positionSupplier, Supplier<Location> targetSupplier) {
         this.map = map;
         this.panel = new JTSPanel();
         this.solutionSupplier = solutionSupplier;

@@ -8,12 +8,11 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.locationtech.jts.geom.Coordinate;
 import org.xenei.robot.common.ChassisInfoTest;
 import org.xenei.robot.common.DeadReckoning;
-import org.xenei.robot.common.FrontsCoordinateTest;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Mover;
 import org.xenei.robot.common.Position;
-import org.xenei.robot.common.PositionTest;
 import org.xenei.robot.common.ScaleInfo;
+import org.xenei.robot.common.ScaleInfoTest;
 import org.xenei.robot.common.StepMonitor;
 import org.xenei.robot.common.sensor.bump.BumpSensorModel;
 import org.xenei.robot.common.utils.AngleUtils;
@@ -31,7 +30,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 public class BaseMoverTest {
 
     private static Location makeLoc(double x, double y) {
-        return new Location(new Coordinate(x, y));
+        return Location.asLocation(new Coordinate(x, y));
     }
 
     protected record StepRecord(int left, int right, byte lastSensor) implements StepMonitor {
@@ -155,8 +154,9 @@ public class BaseMoverTest {
     @Test
     void moveTest() {
         underTest.move(makeLoc(0, 10));
-        FrontsCoordinateTest.assertEquals(new Position(new Coordinate(0, 10), AngleUtils.RADIANS_90),
-                deadReckoning.get(), scaleInfo);
+
+        ScaleInfoTest.assertEquals(scaleInfo, Position.asPosition(new Coordinate(0, 10), AngleUtils.RADIANS_90),
+                deadReckoning.get());
         assertEquals(2, stepRecords.size());
         StepRecord record = stepRecords.get(0);
         assertEquals(0, record.left() + record.right());
@@ -171,7 +171,7 @@ public class BaseMoverTest {
             AngleUtils.RADIANS_180, AngleUtils.RADIANS_225, AngleUtils.RADIANS_270, AngleUtils.RADIANS_315})
     void setHeadingTest(double heading) {
         underTest.setHeading(heading);
-        PositionTest.assertEquals(new Position(new Coordinate(0, 0), heading), underTest.position(), scaleInfo);
+        ScaleInfoTest.assertEquals(scaleInfo, Position.asPosition(new Coordinate(0, 0), heading), underTest.position());
     }
 
     @Test

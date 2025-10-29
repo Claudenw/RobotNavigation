@@ -76,13 +76,13 @@ public class RpiMover extends BaseMover implements AutoCloseable {
      *            the initial coordinates.
      */
     RpiMover(RobutContext ctxt, Compass compass, Coordinate coords, Motor left, Motor right) {
-        super(ctxt, compass == null ? new DeadReckoning(ctxt, Position.from(coords)) : compass,
+        super(ctxt, compass == null ? new DeadReckoning(ctxt, Position.asPosition(coords, 0.0)) : compass,
                 new BumpSensorModel(ctxt, 8));
         motor[LEFT] = left;
         motor[RIGHT] = right;
         this.deadReckoning = compass == null
                 ? (DeadReckoning) this.compass
-                : new DeadReckoning(ctxt, Position.from(coords));
+                : new DeadReckoning(ctxt, Position.asPosition(coords, 0));
         this.rotationalDistance = Math.PI * ctxt.chassisInfo.wheelDiameter / 100; // in meters
         // this.r = width/2.0; // in cm
         // meterminute / meterrotation = meterrotation/meter/minute = r/m
@@ -208,7 +208,7 @@ public class RpiMover extends BaseMover implements AutoCloseable {
 
     @Override
     public Position position() {
-        return Position.from(coordinates, compass.heading());
+        return Position.asPosition(coordinates, compass.heading());
     }
 
     /**

@@ -1,44 +1,141 @@
 package org.xenei.robot.common;
 
 import org.locationtech.jts.geom.Coordinate;
+import org.xenei.robot.common.mapping.MapCoordinate;
+import org.xenei.robot.common.mapping.ThetaAndRange;
+import org.xenei.robot.common.utils.AngleUtils;
 import org.xenei.robot.common.utils.CoordUtils;
 
-public class Location implements LocationI<Location> {
+import java.util.Comparator;
+
+public interface Location {
+
+    public static Comparator<Location> XYCompr = (one, two) -> CoordUtils.XYCompr.compare(one.getCoordinate(), two.getCoordinate());
+
     /**
-     * The origin for the map (0,0)
+     * A representation of the origin location (0,0)
      */
-    public static final Location ORIGIN = new Location(FrontsCoordinate.ORIGIN);
+    Location ORIGIN = asLocation(UnmodifiableCoordinate.make(new Coordinate(0, 0)));
+
     /**
-     * An exemplar of an infinite location.
+     * A representative infinite value.
+     */
+    Location INFINITE = asLocation(UnmodifiableCoordinate
+            .make(new Coordinate(Double.POSITIVE_INFINITY, Double.POSITIVE_INFINITY)));
+
+    /**
+     * Creates a simple Location implementation from a coordinate.
+     * @param coord the coordinate for the location.
+     * @return a simple Location on the coordinate.
+     */
+    static Location asLocation(Coordinate coord) {
+        return new Location() {
+
+            @Override
+            public Coordinate getCoordinate() {
+                return coord;
+            }
+
+            @Override
+            public String toString() {
+                return LocationUtils.toString(this);
+            }
+        };
+    }
+
+    /**
+     * Gets the coordinate for the location.
+     * @return the coordinate for the location.
+     */
+    Coordinate getCoordinate();
+
+    default boolean isInfinite() {
+        return CoordUtils.isInfinite(this.getCoordinate());
+    }
+
+    default double angleBetween(Location mapCoordinate) {
+        return CoordUtils.angleBetween(this.getCoordinate(), mapCoordinate.getCoordinate());
+    }
+    /**
+     * Return the angle in radians from the origin.
      *
-     * @see CoordUtils#isInfinite(Coordinate)
-     * @see FrontsCoordinate#INFINITE
+     * @return the angle in radians from the origin to this coordinate.
      */
-    public static final Location INFINITE = new Location(FrontsCoordinate.INFINITE);
-
-    private final UnmodifiableCoordinate coordinate;
-
-    public Location(FrontsCoordinate coordinate) {
-        this(coordinate.getCoordinate());
+    default double theta() {
+        return LocationUtils.theta(this);
     }
 
-    public Location(Coordinate coordinate) {
-        this.coordinate = UnmodifiableCoordinate.make(coordinate);
+    default double range() {
+        return LocationUtils.range(this);
     }
 
-    @Override
-    public Location buildLocation(Coordinate coordinate) {
-        return new Location(coordinate);
+    default double getX() {
+        return getCoordinate().getX();
     }
 
-    @Override
-    public UnmodifiableCoordinate unmodifiableCoordinate() {
-        return coordinate;
+    default double getY() {
+        return getCoordinate().getY();
     }
 
-    @Override
-    public String toString() {
-        return String.format("Location[ %s r:%.2f]", CoordUtils.toString(getCoordinate(), 4), range());
+    default double distance(Location location) {
+        return getCoordinate().distance(location.getCoordinate());
     }
 
+    default boolean sameCoordinate(final Location location) {
+        return compareTo(location) == 0;
+    }
+
+    default boolean equals2D(Location location) {
+        return compareTo(location) == 0;
+    }
+
+    default int compareTo(Location location) {
+        return getCoordinate().compareTo(location.getCoordinate());
+    }
+
+    default boolean isNaN() {
+        return CoordUtils.isNaN(getCoordinate());
+    }
+
+    default Location minus(Location location) {
+        return Location.asLocation(CoordUtils.minus(this.getCoordinate(), location.getCoordinate()));
+    }
+
+    default Location plus(Location location) {
+        return Location.asLocation(CoordUtils.plus(this.getCoordinate(), location.getCoordinate()));
+    }
+
+    default Location relativeLocation(Location absoluteLocation) {
+        return LocationUtils.relativeLocation(this, absoluteLocation);
+    }
+
+    default Location absoluteLocation(Location relativeLocation) {
+        return this.plus(relativeLocation);
+    }
+
+    final class LocationUtils {
+        private LocationUtils() {
+            // do not instantiate
+        }
+
+        public static double theta(Location location) {
+            return CoordUtils.angleBetween(ORIGIN.getCoordinate(), location.getCoordinate());
+        }
+
+        public static double range(Location location) {
+            return ORIGIN.getCoordinate().distance(location.getCoordinate());
+        }
+
+        static public String toString(Location location) {
+            return String.format("%s[%s]", location.getClass().getSimpleName(), location.getCoordinate());
+        }
+
+        static public Location relativeLocation(Location location, Location absoluteLocation) {
+            double range = location.getCoordinate().distance(absoluteLocation.getCoordinate());
+            if (range == 0) {
+                return location;
+            }
+            return new ThetaAndRange(location.angleBetween(absoluteLocation), range);
+        }
+    }
 }

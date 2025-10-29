@@ -2,11 +2,13 @@ package org.xenei.robot.mover;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.xenei.robot.common.FrontsCoordinate;
-import org.xenei.robot.common.Mover;
 import org.xenei.robot.common.Position;
+import org.xenei.robot.common.mapping.MapCoordinate;
+import org.xenei.robot.common.Mover;
 import org.xenei.robot.common.mapping.Map;
+import org.xenei.robot.common.mapping.MapPosition;
 import org.xenei.robot.common.messages.Topic;
+import org.xenei.robot.common.planning.Segment;
 import org.xenei.robot.common.planning.TargetStack;
 import org.xenei.robot.common.utils.RobutContext;
 
@@ -42,15 +44,15 @@ public class ClearViewLogicModule implements Mover.LogicModule, Runnable {
      */
     @Override
     public void run() {
-        Position position = mover.position();
-        if (!map.isClearPath(position, targetStack.peek())) {
+        MapCoordinate position = map.asMapCoordinate(mover.position());
+        if (!map.isClearPath(position, targetStack.peek().getNextLocation())) {
             motorStateTopic.send(Mover.MotorState.STOP);
         } else {
             if (targetStack.size() > 1) {
-                FrontsCoordinate prevTarget = targetStack.get(targetStack.size() - 2);
-                if (map.isClearPath(position, prevTarget)) {
+                Segment prevSegment = targetStack.get(targetStack.size() - 2);
+                if (map.isClearPath(position, prevSegment.getNextLocation())) {
                     motorStateTopic.send(Mover.MotorState.STOP);
-                } ;
+                }
             }
         }
         mover.sleep(1);

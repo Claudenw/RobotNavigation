@@ -1,41 +1,90 @@
 package org.xenei.robot.common.mapping;
 
+import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Optional;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import com.google.common.annotations.VisibleForTesting;
 
-import org.apache.commons.math3.util.Precision;
-import org.apache.jena.rdf.model.Resource;
+import org.apache.commons.collections4.map.LRUMap;
+
+import org.apache.sis.util.collection.WeakValueHashMap;
 import org.locationtech.jts.geom.Coordinate;
-import org.xenei.robot.common.FrontsCoordinate;
+
+import org.locationtech.jts.geom.Geometry;
 
 import org.xenei.robot.common.GeometricObject;
-import org.xenei.robot.common.LocationI;
-import org.xenei.robot.common.ObstacleI;
-import org.xenei.robot.common.PositionI;
+import org.xenei.robot.common.Location;
+import org.xenei.robot.common.Obstacle;
+import org.xenei.robot.common.Position;
 import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.common.planning.Solution;
-import org.xenei.robot.common.planning.Segment;
+import org.xenei.robot.common.utils.CoordUtils;
+import org.xenei.robot.common.utils.GeometryUtils;
 import org.xenei.robot.common.utils.RobutContext;
-import org.xenei.robot.mapper.map.MapLocation;
-import org.xenei.robot.mapper.rdf.Namespace;
 
-public interface Map<L extends Map.Loc<L>, P extends Map.Pos<L, P>, M extends Map.Obstacle> {
-    static Coordinate adopt(Coordinate c, ScaleInfo scaleInfo) {
-        double x = scaleInfo.scale(c.getX());
-        double y = scaleInfo.scale(c.getY());
-        return (Precision.equals(x, c.getX(), 0) && Precision.equals(y, c.getY(), 0)) ? c : new Coordinate(x, y);
+public final class Map {
+    private final RobutContext ctxt;
+    final MapStorage storage;
+    final ScaleInfo scaleInfo;
+    private final ObstacleHandler obstacleHandler;
+
+    /**
+     * Compares Coordinates by XY positions.
+     */
+    public final Comparator<MapCoordinate> XY_COMPARE = MapCoordinate::compareTo;
+
+    /**
+     * Compares Coordinates by angle and then range.
+     */
+    public final Comparator<MapCoordinate> THETA_COMPARE = Comparator.comparingDouble(MapCoordinate::theta)
+          .thenComparingDouble(MapCoordinate::range);
+
+    /**
+     * Compares Coordinates by range and then angle.
+     */
+    public final Comparator<MapCoordinate> RANGE_COMPARE = Comparator.comparingDouble(MapCoordinate::range).thenComparingDouble(MapCoordinate::theta);
+
+    private final WeakValueHashMap<Coordinate, MapLocation> coordinateMapLocationMap = new WeakValueHashMap<>(
+            Coordinate.class, Object::hashCode, (a, b) -> {
+                boolean result = a.equals(b);
+        System.out.println("A: " + a + " == B: " + b+ " -> " + result);
+        return result ;
+    });
+
+    public Map(RobutContext ctxt, MapStorage storage) {
+        this.ctxt = ctxt;
+        this.storage = storage;
+        this.scaleInfo = ctxt.scaleInfo;
+        this.obstacleHandler = new ObstacleHandler();
     }
 
     /**
-     * Clears the map layer.
-     *
-     * @param mapLayer
-     *            the name of the map layer.
+     * returns true if the coordinate is  being tracked as a location.
+     * @param coordinate the coordinate to check/
+     * @return {@code true} if the coordinate is being tracked.
      */
-    void clear(String mapLayer);
+    @VisibleForTesting
+    boolean hasRecordedCoordinate(Coordinate coordinate) {
+        return coordinateMapLocationMap.containsKey(coordinate);
+    }
+
+    /**
+     * Clears the map of all objects.
+     */
+    public void clear() {
+        storage.clear();
+        obstacleHandler.cache.clear();
+    }
 
     /**
      * Returns {@code true} if there is a clear view from {@code source} to
@@ -47,178 +96,66 @@ public interface Map<L extends Map.Loc<L>, P extends Map.Pos<L, P>, M extends Ma
      *            the coordinates to end it
      * @return true if there are no obstacles between source and dest.
      */
-    boolean isClearPath(FrontsCoordinate source, FrontsCoordinate dest);
-
-    /**
-     * Add the target to the planning. If the distance is null, then the result will
-     * be empty as there can be no steps to a non-declared target.
-     *
-     * @param coord
-     *            the coordinate for the coord.
-     * @param target
-     *            the target for planning if defined.
-     * @param visited
-     *            true if the target has been visited.
-     * @return the Step comprising the mapped target location and the distance value
-     *         or an empty optional if the target is not defined.
-     */
-    Optional<Segment> addCoord(FrontsCoordinate coord, FrontsCoordinate target, boolean visited);
-
-    default Optional<Segment> addCoord(FrontsCoordinate coord, FrontsCoordinate target) {
-        return addCoord(coord, target, false);
+    public boolean isClearPath(MapCoordinate source, MapCoordinate dest) {
+        return obstacleHandler.isClearPath(source, dest);
     }
 
-    default Optional<Segment> addCoord(FrontsCoordinate coord) {
-        return addCoord(coord, null, false);
+    public MapCoordinate asMapCoordinate(ThetaAndRange thetaAndRange) {
+        return new MapCoordinate(this, thetaAndRange.getCoordinate());
     }
 
-    Loc<L> asMapCoordinate(FrontsCoordinate coord);
-
-    Pos<L, P> asMapPosition(PositionI<?, ?> position);
-
-    M asMapObstacle(ObstacleI obstacle);
-
-    /**
-     * Gets the collection of all steps in the planning graph that are reachable
-     * from the current position.
-     *
-     * @param position
-     *            the coordinates of the current position.
-     * @return the collection of all steps in the planning graph.
-     */
-    Collection<Segment> getSegments(FrontsCoordinate position);
-
-    /**
-     * Gets the collection of all coordinates in the planning graph.
-     *
-     * @return the collection of all coordinates in the planning graph.
-     */
-    CompletableFuture<Collection<L>> getCoords();
-
-    /**
-     * Adds a path to the planning graph.
-     *
-     * @param coords
-     *            the coordinates of the path.
-     */
-    default CompletableFuture<? extends Path> addPath(FrontsCoordinate... coords) {
-        return addPath(Namespace.PlanningModel, coords);
+    public MapCoordinate asMapCoordinate(Coordinate coordinate) {
+        return new MapCoordinate(this, coordinate);
     }
 
-    /**
-     * Adds a path to the specified graph.
-     *
-     * @param model
-     *            the name of the graph to add the path to.
-     * @param coords
-     *            the coordinates of the path.
-     */
-    CompletableFuture<? extends Path> addPath(Resource model, FrontsCoordinate... coords);
-
-    /**
-     * Determins if there is a path from 'a' to 'b'
-     *
-     * @param a
-     *            one end of a path.
-     * @param b
-     *            the other end of a path.
-     * @return {@code true} if a path exists.
-     */
-    boolean hasPath(FrontsCoordinate a, FrontsCoordinate b);
-
-    /**
-     * Update the planning model with new distances based on the new target
-     *
-     * @param target
-     *            the new target.
-     */
-    L recalculate(FrontsCoordinate target);
-
-    /**
-     * Find the best target based on the costs in the graph.
-     *
-     * @param currentCoords
-     *            the current coordinates to search from.
-     * @return An optional step as the best solution empty if there is none.
-     */
-    Optional<Segment> getBestSegment(FrontsCoordinate currentCoords);
-
-    /**
-     * Returns true if the coordinate is within an obstacle.
-     *
-     * @param coord
-     *            the coordinate to check.
-     * @return true if the point is in an obstacle, false otherwise.
-     */
-    boolean isObstacle(FrontsCoordinate coord);
-
-    // /**
-    // * Adds an obstacle to the planning graph.
-    // *
-    // * @param obstacle
-    // * the obstacle to add.
-    // * @return the set of new obstacles.
-    // */
-    // CompletableFuture<M> addObstacle(ObstacleI obstacle);
-
-    /**
-     * Gets the geometry for all the known obstacles.
-     *
-     * @return the set of geometries for all the knowns obstacles.
-     */
-    CompletableFuture<Set<M>> getObstacles();
-
-    /**
-     * Breaks the path between a and b.
-     *
-     * @param a
-     *            the first coordinate to break the path for.
-     * @param b
-     *            the second coordinate to break the path for.
-     * @return
-     */
-    default CompletableFuture<?> cutPath(FrontsCoordinate a, FrontsCoordinate b) {
-        return cutPath(Namespace.PlanningModel, a, b);
+    public MapCoordinate asMapCoordinate(Location location) {
+        if (location instanceof MapCoordinate) {
+            return (MapCoordinate) location;
+        }
+        return asMapCoordinate(location.getCoordinate());
     }
 
-    /**
-     * Breaks the path between a and b.
-     *
-     * @param a
-     *            the first coordinate to break the path for.
-     * @param b
-     *            the second coordinate to break the path for.
-     * @return
-     */
-    CompletableFuture<?> cutPath(Resource modelName, FrontsCoordinate a, FrontsCoordinate b);
+    public MapLocation asMapLocation(Coordinate coordinate) {
+        return asMapLocation(asMapCoordinate(coordinate));
+    }
 
-    /**
-     * Write the path specified by the solution in the the base model.
-     *
-     * @param solution
-     *            the solution containing the path.
-     */
-    CompletableFuture<? extends Path> recordSolution(Solution solution);
+    public MapLocation asMapLocation(Location location) {
+        if (location instanceof MapLocation) {
+            return (MapLocation) location;
+        }
+        return coordinateMapLocationMap.compute(location.getCoordinate(),
+                (k, v) -> v != null ? v : new MapLocation(this, asMapCoordinate(location)));
+    }
 
-    /**
-     * Get the context info for this map.
-     *
-     * @return the Context.
-     */
-    RobutContext getContext();
+    public MapPosition asMapPosition(Position position) {
+        if (position instanceof MapPosition) {
+            return (MapPosition) position;
+        }
+        return asMapPosition(asMapCoordinate(position), position.getHeading());
+    }
 
-    /**
-     * Update the map so that any Coord that was previously not indirect but is now
-     * blocked by newObstacle is marked as indirect.
-     *
-     * @param finalTarget
-     *            The final target
-     * @param newObstacles
-     *            the set of new obstacles.
-     * @return
-     */
-    CompletableFuture<Void> updateIsIndirect(FrontsCoordinate finalTarget, Set<Obstacle> newObstacles);
+    public MapPosition asMapPosition(Location location, double heading) {
+        return new MapPosition(this, asMapLocation(location), heading);
+    }
 
+    public MapPosition asMapPosition(Coordinate coordinate, double heading) {
+        return new MapPosition(this, asMapLocation(coordinate), heading);
+    }
+
+    public MapPath asPath(Collection<? extends MapLocation> points) {
+        return new MapPath(this, points.stream().map(this::asMapLocation));
+    }
+
+    public MapObstacle asMapObstacle(Obstacle obstacle) {
+        if (obstacle instanceof MapObstacle) {
+            return (MapObstacle) obstacle;
+        }
+        return new MapObstacle(this, obstacle.getGeometry(), obstacle.uuid());
+    }
+
+    private MapObstacle createObstacle(Geometry geometry) {
+        return obstacleHandler.addObstacle(GeometricObject.of(ctxt.geometryUtils.scale(geometry)));
+    }
     /**
      * Create an Obstacle.
      *
@@ -226,102 +163,252 @@ public interface Map<L extends Map.Loc<L>, P extends Map.Pos<L, P>, M extends Ma
      *            The position of the object.
      * @return An obstacle.
      */
-    CompletableFuture<M> createObstacle(Coordinate location);
+    public MapObstacle createObstacle(Coordinate location) {
+        return obstacleHandler.addObstacle(asMapCoordinate(location));
+    }
+
+    public MapObstacle createObstacle(GeometricObject geometricObject) {
+        return obstacleHandler.addObstacle(geometricObject);
+    }
+
+    public CompletableFuture<MapObstacle> createObstacleInBackground(GeometricObject geometricObject) {
+        return obstacleHandler.addObstacleInBackground(geometricObject);
+    }
 
     /**
-     * Create an Obstacle.
-     *
-     * @param start
-     *            The starting position of the object.
-     * @param end
-     *            The endpint position of the object.
-     * @return An obstacle.
+     * Create an obstacle that stretches from @{code first} to {@code last}.
+     * @param start the first coordinate for the obstacle
+     * @param end the last coordinate for the obstacle.
+     * @return a MapObstacle including first and last.
      */
-    CompletableFuture<M> createObstacle(Coordinate start, Coordinate end);
+    public CompletableFuture<MapObstacle> createObstacleInBackground(MapCoordinate start, MapCoordinate end) {
+        return createObstacleInBackground(createObstacleGeometry(start, end));
+    }
 
     /**
-     * Create an Obstacle.
-     *
-     * @param startPosition
-     *            The position from which we locate the obstacle.
-     * @param relativeLocation
-     *            the relative location of the obstacle from the start position.
-     * @return An obstacle.
+     * Creates a geometric line from {@code start} to {@code end} with point at every resolution.
+     * @param start the starting coordinate.
+     * @param end the ending coordinate
+     * @return a GeometricObject with the specified geometry.
      */
-    CompletableFuture<M> createObstacle(PositionI<?, ?> startPosition, FrontsCoordinate relativeLocation);
+    private GeometricObject createObstacleGeometry(MapCoordinate start, MapCoordinate end) {
+        double heading = CoordUtils.calcHeading(start, end);
+        List<MapCoordinate> lst = new ArrayList<>();
+        MapCoordinate current = start;
+        do {
+            lst.add(current);
+            current = current.nextCoordinate(heading, scaleInfo.getResolution());
+        } while(!current.sameCoordinate(end));
+        lst.add(end);
+
+        return GeometricObject.of(ctxt.geometryUtils.asLine(lst.stream()));
+    }
 
     /**
-     * Create an Obstacle.
-     *
-     * @param startPosition
-     *            The position from which we locate the obstacle.
-     * @param relativeStart
-     *            the relative starting location of the obstacle.
-     * @param relativeEnd
-     *            the relative ending location of the obstacle.
-     * @return An obstacle.
+     * Create an obstacle that stretches from @{code first} to {@code last}.
+     * @param start the first coordinate for the obstacle
+     * @param end the last coordinate for the obstacle.
+     * @return a MapObstacle including first and last.
      */
-    CompletableFuture<M> createObstacle(PositionI<?, ?> startPosition, FrontsCoordinate relativeStart,
-            FrontsCoordinate relativeEnd);
+    public MapObstacle createObstacle(Coordinate start, Coordinate end) {
+        return createObstacle(asMapCoordinate(start), asMapCoordinate(end));
+    }
 
     /**
-     * Sets the coordinate as visited in the map.
-     *
-     * @param coord
-     *            the coordinate to mark as visited.
-     * @return
+     * Create an obstacle that stretches from @{code first} to {@code last}.
+     * @param start the first coordinate for the obstacle
+     * @param end the last coordinate for the obstacle.
+     * @return a MapObstacle including first and last.
      */
-    void setVisited(FrontsCoordinate coord);
+    public MapObstacle createObstacle(MapCoordinate start, MapCoordinate end) {
+        return createObstacle(createObstacleGeometry(start, end));
+    }
 
     /**
-     * Look in the given direction for the maximum range. if there is an obstacle
-     * report the relative location. otherwise return and empty optional.
+     * Adds a path to the planning graph.
      *
-     * @param position
-     *            the position on the map to look from.
-     * @param heading
-     *            the direction to look.
-     * @param maxRange
-     *            the maximum range to look.
-     * @return the relative location of a located obstacle or an empty Optional.
+     * @param locations
+     *            the coordinates of the path.
      */
-    CompletableFuture<Optional<FrontsCoordinate>> look(PositionI<?, ?> position, double heading, int maxRange);
+    public MapPath addPath(Stream<MapLocation> locations) {
+        return new MapPath(this, locations);
+    }
+
+    /**
+     * Determines if there is a path from 'a' to 'b'
+     *
+     * @param a
+     *            one end of a path.
+     * @param b
+     *            the other end of a path.
+     * @return {@code true} if a path exists.
+     */
+    public boolean hasPath(MapLocation a, MapLocation b) {
+        return storage.hasPath(a, b).join();
+    }
+
+    /**
+     * Returns true if the coordinate is within an obstacle.
+     *
+     * @param mapCoordinate
+     *            the coordinate to check.
+     * @return true if the point is in an obstacle, false otherwise.
+     */
+    public boolean isObstacle(MapCoordinate mapCoordinate) {
+        return obstacleHandler.isObstacle(mapCoordinate);
+    }
+
+    /**
+     * Gets the MapObstacle instance all the known obstacles.
+     *
+     * @return a CompletableFuture of stream of all known MapObstacles
+     */
+    public CompletableFuture<Stream<MapObstacle>> getObstacles() {
+        return getObstacles(null);
+    }
+
+    /**
+     * Gets the MapObstacle instance for all the known obstacles within the bounding box.
+     * If the bounding box is {@code null} returns all the MapObstacles.
+     *
+     * @param boundingBox the geometry to restrict the search by.  May be {@code null}
+     * @return a CompletableFuture of stream of all known MapObstacles within the bounding box.
+     */
+    public CompletableFuture<Stream<MapObstacle>> getObstacles(Geometry boundingBox) {
+        CompletableFuture<Stream<Obstacle>> obstacleStream =  boundingBox == null ? storage.getObstacles() : storage.findTouchingObstacles(GeometricObject.of(boundingBox));
+        return obstacleStream.thenApply(obstacles -> obstacles.map(this::asMapObstacle));
+    }
+
+    /**
+     * Gets the MapLocation from the storage level
+     * @return A stream of the MapLocations
+     */
+    public CompletableFuture<Stream<MapLocation>> getLocations() {
+        return storage.getLocations(null).thenApply(stream -> stream.map(coord -> {
+            MapLocation mapLocation = coordinateMapLocationMap.get(coord);
+            return (mapLocation == null) ? new MapLocation(this, asMapCoordinate(coord)) : mapLocation;
+        }));
+    }
+
+    /**
+     * Get the context info for this map.
+     *
+     * @return the Context.
+     */
+    public RobutContext getContext() {
+        return ctxt;
+    };
+
 
     /**
      * A Visualization of a map.
      */
     @FunctionalInterface
-    interface Visualization {
+    public interface Visualization {
         void redraw();
     }
 
-    interface VisualizationInitializer {
-        Map<?, ?, ?> map();
+    public interface VisualizationInitializer {
+        Map map();
         Supplier<Solution> solutionSupplier();
-        Supplier<PositionI<?, ?>> positionSupplier();
-        Supplier<FrontsCoordinate> targetSupplier();
+        Supplier<Position> positionSupplier();
+        Supplier<Location> targetSupplier();
     }
 
-    interface TargetData {
-        Coordinate getTarget();
-        double distance();
-        boolean indirect();
+    public Stream<MapLocation> getCandidateLocations(MapLocation location, MapLocation target) {
+        return storage.getLocations(GeometryUtils.createBoundingBox(location, target).toGeometry(ctxt.geometryFactory)).join()
+                .map(this::asMapLocation);
+
     }
 
-    /**
-     * A coordinate that has been quantized into a map coordinate.
-     */
-    interface Loc<L extends Loc<L>> extends LocationI<L>, GeometricObject {
-        CompletableFuture<? extends Map.TargetData> addTarget(FrontsCoordinate target);
-        boolean isIndirect(FrontsCoordinate target);
-    }
+    private class ObstacleHandler {
+        private final RobutContext ctxt = Map.this.ctxt;
+        private final WeakValueHashMap<UUID, Geometry> activeObstacles = new WeakValueHashMap<>(
+                UUID.class);
+        private final java.util.Map<UUID, Geometry> cache = Collections.synchronizedMap(new LRUMap<>());
 
-    interface Pos<L extends Loc<L>, P extends Pos<L, P>> extends Loc<L>, PositionI<L, P> {
-    }
+        /**
+         * Adds the obstacle to the list of active obstacles nad puts it in the LRU cache.
+         * @param obstacle the obstacle to cache
+         * @return the argument.
+         */
+        private MapObstacle addCache(MapObstacle obstacle) {
+            activeObstacles.put(obstacle.uuid(), obstacle.getGeometry());
+            cache.put(obstacle.uuid(), obstacle.getGeometry());
+            return obstacle;
+        }
 
-    interface Obstacle extends ObstacleI {
-    }
+        private void removeCache(Obstacle obstacle) {
+            activeObstacles.remove(obstacle.uuid());
+            cache.remove(obstacle.uuid());
+        }
 
-    interface Path extends GeometricObject {
+        /**
+         * Retrieve all the obstacles from the cache that intersect or cover the geometry.
+         * Updates the LRU cache entry for the found objects.
+         * @param geometry the geometry to match.
+         * @return the set of Obstacles that interset the geometry.
+         */
+        private Set<Obstacle> matchingCache(Geometry geometry) {
+            HashMap<UUID, Geometry> result = new HashMap<>(activeObstacles);
+            result.entrySet().removeIf(entry -> entry.getValue().covers(geometry) || entry.getValue().intersects(geometry));
+            ctxt.submit(() -> result.keySet().forEach(cache::get));
+            return result.entrySet().stream().map(entry -> new MapObstacle(Map.this, entry.getValue(), entry.getKey()))
+                    .collect(Collectors.toSet());
+        }
+
+        private CompletableFuture<MapObstacle> processObstacles(GeometricObject obstacle, Stream<Obstacle> obstacles) {
+            List<Obstacle> obstacleList = obstacles.collect(Collectors.toList());
+
+            if (obstacleList.isEmpty()) {
+                CompletableFuture.completedFuture(addCache(obstacle instanceof MapObstacle ? (MapObstacle) obstacle : new MapObstacle(Map.this, obstacle.getGeometry())));
+            }
+            Set<GeometricObject> touching = new HashSet<>(obstacleList);
+            touching.add(obstacle);
+            Geometry geometry = ctxt.geometryUtils.makeCloud(ctxt.scaleInfo.getResolution(), touching.stream());
+            MapObstacle mapObstacle = addCache(new MapObstacle(Map.this, geometry));
+            CompletableFuture<?> future = CompletableFuture.allOf(
+                    storage.addObstacle(mapObstacle),
+                    storage.removeObstacles(obstacleList.stream().map(Obstacle::uuid)),
+                    storage.removeCoordinates(mapObstacle),
+                    ctxt.submit(() -> obstacleList.forEach(this::removeCache)));
+            // delete the target records
+            Set<MapLocation> locationsToRemove =
+                    coordinateMapLocationMap.values().stream().filter(mapLocation -> geometry.covers(mapLocation.getGeometry()))
+                            .collect(Collectors.toSet());
+            if (!locationsToRemove.isEmpty()) {
+                coordinateMapLocationMap.values().forEach(mapLocation -> {
+                    mapLocation.removeTargets(locationsToRemove);
+                });
+                for (MapLocation location : locationsToRemove) {
+                    coordinateMapLocationMap.remove(location.getCoordinate());
+                }
+            }
+            return future.thenApply(x -> mapObstacle);
+        }
+
+        public CompletableFuture<MapObstacle> addObstacleInBackground(GeometricObject obstacle) {
+            return storage.findTouchingObstacles(obstacle)
+                    .thenApply(obstacles -> processObstacles(obstacle, obstacles).join());
+        }
+        /**
+         * Creates adds an obstacle to the map.
+         *
+         * @param obstacle
+         *            The geometric object that is the obstacle.
+         * @return the MapObstacle that was created.
+         */
+        MapObstacle addObstacle(GeometricObject obstacle) {
+            return addObstacleInBackground(obstacle).join();
+        }
+
+        boolean isClearPath(MapCoordinate start, MapCoordinate end) {
+            Geometry path = ctxt.geometryUtils.asPath(ctxt.scaledRadius, start.getCoordinate(), end.getCoordinate());
+            return ! (matchingCache(path).isEmpty() && storage.findTouchingObstacles(GeometricObject.of(path)).join().findAny().isEmpty());
+        }
+
+        boolean isObstacle(MapCoordinate point) {
+            return !matchingCache(point.getGeometry()).isEmpty() || storage.findTouchingObstacles(point).join().findAny().isPresent();
+        }
     }
 }

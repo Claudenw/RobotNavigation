@@ -30,6 +30,7 @@ public class Namespace {
     public static final Property visited = ResourceFactory.createProperty(URI + "visited");
     public static final Property isIndirect = ResourceFactory.createProperty(URI + "isIndirect");
     public static final Property target = ResourceFactory.createProperty(URI + "target");
+    public static final Property path = ResourceFactory.createProperty(URI + "path");
 
     public static Resource overlapsF = ResourceFactory.createResource(FUNC_URI + "overlaps");
     public static Resource intersectsF = ResourceFactory.createResource(FUNC_URI + "intersects");

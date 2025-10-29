@@ -13,6 +13,30 @@ public interface GeometricObject {
     Comparator<GeometricObject> comp = (x, y) -> x.getGeometry().compareTo(y.getGeometry());
 
     /**
+     * Creates a geometric objeect from a geometry that has been scaled to the resolution.
+     * @param geometry the geometry to use.
+     * @return a GeometricObject
+     */
+    static GeometricObject of(Geometry geometry) {
+        return new GeometricObject() {
+
+            @Override
+            public Geometry getGeometry() {
+                return geometry;
+            }
+
+            @Override
+            public int hashCode() {
+                return geometry.hashCode();
+            }
+
+            @Override
+            public boolean equals(Object obj) {
+                return GeometricObject.equals(this, obj);
+            }
+        };
+    }
+    /**
      * Hashcode should be implemented as wkt().hashCode()
      *
      * @param o
@@ -44,4 +68,5 @@ public interface GeometricObject {
         GeometryFactory factory = getGeometry().getFactory();
         return Arrays.stream(getGeometry().getCoordinates()).map(factory::createPoint).collect(Collectors.toSet());
     }
+
 }

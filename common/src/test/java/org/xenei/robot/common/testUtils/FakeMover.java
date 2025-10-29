@@ -19,7 +19,7 @@ public class FakeMover extends BaseMover {
     private final DeadReckoning deadReckoning;
 
     public FakeMover(RobutContext ctxt, Coordinate initial) {
-        super(ctxt, new DeadReckoning(ctxt, new Position(initial, 0)), new BumpSensorModel(ctxt, 8));
+        super(ctxt, new DeadReckoning(ctxt, Position.asPosition(initial, 0)), new BumpSensorModel(ctxt, 8));
         this.deadReckoning = (DeadReckoning) this.compass;
         if (LOG.isDebugEnabled()) {
             LOG.debug("Initial position {}", this.position());

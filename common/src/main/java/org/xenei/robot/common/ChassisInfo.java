@@ -1,5 +1,6 @@
 package org.xenei.robot.common;
 
+import org.xenei.robot.common.mapping.ThetaAndRange;
 import org.xenei.robot.common.utils.AngleUtils;
 
 import java.time.Duration;

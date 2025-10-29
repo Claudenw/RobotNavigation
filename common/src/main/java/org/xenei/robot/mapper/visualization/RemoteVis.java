@@ -8,8 +8,8 @@ import org.locationtech.jts.geom.CoordinateXY;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
-import org.xenei.robot.common.FrontsCoordinate;
-import org.xenei.robot.common.PositionI;
+import org.xenei.robot.common.Location;
+import org.xenei.robot.common.Position;
 import org.xenei.robot.common.mapping.Map;
 import org.xenei.robot.common.planning.Solution;
 import org.xenei.robot.common.utils.GeometryUtils;
@@ -28,11 +28,11 @@ import java.util.stream.Collectors;
 
 public class RemoteVis {
     private final HttpServer server;
-    private final Map<?, ?, ?> map;
+    private final Map map;
     private final RemoteVizLib vizLib;
     private final Supplier<Solution> solutionSupplier;
-    private final Supplier<PositionI<?, ?>> positionSupplier;
-    private final Supplier<FrontsCoordinate> targetSupplier;
+    private final Supplier<Position> positionSupplier;
+    private final Supplier<Location> targetSupplier;
     private final int scale = 100;
 
     public RemoteVis(Map.VisualizationInitializer initializer) throws IOException {
@@ -40,8 +40,8 @@ public class RemoteVis {
                 initializer.targetSupplier());
     }
 
-    public RemoteVis(Map<?, ?, ?> map, Supplier<Solution> solutionSupplier, Supplier<PositionI<?, ?>> positionSupplier,
-            Supplier<FrontsCoordinate> targetSupplier) throws IOException {
+    public RemoteVis(Map map, Supplier<Solution> solutionSupplier, Supplier<Position> positionSupplier,
+            Supplier<Location> targetSupplier) throws IOException {
         this.map = map;
         this.solutionSupplier = solutionSupplier;
         this.positionSupplier = positionSupplier;
@@ -126,9 +126,9 @@ public class RemoteVis {
         }
 
         @Override
-        public List<RemoteDrawingCommand> draw(Map<?, ?, ?> map, Supplier<Solution> solutionSupplier,
-                Supplier<PositionI<?, ?>> positionSupplier, Supplier<FrontsCoordinate> targetSupplier) {
-            boundingBox = new BoundingBox(xDim, yDim, positionSupplier.get(), map.getContext().geometryUtils);
+        public List<RemoteDrawingCommand> draw(Map map, Supplier<Solution> solutionSupplier,
+                                               Supplier<Position> positionSupplier, Supplier<Location> targetSupplier) {
+            boundingBox = new BoundingBox(xDim, yDim, map.asMapPosition(positionSupplier.get()), map.getContext().geometryUtils);
             List<RemoteDrawingCommand> result = super.draw(map, solutionSupplier, positionSupplier, targetSupplier);
             result.add(drawLine(boundingBox.polygon, Color.BLACK));
             return result;
@@ -200,18 +200,18 @@ public class RemoteVis {
         double maxX;
         double maxY;
 
-        BoundingBox(int xDim, int yDim, PositionI<?, ?> position, GeometryUtils geometryUtils) {
+        BoundingBox(int xDim, int yDim, Position position, GeometryUtils geometryUtils) {
             double dimX = 1.0 * xDim / scale;
             double dimY = 1.0 * yDim / scale;
             double halfX = dimX / 2;
             double halfY = dimY / 2;
-            double minx = position.getX() - halfX;
-            double miny = position.getY() - halfY;
+            double minx = position.getCoordinate().getX() - halfX;
+            double miny = position.getCoordinate().getY() - halfY;
             polygon = geometryUtils.asPolygon(new CoordinateXY(minx, miny), new CoordinateXY(minx + dimX, miny),
                     new CoordinateXY(minx + dimX, miny + dimY), new CoordinateXY(minx, miny + dimY),
                     new CoordinateXY(minx, miny));
-            maxX = position.getX() + halfX * scale;
-            maxY = position.getY() + halfY * scale;
+            maxX = position.getCoordinate().getX() + halfX * scale;
+            maxY = position.getCoordinate().getY() + halfY * scale;
         }
 
         Coordinate bound(Coordinate coord) {

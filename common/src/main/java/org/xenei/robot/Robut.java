@@ -3,15 +3,15 @@ package org.xenei.robot;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xenei.robot.common.DistanceSensor;
-import org.xenei.robot.common.FrontsCoordinate;
+import org.xenei.robot.common.Position;
+import org.xenei.robot.common.mapping.MapCoordinate;
 import org.xenei.robot.common.Location;
-import org.xenei.robot.common.LocationI;
-import org.xenei.robot.common.PositionI;
 import org.xenei.robot.common.mapping.Map;
+import org.xenei.robot.common.mapping.MapPosition;
 import org.xenei.robot.common.planning.Solution;
 import org.xenei.robot.common.utils.RobutContext;
 import org.xenei.robot.mapper.MapDistanceSensorAdapter;
-import org.xenei.robot.mapper.map.MapImpl;
+import org.xenei.robot.mapper.map.RDFStorage;
 import org.xenei.robot.mover.BaseMover;
 
 import java.util.concurrent.TimeUnit;
@@ -19,7 +19,7 @@ import java.util.function.Supplier;
 
 public class Robut {
 
-    private final Supplier<PositionI<?, ?>> positionSupplier;
+    private final Supplier<Position> positionSupplier;
     private final Processor processor;
 
     private static final Logger LOG = LoggerFactory.getLogger(Robut.class);
@@ -27,9 +27,9 @@ public class Robut {
     public Robut(RobutContext ctxt, DistanceSensor distSensor, BaseMover mover) throws InterruptedException {
         // wire the mover into the bump sensor
         positionSupplier = mover::position;
-        MapImpl map = new MapImpl(ctxt);
+        Map map = new Map(ctxt, new RDFStorage(ctxt));
         // wire the sensors into the map.
-        ctxt.bus.distance.register(new MapDistanceSensorAdapter(map, positionSupplier));
+        ctxt.bus.distance.register(MapDistanceSensorAdapter.create(map));
         // create the processor
         this.processor = new Processor(mover, positionSupplier, map);
         // wire the mapper to the distance sensor
@@ -39,14 +39,14 @@ public class Robut {
     }
 
     public void moveTo(Location relativeLocation) {
-        LocationI<?> nextCoord = positionSupplier.get().nextPosition(relativeLocation);
+        Location nextCoord = Position.PositionUtils.nextPosition(positionSupplier.get(), relativeLocation);
         processor.moveTo(nextCoord);
     }
 
     public Map.VisualizationInitializer visualizationInitializer() {
         return new Map.VisualizationInitializer() {
             @Override
-            public Map<?, ?, ?> map() {
+            public Map map() {
                 return processor.map;
             }
 
@@ -56,12 +56,12 @@ public class Robut {
             }
 
             @Override
-            public Supplier<PositionI<?, ?>> positionSupplier() {
+            public Supplier<Position> positionSupplier() {
                 return positionSupplier;
             }
 
             @Override
-            public Supplier<FrontsCoordinate> targetSupplier() {
+            public Supplier<Location> targetSupplier() {
                 return processor.getPlanner()::getTarget;
             }
         };

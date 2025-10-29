@@ -1,4 +1,4 @@
-package org.xenei.robot.common;
+package org.xenei.robot.common.mapping;
 
 import org.xenei.robot.common.utils.DoubleUtils;
 
@@ -6,8 +6,8 @@ import org.xenei.robot.common.utils.DoubleUtils;
  * An immutable snapshot of a position and target.
  */
 public class NavigationSnapshot {
-    public final PositionI<?, ?> position;
-    public final FrontsCoordinate target;
+    public final MapPosition position;
+    public final MapLocation target;
 
     /**
      * Constructor.
@@ -17,9 +17,12 @@ public class NavigationSnapshot {
      * @param target
      *            the target to preserve in the snapshot.
      */
-    public NavigationSnapshot(PositionI<?, ?> currentPosition, FrontsCoordinate target) {
+    public NavigationSnapshot(MapPosition currentPosition, MapLocation target) {
         this.position = currentPosition;
         this.target = target;
+        if (position != null && target != null) {
+            this.position.getTargetData(target);
+        }
     }
 
     /**
@@ -51,7 +54,7 @@ public class NavigationSnapshot {
      *            the target to check against.
      * @return true if location, heading, or target has changed.
      */
-    public boolean didChange(PositionI<?, ?> positionToCheck, FrontsCoordinate targetToCheck) {
+    public boolean didChange(MapPosition positionToCheck, MapCoordinate targetToCheck) {
         return didHeadingChange(positionToCheck) || didLocationChange(positionToCheck)
                 || didTargetChange(targetToCheck);
     }
@@ -74,7 +77,7 @@ public class NavigationSnapshot {
      *            the position to check against.
      * @return true if heading has changed.
      */
-    public boolean didHeadingChange(PositionI<?, ?> positionToCheck) {
+    public boolean didHeadingChange(MapPosition positionToCheck) {
         if (position == null) {
             return positionToCheck != null;
         }
@@ -99,15 +102,11 @@ public class NavigationSnapshot {
      *            the position to check against.
      * @return true if location has changed.
      */
-    boolean didLocationChange(PositionI<?, ?> positionToCheck) {
+    boolean didLocationChange(MapPosition positionToCheck) {
         if (position == null) {
             return (positionToCheck != null);
         }
-        if (positionToCheck == null) {
-        } else {
-            boolean result = LocationI.ThetaCompr.compare(position, positionToCheck) != 0;
-        }
-        return positionToCheck == null || LocationI.ThetaCompr.compare(position, positionToCheck) != 0;
+        return positionToCheck == null || position.getMap().THETA_COMPARE.compare(position, positionToCheck) != 0;
     }
 
     /**
@@ -128,11 +127,11 @@ public class NavigationSnapshot {
      *            the target to check against.
      * @return true if target has changed.
      */
-    public boolean didTargetChange(FrontsCoordinate coordinateToCheck) {
+    public boolean didTargetChange(MapCoordinate coordinateToCheck) {
         if (target == null) {
             return (coordinateToCheck != null);
         }
-        return coordinateToCheck == null || FrontsCoordinate.XYCompr.compare(target, coordinateToCheck) != 0;
+        return coordinateToCheck == null || target.compareTo(coordinateToCheck) != 0;
     }
 
     @Override

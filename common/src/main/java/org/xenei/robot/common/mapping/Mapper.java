@@ -3,8 +3,8 @@ package org.xenei.robot.common.mapping;
 import java.util.function.Consumer;
 
 import org.xenei.robot.common.DistanceSensor;
-import org.xenei.robot.common.FrontsCoordinate;
-import org.xenei.robot.common.PositionI;
+import org.xenei.robot.common.Location;
+import org.xenei.robot.common.Position;
 
 public interface Mapper {
 
@@ -17,7 +17,7 @@ public interface Mapper {
      *            the target.
      * @return {@code true} if the path has no obstacles, {@code false} otherwise.
      */
-    boolean isClearPath(PositionI<?, ?> currentPosition, FrontsCoordinate target);
+    boolean isClearPath(Position currentPosition, Location target);
 
     /**
      * Creates a consumer of relative obstacles (unscaled).

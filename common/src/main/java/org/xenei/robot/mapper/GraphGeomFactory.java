@@ -12,7 +12,7 @@ import org.apache.jena.rdf.model.ResourceFactory;
 import org.apache.jena.sparql.expr.Expr;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
-import org.xenei.robot.common.FrontsCoordinate;
+import org.xenei.robot.common.mapping.MapCoordinate;
 import org.xenei.robot.common.utils.GeometryUtils;
 import org.xenei.robot.mapper.rdf.Namespace;
 
@@ -93,7 +93,7 @@ public final class GraphGeomFactory {
         return asRDF(a, type, geometryUtils.asPoint(a));
     }
 
-    public Resource asRDF(FrontsCoordinate a, Resource type) {
+    public Resource asRDF(MapCoordinate a, Resource type) {
         return asRDF(a.getCoordinate(), type, geometryUtils.asPoint(a));
     }
 
@@ -109,7 +109,7 @@ public final class GraphGeomFactory {
         return r;
     }
 
-    public Resource asRDF(FrontsCoordinate p, Resource type, org.locationtech.jts.geom.Geometry geom) {
+    public Resource asRDF(MapCoordinate p, Resource type, org.locationtech.jts.geom.Geometry geom) {
         return asRDF(p.getCoordinate(), type, geom);
     }
 
