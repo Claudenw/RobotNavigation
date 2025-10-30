@@ -40,6 +40,20 @@ public interface Location {
             public String toString() {
                 return LocationUtils.toString(this);
             }
+
+            @Override
+            public int hashCode() {
+                return getCoordinate().hashCode();
+            }
+
+            @Override
+            public boolean equals(Object obj) {
+                if (obj instanceof Location) {
+                    Location other = (Location) obj;
+                    return getCoordinate().equals(other.getCoordinate());
+                }
+                return false;
+            }
         };
     }
 
@@ -83,6 +97,10 @@ public interface Location {
 
     default boolean sameCoordinate(final Location location) {
         return compareTo(location) == 0;
+    }
+
+    default boolean sameCoordinate(final Coordinate coordinate) {
+        return getCoordinate().equals2D(coordinate);
     }
 
     default boolean equals2D(Location location) {

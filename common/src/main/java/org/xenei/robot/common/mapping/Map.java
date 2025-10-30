@@ -54,12 +54,9 @@ public final class Map {
      */
     public final Comparator<MapCoordinate> RANGE_COMPARE = Comparator.comparingDouble(MapCoordinate::range).thenComparingDouble(MapCoordinate::theta);
 
+    // do not expose without wrapping in synchronized map.
     private final WeakValueHashMap<Coordinate, MapLocation> coordinateMapLocationMap = new WeakValueHashMap<>(
-            Coordinate.class, Object::hashCode, (a, b) -> {
-                boolean result = a.equals(b);
-        System.out.println("A: " + a + " == B: " + b+ " -> " + result);
-        return result ;
-    });
+            Coordinate.class);
 
     public Map(RobutContext ctxt, MapStorage storage) {
         this.ctxt = ctxt;
@@ -78,12 +75,16 @@ public final class Map {
         return coordinateMapLocationMap.containsKey(coordinate);
     }
 
+    @VisibleForTesting
+    ObstacleHandler getObstacleHandler() {
+        return obstacleHandler;
+    }
+
     /**
      * Clears the map of all objects.
      */
     public void clear() {
-        storage.clear();
-        obstacleHandler.cache.clear();
+        obstacleHandler.clear();
     }
 
     /**
@@ -124,7 +125,7 @@ public final class Map {
             return (MapLocation) location;
         }
         return coordinateMapLocationMap.compute(location.getCoordinate(),
-                (k, v) -> v != null ? v : new MapLocation(this, asMapCoordinate(location)));
+                (k, v) -> v != null ? v : storage.saveLocation(new MapLocation(this, asMapCoordinate(location))).join());
     }
 
     public MapPosition asMapPosition(Position position) {
@@ -153,9 +154,6 @@ public final class Map {
         return new MapObstacle(this, obstacle.getGeometry(), obstacle.uuid());
     }
 
-    private MapObstacle createObstacle(Geometry geometry) {
-        return obstacleHandler.addObstacle(GeometricObject.of(ctxt.geometryUtils.scale(geometry)));
-    }
     /**
      * Create an Obstacle.
      *
@@ -164,11 +162,11 @@ public final class Map {
      * @return An obstacle.
      */
     public MapObstacle createObstacle(Coordinate location) {
-        return obstacleHandler.addObstacle(asMapCoordinate(location));
+        return obstacleHandler.addObstacleInBackground(asMapCoordinate(location)).join();
     }
 
     public MapObstacle createObstacle(GeometricObject geometricObject) {
-        return obstacleHandler.addObstacle(geometricObject);
+        return obstacleHandler.addObstacleInBackground(geometricObject).join();
     }
 
     public CompletableFuture<MapObstacle> createObstacleInBackground(GeometricObject geometricObject) {
@@ -199,6 +197,7 @@ public final class Map {
             lst.add(current);
             current = current.nextCoordinate(heading, scaleInfo.getResolution());
         } while(!current.sameCoordinate(end));
+        lst.add(current);
         lst.add(end);
 
         return GeometricObject.of(ctxt.geometryUtils.asLine(lst.stream()));
@@ -321,14 +320,16 @@ public final class Map {
 
     }
 
-    private class ObstacleHandler {
+    @VisibleForTesting
+    class ObstacleHandler {
         private final RobutContext ctxt = Map.this.ctxt;
-        private final WeakValueHashMap<UUID, Geometry> activeObstacles = new WeakValueHashMap<>(
-                UUID.class);
-        private final java.util.Map<UUID, Geometry> cache = Collections.synchronizedMap(new LRUMap<>());
+        private final java.util.Map<UUID, Geometry> activeObstacles = Collections.synchronizedMap(new WeakValueHashMap<>(
+                UUID.class));
+        @VisibleForTesting
+        final java.util.Map<UUID, Geometry> cache = Collections.synchronizedMap(new LRUMap<>());
 
         /**
-         * Adds the obstacle to the list of active obstacles nad puts it in the LRU cache.
+         * Adds the obstacle to the list of active obstacles and puts it in the LRU cache.
          * @param obstacle the obstacle to cache
          * @return the argument.
          */
@@ -343,16 +344,21 @@ public final class Map {
             cache.remove(obstacle.uuid());
         }
 
+        void clear() {
+            cache.clear();
+        }
+
         /**
          * Retrieve all the obstacles from the cache that intersect or cover the geometry.
          * Updates the LRU cache entry for the found objects.
          * @param geometry the geometry to match.
          * @return the set of Obstacles that interset the geometry.
          */
-        private Set<Obstacle> matchingCache(Geometry geometry) {
+        @VisibleForTesting
+        Set<Obstacle> matchingCache(Geometry geometry) {
             HashMap<UUID, Geometry> result = new HashMap<>(activeObstacles);
-            result.entrySet().removeIf(entry -> entry.getValue().covers(geometry) || entry.getValue().intersects(geometry));
-            ctxt.submit(() -> result.keySet().forEach(cache::get));
+            result.entrySet().removeIf(entry -> !ctxt.scaleInfo.areEquivalent(entry.getValue().distance(geometry), 0));
+            result.keySet().forEach(cache::get);
             return result.entrySet().stream().map(entry -> new MapObstacle(Map.this, entry.getValue(), entry.getKey()))
                     .collect(Collectors.toSet());
         }
@@ -361,7 +367,12 @@ public final class Map {
             List<Obstacle> obstacleList = obstacles.collect(Collectors.toList());
 
             if (obstacleList.isEmpty()) {
-                CompletableFuture.completedFuture(addCache(obstacle instanceof MapObstacle ? (MapObstacle) obstacle : new MapObstacle(Map.this, obstacle.getGeometry())));
+                if (obstacle instanceof MapObstacle) {
+                    return CompletableFuture.completedFuture(addCache((MapObstacle) obstacle));
+                } else {
+                    MapObstacle mapObstacle = addCache(new MapObstacle(Map.this, obstacle.getGeometry()));
+                    return storage.addObstacle(mapObstacle).thenApply(nada -> mapObstacle);
+                }
             }
             Set<GeometricObject> touching = new HashSet<>(obstacleList);
             touching.add(obstacle);
@@ -387,10 +398,6 @@ public final class Map {
             return future.thenApply(x -> mapObstacle);
         }
 
-        public CompletableFuture<MapObstacle> addObstacleInBackground(GeometricObject obstacle) {
-            return storage.findTouchingObstacles(obstacle)
-                    .thenApply(obstacles -> processObstacles(obstacle, obstacles).join());
-        }
         /**
          * Creates adds an obstacle to the map.
          *
@@ -398,13 +405,14 @@ public final class Map {
          *            The geometric object that is the obstacle.
          * @return the MapObstacle that was created.
          */
-        MapObstacle addObstacle(GeometricObject obstacle) {
-            return addObstacleInBackground(obstacle).join();
+        public CompletableFuture<MapObstacle> addObstacleInBackground(GeometricObject obstacle) {
+            return storage.findTouchingObstacles(obstacle)
+                    .thenApply(obstacles -> processObstacles(obstacle, obstacles).join());
         }
 
         boolean isClearPath(MapCoordinate start, MapCoordinate end) {
             Geometry path = ctxt.geometryUtils.asPath(ctxt.scaledRadius, start.getCoordinate(), end.getCoordinate());
-            return ! (matchingCache(path).isEmpty() && storage.findTouchingObstacles(GeometricObject.of(path)).join().findAny().isEmpty());
+            return matchingCache(path).isEmpty() && storage.findTouchingObstacles(GeometricObject.of(path)).join().findAny().isEmpty();
         }
 
         boolean isObstacle(MapCoordinate point) {

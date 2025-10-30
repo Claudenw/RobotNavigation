@@ -89,7 +89,7 @@ public class MapperImplTest {
 
         assertTrue(map.isObstacle(map.asMapCoordinate(expectedObstacle)));
 
-        Optional<MapLocation> optional = map.getLocations().join().filter(loc -> loc.sameCoordinates(expectedCoord)).findFirst();
+        Optional<MapLocation> optional = map.getLocations().join().filter(loc -> loc.sameCoordinate(expectedCoord)).findFirst();
         assertTrue(optional.isPresent());
         MapLocation mapLocation = optional.get();
         assertTrue(mapLocation.isIndirect(map.asMapLocation(target)));

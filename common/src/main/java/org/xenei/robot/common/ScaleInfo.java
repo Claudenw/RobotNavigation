@@ -4,6 +4,7 @@ import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.PrecisionModel;
+import org.locationtech.jts.util.NumberUtil;
 import org.xenei.robot.common.mapping.MapCoordinate;
 import org.xenei.robot.common.mapping.MapPosition;
 import org.xenei.robot.common.utils.DoubleUtils;
@@ -43,6 +44,11 @@ public final class ScaleInfo {
         this.precisionModel = new PrecisionModel(100 * truncationFactor);
     }
 
+    @Override
+    public String toString() {
+        return String.format("ScaleInfo[r: %s, s:%s]", resolution, scale);
+    }
+
     /**
      * Gets the resolution of this map.
      *
@@ -50,6 +56,21 @@ public final class ScaleInfo {
      */
     public double getResolution() {
         return resolution;
+    }
+
+    /**
+     * Determines if 2 doubles are equivalent within the resolution of the
+     * scale.
+     *
+     * @param a
+     *            the double.
+     * @param b
+     *            the double.
+     * @return {@code true} if the values are the same within the resolution
+     *         the scale.
+     */
+    public boolean areEquivalent(double a, double b) {
+        return NumberUtil.equalsWithTolerance(a, b, resolution);
     }
 
     /**

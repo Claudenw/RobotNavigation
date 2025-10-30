@@ -9,6 +9,9 @@ import org.locationtech.jts.geom.Geometry;
 import org.xenei.robot.common.utils.RobutContext;
 import org.xenei.robot.mapper.rdf.WktDataType;
 
+/**
+ * Function to determine if 2 geometries are within a specified distance.
+ */
 public class FF_Nearby extends FunctionBase3 {
     private WktDataType dataType;
 

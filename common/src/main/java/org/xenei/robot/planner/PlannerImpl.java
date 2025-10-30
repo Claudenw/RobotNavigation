@@ -106,7 +106,7 @@ public class PlannerImpl implements Planner {
 
         if (selected.isPresent()) {
             Segment segment = selected.get();
-            if (!segment.getNextLocation().sameCoordinates(getTarget())) {
+            if (!segment.getNextLocation().sameCoordinate(getTarget())) {
                 target.push(segment);
                 if (LOG.isDebugEnabled()) {
                     LOG.debug("New target registered: " + selected.get());
@@ -122,7 +122,7 @@ public class PlannerImpl implements Planner {
     private Optional<Segment> selectSegment(MapPosition position) {
         position.setVisited();
 
-        if (position.sameCoordinates(getTarget())) {
+        if (position.sameCoordinate(getTarget())) {
             LOG.debug("Reached intermediate target");
             target.pop().getNextLocation().setVisited();
             if (target.isEmpty()) {

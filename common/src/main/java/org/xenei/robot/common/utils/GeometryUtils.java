@@ -73,16 +73,20 @@ public final class GeometryUtils {
         return bufOp.getResultGeometry(buffer / 2);
     }
 
-    public Geometry asPath(double buffer, Coordinate... points) {
-        return addBuffer(buffer, asLine(points));
+    public Geometry asPath(double buffer, Coordinate... coordinates) {
+        return addBuffer(buffer, asLine(coordinates));
     }
 
-    public Geometry asPath(double buffer, Collection<Coordinate> points) {
-        return asPath(buffer, points.toArray(new Coordinate[0]));
+    public Geometry asPath(double buffer, Collection<Coordinate> coordinates) {
+        return addBuffer(buffer, asLine(coordinates.toArray(new Coordinate[0])));
     }
 
-    public Geometry asPath(double buffer, Location... points) {
-        return asPath(buffer, Arrays.stream(points).map(Location::getCoordinate).collect(Collectors.toList()));
+    public Geometry asPath(double buffer, Location... locations) {
+        return addBuffer(buffer, asLine(Arrays.stream(locations)));
+    }
+
+    public Geometry asPath(double buffer, Stream<? extends Location> coords) {
+        return addBuffer(buffer, asLine(coords));
     }
 
     public Point asPoint(Coordinate c) {
@@ -99,11 +103,6 @@ public final class GeometryUtils {
 
     public LineString asLine(Stream<? extends Location> coords) {
         return ctxt.geometryFactory.createLineString(coords.map(Location::getCoordinate).toArray(Coordinate[]::new));
-    }
-
-    public LineString asLine(Location... coords) {
-        return ctxt.geometryFactory.createLineString(
-                Arrays.stream(coords).map(Location::getCoordinate).toArray(Coordinate[]::new));
     }
 
     public Geometry scale(Geometry geometry) {

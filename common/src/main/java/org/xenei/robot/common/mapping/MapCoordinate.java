@@ -4,7 +4,6 @@ import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.xenei.robot.common.GeometricObject;
 import org.xenei.robot.common.Location;
-import org.xenei.robot.common.Position;
 import org.xenei.robot.common.UnmodifiableCoordinate;
 import org.xenei.robot.common.utils.CoordUtils;
 import org.xenei.robot.common.utils.RobutContext;
@@ -21,7 +20,7 @@ public class MapCoordinate implements MapObject, GeometricObject, Comparable<Map
      */
     MapCoordinate(Map onMap, Coordinate mapCoordinate) {
         this.onMap = onMap;
-        this.coordinate = UnmodifiableCoordinate.make(mapCoordinate);
+        this.coordinate = UnmodifiableCoordinate.make(onMap.scaleInfo.scale(mapCoordinate));
     }
 
     public Map getMap() {
@@ -36,13 +35,16 @@ public class MapCoordinate implements MapObject, GeometricObject, Comparable<Map
         return coordinate;
     }
 
-    public final boolean sameCoordinates(Location other) {
+    @Override
+    public final boolean sameCoordinate(Location other) {
         return getMap().getContext().scaleInfo.areEquivalent(this, other);
     }
 
-    public final boolean sameCoordinates(Coordinate other) {
+    @Override
+    public final boolean sameCoordinate(Coordinate other) {
         return getMap().getContext().scaleInfo.areEquivalent(this.getCoordinate(), other);
     }
+
 
     public String toString() {
         return LocationUtils.toString(this);
@@ -69,7 +71,6 @@ public class MapCoordinate implements MapObject, GeometricObject, Comparable<Map
         return this.plus(relativeLocation);
     }
 
-
     public MapCoordinate relativeLocation(Location absoluteLocation) {
         return getMap().asMapCoordinate(Location.LocationUtils.relativeLocation(this, getMap().asMapLocation(absoluteLocation)));
     }
@@ -84,6 +85,20 @@ public class MapCoordinate implements MapObject, GeometricObject, Comparable<Map
             return 0;
         }
         return getCoordinate().compareTo(other.getCoordinate());
+    }
+
+    @Override
+    public int hashCode() {
+        return getCoordinate().hashCode();
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj instanceof MapLocation) {
+            MapLocation other = (MapLocation) obj;
+            return getMap().getContext().scaleInfo.areEquivalent(this, other);
+        }
+        return false;
     }
 
 }

@@ -316,8 +316,7 @@ public class RDFStorage implements MapStorage {
         SelectBuilder sb = new SelectBuilder().setDistinct(true).addVar(Namespace.s).addVar(wkt) //
                 .addGraph(Namespace.UnionModel, new WhereBuilder().addWhere(Namespace.s, RDF.type, Namespace.Obst) //
                         .addWhere(Namespace.s, Geo.AS_WKT_PROP, wkt)
-                        .addFilter(exprF.or(ctxt.graphGeomFactory.covers(exprF, wkt, object),
-                                        ctxt.graphGeomFactory.intersects(exprF, wkt, object))));
+                        .addFilter(ctxt.graphGeomFactory.isNearby(exprF, wkt, object, ctxt.scaleInfo.getResolution())));
 
         return exec(sb).thenApply(resultSet -> {
             List<Obstacle> result = new ArrayList<>();

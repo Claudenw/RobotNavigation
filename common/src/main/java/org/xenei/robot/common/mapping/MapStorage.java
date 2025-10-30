@@ -57,6 +57,7 @@ public interface MapStorage {
 
     /**
      * Finds the obstacles that are contained in or intersect with the geometric object.
+     * if the distance between 2 geometries is within the scaleInfo resolution value they are touching.
      * @param geometricObject the geometry to search for.
      * @return a stream of Obstacle instances that were found.
      */

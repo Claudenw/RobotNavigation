@@ -13,7 +13,7 @@ public class TargetStack extends Stack<Segment> {
             this.pop();
         }
         if (this.contains(item)) {
-            while (!item.getNextLocation().sameCoordinates(this.pop().getNextLocation())) {
+            while (!item.getNextLocation().sameCoordinate(this.pop().getNextLocation())) {
                 // all activity in the while statement
             }
         }
