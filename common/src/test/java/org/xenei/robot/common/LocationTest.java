@@ -28,7 +28,7 @@ public class LocationTest {
 
     @Test
     void getCoordinateTest() {
-        CoordinateUtils.assertEquivalent(new Coordinate(4, 5), underTest);
+        CoordinateUtils.assertEquivalent(new Coordinate(4, 5), underTest.getCoordinate());
     }
 
     @Test
@@ -91,7 +91,7 @@ public class LocationTest {
 
     @ParameterizedTest
     @MethodSource("coordPairParameters")
-    public void rangeAndThetaTest(Location a, double expected, double angle) {
+    public void rangeAndThetaTest(Location a, Location ignored, double expected, double angle) {
         assertEquals(expected, a.range(), AngleUtils.TOLERANCE);
         assertEquals(angle, a.theta(), AngleUtils.TOLERANCE);
     }
