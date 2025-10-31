@@ -11,7 +11,9 @@ import static org.xenei.robot.common.utils.AngleUtils.RADIANS_45;
 import static org.xenei.robot.common.utils.AngleUtils.RADIANS_90;
 import static org.xenei.robot.common.utils.DoubleUtils.SQRT2;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Assertions;
@@ -104,13 +106,22 @@ public class CoordUtilsTest {
         Assertions.assertEquals(0, result.getY());
     }
 
-    @Test
-    void plusTest() {
-        Coordinate underTest = new Coordinate(4, 5);
-        Coordinate other = new Coordinate(4, 5);
-        Coordinate result = CoordUtils.plus(underTest, other);
-        Assertions.assertEquals(8, result.getX());
-        Assertions.assertEquals(10, result.getY());
+    @ParameterizedTest
+    @MethodSource("plusTestData")
+    void plusTest(Coordinate start, Coordinate addend, Coordinate expected) {
+        Coordinate actual = CoordUtils.plus(start, addend);
+        assertEquals(expected.getX(), actual.getX(), 0.00000000001d);
+        assertEquals(expected.getY(), actual.getY(), 0.00000000001d);
+    }
+
+    private static Stream<Arguments> plusTestData() {
+        List<Arguments> args = new ArrayList<>();
+        args.add(Arguments.of(new Coordinate(4,5), new Coordinate(4,5), new Coordinate(8,10)));
+        args.add(Arguments.of(new Coordinate(0,0), new Coordinate(SQRT2, SQRT2), new Coordinate(SQRT2, SQRT2)));
+        args.add(Arguments.of(new Coordinate(SQRT2, SQRT2), new Coordinate(-SQRT2, SQRT2), new Coordinate(0, 2 * SQRT2)));
+        args.add(Arguments.of(new Coordinate(0, 2 * SQRT2), new Coordinate(-SQRT2, -SQRT2), new Coordinate(-SQRT2, SQRT2)));
+        args.add(Arguments.of(new Coordinate(-SQRT2, SQRT2), new Coordinate(SQRT2, -SQRT2), new Coordinate(0,0)));
+        return args.stream();
     }
 
     @ParameterizedTest

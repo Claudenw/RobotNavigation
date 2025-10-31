@@ -29,7 +29,7 @@ public class CoordinateUtils {
     }
 
     private static Coordinate asCoordinate(Object o) {
-        return (o instanceof Coordinate) ? (Coordinate) o : ((MapCoordinate) o).getCoordinate();
+        return (o instanceof Coordinate) ? (Coordinate) o : ((Location) o).getCoordinate();
     }
 
     public static void assertEquivalent(Object a, Object b, double delta, Supplier<String> prefix) {

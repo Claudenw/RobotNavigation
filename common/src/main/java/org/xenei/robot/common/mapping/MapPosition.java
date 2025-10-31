@@ -81,7 +81,7 @@ public final class MapPosition extends MapLocation implements Position {
     }
 
     public MapPosition nextPosition(Location relativeLocation) {
-        return getMap().asMapPosition(Position.PositionUtils.nextPosition(this, getMap().asMapCoordinate(relativeLocation)));
+        return getMap().asMapPosition(Position.PositionUtils.nextPosition(this, relativeLocation));
     }
 
     public MapObstacle createRelativeObstacle(MapCoordinate relativeStart,

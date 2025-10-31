@@ -40,7 +40,7 @@ public interface Position extends Location  {
 
             @Override
             public double getHeading() {
-                return heading;
+                return AngleUtils.normalize(heading);
             }
         };
     }
@@ -82,14 +82,13 @@ public interface Position extends Location  {
          * The heading will be the theta from the relative coordinates.
          * </p>
          *
-         * @param relativeCoordinates
+         * @param relativeCoordinate
          *            The coordinates relative to this position to move to.
          * @return the new Position centered on the new position with the proper
          *         heading.
          */
-        static public Position nextPosition(Position position, Coordinate relativeCoordinates) {
-            return nextPosition(position, new ThetaAndRange(CoordUtils.angleBetween(position.getCoordinate(), relativeCoordinates),
-                    relativeCoordinates.distance(ORIGIN.getCoordinate())));
+        static public Position nextPosition(Position position, Coordinate relativeCoordinate) {
+           return nextPosition(position, Location.asLocation(relativeCoordinate));
         }
 
         /**
@@ -98,40 +97,21 @@ public interface Position extends Location  {
          * The heading will be the theta from the relative coordinates.
          * </p>
          *
-         * @param relativeCoordinates
+         * @param relativeLocation
          *            The coordinates relative to this position to move to.
          * @return the new Position centered on the new position with the proper
          *         heading.
          */
-        static public Position nextPosition(Position position, Location relativeCoordinates) {
-            return nextPosition(position, relativeCoordinates.getCoordinate());
+        static public Position nextPosition(Position position, Location relativeLocation) {
+            ThetaAndRange thetaAndRange = new ThetaAndRange(position.getHeading() + relativeLocation.theta(),
+                    relativeLocation.range());
+            return Position.asPosition(position.plus(thetaAndRange), position.getHeading() + relativeLocation.theta());
         }
 
         static public Position nextPosition(Position position, double range) {
             double heading = position.getHeading();
             return asPosition(CoordUtils.add(position.getCoordinate(), CoordUtils.fromAngle(heading, range)), heading);
         }
-
-//        /**
-//         * Calculates the next position.
-//         * <p>
-//         * The heading will be the theta from the relative coordinates.
-//         * </p>
-//         *
-//         * @param thetaAndRange
-//         *            The coordinates relative to this position to move to.
-//         * @return the new Position centered on the new position with the proper
-//         *         heading.
-//         */
-//        static public Position nextPosition(Position position, ThetaAndRange thetaAndRange) {
-//            if (thetaAndRange.range() == 0 && thetaAndRange.theta() == 0) {
-//                return position;
-//            }
-//            double newHeading = AngleUtils.normalize(position.getHeading() + thetaAndRange.theta());
-//            Coordinate newCoordinate = CoordUtils.fromAngle(newHeading, thetaAndRange.range());
-//
-//            return asPosition(newCoordinate, newHeading);
-//        }
 
         /**
          * Calculates the heading required to move from the current absolute position to
@@ -143,22 +123,21 @@ public interface Position extends Location  {
          * @return the heading in radians.
          */
         static public double headingTo(Position position, Location location) {
+            if (position.getCoordinate().equals2D(location.getCoordinate())) {
+                return position.getHeading();
+            }
             Coordinate pCoordinate = position.getCoordinate();
             Coordinate lCoordinate = location.getCoordinate();
             return AngleUtils.normalize(Math.atan2(lCoordinate.getY() - pCoordinate.getY(), lCoordinate.getX() - pCoordinate.getX()));
         }
 
-//        static public Location relativeLocation(Position position, Location absoluteLocation) {
-//            double range = position.getCoordinate().distance(absoluteLocation.getCoordinate());
-//            if (range == 0) {
-//                return position;
-//            }
-//            double theta = headingTo(position, absoluteLocation) - position.getHeading();
-//            return Location.asLocation(CoordUtils.fromAngle(theta, range));
+//        static public Location relativeLocation(Position position, Location absolute) {
+//            return absolute.minus(position);
 //        }
 
         static public String toString(Position position) {
-            return String.format("Position[%s, h: %s]", position.getCoordinate(), position.getHeading());
+            String name = position.getClass().isAnonymousClass() ? "Position" : position.getClass().getSimpleName();
+            return String.format("%s[%s, h: %s]", name, position.getCoordinate(), position.getHeading());
         }
     }
 }

@@ -94,8 +94,8 @@ public class MapCoordinate implements MapObject, GeometricObject, Comparable<Map
 
     @Override
     public boolean equals(Object obj) {
-        if (obj instanceof MapLocation) {
-            MapLocation other = (MapLocation) obj;
+        if (obj instanceof MapCoordinate) {
+            MapCoordinate other = (MapCoordinate) obj;
             return getMap().getContext().scaleInfo.areEquivalent(this, other);
         }
         return false;
