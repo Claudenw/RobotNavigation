@@ -14,7 +14,7 @@ public class MapTargetData {
             locations[1] = first;
         }
         distance = first.distance(second);
-        indirect = first.isIndirect(second);
+        indirect = !first.getMap().isClearPath(first, second);
     }
 
     public final MapLocation getTarget(MapLocation from) {

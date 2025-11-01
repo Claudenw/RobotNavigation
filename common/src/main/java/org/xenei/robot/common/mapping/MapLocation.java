@@ -50,7 +50,6 @@ public class MapLocation extends MapCoordinate implements GeometricObject {
     private MapTargetData computeTargetData(MapLocation target) {
         return targetData.computeIfAbsent(target, k -> {
             MapTargetData targetData = new MapTargetData(this, target);
-            this.targetData.put(target, targetData);
             target.targetData.put(this, targetData);
             return targetData;
         });
