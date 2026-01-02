@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.AfterEach;
+import org.xenei.robot.common.TestingConfiguration;
 import org.xenei.robot.common.testUtils.MapLibrary;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -41,8 +42,7 @@ public class SolutionTest {
 
     @BeforeEach
     void setup() {
-        RobutContext.Builder builder = RobutContext.builder();
-        builder.setOptions(builder.defaultOptions());
+        RobutContext.Builder builder = TestingConfiguration.getContextBuilder("SolutionTest");
         map = new Map(builder.build(), new MapTest.TestingStorage());
         MapLibrary.map2(map);
         underTest = new Solution();

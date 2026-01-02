@@ -17,6 +17,7 @@ import static org.awaitility.Awaitility.await;
 public class FakeMover extends BaseMover {
     private static final Logger LOG = LoggerFactory.getLogger(FakeMover.class);
     private final DeadReckoning deadReckoning;
+    private long delay = 10;
 
     public FakeMover(RobutContext ctxt, Coordinate initial) {
         super(ctxt, DeadReckoning.from(ctxt, Position.asPosition(initial, 0)), new BumpSensorModel(ctxt, 8));
@@ -24,6 +25,10 @@ public class FakeMover extends BaseMover {
         if (LOG.isDebugEnabled()) {
             LOG.debug("Initial position {}", this.position());
         }
+    }
+
+    public void setDelay(long delay) {
+        this.delay = delay;
     }
 
     @Override
@@ -99,7 +104,7 @@ public class FakeMover extends BaseMover {
                     leftSteps.getAndAccumulate(leftIncrement, (x, inc) -> x != leftLimit ? x + inc : x);
                     rightSteps.getAndAccumulate(rightIncrement, (x, inc) -> x != rightLimit ? x + inc : x);
                     try {
-                        Thread.sleep(10);
+                        Thread.sleep(delay);
                     } catch (InterruptedException e) {
                         // do nothing
                     }

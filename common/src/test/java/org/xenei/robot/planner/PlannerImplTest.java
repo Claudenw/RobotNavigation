@@ -20,6 +20,7 @@ import org.junit.jupiter.api.Test;
 import org.locationtech.jts.geom.Coordinate;
 import org.mockito.ArgumentCaptor;
 import org.xenei.robot.common.ChassisInfoTest;
+import org.xenei.robot.common.TestingConfiguration;
 import org.xenei.robot.common.mapping.Map;
 import org.xenei.robot.common.mapping.MapCoordinate;
 import org.xenei.robot.common.Location;
@@ -61,9 +62,7 @@ public class PlannerImplTest {
 
     @BeforeEach
     void setup() {
-        RobutContext.Builder builder = RobutContext.builder();
-        builder.setOptions(builder.defaultOptions())
-                .setChassisInfo(ChassisInfoTest.DEFAULT);
+        RobutContext.Builder builder = TestingConfiguration.getContextBuilder("PlannerImplTest");
         ctxt = builder.build();
         testingStorage = new MapTest.TestingStorage();
         map = new Map(ctxt, testingStorage);

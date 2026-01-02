@@ -4,6 +4,7 @@ import org.locationtech.jts.geom.Coordinate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xenei.robot.common.ChassisInfoTest;
+import org.xenei.robot.common.TestingConfiguration;
 import org.xenei.robot.common.sensor.distance.DistanceSensor;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.ScaleInfo;
@@ -43,10 +44,7 @@ public class RobutTest {
     public static void main(String[] args) throws Exception {
         final Logger LOG = LoggerFactory.getLogger(RobutTest.class);
         BufferedReader BUFFER = new BufferedReader(new InputStreamReader(System.in));
-
-        RobutContext.Builder builder = RobutContext.builder();
-        builder.setOptions(builder.defaultOptions())
-                .setChassisInfo(ChassisInfoTest.DEFAULT);
+        RobutContext.Builder builder = TestingConfiguration.getContextBuilder("RobutTest");
 
         try (RobutContext ctxt = builder.build()) {
             Robut robut = build(ctxt, new Coordinate(0, 0));

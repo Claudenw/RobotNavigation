@@ -15,6 +15,7 @@ import org.xenei.robot.common.Position;
 import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.common.ScaleInfoTest;
 import org.xenei.robot.common.StepMonitor;
+import org.xenei.robot.common.TestingConfiguration;
 import org.xenei.robot.common.sensor.bump.BumpSensorModel;
 import org.xenei.robot.common.utils.AngleUtils;
 import org.xenei.robot.common.utils.RobutContext;
@@ -67,9 +68,7 @@ public class BaseMoverTest {
     @BeforeEach
     void setupBaseMoverTest() {
         scaleInfo = ScaleInfo.DEFAULT;
-        RobutContext.Builder builder = RobutContext.builder();
-        builder.setOptions(builder.defaultOptions())
-                .setChassisInfo(ChassisInfoTest.DEFAULT);
+        RobutContext.Builder builder = TestingConfiguration.getContextBuilder("BaseMoverTest");
         ctxt = builder.build();
         deadReckoning = DeadReckoning.from(ctxt, Position.ORIGIN);
         bumpSensorModel = new BumpSensorModel(ctxt, 8);

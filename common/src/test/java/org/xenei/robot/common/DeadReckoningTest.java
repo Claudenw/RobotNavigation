@@ -19,9 +19,8 @@ public class DeadReckoningTest {
 
     @BeforeEach
     void beforeDeadReckoningTest() {
-        RobutContext.Builder builder = RobutContext.builder();
-        builder.setOptions(builder.defaultOptions())
-                .setChassisInfo(ChassisInfoTest.ONE_METER);
+        RobutContext.Builder builder = TestingConfiguration.getContextBuilder("DeadReckoningTest")
+                .chassisInfo(ChassisInfoTest.ONE_METER);
         ctxt = builder.build();
         scaleInfo = ctxt.scaleInfo;
         testingStorage = new MapTest.TestingStorage();

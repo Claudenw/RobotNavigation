@@ -7,6 +7,7 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.xenei.robot.common.ChassisInfoTest;
 
+import org.xenei.robot.common.TestingConfiguration;
 import org.xenei.robot.common.mapping.MapBuilder;
 import org.xenei.robot.common.mapping.Map;
 import org.xenei.robot.common.mapping.MapTest;
@@ -98,10 +99,7 @@ public class MapLibrary {
     public static void main(String[] args) throws ParseException {
         CommandLine commandLine = DefaultParser.builder().build().parse(getOptions(), args);
         int mapNumber = commandLine.getParsedOptionValue("m");
-        RobutContext.Builder builder = RobutContext.builder();
-        builder.setOptions(builder.defaultOptions())
-                .setChassisInfo(ChassisInfoTest.DEFAULT)
-                .setId("MapLibrary");
+        RobutContext.Builder builder = TestingConfiguration.getContextBuilder("MapLibrary");
         Thread textVizThread;
         TextViz textVis = null;
         try (RobutContext ctxt = builder.build()) {

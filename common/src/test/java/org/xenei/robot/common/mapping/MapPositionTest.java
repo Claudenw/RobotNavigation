@@ -7,34 +7,29 @@ import org.xenei.robot.common.AbstractPositionTest;
 import org.xenei.robot.common.ChassisInfoTest;
 import org.xenei.robot.common.Position;
 import org.xenei.robot.common.ScaleInfo;
+import org.xenei.robot.common.TestingConfiguration;
 import org.xenei.robot.common.utils.RobutContext;
 
 public final class MapPositionTest extends AbstractPositionTest {
-    private RobutContext ctxt;
     private Map map;
-
-    @BeforeEach
-    void setup() {
-        RobutContext.Builder builder = RobutContext.builder();
-        builder.setOptions(builder.defaultOptions())
-                .setChassisInfo(ChassisInfoTest.DEFAULT);
-        ctxt = builder.build();
-    }
 
     @AfterEach
     void teardown() {
-        ctxt.close();
+        if (map != null) {
+            map.getContext().close();
+            map = null;
+        }
     }
 
     @Override
     protected double tolerance() {
-        return ctxt.scaleInfo.getResolution();
+        return ScaleInfo.DEFAULT.getResolution();
     }
 
     @Override
     protected Position convertPosition(Position position) {
         if (map == null) {
-            map = new Map(ctxt, new MapTest.TestingStorage());
+            map = new Map(TestingConfiguration.getContextBuilder("MapPositionTest").build(), new MapTest.TestingStorage());
         }
         return map.asMapPosition(position);
     }

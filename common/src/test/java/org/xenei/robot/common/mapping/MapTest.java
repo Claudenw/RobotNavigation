@@ -6,7 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -21,6 +20,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import io.nats.client.Options;
 import org.apache.commons.lang3.NotImplementedException;
 import org.apache.jena.arq.querybuilder.AskBuilder;
 import org.apache.jena.query.QueryExecutionFactory;
@@ -38,6 +38,7 @@ import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Obstacle;
 import org.xenei.robot.common.Position;
 import org.xenei.robot.common.ScaleInfo;
+import org.xenei.robot.common.TestingConfiguration;
 import org.xenei.robot.common.utils.AngleUtils;
 import org.xenei.robot.common.utils.DoubleUtils;
 import org.xenei.robot.common.utils.RobutContext;
@@ -71,9 +72,7 @@ public class MapTest {
     @BeforeEach
     void setup() {
         testingStorage = new TestingStorage();
-        RobutContext.Builder builder = RobutContext.builder();
-        builder.setOptions(builder.defaultOptions())
-                .setChassisInfo(ChassisInfoTest.DEFAULT);
+        RobutContext.Builder builder = TestingConfiguration.getContextBuilder("MapTest");
         underTest = new Map(builder.build(), testingStorage);
     }
 
@@ -251,10 +250,7 @@ public class MapTest {
         for (int x = -2; x <= 2; x++) {
             for (int y = -2; y <= 2; y++) {
                 MapCoordinate mc =underTest.asMapCoordinate(new Coordinate(x / 2.0, y / 2.0));
-                boolean result = underTest.isObstacle(mc);
-                System.out.format("%s %s %s %s %s%n", mc, underTest.isObstacle(mc), obstacle.getGeometry().distance(mc.getGeometry()), DoubleUtils.SQRT2,
-                        underTest.getContext().scaleInfo.getResolution());
-                //assertThat(underTest.isObstacle(underTest.asMapCoordinate(new Coordinate(x, y)))).isTrue();
+                assertThat(underTest.isObstacle(mc)).as(mc.toString()).isTrue();
             }
         }
     }

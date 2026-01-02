@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.locationtech.jts.geom.Coordinate;
 import org.xenei.robot.common.ChassisInfoTest;
+import org.xenei.robot.common.TestingConfiguration;
 import org.xenei.robot.common.sensor.distance.DistanceSensor;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Mover;
@@ -55,13 +56,7 @@ public class ProcessorTest {
     @Test
     void stepTestMap2() throws InterruptedException {
         Coordinate startCoord = new Coordinate(-1, -3);
-        Options.Builder optionsBuilder = Options.builder()
-                .userInfo("demo", "demo") // Set a user and plain text password
-                .connectionName("RobutContext:ProcessorTest");
-        RobutContext.Builder builder = RobutContext.builder()
-                .setId("ProcessorTest")
-                .setOptions(optionsBuilder)
-                .setChassisInfo(ChassisInfoTest.DEFAULT);
+        RobutContext.Builder builder = TestingConfiguration.getContextBuilder("ProcessorTest");
         try (RobutContext ctxt = builder.build();
              RobutContext fakeSensorContext = builder.build()) {
             FakeMover mover = new FakeMover(ctxt, startCoord);
@@ -76,11 +71,11 @@ public class ProcessorTest {
     @Test
     void stepTestMap3() throws InterruptedException {
         Location startCoord = Location.asLocation(new Coordinate(-1, -3));
-        RobutContext.Builder builder = RobutContext.builder();
-        builder.setOptions(builder.defaultOptions());
-        try (RobutContext ctxt = builder.build()) {
+        RobutContext.Builder builder = TestingConfiguration.getContextBuilder("ProcessorTest");
+        try (RobutContext ctxt = builder.build();
+        RobutContext fakeSensorContext = builder.build()) {
             FakeMover mover = new FakeMover(ctxt, startCoord.getCoordinate());
-            Map m = new Map(RobutContext.builder().build(), new MapTest.TestingStorage());
+            Map m = new Map(fakeSensorContext, new MapTest.TestingStorage());
             DistanceSensor sensor = new FakeDistanceSensor2(MapLibrary.map3(m), AngleUtils.RADIANS_45, mover::position);
             Location finalCoord = Location.asLocation(new Coordinate(-1, 1));
             doTest(ctxt, finalCoord, mover, sensor);
@@ -90,16 +85,11 @@ public class ProcessorTest {
     @Test
     void stepTestEmptyMap() throws InterruptedException {
         Location startCoord = Location.asLocation(new Coordinate(-1, -3));
-        Options.Builder optionsBuilder = Options.builder()
-                .userInfo("demo", "demo") // Set a user and plain text password
-                .connectionName("RobutContext:ProcessorTest");
-        RobutContext.Builder builder = RobutContext.builder()
-                .setId("ProcessorTest")
-                .setOptions(optionsBuilder)
-                .setChassisInfo(ChassisInfoTest.DEFAULT);
-        try (RobutContext ctxt = builder.build()) {
+        RobutContext.Builder builder = TestingConfiguration.getContextBuilder("ProcessorTest");
+        try (RobutContext ctxt = builder.build();
+        RobutContext fakeSensorContext = builder.build()) {
             FakeMover mover = new FakeMover(ctxt, startCoord.getCoordinate());
-            Map m = new Map(RobutContext.builder().build(), new MapTest.TestingStorage());
+            Map m = new Map(fakeSensorContext, new MapTest.TestingStorage());
             DistanceSensor sensor = new FakeDistanceSensor1(m, mover::position);
             Location finalCoord = Location.asLocation(new Coordinate(-1, 1));
             doTest(ctxt, finalCoord, mover, sensor);

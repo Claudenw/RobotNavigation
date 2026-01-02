@@ -17,6 +17,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.locationtech.jts.geom.Coordinate;
 import org.xenei.robot.common.ChassisInfoTest;
+import org.xenei.robot.common.TestingConfiguration;
 import org.xenei.robot.common.sensor.distance.DistanceSensor;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Position;
@@ -34,9 +35,7 @@ public class MapperImplTest {
 
     @BeforeEach
     void setup() {
-        RobutContext.Builder builder = RobutContext.builder();
-        builder.setOptions(builder.defaultOptions())
-                .setChassisInfo(ChassisInfoTest.DEFAULT);
+        RobutContext.Builder builder = TestingConfiguration.getContextBuilder("MapperImplTest");
         RobutContext ctxt = builder.build();
         map = new Map(ctxt, new MapTest.TestingStorage());
     }

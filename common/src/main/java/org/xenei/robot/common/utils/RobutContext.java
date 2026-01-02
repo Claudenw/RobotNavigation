@@ -3,9 +3,9 @@ package org.xenei.robot.common.utils;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
@@ -24,10 +24,6 @@ import io.nats.client.Connection;
 import io.nats.client.Dispatcher;
 import io.nats.client.Nats;
 import io.nats.client.Options;
-import org.apache.commons.collections4.map.LRUMap;
-import org.apache.jena.riot.RIOT;
-import org.apache.jena.sparql.util.Symbol;
-import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,12 +39,10 @@ import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.common.mapping.Map;
 import org.xenei.robot.common.sensor.bump.BumpSensorModel;
 import org.xenei.robot.mapper.rdf.GraphGeomFactory;
-import org.xenei.robot.mapper.rdf.Namespace;
 import org.xenei.robot.mapper.visualization.RemoteVisualization;
 
 public final class RobutContext implements AutoCloseable {
     private static final Logger LOGGER = LoggerFactory.getLogger(RobutContext.class);
-    public static final Symbol symbol = Symbol.create(RobutContext.class.getName());
     public final ChassisInfo chassisInfo;
     public final ScaleInfo scaleInfo;
     public final GeometryFactory geometryFactory;
@@ -75,7 +69,7 @@ public final class RobutContext implements AutoCloseable {
     private RobutContext(Builder builder) {
         this.scaleInfo = builder.scaleInfo;
         this.chassisInfo = builder.chassisInfo;
-        final String id = builder.id == null ? UUID.randomUUID().toString() : builder.id;
+        final String id = builder.id;
         this.geometryFactory = new GeometryFactory(scaleInfo.getPrecisionModel());
         this.geometryUtils = new GeometryUtils(geometryFactory, scaleInfo);
         this.graphGeomFactory = new GraphGeomFactory(geometryUtils);
@@ -332,7 +326,7 @@ public final class RobutContext implements AutoCloseable {
 
     public static class Builder {
         private String id = null;
-        private ScaleInfo scaleInfo = ScaleInfo.DEFAULT;
+        private ScaleInfo scaleInfo;
         private ChassisInfo chassisInfo;
         private Options.Builder options;
 
@@ -340,44 +334,46 @@ public final class RobutContext implements AutoCloseable {
         }
 
         public RobutContext build() {
+            validate();
             RobutContext ctxt = new RobutContext(this);
             id = null;
             return ctxt;
         }
 
-        public Builder setId(String id) {
+        private void validate() {
+            Objects.requireNonNull(scaleInfo, "scaleInfo");
+            Objects.requireNonNull(chassisInfo, "chassisInfo");
+            Objects.requireNonNull(options, "options");
+            if (id == null) {
+                id = UUID.randomUUID().toString();
+            }
+        }
+
+        public Builder id(String id) {
             this.id = id;
             return this;
         }
 
-        public Builder setScaleInfo(ScaleInfo scaleInfo) {
+        public Builder scaleInfo(ScaleInfo scaleInfo) {
             this.scaleInfo = scaleInfo;
             return this;
         }
 
-        public Builder setChassisInfo(ChassisInfo chassisInfo) {
+        public Builder chassisInfo(ChassisInfo chassisInfo) {
             this.chassisInfo = chassisInfo;
             return this;
         }
 
-        public Builder setOptions(Options.Builder options) {
+        public Builder options(Options.Builder options) {
             this.options = options;
+            if (id != null) {
+                this.options.connectionName("RobutContext:" + id);
+            }
             return this;
         }
 
         private Options getConnectionOptions() {
             return options == null ? new Options.Builder().server(Options.DEFAULT_URL).build() : options.build();
-        }
-
-        public Options.Builder defaultOptions() {
-                    String natsURL = System.getenv("NATS_URL");
-        if (natsURL == null) {
-            natsURL = "nats://127.0.0.1:4222";
-        }
-        return new Options.Builder()
-                .server(natsURL)
-                .userInfo("local", "1UH6NBQ4RYZHXdZTLKrhOodYJmI6pmD2") // Set a user and plain text password
-                .connectionName("RobutContext:" + id);
         }
     }
 }

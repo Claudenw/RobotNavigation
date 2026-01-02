@@ -22,6 +22,7 @@ import org.xenei.robot.common.ChassisInfoTest;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Obstacle;
 import org.xenei.robot.common.Position;
+import org.xenei.robot.common.TestingConfiguration;
 import org.xenei.robot.common.mapping.Map;
 import org.xenei.robot.common.mapping.MapCoordinate;
 import org.xenei.robot.common.mapping.MapObstacle;
@@ -45,8 +46,7 @@ public class FakeDistanceSensorTest {
     @Disabled
     void map1Test() {
         TestingPositionSupplier positionSupplier = new TestingPositionSupplier(null);
-        RobutContext.Builder builder = RobutContext.builder();
-        builder.setOptions(builder.defaultOptions());
+        RobutContext.Builder builder = TestingConfiguration.getContextBuilder("FakeDistanceSensorTest");
         try (RobutContext ctxt = builder.build()) {
             Map map = new Map(ctxt, new MapTest.TestingStorage());
             underTest = new FakeDistanceSensor1(MapLibrary.map1(map), positionSupplier);
@@ -92,13 +92,7 @@ public class FakeDistanceSensorTest {
     @Test
     void map2Test() throws InterruptedException, IOException {
         Supplier<Position> positionSupplier = new TestingPositionSupplier(makePosition(-1, -3, 0));
-        Options.Builder optionsBuilder = Options.builder()
-                .userInfo("demo", "demo") // Set a user and plain text password
-                .connectionName("RobutContext:Map2Text");
-        RobutContext.Builder builder = RobutContext.builder().setId("Map2Test")
-                .setOptions(optionsBuilder)
-                .setChassisInfo(ChassisInfoTest.DEFAULT);
-
+        RobutContext.Builder builder = TestingConfiguration.getContextBuilder("FakeDistanceSensorTest");
         Thread vizThread = null;
         StringWriter sw = new StringWriter();
         try (RobutContext ctxt = builder.build();

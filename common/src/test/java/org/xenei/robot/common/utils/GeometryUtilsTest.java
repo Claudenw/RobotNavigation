@@ -5,7 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
@@ -13,19 +12,17 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
-import org.xenei.robot.common.ChassisInfoTest;
 import org.xenei.robot.common.Location;
-import org.xenei.robot.common.mapping.MapCoordinate;
-import org.xenei.robot.common.LocationTest;
 import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.common.testUtils.CoordinateUtils;
 
 public class GeometryUtilsTest {
-
-    private static RobutContext ctxt = RobutContext.builder().build();
+    private static final GeometryFactory geometryFactory = new GeometryFactory(ScaleInfo.DEFAULT.getPrecisionModel());
+    private static final GeometryUtils geometryUtils = new GeometryUtils(geometryFactory, ScaleInfo.DEFAULT);
 
     @ParameterizedTest
     @MethodSource("polygonParameters")
@@ -46,35 +43,35 @@ public class GeometryUtilsTest {
                 new Coordinate(0.875, 1.216), new Coordinate(0.75, 1.0), new Coordinate(0.875, 0.783),
                 new Coordinate(1.125, 0.783), new Coordinate(1.25, 1.0)};
 
-        lst.add(Arguments.of("radius", ctxt.geometryUtils.asPolygon(center, .25), expected));
+        lst.add(Arguments.of("radius", geometryUtils.asPolygon(center, .25), expected));
 
-        lst.add(Arguments.of("hasCoord radius", ctxt.geometryUtils.asPolygon(Location.asLocation(center), .25),
+        lst.add(Arguments.of("hasCoord radius", geometryUtils.asPolygon(Location.asLocation(center), .25),
                 expected));
 
         expected = new Coordinate[]{new Coordinate(1.25, 1.25), new Coordinate(0.75, 1.25), new Coordinate(0.75, 0.75),
                 new Coordinate(1.25, 0.75), new Coordinate(1.25, 1.25)};
 
-        lst.add(Arguments.of("radius edges", ctxt.geometryUtils.asPolygon(center, .25, 4), expected));
+        lst.add(Arguments.of("radius edges", geometryUtils.asPolygon(center, .25, 4), expected));
 
         lst.add(Arguments.of("hasCoord radius edges",
-                ctxt.geometryUtils.asPolygon(Location.asLocation(new Coordinate(1, 1)), .25, 4), expected));
+                geometryUtils.asPolygon(Location.asLocation(new Coordinate(1, 1)), .25, 4), expected));
 
         expected = new Coordinate[]{new Coordinate(1, 1.25), new Coordinate(0.75, 1), new Coordinate(0.75, 0.75),
                 new Coordinate(1.25, 0.75), new Coordinate(1, 1.25)};
 
-        Polygon geom = ctxt.geometryUtils.asPolygon(new Coordinate(1, 1.25), new Coordinate(0.75, 1),
+        Polygon geom = geometryUtils.asPolygon(new Coordinate(1, 1.25), new Coordinate(0.75, 1),
                 new Coordinate(0.75, 0.75), new Coordinate(1.25, 0.75), new Coordinate(1, 1.25));
 
         lst.add(Arguments.of("coord array", geom, expected));
-        lst.add(Arguments.of("coord collection", ctxt.geometryUtils.asPolygon(Arrays.asList(expected)), expected));
+        lst.add(Arguments.of("coord collection", geometryUtils.asPolygon(Arrays.asList(expected)), expected));
 
         List<Location> locList = Arrays.stream(expected).map(Location::asLocation).toList();
 
         lst.add(Arguments.of("hasCoord array",
-                ctxt.geometryUtils.asPolygon(locList.toArray(new Location[locList.size()])), expected));
+                geometryUtils.asPolygon(locList.toArray(new Location[locList.size()])), expected));
 
         lst.add(Arguments.of("hasCoord",
-                ctxt.geometryUtils.asPolygon(locList.get(0), locList.get(1), locList.get(2), locList.get(3), locList.get(4)),
+                geometryUtils.asPolygon(locList.get(0), locList.get(1), locList.get(2), locList.get(3), locList.get(4)),
                 expected));
 
         return lst.stream();
@@ -93,9 +90,9 @@ public class GeometryUtilsTest {
 
         Coordinate center = new Coordinate(1, 1);
 
-        lst.add(Arguments.of("coord", ctxt.geometryUtils.asPoint(center), center));
+        lst.add(Arguments.of("coord", geometryUtils.asPoint(center), center));
 
-        lst.add(Arguments.of("hasCoord", ctxt.geometryUtils.asPoint(Location.asLocation(center)), center));
+        lst.add(Arguments.of("hasCoord", geometryUtils.asPoint(Location.asLocation(center)), center));
 
         return lst.stream();
     }
@@ -104,7 +101,7 @@ public class GeometryUtilsTest {
     void asLineTest() {
         Coordinate[] expected = new Coordinate[]{new Coordinate(1, 1), new Coordinate(3, 3), new Coordinate(-4, -4)};
 
-        LineString ls = ctxt.geometryUtils.asLine(expected[0], expected[1], expected[2]);
+        LineString ls = geometryUtils.asLine(expected[0], expected[1], expected[2]);
         Coordinate[] actual = ls.getCoordinates();
         assertEquals(expected.length, actual.length);
         for (int i = 0; i < actual.length; i++) {

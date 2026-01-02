@@ -14,6 +14,7 @@ import org.locationtech.jts.geom.CoordinateXY;
 import org.xenei.robot.common.ChassisInfoTest;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.ScaleInfo;
+import org.xenei.robot.common.TestingConfiguration;
 import org.xenei.robot.common.utils.AngleUtils;
 import org.xenei.robot.common.utils.CoordUtils;
 import org.xenei.robot.common.utils.RobutContext;
@@ -27,11 +28,10 @@ public final class FakeMoverTest {
 
     @BeforeEach
     void setup() {
-        RobutContext.Builder builder = RobutContext.builder();
-        builder.setOptions(builder.defaultOptions())
-                .setChassisInfo(ChassisInfoTest.DEFAULT);
+        RobutContext.Builder builder = TestingConfiguration.getContextBuilder("FakeMoverTest");
         ctxt = builder.build();
         underTest = new FakeMover(ctxt, new CoordinateXY(0, 0));
+        underTest.setDelay(1);
         delta = 1 / Math.pow(10, ctxt.scaleInfo.decimalPlaces() + 1);
     }
 
