@@ -9,6 +9,7 @@ import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.LineString;
 import org.xenei.robot.common.ScaleInfo;
+import org.xenei.robot.common.serialization.SerializationException;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -21,7 +22,7 @@ public class RemoteVisualizationTest {
 
     @ParameterizedTest
     @MethodSource("commands")
-    void drawingCommandSerdeTest(RemoteVisualization.DrawingCommand command) {
+    void drawingCommandSerdeTest(RemoteVisualization.DrawingCommand command) throws SerializationException {
         RemoteVisualization.Serde serde = new RemoteVisualization.Serde();
 
         byte[] buffer = serde.serialize(command);

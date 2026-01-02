@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.time.Duration;
+import java.util.Comparator;
 import java.util.List;
 
 public abstract class AbstractRemoteVisualization implements AutoCloseable, Runnable {
@@ -40,6 +41,7 @@ public abstract class AbstractRemoteVisualization implements AutoCloseable, Runn
                         Message msg = subscription.nextMessage(Duration.ofMinutes(2));
                         if (msg != null) {
                             List<RemoteVisualization.DrawingCommand> cmds = visualization.deserialize(msg.getData());
+                            cmds.sort(Comparator.comparingInt(o -> o.type().ordinal()));
                             draw(cmds);
                         }
                     } catch (InterruptedException e) {

@@ -1,6 +1,5 @@
 package org.xenei.robot.mapper;
 
-import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
 import org.slf4j.Logger;
@@ -54,13 +53,13 @@ public class MapperImpl implements Mapper {
      * @param heading the heading of the robut when the sensor reading was taken.
      * @param relativeLocation the location of the obstacle
      */
-    private CompletableFuture<?> createObstacle(final MapCoordinate mapCoordinate, final double heading, final Location relativeLocation) {
+    private void createObstacle(final MapCoordinate mapCoordinate, final double heading, final Location relativeLocation) {
         double distance = relativeLocation.range() - map.getContext().scaledRadius;
         Position positionAtSensorReading = Position.asPosition(mapCoordinate, heading);
         if (distance >= map.getContext().scaledRadius) {
             ScaleInfo scaleInfo = map.getContext().scaleInfo;
             MapCoordinate obstacle = map.asMapCoordinate(positionAtSensorReading.nextPosition(relativeLocation));
-            return map.createObstacleInBackground(obstacle)
+            map.createObstacleInBackground(obstacle)
                     .thenAccept(mapObstacle -> {
                         double range = mapObstacle.getGeometry().distance(mapCoordinate.getGeometry());
                         MapCoordinate proxyObstacle = map.asMapCoordinate(new ThetaAndRange(relativeLocation.theta(), range));
@@ -74,6 +73,5 @@ public class MapperImpl implements Mapper {
                         }
                     });
         }
-        return CompletableFuture.completedFuture(null);
     }
 }

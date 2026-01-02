@@ -46,50 +46,16 @@ abstract class VisualizationLibrary<T extends VisualizationLibrary.AbstractDrawi
         return drawString(geom, color);
     }
 
-    public java.util.List<T> draw(Map map, Supplier<Solution> solutionSupplier,
-                                  Supplier<Position> positionSupplier, Supplier<Location> targetSupplier) {
-        java.util.List<T> cmds = new ArrayList<>();
-        java.util.List<CompletableFuture<?>> futures = new ArrayList<>();
-        MapLocation target = map.asMapLocation(targetSupplier.get());
-        futures.add(map.getObstacles().thenAccept(obs -> obs.forEach(obst -> {
-            if (obst.getGeometry() instanceof GeometryCollection gCollection) {
-                for (int i = 0; i < gCollection.getNumGeometries(); i++) {
-                    cmds.add(getPoly(gCollection.getGeometryN(i), Color.RED));
-                }
-            } else {
-                cmds.add(getPoly(obst.getGeometry(), Color.RED));
-            }
-        })));
-
-        futures.add(map.getLocations().thenAccept(coords -> coords.forEach(mapCoord -> {
-            cmds.add(getPoly(mapCoord.getGeometry(), mapCoord.isIndirect(target) ? Color.CYAN : Color.BLUE));
-        })));
-
-        List<MapLocation> lst = solutionSupplier.get().stream().toList();
-        if (lst.size() > 1) {
-            cmds.add(getPoly(geometryUtils.asPath(0.25, lst.toArray(new MapCoordinate[0])), Color.WHITE));
-        } else if (lst.size() == 1) {
-            cmds.add(getPoly(geometryUtils.asPolygon(lst.get(0), .25), Color.WHITE));
-        }
-
-        if (target != null) {
-            cmds.add(getPoly(geometryUtils.asPolygon(target, 0.25), Color.GREEN));
-        }
-
-        for (CompletableFuture<?> f : futures) {
-            f.join();
-        }
-
-        Position position = positionSupplier.get();
-        if (position != null) {
-            cmds.add(getPoly(geometryUtils.asPolygon(position.getCoordinate(), 0.25), Color.ORANGE));
-
-            if (target != null) {
-                cmds.add(getPoly(geometryUtils.asPath(map.getContext().chassisInfo.radius, position.getCoordinate(),
-                        target.getCoordinate()), Color.ORANGE));
-            }
-        }
-        return cmds;
+    public T convert(RemoteVisualization.DrawingCommand cmd) {
+        return switch (cmd.type()) {
+            case Location -> getPoly(cmd.geometry(), Color.BLUE);
+            case IndirectLocation -> getPoly(cmd.geometry(), Color.CYAN);
+            case Obstacle -> getPoly(cmd.geometry(), Color.RED);
+            case Solution -> getPoly(cmd.geometry(), Color.WHITE);
+            case Target -> getPoly(geometryUtils.asPolygon(cmd.geometry().getCoordinate(), 0.25), Color.GREEN);
+            case Position -> getPoly(geometryUtils.asPolygon(cmd.geometry().getCoordinate(), 0.25), Color.ORANGE);
+            case Path -> getPoly(cmd.geometry(), Color.GRAY);
+        };
     }
 
     /**

@@ -5,6 +5,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.locationtech.jts.geom.Coordinate;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Position;
+import org.xenei.robot.common.serialization.SerializationException;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -33,7 +34,7 @@ public class DistanceSensorTest {
 
     @ParameterizedTest
     @MethodSource("serdeData")
-    void testSerde(DistanceSensor.Readings readings) {
+    void testSerde(DistanceSensor.Readings readings) throws SerializationException {
         serde = new DistanceSensor.Serde();
         byte[] result = serde.serialize(readings);
         DistanceSensor.Readings readings2 = serde.deserialize(result);

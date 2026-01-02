@@ -1,7 +1,8 @@
 package org.xenei.robot.common.sensor.bump;
 
+import org.xenei.robot.common.serialization.SerializationException;
 import org.xenei.robot.common.utils.RobutContext;
-import org.xenei.robot.common.utils.SerializerDeserializer;
+import org.xenei.robot.common.serialization.SerializerDeserializer;
 import org.xenei.robot.ml.SensorLayer;
 
 /**
@@ -49,7 +50,10 @@ public final class BumpSensorModel {
      * Serializer / Deserializer for SensorResult data.
      */
     public static class Serde implements SerializerDeserializer<SensorResult> {
-        public SensorResult deserialize(byte[] data) {
+        public SensorResult deserialize(byte[] data) throws SerializationException {
+            if (data.length < 2) {
+                throw new SerializationException("Invalid data length: " + data.length);
+            }
             return new SensorResult(data[0], data[1]);
         }
 

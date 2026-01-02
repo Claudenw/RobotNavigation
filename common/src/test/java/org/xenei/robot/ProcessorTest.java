@@ -1,9 +1,11 @@
 package org.xenei.robot;
 
+import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
+import io.nats.client.Options;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.locationtech.jts.geom.Coordinate;
@@ -29,55 +31,50 @@ public class ProcessorTest {
     ProcessorTest() {
     }
 
-    private void doTest(RobutContext ctxt, Location startCoord, Location finalCoord, FakeMover mover, DistanceSensor sensor) {
+    private void doTest(RobutContext ctxt, Location finalCoord, FakeMover mover, DistanceSensor sensor) throws InterruptedException {
         Supplier<Position> positionSupplier = mover::position;
-        Map map = new Map(ctxt, new MapTest.TestingStorage());
-        map.registerDistanceSensors();;
+        Thread mapVizThread;
+        try (MapViz mapViz = new MapViz(ctxt.getConnectionOptions(), ctxt.vizName, ctxt.scaleInfo.getResolution(), 100, ctxt.geometryUtils)) {
+            mapVizThread = new Thread(mapViz);
+            mapVizThread.start();
 
+            Map map = new Map(ctxt, new MapTest.TestingStorage());
+            map.registerDistanceSensors();
             Processor underTest = new Processor(mover, positionSupplier, map);
+            map.getContext().enableRemoteVisualization(map, ()->null, underTest.getPositionSupplier(), underTest.getPlanner()::getTarget);
             SegmentTracker segmentTracker = new SegmentTracker(ctxt);
-            MapViz mapViz = new MapViz(100, underTest.map, underTest.planner::getSolution, positionSupplier,
-                    underTest.planner::getTarget);
-//            TextViz mapViz = new TextViz(1.0, map, underTest.planner::getSolution, positionSupplier, underTest.planner::getTarget);
-//            System.out.println(mapViz.render());
-       // try {
-            // wire the mapper to the distance sensor
-            // schedule the sensors to sense
             ctxt.scheduleAtFixedRate(sensor, 0, 250, TimeUnit.MILLISECONDS);
-//            ctxt.visualizations.register(mapViz);
-//            ctxt.scheduleAtFixedRate(ctxt.visualizations::redraw, 500, 500, TimeUnit.MILLISECONDS);
-            try {
-                Thread.sleep(500);
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            }
+            Thread.sleep(500);
             underTest.moveTo(finalCoord);
             await().atMost(2, TimeUnit.HOURS)
                     .until(() -> ctxt.scaleInfo.compare(ScaleInfo.OP.EQ, finalCoord, positionSupplier.get()));
-
-//        } finally {
-//            ctxt.visualizations.unregister(mapViz);
-//        }
+            Thread.sleep(Duration.ofMinutes(5).toMillis());
+        }
     }
 
     @Test
-    void stepTestMap2() {
-        Location startCoord = Location.asLocation(new Coordinate(-1, -3));
-        RobutContext.Builder builder = RobutContext.builder();
-                builder.setOptions(builder.defaultOptions())
-                        .setChassisInfo(ChassisInfoTest.DEFAULT);
-        try (RobutContext ctxt = builder.build()) {
-            FakeMover mover = new FakeMover(ctxt, startCoord.getCoordinate());
-            Map m = new Map(RobutContext.builder().setChassisInfo(ChassisInfoTest.DEFAULT).build(), new MapTest.TestingStorage());
+    void stepTestMap2() throws InterruptedException {
+        Coordinate startCoord = new Coordinate(-1, -3);
+        Options.Builder optionsBuilder = Options.builder()
+                .userInfo("demo", "demo") // Set a user and plain text password
+                .connectionName("RobutContext:ProcessorTest");
+        RobutContext.Builder builder = RobutContext.builder()
+                .setId("ProcessorTest")
+                .setOptions(optionsBuilder)
+                .setChassisInfo(ChassisInfoTest.DEFAULT);
+        try (RobutContext ctxt = builder.build();
+             RobutContext fakeSensorContext = builder.build()) {
+            FakeMover mover = new FakeMover(ctxt, startCoord);
+            Map m = new Map(fakeSensorContext, new MapTest.TestingStorage());
             DistanceSensor sensor = new FakeDistanceSensor1(MapLibrary.map2(m), mover::position);
             Location finalCoord = Location.asLocation(new Coordinate(-1, 1));
-            doTest(ctxt, startCoord, finalCoord, mover, sensor);
+            doTest(ctxt, finalCoord, mover, sensor);
         }
     }
 
     @Disabled
     @Test
-    void stepTestMap3() {
+    void stepTestMap3() throws InterruptedException {
         Location startCoord = Location.asLocation(new Coordinate(-1, -3));
         RobutContext.Builder builder = RobutContext.builder();
         builder.setOptions(builder.defaultOptions());
@@ -86,21 +83,26 @@ public class ProcessorTest {
             Map m = new Map(RobutContext.builder().build(), new MapTest.TestingStorage());
             DistanceSensor sensor = new FakeDistanceSensor2(MapLibrary.map3(m), AngleUtils.RADIANS_45, mover::position);
             Location finalCoord = Location.asLocation(new Coordinate(-1, 1));
-            doTest(ctxt, startCoord, finalCoord, mover, sensor);
+            doTest(ctxt, finalCoord, mover, sensor);
         }
     }
 
     @Test
-    void stepTestEmptyMap() {
+    void stepTestEmptyMap() throws InterruptedException {
         Location startCoord = Location.asLocation(new Coordinate(-1, -3));
-        RobutContext.Builder builder = RobutContext.builder();
-        builder.setOptions(builder.defaultOptions());
+        Options.Builder optionsBuilder = Options.builder()
+                .userInfo("demo", "demo") // Set a user and plain text password
+                .connectionName("RobutContext:ProcessorTest");
+        RobutContext.Builder builder = RobutContext.builder()
+                .setId("ProcessorTest")
+                .setOptions(optionsBuilder)
+                .setChassisInfo(ChassisInfoTest.DEFAULT);
         try (RobutContext ctxt = builder.build()) {
             FakeMover mover = new FakeMover(ctxt, startCoord.getCoordinate());
             Map m = new Map(RobutContext.builder().build(), new MapTest.TestingStorage());
             DistanceSensor sensor = new FakeDistanceSensor1(m, mover::position);
             Location finalCoord = Location.asLocation(new Coordinate(-1, 1));
-            doTest(ctxt, startCoord, finalCoord, mover, sensor);
+            doTest(ctxt, finalCoord, mover, sensor);
         }
     }
 

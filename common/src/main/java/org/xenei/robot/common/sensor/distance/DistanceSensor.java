@@ -7,7 +7,8 @@ import org.apache.thrift.transport.TByteBuffer;
 import org.apache.thrift.transport.TMemoryBuffer;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Position;
-import org.xenei.robot.common.utils.SerializerDeserializer;
+import org.xenei.robot.common.serialization.SerializationException;
+import org.xenei.robot.common.serialization.SerializerDeserializer;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -39,11 +40,11 @@ public interface DistanceSensor extends Runnable {
         Position.Serde pSerde = new Position.Serde();
 
         @Override
-        public byte[] serialize(DistanceSensor.Readings readings)  {
+        public byte[] serialize(DistanceSensor.Readings readings) throws SerializationException {
             System.out.println("Serializing " + readings);
             int size = Short.BYTES + Position.BYTES + readings.readings().size() * Location.BYTES;
             if (size > Short.MAX_VALUE) {
-                throw new IllegalArgumentException("Too large distance sensor readings");
+                throw new SerializationException("Too large distance sensor readings");
             }
             try {
                 TMemoryBuffer result = new TMemoryBuffer(size);
@@ -55,11 +56,11 @@ public interface DistanceSensor extends Runnable {
                 }
                 return result.getArray();
             } catch (TException e) {
-                throw new RuntimeException(e);
+                throw new SerializationException(e.getMessage(), e);
             }
         }
 
-        public DistanceSensor.Readings deserialize(byte[] buff) {
+        public DistanceSensor.Readings deserialize(byte[] buff) throws SerializationException {
             System.out.println("Deserializing " + buff.length + " bytes");
             try {
                 TByteBuffer buffer = new TByteBuffer(ByteBuffer.wrap(buff));
@@ -72,7 +73,7 @@ public interface DistanceSensor extends Runnable {
                 }
                 return new DistanceSensor.Readings(pos, readings);
             } catch (TException e) {
-                throw new RuntimeException(e);
+                throw new SerializationException(e.getMessage(), e);
             }
         }
     }

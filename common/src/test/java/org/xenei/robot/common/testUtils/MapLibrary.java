@@ -13,8 +13,6 @@ import org.xenei.robot.common.mapping.MapTest;
 import org.xenei.robot.common.utils.RobutContext;
 import org.xenei.robot.mapper.visualization.TextViz;
 
-import java.io.IOException;
-
 public class MapLibrary {
 
     public static Map map1(Map map) {
@@ -97,14 +95,14 @@ public class MapLibrary {
         return options;
     }
 
-    public static void main(String[] args) throws ParseException, IOException {
+    public static void main(String[] args) throws ParseException {
         CommandLine commandLine = DefaultParser.builder().build().parse(getOptions(), args);
         int mapNumber = commandLine.getParsedOptionValue("m");
         RobutContext.Builder builder = RobutContext.builder();
         builder.setOptions(builder.defaultOptions())
                 .setChassisInfo(ChassisInfoTest.DEFAULT)
                 .setId("MapLibrary");
-        Thread textVizThread = null;
+        Thread textVizThread;
         TextViz textVis = null;
         try (RobutContext ctxt = builder.build()) {
             if (commandLine.hasOption("v")) {

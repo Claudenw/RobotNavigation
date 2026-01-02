@@ -1,9 +1,11 @@
 package org.xenei.robot.mapper.rdf;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.apache.jena.arq.querybuilder.AskBuilder;
 import org.apache.jena.arq.querybuilder.ExprFactory;
+import org.apache.jena.arq.querybuilder.SelectBuilder;
 import org.apache.jena.geosparql.implementation.vocabulary.Geo;
 import org.apache.jena.geosparql.spatial.SpatialIndex;
 import org.apache.jena.geosparql.spatial.SpatialIndexException;
@@ -19,13 +21,17 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.GeometryFactory;
 import org.xenei.robot.common.ChassisInfoTest;
 import org.xenei.robot.common.ScaleInfo;
+import org.xenei.robot.common.utils.GeometryUtils;
 import org.xenei.robot.common.utils.RobutContext;
 
 public class GraphGeomFactoryTest {
 
-    private RobutContext ctxt;
+    GeometryFactory geometryFactory = new GeometryFactory(ScaleInfo.DEFAULT.getPrecisionModel());
+    GeometryUtils geometryUtils = new GeometryUtils(geometryFactory, ScaleInfo.DEFAULT);
+    GraphGeomFactory graphGeomFactory = new GraphGeomFactory(geometryUtils);
 
     private Dataset createDataset(Model m) {
         Dataset ds = DatasetFactory.create(m);
@@ -37,18 +43,6 @@ public class GraphGeomFactoryTest {
         return ds;
     }
 
-    @BeforeEach
-    void setup() {
-        RobutContext.Builder builder = RobutContext.builder();
-        builder.setOptions(builder.defaultOptions())
-                .setChassisInfo(ChassisInfoTest.DEFAULT);
-        ctxt = builder.build();
-    }
-
-    @AfterEach
-    void teardown() {
-        ctxt.close();
-    }
 
     // @Test
     // public void checkCollisionTest() {
@@ -72,18 +66,27 @@ public class GraphGeomFactoryTest {
         Coordinate c = new Coordinate(1, 1);
         Coordinate b = new Coordinate(1, 5);
 
-        Model m = ctxt.graphGeomFactory.asRDF(c, Namespace.Coord).getModel();
-        m.add(ctxt.graphGeomFactory.asRDF(b, Namespace.Coord).getModel());
+        Model m = graphGeomFactory.asRDF(c, Namespace.Coord).getModel();
+        m.add(graphGeomFactory.asRDF(b, Namespace.Coord).getModel());
         Dataset ds = createDataset(m);
-        Literal testWkt = ctxt.graphGeomFactory.asWKT(c);
+        Literal testWkt = graphGeomFactory.asWKT(c);
 
         ExprFactory exprF = new ExprFactory(m);
+        SelectBuilder query = new SelectBuilder()
+                .addVar("?cost")
+                .addWhere(Namespace.s, Geo.AS_WKT_PROP, "?wkt")
+                .addBind(graphGeomFactory.calcDistance(exprF, "?wkt", testWkt), "?cost");
+
         AskBuilder ask = new AskBuilder().addWhere(Namespace.s, Geo.AS_WKT_PROP, "?wkt")
-                .addBind(ctxt.graphGeomFactory.calcDistance(exprF, "?wkt", testWkt), "?cost")
+                .addBind(graphGeomFactory.calcDistance(exprF, "?wkt", testWkt), "?cost")
                 .addFilter(exprF.eq("?cost", 4));
 
+        try (QueryExecution qexec = QueryExecutionFactory.create(query.build(), ds)) {
+            qexec.execSelect().forEachRemaining(System.out::println);
+        }
+
         try (QueryExecution qexec = QueryExecutionFactory.create(ask.build(), ds)) {
-            assertTrue(qexec.execAsk());
+            assertThat(qexec.execAsk()).as(ask.toString()).isTrue();
         }
     }
 
@@ -91,16 +94,16 @@ public class GraphGeomFactoryTest {
     void asRDFTest() {
         Coordinate p = new Coordinate(-1, 3);
 
-        Resource r = ctxt.graphGeomFactory.asRDF(p, Namespace.Coord);
+        Resource r = graphGeomFactory.asRDF(p, Namespace.Coord);
         assertTrue(r.hasLiteral(Namespace.x, -1.0));
         assertTrue(r.hasLiteral(Namespace.y, 3.0));
         assertTrue(r.hasProperty(RDF.type, Namespace.Coord));
-        assertTrue(r.hasProperty(Geo.AS_WKT_PROP, ctxt.graphGeomFactory.asWKT(ctxt.geometryUtils.asPoint(p))));
+        assertTrue(r.hasProperty(Geo.AS_WKT_PROP, graphGeomFactory.asWKT(geometryUtils.asPoint(p))));
 
-        r = ctxt.graphGeomFactory.asRDF(p, Namespace.Coord, ctxt.geometryUtils.asPolygon(p, 3));
+        r = graphGeomFactory.asRDF(p, Namespace.Coord, geometryUtils.asPolygon(p, 3));
         assertTrue(r.hasLiteral(Namespace.x, -1.0));
         assertTrue(r.hasLiteral(Namespace.y, 3.0));
         assertTrue(r.hasProperty(RDF.type, Namespace.Coord));
-        assertTrue(r.hasProperty(Geo.AS_WKT_PROP, ctxt.graphGeomFactory.asWKT(ctxt.geometryUtils.asPolygon(p, 3))));
+        assertTrue(r.hasProperty(Geo.AS_WKT_PROP, graphGeomFactory.asWKT(geometryUtils.asPolygon(p, 3))));
     }
 }

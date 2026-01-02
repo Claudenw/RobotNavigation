@@ -6,12 +6,12 @@ import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.transport.TByteBuffer;
 import org.apache.thrift.transport.TMemoryBuffer;
 import org.locationtech.jts.geom.Coordinate;
-import org.locationtech.jts.geom.CoordinateXY;
 import org.xenei.robot.common.mapping.ThetaAndRange;
+import org.xenei.robot.common.serialization.SerializationException;
 import org.xenei.robot.common.utils.AngleUtils;
 import org.xenei.robot.common.utils.CoordUtils;
-import org.xenei.robot.common.utils.SerializerDeserializer;
-import org.xenei.robot.common.utils.ThriftSerde;
+import org.xenei.robot.common.serialization.SerializerDeserializer;
+import org.xenei.robot.common.serialization.ThriftSerde;
 
 import java.nio.ByteBuffer;
 
@@ -116,24 +116,24 @@ public interface Position extends Location, Compass  {
             proto.writeDouble(position.heading());
         }
 
-        public byte[] serialize(Position position)  {
+        public byte[] serialize(Position position) throws SerializationException {
             try {
                 TMemoryBuffer result = new TMemoryBuffer(Position.BYTES);
                 TProtocol proto = new TBinaryProtocol(result);
                 serialize(position, proto);
                 return result.getBuffer();
             } catch (TException e) {
-                throw new RuntimeException(e);
+                throw new SerializationException(e.getMessage(), e);
             }
         }
 
-        public Position deserialize(byte[] bytes)  {
+        public Position deserialize(byte[] bytes) throws SerializationException {
             try {
                 TByteBuffer buffer = new TByteBuffer(ByteBuffer.wrap(bytes));
                 TProtocol proto = new TBinaryProtocol(buffer);
                 return deserialize(proto);
             } catch (TException e) {
-                throw new RuntimeException(e);
+                throw new SerializationException(e.getMessage(), e);
             }
         }
 
@@ -202,10 +202,6 @@ public interface Position extends Location, Compass  {
             Coordinate lCoordinate = location.getCoordinate();
             return AngleUtils.normalize(Math.atan2(lCoordinate.getY() - pCoordinate.getY(), lCoordinate.getX() - pCoordinate.getX()));
         }
-
-//        static public Location relativeLocation(Position position, Location absolute) {
-//            return absolute.minus(position);
-//        }
 
         static public String toString(Position position) {
             String name = position.getClass().isAnonymousClass() ? "Position" : position.getClass().getSimpleName();

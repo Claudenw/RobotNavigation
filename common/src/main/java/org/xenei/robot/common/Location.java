@@ -10,8 +10,8 @@ import org.locationtech.jts.geom.CoordinateXY;
 import org.xenei.robot.common.mapping.ThetaAndRange;
 
 import org.xenei.robot.common.utils.CoordUtils;
-import org.xenei.robot.common.utils.SerializerDeserializer;
-import org.xenei.robot.common.utils.ThriftSerde;
+import org.xenei.robot.common.serialization.SerializerDeserializer;
+import org.xenei.robot.common.serialization.ThriftSerde;
 
 import java.nio.ByteBuffer;
 import java.util.Comparator;
@@ -178,7 +178,7 @@ public interface Location {
                 TMemoryBuffer result = new TMemoryBuffer(Location.BYTES);
                 TProtocol proto = new TBinaryProtocol(result);
                 serialize(location, proto);
-                return result.getBuffer();
+                return result.getArray();
             } catch (TException e) {
                 throw new RuntimeException(e);
             }

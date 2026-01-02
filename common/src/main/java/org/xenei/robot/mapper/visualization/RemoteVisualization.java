@@ -20,9 +20,10 @@ import org.xenei.robot.common.mapping.Map;
 import org.xenei.robot.common.mapping.MapCoordinate;
 import org.xenei.robot.common.mapping.MapLocation;
 import org.xenei.robot.common.planning.Solution;
+import org.xenei.robot.common.serialization.SerializationException;
 import org.xenei.robot.common.utils.RobutContext;
-import org.xenei.robot.common.utils.SerializerDeserializer;
-import org.xenei.robot.common.utils.ThriftSerde;
+import org.xenei.robot.common.serialization.SerializerDeserializer;
+import org.xenei.robot.common.serialization.ThriftSerde;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -58,7 +59,7 @@ public class RemoteVisualization {
     }
 
     public void draw(Map map, Supplier<Solution> solutionSupplier,
-                                  Supplier<Position> positionSupplier, Supplier<Location> targetSupplier) {
+                                  Supplier<? extends Position> positionSupplier, Supplier<? extends Location> targetSupplier) {
         final RobutContext ctxt = map.getContext();
         try {
             TMemoryBuffer result = new TMemoryBuffer(1000);
@@ -90,13 +91,15 @@ public class RemoteVisualization {
                 addCommands(proto, cmds);
             }));
 
-            List<MapLocation> lst = solutionSupplier.get().stream().toList();
-            if (lst.size() > 1) {
-                addCommand(proto, new DrawingCommand(ctxt.geometryUtils.asPath(0.25, lst.toArray(new MapCoordinate[0])), ObjectType.Solution));
-            } else if (lst.size() == 1) {
-                addCommand(proto, new DrawingCommand(ctxt.geometryUtils.asPolygon(lst.get(0), .25), ObjectType.Solution));
+            Solution solution = solutionSupplier.get();
+            if (solution != null) {
+                List<MapLocation> lst = solution.stream().toList();
+                if (lst.size() > 1) {
+                    addCommand(proto, new DrawingCommand(ctxt.geometryUtils.asPath(0.25, lst.toArray(new MapCoordinate[0])), ObjectType.Solution));
+                } else if (lst.size() == 1) {
+                    addCommand(proto, new DrawingCommand(ctxt.geometryUtils.asPolygon(lst.get(0), .25), ObjectType.Solution));
+                }
             }
-
             if (target != null) {
                 addCommand(proto, new DrawingCommand(ctxt.geometryUtils.asPolygon(target, 0.25), ObjectType.Target));
             }
@@ -135,7 +138,10 @@ public class RemoteVisualization {
         return cmds;
     }
 
-    public enum ObjectType {Location, IndirectLocation, Obstacle, Solution, Target, Position, Path}
+    /**
+     * Enum in order of default priority in visualization with highest ordinal being most important.
+     */
+    public enum ObjectType {Location, IndirectLocation, Obstacle, Solution, Path, Target, Position}
 
     public record DrawingCommand(Geometry geometry, ObjectType type) {}
 
@@ -150,15 +156,14 @@ public class RemoteVisualization {
         }
 
         @Override
-        public byte[] serialize(DrawingCommand command) {
+        public byte[] serialize(DrawingCommand command) throws SerializationException {
             try {
                 TMemoryBuffer buffer = new TMemoryBuffer(1000);
                 TProtocol proto = new TBinaryProtocol(buffer);
                 serialize(command, proto);
                 return buffer.getArray();
             } catch (TException e) {
-                LOG.error("Unable to serialize {}. Aborting: {}", command, e.getMessage(), e);
-                throw new RuntimeException(e);
+                throw new SerializationException(String.format("Unable to serialize %s, Aborting.", command), e);
             }
         }
 
@@ -172,15 +177,14 @@ public class RemoteVisualization {
         }
 
         @Override
-        public DrawingCommand deserialize(byte[] bytes) {
+        public DrawingCommand deserialize(byte[] bytes) throws SerializationException {
             ByteBuffer buff = ByteBuffer.wrap(bytes);
             try {
                 TByteBuffer buffer = new TByteBuffer(buff);
                 TProtocol proto = new TBinaryProtocol(buffer);
                 return deserialize(proto);
             } catch (TException e) {
-                LOG.error("Unable to deerialize. Aborting: {}", e.getMessage(), e);
-                throw new RuntimeException(e);
+                throw new SerializationException("Unable to deserialize. Aborting.", e);
             }
         }
     }

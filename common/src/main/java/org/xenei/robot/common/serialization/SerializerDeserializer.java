@@ -1,4 +1,4 @@
-package org.xenei.robot.common.utils;
+package org.xenei.robot.common.serialization;
 
 /**
  * A serializer / deserializer pair.
@@ -12,7 +12,7 @@ public interface SerializerDeserializer<T> {
      * @param obj the object to serialize.
      * @return the serialized byte buffer.
      */
-    byte[] serialize(T obj);
+    byte[] serialize(T obj) throws SerializationException;
 
     /**
      * Deserialize a byte buffer into T
@@ -20,16 +20,5 @@ public interface SerializerDeserializer<T> {
      * @param bytes the byte buffer to deserialize from.
      * @return the T extracted from the buffer.
      */
-    T deserialize(byte[] bytes);
-
-    class ByteSerde {
-
-        public byte[] serialize(byte value) {
-            return new byte[]{value};
-        }
-
-        public byte deserialize(byte[] bytes) {
-            return bytes[0];
-        }
-    }
+    T deserialize(byte[] bytes) throws SerializationException;
 }

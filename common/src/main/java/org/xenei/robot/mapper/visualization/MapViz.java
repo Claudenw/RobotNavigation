@@ -10,6 +10,7 @@ import java.util.function.Supplier;
 import javax.swing.JFrame;
 import javax.swing.WindowConstants;
 
+import io.nats.client.Options;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.Point;
@@ -19,32 +20,23 @@ import org.xenei.robot.common.Position;
 import org.xenei.robot.common.mapping.MapCoordinate;
 import org.xenei.robot.common.mapping.Map;
 import org.xenei.robot.common.planning.Solution;
+import org.xenei.robot.common.utils.GeometryUtils;
+import org.xenei.robot.mapper.rdf.GraphGeomFactory;
 
-public class MapViz implements Map.Visualization {
-    private final Supplier<Solution> solutionSupplier;
-    private final Supplier<Position> positionSupplier;
-    private final Supplier<Location> targetSupplier;
-    private final Map map;
+public class MapViz extends AbstractRemoteVisualization  {
     private final JTSPanel panel;
     private final int scale;
     private final int buffer;
     private final VizLib vizLib;
 
-    public MapViz(int scale, Map.VisualizationInitializer initializer) {
-        this(scale, initializer.map(), initializer.solutionSupplier(), initializer.positionSupplier(),
-                initializer.targetSupplier());
-    }
 
-    public MapViz(int scale, Map map, Supplier<Solution> solutionSupplier,
-            Supplier<Position> positionSupplier, Supplier<Location> targetSupplier) {
-        this.map = map;
+    // map.getContext().scaleInfo.getResolution()
+    public MapViz(Options connectionOptions, final String remoteTopic, double resolution, int scale, GeometryUtils geometryUtils) {
+        super(connectionOptions, remoteTopic);
         this.panel = new JTSPanel();
-        this.solutionSupplier = solutionSupplier;
-        this.positionSupplier = positionSupplier;
-        this.targetSupplier = targetSupplier;
         this.scale = scale;
-        this.buffer = (int) (map.getContext().scaleInfo.getResolution() * scale) / 2;
-        this.vizLib = new VizLib();
+        this.buffer = (int) (resolution * scale) / 2;
+        this.vizLib = new VizLib(geometryUtils);
 
         JFrame frame = new JFrame("Map Visualization");
         frame.setLayout(new BorderLayout());
@@ -58,17 +50,13 @@ public class MapViz implements Map.Visualization {
     }
 
     @Override
-    public void redraw() {
-        List<MapVizDrawingCommand> cmds = vizLib.draw(map, solutionSupplier, positionSupplier, targetSupplier);
-        map.getContext().awaitQuiescence(2, TimeUnit.SECONDS);
-        rescale(cmds);
-
+    protected void draw(List<RemoteVisualization.DrawingCommand> cmds) {
         panel.clear();
-        cmds.forEach(panel::addDrawCommand);
+        rescale(cmds.stream().map(vizLib::convert).toList()).forEach(panel::addDrawCommand);
         panel.repaint();
     }
 
-    private void rescale(List<MapVizDrawingCommand> lst) {
+    private List<MapVizDrawingCommand> rescale(List<MapVizDrawingCommand> lst) {
         double max = Integer.MIN_VALUE;
         for (MapVizDrawingCommand cmd : lst) {
             for (int i : cmd.xler) {
@@ -92,12 +80,14 @@ public class MapViz implements Map.Visualization {
                 cmd.yler[i] /= offset;
             }
         }
+        return lst;
     }
+
 
     private class VizLib extends VisualizationLibrary<MapVizDrawingCommand> {
 
-        public VizLib() {
-            super(map.getContext().geometryUtils);
+        public VizLib(GeometryUtils geometryUtils) {
+            super(geometryUtils);
         }
 
         protected MapVizDrawingCommand drawPoint(Point geom, Color color) {

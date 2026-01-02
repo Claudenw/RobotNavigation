@@ -22,12 +22,7 @@ public class FF2 extends FunctionBase2 {
 
     @Override
     public void build(String uri, ExprList args, Context context) {
-
         dataType = (WktDataType) TypeMapper.getInstance().getTypeByClass(Geometry.class);
-
-        if (context.get(RobutContext.symbol) == null) {
-            throw new IllegalStateException("Robot context not set in Jena context");
-        }
         checkBuild(uri, args);
     }
 

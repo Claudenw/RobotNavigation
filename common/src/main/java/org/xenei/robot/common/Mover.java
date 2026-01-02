@@ -1,7 +1,8 @@
 package org.xenei.robot.common;
 
 import org.xenei.robot.common.mapping.MapCoordinate;
-import org.xenei.robot.common.utils.SerializerDeserializer;
+import org.xenei.robot.common.serialization.SerializationException;
+import org.xenei.robot.common.serialization.SerializerDeserializer;
 
 import java.util.concurrent.locks.Lock;
 
@@ -27,22 +28,29 @@ public interface Mover extends AutoCloseable {
             // do not instantiate.
         }
 
-        public static class Serde extends SerializerDeserializer.ByteSerde {
-            public byte[] serialize(byte state) {
-                return new byte[]{validateState(state)};
-            }
-
-            public byte deserialize(byte[] buffer) throws IllegalArgumentException {
-                return validateState(buffer[0]);
-            }
-
-            private static byte validateState(byte state) {
-                return switch (state) {
-                    case RUN, PAUSE, STOP -> state;
-                    default -> throw new IllegalArgumentException("Unknown motor state: " + state);
-                };
-            }
+        public static byte validateState(byte state) throws SerializationException {
+            return switch (state) {
+                case RUN, PAUSE, STOP -> state;
+                default -> throw new SerializationException("Unknown motor state: " + state);
+            };
         }
+
+//        public static class Serde extends SerializerDeserializer.ByteSerde {
+//            public byte[] serialize(byte state) {
+//                return new byte[]{validateState(state)};
+//            }
+//
+//            public byte deserialize(byte[] buffer) throws IllegalArgumentException {
+//                return validateState(buffer[0]);
+//            }
+//
+//            private static byte validateState(byte state) {
+//                return switch (state) {
+//                    case RUN, PAUSE, STOP -> state;
+//                    default -> throw new IllegalArgumentException("Unknown motor state: " + state);
+//                };
+//            }
+//        }
     }
 
     /**

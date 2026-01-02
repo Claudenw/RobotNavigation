@@ -110,7 +110,7 @@ public abstract class AbstractLocationTest {
 
     @ParameterizedTest
     @MethodSource("coordPairParameters")
-    void distanceTest(Location a, Location b, double expected, double angle) {
+    void distanceTest(Location a, Location b, double expected, double ignored) {
         assertEquals(expected, convertLocation(a).distance(b), tolerance());
         assertEquals(expected, convertLocation(b).distance(a), tolerance());
         assertEquals(0.0, convertLocation(a).distance(a), tolerance());
@@ -119,7 +119,7 @@ public abstract class AbstractLocationTest {
 
     @ParameterizedTest
     @MethodSource("coordPairParameters")
-    void angleBetweenTest(Location a, Location b, double expected, double angle) {
+    void angleBetweenTest(Location a, Location b, double ignored, double angle) {
         Location convertedA = convertLocation(a);
         Location convertedB = convertLocation(b);
         assertEquals(AngleUtils.normalize(RADIANS_180 + angle), convertedA.angleBetween(convertedB), tolerance());
@@ -136,6 +136,17 @@ public abstract class AbstractLocationTest {
         assertEquals(angle, converted.theta(), tolerance());
     }
 
+    @ParameterizedTest
+    @MethodSource("locationArgs")
+    public void serdeTest(Location arg) {
+        final Location expected = convertLocation(arg);
+        final Location.Serde serde = new Location.Serde();
+        final byte[] buffer = serde.serialize(expected);
+        final Location actual = serde.deserialize(buffer);
+        assertThat(actual.getX()).isEqualTo(expected.getX());
+        assertThat(actual.getY()).isEqualTo(expected.getY());
+    }
+
     private static void processStream(List<Arguments> lst, double[] args) {
         Location l = Location.asLocation(new Coordinate(args[CoordUtilsTest.X], args[CoordUtilsTest.Y]));
         lst.add(Arguments.of(l, MapCoordinate.ORIGIN, args[CoordUtilsTest.RANGE], args[CoordUtilsTest.RAD]));
@@ -148,10 +159,14 @@ public abstract class AbstractLocationTest {
         lst.add(Arguments.of(l, MapCoordinate.ORIGIN, args[CoordUtilsTest.RANGE], args[CoordUtilsTest.RAD]));
     }
 
+    private static Stream<Location> locationArgs() {
+        return Arrays.stream(CoordUtilsTest.arguments()).map(args ->
+                Location.asLocation(new Coordinate(args[CoordUtilsTest.X], args[CoordUtilsTest.Y])));
+    }
+
     private static Stream<Arguments> coordPairParameters() {
 
-        List<Arguments> lst = new ArrayList<Arguments>();
-
+            List<Arguments> lst = new ArrayList<>();
         Arrays.stream(CoordUtilsTest.arguments()).forEach(s -> processStream(lst, s));
 
         return Stream.of(lst.toArray(new Arguments[0]));

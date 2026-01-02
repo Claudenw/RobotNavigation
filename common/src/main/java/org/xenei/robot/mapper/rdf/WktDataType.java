@@ -1,7 +1,9 @@
 package org.xenei.robot.mapper.rdf;
 
+import java.util.Collections;
 import java.util.Map;
 
+import org.apache.commons.collections4.map.LRUMap;
 import org.apache.jena.datatypes.BaseDatatype;
 import org.apache.jena.datatypes.DatatypeFormatException;
 import org.apache.jena.datatypes.RDFDatatype;
@@ -9,7 +11,6 @@ import org.apache.jena.datatypes.TypeMapper;
 import org.apache.jena.geosparql.implementation.vocabulary.Geo;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.GeometryCollection;
-import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.LinearRing;
 import org.locationtech.jts.geom.MultiLineString;
@@ -38,9 +39,9 @@ public final class WktDataType extends BaseDatatype {
         }
     }
 
-    public WktDataType(Map<String, Geometry> cache) {
+    public WktDataType() {
         super(URI);
-        this.cache = cache;
+        this.cache = Collections.synchronizedMap(new LRUMap<>(500));
         TypeMapper typeMapper = TypeMapper.getInstance();
         typeMapper.registerDatatype(this);
         for (SupportedTypes type : SupportedTypes.values()) {

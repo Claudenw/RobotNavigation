@@ -33,6 +33,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xenei.robot.common.ChassisInfo;
 import org.xenei.robot.common.Position;
+import org.xenei.robot.common.serialization.SerializationException;
+import org.xenei.robot.common.serialization.SerializerDeserializer;
 import org.xenei.robot.common.planning.Solution;
 import org.xenei.robot.common.sensor.distance.DistanceSensor;
 import org.xenei.robot.common.Location;
@@ -52,7 +54,6 @@ public final class RobutContext implements AutoCloseable {
     public final GeometryFactory geometryFactory;
     public final GeometryUtils geometryUtils;
     public final GraphGeomFactory graphGeomFactory;
-    public final java.util.Map<String, Geometry> cache = Collections.synchronizedMap(new LRUMap<>(500));
     private final ForkJoinPool workScheduler = (ForkJoinPool) Executors.newWorkStealingPool();
     private final ScheduledExecutorService scheduledExecutor = Executors.newSingleThreadScheduledExecutor();
     private final Options connectionOptions;
@@ -72,14 +73,12 @@ public final class RobutContext implements AutoCloseable {
      * @param builder The RobutContext builder.
      */
     private RobutContext(Builder builder) {
-        RIOT.getContext().put(symbol, this);
         this.scaleInfo = builder.scaleInfo;
         this.chassisInfo = builder.chassisInfo;
         final String id = builder.id == null ? UUID.randomUUID().toString() : builder.id;
         this.geometryFactory = new GeometryFactory(scaleInfo.getPrecisionModel());
         this.geometryUtils = new GeometryUtils(geometryFactory, scaleInfo);
         this.graphGeomFactory = new GraphGeomFactory(geometryUtils);
-        Namespace.init(this);
         this.vizName = id + ".remoteVisualization";
         this.scaledRadius = scaleInfo.scale(chassisInfo.radius);
         this.connectionOptions = builder.getConnectionOptions();
@@ -88,10 +87,10 @@ public final class RobutContext implements AutoCloseable {
         } catch (IOException | InterruptedException e) {
             throw new RuntimeException(e);
         }
-        this.rawBumpSensorTopic = new ByteTopic(connection, id + ".sensor.bump.raw", new SerializerDeserializer.ByteSerde());
+        this.rawBumpSensorTopic = new ByteTopic(connection, id + ".sensor.bump.raw");
         this.bumpSensorTopic = new Topic<BumpSensorModel.SensorResult>(connection, id + ".sensor.bump.model", new BumpSensorModel.Serde());
         this.distanceSensorTopic = new Topic<DistanceSensor.Readings>(connection, id + ".sensor.distance", new DistanceSensor.Serde());
-        this.motorStateTopic = new ByteTopic(connection, id + ".motor.state", new Mover.MotorState.Serde());
+        this.motorStateTopic = new ByteTopic(connection, id + ".motor.state", Mover.MotorState::validateState);
         this.moveToTopic = new Topic<Location>(connection, id + ".moveTo", new Location.Serde());
 //        String natsURL = System.getenv("NATS_URL");
 //        if (natsURL == null) {
@@ -114,8 +113,8 @@ public final class RobutContext implements AutoCloseable {
         return new Builder();
     }
 
-    public void enableRemoteVisualization(Map map, Supplier< Solution > solutionSupplier,
-                                          Supplier< Position > positionSupplier, Supplier<Location> targetSupplier) {
+    public void enableRemoteVisualization(Map map, Supplier<Solution> solutionSupplier,
+                                          Supplier <? extends Position> positionSupplier, Supplier<? extends Location> targetSupplier) {
         RemoteVisualization remoteVisualization = new RemoteVisualization();
         scheduledExecutor.scheduleAtFixedRate(() -> remoteVisualization.draw(map, solutionSupplier, positionSupplier, targetSupplier), 0, 500, TimeUnit.MILLISECONDS);
     }
@@ -141,13 +140,13 @@ public final class RobutContext implements AutoCloseable {
         try {
             scheduledExecutor.awaitTermination(2, TimeUnit.SECONDS);
         } catch (InterruptedException e) {
-            LOGGER.error(String.format("Unable to shutdown scheduled executor: %s", e.getMessage()), e);
+            LOGGER.error("Unable to shutdown scheduled executor: {}", e.getMessage(), e);
             scheduledExecutor.shutdownNow();
         }
         try {
             workScheduler.awaitTermination(1, TimeUnit.MINUTES);
         } catch (InterruptedException e) {
-            LOGGER.error(String.format("Unable to shutdown work scheduler: %s", e.getMessage()), e);
+            LOGGER.error("Unable to shutdown work scheduler: {}", e.getMessage(), e);
             workScheduler.shutdownNow();
         }
         topicRegistrations.forEach(TopicRegistration::unsubscribe);
@@ -265,11 +264,20 @@ public final class RobutContext implements AutoCloseable {
         }
 
         public void send(T value) {
-            connection.publish(topic, serde.serialize(value));
+            try {
+                connection.publish(topic, serde.serialize(value));
+            } catch (SerializationException e) {
+                LOGGER.error("Unable to serialize {}: {}", value, e.getMessage(), e);
+            }
         }
 
         public TopicRegistration listen(Consumer<T> listener) {
-            Dispatcher dispatcher = connection.createDispatcher(msg -> listener.accept(serde.deserialize(msg.getData())));
+            Dispatcher dispatcher = connection.createDispatcher(msg -> { try {
+                listener.accept(serde.deserialize(msg.getData()));
+            } catch (SerializationException e) {
+                LOGGER.error("Error while deserializing data: {}", e.getMessage(), e);
+            }
+            });
             return new TopicRegistration(dispatcher, topic);
         }
     }
@@ -278,22 +286,46 @@ public final class RobutContext implements AutoCloseable {
      * A topic on a connection that reads/write single bytes
      */
     public final class ByteTopic {
-        private final Connection connection;
-        private final String topic;
-        private final SerializerDeserializer.ByteSerde serde;
-
-        private ByteTopic(final Connection connection, final String topic, SerializerDeserializer.ByteSerde serde) {
-            this.connection = connection;
-            this.topic = topic;
-            this.serde = serde;
+        @FunctionalInterface
+        interface Validator {
+            void validate(byte value) throws SerializationException;
         }
 
+        private final Connection connection;
+        private final String topic;
+        private final Validator validator;
+
+        private ByteTopic(final Connection connection, final String topic, Validator validator) {
+            this.connection = connection;
+            this.topic = topic;
+            this.validator = validator;
+        }
+
+        private ByteTopic(final Connection connection, final String topic) {
+            this.connection = connection;
+            this.topic = topic;
+            validator = x -> {};        }
+
         public void send(byte value) {
-            connection.publish(topic, serde.serialize(value));
+            try {
+                validator.validate(value);
+                connection.publish(topic, new byte[]{value});
+            } catch (SerializationException e) {
+                LOGGER.error("Unable to serialize {}: {}", value, e.getMessage(), e);
+            }
         }
 
         public TopicRegistration listen(IntConsumer listener) {
-            Dispatcher dispatcher = connection.createDispatcher(msg -> listener.accept(serde.deserialize(msg.getData())));
+            Dispatcher dispatcher = connection.createDispatcher(msg -> {
+                byte value = msg.getData()[0];
+                try {
+                    validator.validate(value);
+                    listener.accept(value);
+                } catch (SerializationException e) {
+                    String errMsg = String.format("Error while deserializing '%s' (0x%02X): %s", value, value, e.getMessage());
+                    LOGGER.error(errMsg, e);
+                }
+            });
             return new TopicRegistration(dispatcher, topic);
         }
     }

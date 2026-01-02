@@ -1,11 +1,15 @@
 package org.xenei.robot.mapper.rdf;
 
+import org.apache.commons.collections4.map.LRUMap;
 import org.apache.jena.rdf.model.Property;
 import org.apache.jena.rdf.model.Resource;
 import org.apache.jena.rdf.model.ResourceFactory;
 import org.apache.jena.sparql.core.Var;
+import org.locationtech.jts.geom.Geometry;
 import org.xenei.robot.common.utils.RobutContext;
 import org.xenei.robot.mapper.rdf.functions.Functions;
+
+import java.util.Collections;
 
 public class Namespace {
     public static final String URI = "urn:org.xenei.robut:";
@@ -45,8 +49,8 @@ public class Namespace {
     public static final Var p = Var.alloc("p");
     public static final Var o = Var.alloc("o");
 
-    public static void init(RobutContext context) {
-        new WktDataType(context.cache);
+    static {
+        new WktDataType();
         new Functions().register();
     }
 

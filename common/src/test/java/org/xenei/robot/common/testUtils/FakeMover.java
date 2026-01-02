@@ -33,6 +33,7 @@ public class FakeMover extends BaseMover {
 
     @Override
     public void takeSteps(int left, int right, byte lastSensor) {
+        System.out.printf("Taking steps %s %s %n", left, right);
         LOG.debug("Taking steps {} {} ", left, right);
         StepMonitor result = new StepMonitor(left, right);
         try {
@@ -97,6 +98,11 @@ public class FakeMover extends BaseMover {
                 if (keepRunning) {
                     leftSteps.getAndAccumulate(leftIncrement, (x, inc) -> x != leftLimit ? x + inc : x);
                     rightSteps.getAndAccumulate(rightIncrement, (x, inc) -> x != rightLimit ? x + inc : x);
+                    try {
+                        Thread.sleep(10);
+                    } catch (InterruptedException e) {
+                        // do nothing
+                    }
                 } else {
                     ctxt.motorStateTopic.send(MotorState.STOP);
                 }

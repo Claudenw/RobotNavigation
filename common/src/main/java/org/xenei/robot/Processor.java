@@ -51,6 +51,10 @@ public class Processor {
         return planner;
     }
 
+    public Supplier<MapPosition> getPositionSupplier() {
+        return positionSupplier;
+    }
+
     private boolean checkTarget(NavigationSnapshot snapshot) {
         if (!ctxt.scaleInfo.compare(ScaleInfo.OP.EQ, snapshot.position, planner.getFinalTarget())) {
             // if we can see the final target go that way.
@@ -191,11 +195,6 @@ public class Processor {
         public void registerPositionChange(NavigationSnapshot snapshot) {
             delegate.registerPositionChange(snapshot);
         }
-
-//        @Override
-//        public void recalculateCosts() {
-//            delegate.recalculateCosts();
-//        }
 
         @Override
         public NavigationSnapshot getSnapshot() {

@@ -49,18 +49,6 @@ public class TextViz extends AbstractRemoteVisualization {
         };
     }
 
-    private int sortOrder(RemoteVisualization.ObjectType objType) {
-        return switch (objType) {
-            case Location -> 2;
-            case IndirectLocation -> 3;
-            case Obstacle -> 1;
-            case Solution -> 5;
-            case Target -> 6;
-            case Position -> 7;
-            case Path -> 4;
-        };
-    }
-
     public double scale() {
         return scale;
     }
@@ -121,10 +109,7 @@ public class TextViz extends AbstractRemoteVisualization {
     protected void draw(final List<RemoteVisualization.DrawingCommand> cmds) {
         if (lastExecution < System.currentTimeMillis() - delay.toMillis()) {
             final SortedSet<Coord> points = new TreeSet<>();
-            cmds.sort((o1, o2) -> Integer.compare(sortOrder(o1.type()), sortOrder(o2.type())));
-            for (RemoteVisualization.DrawingCommand cmd : cmds) {
-                addGeom(points, cmd);
-            }
+            cmds.forEach(cmd -> addGeom(points, cmd));
             buildOutput(points);
             lastExecution = System.currentTimeMillis();
         }
