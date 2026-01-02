@@ -19,8 +19,8 @@ public class FakeMover extends BaseMover {
     private final DeadReckoning deadReckoning;
 
     public FakeMover(RobutContext ctxt, Coordinate initial) {
-        super(ctxt, new DeadReckoning(ctxt, Position.asPosition(initial, 0)), new BumpSensorModel(ctxt, 8));
-        this.deadReckoning = (DeadReckoning) this.compass;
+        super(ctxt, DeadReckoning.from(ctxt, Position.asPosition(initial, 0)), new BumpSensorModel(ctxt, 8));
+        this.deadReckoning = (DeadReckoning) this.positionSupplier;
         if (LOG.isDebugEnabled()) {
             LOG.debug("Initial position {}", this.position());
         }
@@ -37,8 +37,8 @@ public class FakeMover extends BaseMover {
         StepMonitor result = new StepMonitor(left, right);
         try {
             deadReckoning.track(result);
-            motorStateTopic.send(MotorState.RUN);
-            await().atMost(2, TimeUnit.SECONDS).until(() -> MotorState.RUN.equals(getMotorState()));
+            ctxt.motorStateTopic.send(MotorState.RUN);
+            await().atMost(2, TimeUnit.SECONDS).until(() -> MotorState.RUN == getMotorState());
             result.run();
         } finally {
             deadReckoning.track(null);
@@ -90,7 +90,7 @@ public class FakeMover extends BaseMover {
         @Override
         public void run() {
             // read the motor state
-            while (MotorState.RUN.equals(getMotorState())) {
+            while (MotorState.RUN == getMotorState()) {
                 // do not merge the following 2 lines or the logic will short circuit.
                 boolean keepRunning = leftSteps.get() < leftLimit;
                 keepRunning |= rightSteps.get() < rightLimit;
@@ -98,7 +98,7 @@ public class FakeMover extends BaseMover {
                     leftSteps.getAndAccumulate(leftIncrement, (x, inc) -> x != leftLimit ? x + inc : x);
                     rightSteps.getAndAccumulate(rightIncrement, (x, inc) -> x != rightLimit ? x + inc : x);
                 } else {
-                    motorStateTopic.send(MotorState.STOP);
+                    ctxt.motorStateTopic.send(MotorState.STOP);
                 }
             }
         }

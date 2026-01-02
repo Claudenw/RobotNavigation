@@ -25,11 +25,11 @@ import org.xenei.robot.common.testUtils.CoordinateUtils;
 
 public class GeometryUtilsTest {
 
-    private static RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT, ChassisInfoTest.DEFAULT);
+    private static RobutContext ctxt = RobutContext.builder().build();
 
     @ParameterizedTest
     @MethodSource("polygonParameters")
-    public void asPolygonTest(String name, Polygon geom, Coordinate[] expected) {
+    void asPolygonTest(String name, Polygon geom, Coordinate[] expected) {
         Coordinate[] actual = geom.getCoordinates();
         assertEquals(expected.length, actual.length);
         for (int i = 0; i < actual.length; i++) {
@@ -82,7 +82,7 @@ public class GeometryUtilsTest {
 
     @ParameterizedTest
     @MethodSource("pointParameters")
-    public void asPointTest(String name, Point geom, Coordinate expected) {
+    void asPointTest(String name, Point geom, Coordinate expected) {
         Coordinate[] actual = geom.getCoordinates();
         assertEquals(1, actual.length);
         CoordinateUtils.assertEquivalent(expected, actual[0], 0.001);
@@ -101,7 +101,7 @@ public class GeometryUtilsTest {
     }
 
     @Test
-    public void asLineTest() {
+    void asLineTest() {
         Coordinate[] expected = new Coordinate[]{new Coordinate(1, 1), new Coordinate(3, 3), new Coordinate(-4, -4)};
 
         LineString ls = ctxt.geometryUtils.asLine(expected[0], expected[1], expected[2]);

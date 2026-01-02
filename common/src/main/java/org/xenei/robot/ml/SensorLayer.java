@@ -21,7 +21,7 @@ import java.util.stream.Collectors;
 
 public class SensorLayer {
     private static final Logger LOG = LoggerFactory.getLogger(SensorLayer.class);
-    public static final byte DONT_CARE = (byte) 0xFF;
+    public static final byte DONT_CARE = (byte) Answer.DONT_CARE.ordinal();
     private static final Random RANDOM;
     private SensorNeuron[] neurons;
     private BitMap lastResult;
@@ -30,6 +30,15 @@ public class SensorLayer {
 
     public enum Answer {
         FF, FS, FR, SF, SS, SR, RF, RS, RR, DONT_CARE;
+
+        public static Answer from(byte state) {
+            for (Answer a : Answer.values()) {
+                if (a.ordinal() == state) {
+                    return a;
+                }
+            }
+            throw new IllegalArgumentException("Unknown Answer: " + state);
+        }
     }
 
     static {
@@ -119,6 +128,11 @@ public class SensorLayer {
         }
     }
 
+    /**
+     * Returns the answer ordinal or DONT_CARE
+     * @param triggerMap the map of the bump sensors that were triggered.
+     * @return the action to take.
+     */
     public byte trigger(byte triggerMap) {
         lastTrigger = triggerMap;
         BitMap result = Arrays.stream(neurons).map(n -> n.trigger(triggerMap)).collect(new MyCollector());

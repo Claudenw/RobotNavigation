@@ -2,7 +2,7 @@ package org.xenei.robot.common.utils;
 
 import java.util.concurrent.TimeUnit;
 
-public class TimingUtils {
+public final class TimingUtils {
 
     private TimingUtils() {
     }

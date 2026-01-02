@@ -1,16 +1,26 @@
 package org.xenei.robot.common;
 
+import org.apache.thrift.TException;
+import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.protocol.TProtocol;
+import org.apache.thrift.transport.TByteBuffer;
+import org.apache.thrift.transport.TMemoryBuffer;
 import org.locationtech.jts.geom.Coordinate;
-import org.xenei.robot.common.mapping.MapCoordinate;
+import org.locationtech.jts.geom.CoordinateXY;
 import org.xenei.robot.common.mapping.ThetaAndRange;
-import org.xenei.robot.common.utils.AngleUtils;
-import org.xenei.robot.common.utils.CoordUtils;
 
+import org.xenei.robot.common.utils.CoordUtils;
+import org.xenei.robot.common.utils.SerializerDeserializer;
+import org.xenei.robot.common.utils.ThriftSerde;
+
+import java.nio.ByteBuffer;
 import java.util.Comparator;
 
 public interface Location {
 
-    public static Comparator<Location> XYCompr = (one, two) -> CoordUtils.XYCompr.compare(one.getCoordinate(), two.getCoordinate());
+    int BYTES = Double.BYTES * 2;
+
+    Comparator<Location> XYCompr = (one, two) -> CoordUtils.XYCompr.compare(one.getCoordinate(), two.getCoordinate());
 
     /**
      * A representation of the origin location (0,0)
@@ -48,8 +58,7 @@ public interface Location {
 
             @Override
             public boolean equals(Object obj) {
-                if (obj instanceof Location) {
-                    Location other = (Location) obj;
+                if (obj instanceof Location other) {
                     return getCoordinate().equals(other.getCoordinate());
                 }
                 return false;
@@ -154,6 +163,39 @@ public interface Location {
                 return location;
             }
             return new ThetaAndRange(location.angleBetween(absoluteLocation), range);
+        }
+    }
+
+    class Serde implements SerializerDeserializer<Location>, ThriftSerde<Location> {
+
+        public void serialize(Location location, TProtocol proto) throws TException {
+            proto.writeDouble(location.getX());
+            proto.writeDouble(location.getY());
+        }
+
+        public byte[] serialize(Location location)  {
+            try {
+                TMemoryBuffer result = new TMemoryBuffer(Location.BYTES);
+                TProtocol proto = new TBinaryProtocol(result);
+                serialize(location, proto);
+                return result.getBuffer();
+            } catch (TException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        public Location deserialize(byte[] bytes)  {
+            try {
+                TByteBuffer buffer = new TByteBuffer(ByteBuffer.wrap(bytes));
+                TProtocol proto = new TBinaryProtocol(buffer);
+                return deserialize(proto);
+            } catch (TException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        public Location deserialize(TProtocol proto) throws TException {
+            return Location.asLocation(new CoordinateXY(proto.readDouble(), proto.readDouble()));
         }
     }
 }

@@ -68,6 +68,12 @@ public class ChassisInfo {
         return AngleUtils.PI_x_2 / stepAngle;
     }
 
+    /**
+     * Move the motors to sweep through the arc.
+     * theta r is the distance the wheel has to move to pass through the arc from
+     * to make the direction change.
+     * @param theta the angle to move through (in radians)
+     */
     public int rotateSteps(double theta) {
         return (int) Math.round(theta * radius / metersPerStep);
     }

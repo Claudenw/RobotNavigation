@@ -2,8 +2,11 @@ package org.xenei.robot.common;
 
 import org.locationtech.jts.geom.Coordinate;
 
+import java.io.Serial;
+
 public class UnmodifiableCoordinate extends Coordinate {
 
+    @Serial
     private static final long serialVersionUID = 1674775782994045928L;
 
     public static UnmodifiableCoordinate make(Coordinate coordinate) {

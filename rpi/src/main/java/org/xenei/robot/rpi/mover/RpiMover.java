@@ -4,26 +4,23 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
-import org.locationtech.jts.geom.Coordinate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.xenei.robot.common.mapping.ThetaAndRange;
 import org.xenei.robot.mover.BaseMover;
-import org.xenei.robot.common.sensor.bump.BumpDetector;
 import org.xenei.robot.common.sensor.bump.BumpSensorModel;
-import org.xenei.robot.common.Compass;
 import org.xenei.robot.common.DeadReckoning;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Mover;
 import org.xenei.robot.common.Position;
 import org.xenei.robot.common.ScaleInfo;
-import org.xenei.robot.common.utils.CoordUtils;
 import org.xenei.robot.common.utils.RobutContext;
 import org.xenei.robot.rpi.RobutBuilder;
 import org.xenei.robot.rpi.drivers.Motor;
@@ -32,14 +29,11 @@ import org.xenei.robot.rpi.drivers.ULN2003;
 import org.xenei.robot.rpi.drivers.ULN2003.Mode;
 import org.xenei.robot.rpi.sensors.BumpSensorImpl;
 
-public class RpiMover extends BaseMover implements AutoCloseable {
+public class RpiMover extends BaseMover  {
     private final Motor[] motor = new Motor[2];
     private static final int LEFT = 0;
     private static final int RIGHT = 1;
-    private Coordinate coordinates;
     private final DeadReckoning deadReckoning;
-    /** Meters traveled in one rotation. */
-    private final double rotationalDistance;
     private final int rpm;
 
     private static final Logger LOG = LoggerFactory.getLogger(RpiMover.class);
@@ -56,34 +50,29 @@ public class RpiMover extends BaseMover implements AutoCloseable {
     /**
      * @param ctxt
      *            The context for the robut.
-     * @param compass
-     *            the compass implementation to use.
-     * @param coords
-     *            the initial coordinates.
+     * @param positionSupplier
+     *            the position supplier for this mover.
      * @throws InterruptedException
      *             on configuration error.
      */
-    public RpiMover(RobutContext ctxt, Compass compass, Coordinate coords) throws InterruptedException {
-        this(ctxt, compass, coords, left(), right());
+    public RpiMover(RobutContext ctxt, Supplier<Position> positionSupplier) throws InterruptedException {
+        this(ctxt, positionSupplier, left(), right());
     }
 
     /**
      * @param ctxt
      *            The context for the robut.
-     * @param compass
-     *            the compass implementation to use.
-     * @param coords
-     *            the initial coordinates.
+     * @param positionSupplier
+     *            the position supplier for this mover.
      */
-    RpiMover(RobutContext ctxt, Compass compass, Coordinate coords, Motor left, Motor right) {
-        super(ctxt, compass == null ? new DeadReckoning(ctxt, Position.asPosition(coords, 0.0)) : compass,
-                new BumpSensorModel(ctxt, 8));
+    RpiMover(RobutContext ctxt, Supplier<Position> positionSupplier, Motor left, Motor right) {
+        super(ctxt, positionSupplier, new BumpSensorModel(ctxt, 8));
         motor[LEFT] = left;
         motor[RIGHT] = right;
-        this.deadReckoning = compass == null
-                ? (DeadReckoning) this.compass
-                : new DeadReckoning(ctxt, Position.asPosition(coords, 0));
-        this.rotationalDistance = Math.PI * ctxt.chassisInfo.wheelDiameter / 100; // in meters
+        deadReckoning = DeadReckoning.from(ctxt, positionSupplier);
+
+        /* Meters traveled in one rotation. */
+        double rotationalDistance = Math.PI * ctxt.chassisInfo.wheelDiameter / 100; // in meters
         // this.r = width/2.0; // in cm
         // meterminute / meterrotation = meterrotation/meter/minute = r/m
         this.rpm = limit((long) Math.ceil(ctxt.chassisInfo.maxSpeed / rotationalDistance), 1, motor[0].getMaxRpm());
@@ -102,10 +91,9 @@ public class RpiMover extends BaseMover implements AutoCloseable {
     public static void main(String[] args) {
         try {
             RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT, RobutBuilder.chassisInfo());
-            BumpSensorImpl bumpSensor = new BumpSensorImpl(ctxt);
-            ctxt.scheduleAtFixedRate(bumpSensor, 500, 42, TimeUnit.MILLISECONDS);
-            try (RpiMover mover = new RpiMover(ctxt, null, new Coordinate(0, 0))) {
-                bumpSensor.register(mover.getBumpSensorListener());
+            BumpSensorImpl bumpSensor = new BumpSensorImpl(ctxt, 500, 42);
+            DeadReckoning deadReckoning = DeadReckoning.from(ctxt, Position.ORIGIN);
+            try (RpiMover mover = new RpiMover(ctxt, deadReckoning)) {
                 Options options = getOptions();
                 BufferedReader bufferReader = new BufferedReader(new InputStreamReader(System.in));
                 new HelpFormatter().printHelp(RpiMover.class.getCanonicalName(), getOptions());
@@ -132,7 +120,7 @@ public class RpiMover extends BaseMover implements AutoCloseable {
                                 .toList();
                         double angle = Math.toRadians(values.get(0));
                         double range = values.get(1);
-                        Location l = Location.from(CoordUtils.fromAngle(angle, range));
+                        Location l = new ThetaAndRange(angle, range);
                         System.out.println("Moving to " + l);
                         mover.move(l);
                     }
@@ -145,8 +133,7 @@ public class RpiMover extends BaseMover implements AutoCloseable {
                         return;
                     }
                     if (commandLine.hasOption("c")) {
-                        System.out.println(mover.compass);
-                        double h = mover.position().getHeading();
+                        double h = mover.position().heading();
                         System.out.format("Mover[Heading: %s %s degrees]%n", h, Math.toDegrees(h));
                     }
                 }
@@ -196,19 +183,17 @@ public class RpiMover extends BaseMover implements AutoCloseable {
         SteppingStatus ssLeft = motor[LEFT].prepareRun(left, rpm);
         SteppingStatus ssRight = motor[RIGHT].prepareRun(right, rpm);
         StepMonitor result = new StepMonitor(ssLeft, ssRight);
-        BumpDetector bumpChangeDetector = new BumpDetector(this.ctxt, lastSensor);
         try {
             deadReckoning.track(result);
             ctxt.submit(result).join();
         } finally {
-            bumpChangeDetector.unregister();
             deadReckoning.track(null);
         }
     }
 
     @Override
     public Position position() {
-        return Position.asPosition(coordinates, compass.heading());
+        return deadReckoning.get();
     }
 
     /**
@@ -225,14 +210,14 @@ public class RpiMover extends BaseMover implements AutoCloseable {
 
         @Override
         public void run() {
-            Mover.MotorState motorState;
-            while (!Mover.MotorState.STOP.equals(motorState = getMotorState())) {
-                if (Mover.MotorState.RUN.equals(motorState)) {
+            byte motorState;
+            while (Mover.MotorState.STOP != (motorState = getMotorState())) {
+                if (Mover.MotorState.RUN == motorState) {
                     // do not merge the following 2 lines or the logic will short circuit.
                     boolean keepRunning = ssLeft.step();
                     keepRunning |= ssRight.step();
                     if (!keepRunning) {
-                        motorStateTopic.send(Mover.MotorState.STOP);
+                        ctxt.motorStateTopic.send(Mover.MotorState.STOP);
                     } else {
                         sleep();
                     }

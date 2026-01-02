@@ -1,16 +1,15 @@
 package org.xenei.robot.common.testUtils;
 
-import org.xenei.robot.common.BumpSensor;
+import org.xenei.robot.common.sensor.bump.BumpSensor;
+import org.xenei.robot.common.utils.RobutContext;
 
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.function.Consumer;
 
 public class FakeBumpSensor implements BumpSensor {
     private byte bumpReading;
-    private final CopyOnWriteArrayList<Consumer<BumpSensor.BumpState>> listeners;
+    private final RobutContext.ByteTopic rawBumpSensorTopic;
 
-    public FakeBumpSensor() {
-        listeners = new CopyOnWriteArrayList<>();
+    public FakeBumpSensor(RobutContext ctxt) {
+        rawBumpSensorTopic = ctxt.rawBumpSensorTopic;
         bumpReading = 0;
     }
 
@@ -20,17 +19,6 @@ public class FakeBumpSensor implements BumpSensor {
 
     @Override
     public void run() {
-        BumpSensor.BumpState value = new BumpSensor.BumpState(bumpReading);
-        listeners.forEach(l -> l.accept(value));
-    }
-
-    @Override
-    public void register(Consumer<BumpSensor.BumpState> consumer) {
-        listeners.add(consumer);
-    }
-
-    @Override
-    public void unregister(Consumer<BumpSensor.BumpState> consumer) {
-        listeners.remove(consumer);
+        rawBumpSensorTopic.send(bumpReading);
     }
 }

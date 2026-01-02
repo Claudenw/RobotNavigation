@@ -1,10 +1,10 @@
 package org.xenei.robot.common.mapping;
 
-import java.util.function.Consumer;
-
-import org.xenei.robot.common.DistanceSensor;
+import org.xenei.robot.common.sensor.distance.DistanceSensor;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Position;
+
+import java.util.function.Consumer;
 
 public interface Mapper {
 
@@ -24,6 +24,6 @@ public interface Mapper {
      *
      * @return a consumer of relative obstacles (unscaled).
      */
-    Consumer<DistanceSensor.Readings> getRelativeObstacleConsumer();
+    Consumer<DistanceSensor.Readings> getRelativeObstacleProcessor();
 
 }

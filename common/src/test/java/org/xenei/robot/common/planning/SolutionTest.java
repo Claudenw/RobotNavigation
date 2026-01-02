@@ -9,15 +9,16 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.junit.jupiter.api.AfterEach;
+import org.xenei.robot.common.testUtils.MapLibrary;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.locationtech.jts.geom.Coordinate;
-import org.xenei.robot.common.ChassisInfo;
 import org.xenei.robot.common.ChassisInfoTest;
 import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.common.mapping.Map;
 import org.xenei.robot.common.mapping.MapCoordinate;
-import org.xenei.robot.common.Location;
+import org.xenei.robot.common.mapping.MapLocation;
 import org.xenei.robot.common.mapping.MapTest;
 import org.xenei.robot.common.utils.RobutContext;
 
@@ -36,27 +37,37 @@ public class SolutionTest {
 
     public static double expectedSimplifiedCost = 8.32455532033676;
 
+    private Map map;
+
     @BeforeEach
-    public void setup() {
-        Map map = new Map(new RobutContext(ScaleInfo.DEFAULT, ChassisInfoTest.DEFAULT), new MapTest.TestingStorage());
+    void setup() {
+        RobutContext.Builder builder = RobutContext.builder();
+        builder.setOptions(builder.defaultOptions());
+        map = new Map(builder.build(), new MapTest.TestingStorage());
+        MapLibrary.map2(map);
         underTest = new Solution();
-        Arrays.stream(expectedSolution).forEach(coordinate -> underTest.add(map.asMapCoordinate(coordinate)));
+        Arrays.stream(expectedSolution).forEach(coordinate -> underTest.add(map.asMapLocation(coordinate)));
+    }
+
+    @AfterEach
+    void shutdown() {
+        map.getContext().close();
     }
 
     @Test
-    public void testEmptyRetrieval() {
+    void testEmptyRetrieval() {
         underTest = new Solution();
         assertTrue(underTest.isEmpty());
         assertNull(underTest.end());
         assertNull(underTest.start());
         assertEquals(-1, underTest.stepCount());
-        List<MapCoordinate> solution = underTest.stream().toList();
+        List<MapLocation> solution = underTest.stream().toList();
         assertTrue(solution.isEmpty());
         assertEquals(Double.POSITIVE_INFINITY, underTest.cost());
     }
 
     @Test
-    public void testRetrieval() {
+    void testRetrieval() {
         assertFalse(underTest.isEmpty());
         assertEquals(new Coordinate(-1, 1), underTest.end().getCoordinate());
         assertEquals(new Coordinate(-1, -3), underTest.start().getCoordinate());
@@ -69,21 +80,9 @@ public class SolutionTest {
     }
 
     @Test
-    public void simplifyTest() {
-        boolean canSee[][] = new boolean[expectedSolution.length][expectedSolution.length];
-
-        /* 0 1 2 3 4 5 6 7 */
-        /* -1, -3 */ canSee[0] = new boolean[]{true, true, true, true, true, false, false, false};
-        /* -1, -2 */ canSee[1] = new boolean[]{true, true, true, true, true, false, false, false};
-        /* -2, -2 */ canSee[2] = new boolean[]{true, true, true, true, true, false, false, false};
-        /* -0, -2 */ canSee[3] = new boolean[]{true, true, true, true, true, false, false, false};
-        /* 2, -2 */ canSee[4] = new boolean[]{true, true, true, true, true, true, true, false};
-        /* 2, -1 */ canSee[5] = new boolean[]{false, false, false, false, true, true, true, false};
-        /* 2, 0 */ canSee[6] = new boolean[]{false, false, false, false, true, true, true, true};
-        /* -1, 1 */ canSee[7] = new boolean[]{false, false, false, false, false, false, true, true};
-
+    void simplifyTest() {
         List<Coordinate> idx = Arrays.asList(expectedSolution);
-        underTest.simplify((x, y) -> canSee[idx.indexOf(x.getCoordinate())][idx.indexOf(y.getCoordinate())]);
+        underTest.simplify();
         assertEquals(3, underTest.stepCount());
         assertEquals(new Coordinate(-1, 1), underTest.end().getCoordinate());
         assertEquals(new Coordinate(-1, -3), underTest.start().getCoordinate());

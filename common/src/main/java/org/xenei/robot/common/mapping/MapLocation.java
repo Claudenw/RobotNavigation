@@ -3,14 +3,17 @@ package org.xenei.robot.common.mapping;
 import org.locationtech.jts.geom.Coordinate;
 import org.xenei.robot.common.GeometricObject;
 import org.xenei.robot.common.Location;
+import org.xenei.robot.common.ScaleInfo;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Stream;
 
@@ -19,13 +22,13 @@ import java.util.stream.Stream;
  */
 public class MapLocation extends MapCoordinate implements GeometricObject {
 
-    private final HashMap<MapCoordinate, MapTargetData> targetData;
+    private final ConcurrentHashMap<Coordinate, MapTargetData> targetData;
     private final AtomicBoolean visited;
 
     protected MapLocation(final Map onMap, MapCoordinate mapCoordinate) {
         super(onMap, mapCoordinate.getCoordinate());
         MapLocation mapLocation = mapCoordinate instanceof MapLocation ? (MapLocation) mapCoordinate : null;
-        this.targetData = mapLocation == null ? new HashMap<>() : mapLocation.targetData;
+        this.targetData = mapLocation == null ? new ConcurrentHashMap<>() : mapLocation.targetData;
         this.visited = mapLocation == null ? new AtomicBoolean(false) : mapLocation.visited;
     }
 
@@ -41,18 +44,14 @@ public class MapLocation extends MapCoordinate implements GeometricObject {
 
     @Override
     public int compareTo(Location location) {
-        if (getMap().getContext().scaleInfo.areEquivalent(this, location)) {
+        if (getMap().getContext().scaleInfo.compare(ScaleInfo.OP.EQ, this, location)) {
             return 0;
         }
         return getCoordinate().compareTo(location.getCoordinate());
     }
 
     private MapTargetData computeTargetData(MapLocation target) {
-        return targetData.computeIfAbsent(target, k -> {
-            MapTargetData targetData = new MapTargetData(this, target);
-            target.targetData.put(this, targetData);
-            return targetData;
-        });
+        return targetData.computeIfAbsent(target.getCoordinate(), k -> new MapTargetData(this, target));
     }
 
     public final boolean isIndirect(MapLocation target) {
@@ -76,8 +75,8 @@ public class MapLocation extends MapCoordinate implements GeometricObject {
 
     final void removeTargets(Set<MapLocation> targets) {
         for (MapLocation target : targets) {
-            if (this.targetData.remove(target) != null) {
-                target.targetData.remove(this);
+            if (this.targetData.remove(target.getCoordinate()) != null) {
+                target.targetData.remove(this.getCoordinate());
             }
         }
     }
@@ -122,7 +121,7 @@ public class MapLocation extends MapCoordinate implements GeometricObject {
 
         // dijkstra's algorithm
         while (!segmentPairs.isEmpty()) {
-            nodeList.sort((a, b) -> Double.compare(a.cost, b.cost));
+            nodeList.sort(Comparator.comparingDouble(a -> a.cost));
             PartialPath pathSegment = nodeList.stream().filter(p -> !seen.contains(p.source.getCoordinate())).findFirst().get();
             seen.add(pathSegment.source.getCoordinate());
             Set<Coordinate> adjacentNodes = segmentPairs.get(pathSegment.source.getCoordinate());
@@ -151,7 +150,7 @@ public class MapLocation extends MapCoordinate implements GeometricObject {
     }
 
     private static class PartialPath implements Comparable<PartialPath> {
-        private MapLocation source;
+        private final MapLocation source;
         private double cost;
         private MapLocation parent;
 

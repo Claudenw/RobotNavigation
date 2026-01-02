@@ -101,7 +101,7 @@ public class CompassImpl implements Compass {
     }
 
     @Override
-    public int decimalPlaces() {
+    public int headingAccuracy() {
         return accuracy;
     }
 

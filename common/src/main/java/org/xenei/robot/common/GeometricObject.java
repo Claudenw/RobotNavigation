@@ -39,7 +39,7 @@ public interface GeometricObject {
     /**
      * Hashcode should be implemented as wkt().hashCode()
      *
-     * @param o
+     * @param obj
      *            the obstacle
      * @return the hashCode
      */

@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -16,7 +17,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.locationtech.jts.geom.Coordinate;
 import org.xenei.robot.common.ChassisInfoTest;
-import org.xenei.robot.common.DistanceSensor;
+import org.xenei.robot.common.sensor.distance.DistanceSensor;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Position;
 import org.xenei.robot.common.ScaleInfo;
@@ -29,34 +30,36 @@ import org.xenei.robot.common.utils.AngleUtils;
 import org.xenei.robot.common.utils.RobutContext;
 
 public class MapperImplTest {
-    private final RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT, ChassisInfoTest.DEFAULT);
-    private MapTest.TestingStorage testingStorage;
     private Map map;
 
     @BeforeEach
-    public void setup() {
-        testingStorage = new MapTest.TestingStorage();
-        map = new Map(ctxt, testingStorage);
+    void setup() {
+        RobutContext.Builder builder = RobutContext.builder();
+        builder.setOptions(builder.defaultOptions())
+                .setChassisInfo(ChassisInfoTest.DEFAULT);
+        RobutContext ctxt = builder.build();
+        map = new Map(ctxt, new MapTest.TestingStorage());
+    }
+
+    @AfterEach
+    void teardown() {
+        map.getContext().close();
     }
 
     @Test
-    public void processSensorDataTest_TooClose() throws InterruptedException {
-
+    void processSensorDataTest_TooClose() throws InterruptedException {
         Position currentPosition = Position.asPosition(new Coordinate(-1, -3), AngleUtils.RADIANS_90);
         Location target = Location.asLocation(new Coordinate(-1, 1));
-        Coordinate mapValue = new Coordinate(5, 5);
+        Mapper underTest = new MapperImpl(map);
 
-        Mapper underTest = new MapperImpl(map, () -> target);
-
+        ThetaAndRange farAway = new ThetaAndRange(0, 4 * map.getContext().scaleInfo.getResolution());
         ThetaAndRange expectedObstacle = new ThetaAndRange(0, 2 * map.getContext().scaleInfo.getResolution());
         ThetaAndRange unexpectedObstacle = new ThetaAndRange(0, map.getContext().scaleInfo.getResolution());
-        // an obstacle within one radius away is too close so no target generated.
-        underTest.getRelativeObstacleConsumer()
-                .accept(new DistanceSensor.Readings(currentPosition, List.of(unexpectedObstacle, expectedObstacle)));
+        // an obstacle within one scale info away is too close so no target generated.
+        underTest.getRelativeObstacleProcessor()
+                .accept(new DistanceSensor.Readings(currentPosition, List.of(unexpectedObstacle, expectedObstacle, farAway)));
 
-        //System.out.println(MapReports.dumpModel(map));
-
-        assertEquals(1, map.getObstacles().join().count());
+        assertEquals(2, map.getObstacles().join().count());
         assertFalse(map.isObstacle(map.asMapCoordinate(new Coordinate(-1, 1 + map.getContext().scaleInfo.getResolution()))));
         assertTrue(map.isObstacle(map.asMapCoordinate((new Coordinate(-1, -2)))));
     }
@@ -75,19 +78,21 @@ public class MapperImplTest {
 
     @ParameterizedTest(name = "{0}")
     @MethodSource("sensorData")
-    void processSensorDataTest(final double heading, final Coordinate sensorReading, final Coordinate expectedObstacle,
+    void processSensorDataTest(final double heading, final Location sensorReading, final Coordinate expectedObstacle,
             final Coordinate expectedCoord) {
-
+        final
         Position currentPosition = Position.asPosition(new Coordinate(-0, 0), Math.toRadians(heading));
         Location target = Location.asLocation(new Coordinate(10, 10));
 
-        Mapper underTest = new MapperImpl(map, () -> target);
+        Mapper underTest = new MapperImpl(map);
 
         // process data
-        underTest.getRelativeObstacleConsumer().accept(new DistanceSensor.Readings(currentPosition,
-                List.of(Location.asLocation(sensorReading))));
+        underTest.getRelativeObstacleProcessor().accept(new DistanceSensor.Readings(currentPosition,
+                List.of(sensorReading)));
 
         assertTrue(map.isObstacle(map.asMapCoordinate(expectedObstacle)));
+
+        List<?> lst = map.getLocations().join().toList();
 
         Optional<MapLocation> optional = map.getLocations().join().filter(loc -> loc.sameCoordinate(expectedCoord)).findFirst();
         assertTrue(optional.isPresent());

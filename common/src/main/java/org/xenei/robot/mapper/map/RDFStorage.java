@@ -39,8 +39,9 @@ import org.xenei.robot.common.Obstacle;
 import org.xenei.robot.common.mapping.MapLocation;
 import org.xenei.robot.common.mapping.MapObstacle;
 import org.xenei.robot.common.mapping.MapStorage;
+import org.xenei.robot.common.utils.GeometryUtils;
 import org.xenei.robot.common.utils.RobutContext;
-import org.xenei.robot.mapper.DoubleHalfMatrix;
+import org.xenei.robot.common.DoubleHalfMatrix;
 import org.xenei.robot.mapper.rdf.Namespace;
 
 import java.io.ByteArrayOutputStream;
@@ -243,7 +244,7 @@ public class RDFStorage implements MapStorage {
         if (stmt == null) {
             urn.addLiteral(Namespace.visited, mapLocation.wasVisited());
             dirty = true;
-        } else if (!stmt.getLiteral().equals(mapLocation.wasVisited())) {
+        } else if (stmt.getLiteral().getBoolean() != mapLocation.wasVisited()) {
             stmt.changeLiteralObject(mapLocation.wasVisited());
             dirty = true;
         }
@@ -255,7 +256,7 @@ public class RDFStorage implements MapStorage {
     public CompletableFuture<Map<Coordinate, Set<Coordinate>>> getPath(MapLocation start, MapLocation target) {
         Var sWkt = Var.alloc("swkt");
         Var oWkt = Var.alloc("swkt");
-        OctagonalEnvelope envelope = ctxt.geometryUtils.createBoundingBox(start.getCoordinate(), target.getCoordinate());
+        OctagonalEnvelope envelope = GeometryUtils.createBoundingBox(start.getCoordinate(), target.getCoordinate());
         Literal boundingBox = ctxt.graphGeomFactory.asWKT(envelope.toGeometry(ctxt.geometryFactory));
         HashMap<Coordinate, Set<Coordinate>> segmentPairs = new HashMap<>();
         /*
@@ -268,13 +269,8 @@ public class RDFStorage implements MapStorage {
                 .addFilter(ctxt.graphGeomFactory.intersects(exprF, sWkt, boundingBox))
                 .addWhere(Namespace.o, Geo.AS_WKT_PROP, oWkt)
                 .addFilter(ctxt.graphGeomFactory.intersects(exprF, oWkt, boundingBox))))
-                .thenAccept(rs -> {
-                    rs.forEachRemaining(qs -> {
-                        segmentPairs.computeIfAbsent(parseLocationResource(qs.getResource(Namespace.s.getName())), k ->
-                                new HashSet<>()).add(parseLocationResource(qs.getResource(Namespace.o.getName())));
-
-                    });
-                }).thenApply(x -> segmentPairs);
+                .thenAccept(rs -> rs.forEachRemaining(qs -> segmentPairs.computeIfAbsent(parseLocationResource(qs.getResource(Namespace.s.getName())), k ->
+                        new HashSet<>()).add(parseLocationResource(qs.getResource(Namespace.o.getName()))))).thenApply(x -> segmentPairs);
     }
 
     /**
@@ -320,10 +316,8 @@ public class RDFStorage implements MapStorage {
 
         return exec(sb).thenApply(resultSet -> {
             List<Obstacle> result = new ArrayList<>();
-            resultSet.forEachRemaining(soln -> {
-                result.add(Obstacle.asObstacle(parseUUID(soln.getResource(Namespace.s.getName())),
-                        (Geometry) soln.getLiteral(wkt.getName()).getValue()));
-            });
+            resultSet.forEachRemaining(soln -> result.add(Obstacle.asObstacle(parseUUID(soln.getResource(Namespace.s.getName())),
+                    (Geometry) soln.getLiteral(wkt.getName()).getValue())));
             return result.stream();
         });
     }
@@ -367,11 +361,9 @@ public class RDFStorage implements MapStorage {
                         .addWhere(Namespace.s, Geo.AS_WKT_PROP, wkt)
                 )).thenApply(resultSet -> {
             List<Obstacle> result = new ArrayList<>();
-            resultSet.forEachRemaining(soln -> {
-                result.add(Obstacle.asObstacle(
-                        parseUUID(soln.getResource(Namespace.s.getName())),
-                        (Geometry) soln.getLiteral(wkt.getName()).getValue()));
-            });
+            resultSet.forEachRemaining(soln -> result.add(Obstacle.asObstacle(
+                    parseUUID(soln.getResource(Namespace.s.getName())),
+                    (Geometry) soln.getLiteral(wkt.getName()).getValue())));
             return result.stream();
         });
     }
@@ -394,10 +386,8 @@ public class RDFStorage implements MapStorage {
         }
         return exec(new SelectBuilder().addVar(x).addVar(y)
                 .addGraph(Namespace.UnionModel, graphWhere))
-                .thenAccept(resultSet -> resultSet.forEachRemaining(soln -> {
-                    result.add(new Coordinate(soln.getLiteral(x.getName()).getDouble(),
-                            soln.getLiteral(y.getName()).getDouble()));
-                })).thenApply(z -> result.stream());
+                .thenAccept(resultSet -> resultSet.forEachRemaining(soln -> result.add(new Coordinate(soln.getLiteral(x.getName()).getDouble(),
+                        soln.getLiteral(y.getName()).getDouble())))).thenApply(z -> result.stream());
     }
 
     @Override
@@ -412,9 +402,8 @@ public class RDFStorage implements MapStorage {
 
         return exec(sb).thenApply(resultSet -> {
             Set<CompletableFuture<?>> futures = new HashSet<>();
-            resultSet.forEachRemaining(soln -> {
-                futures.add(removeCoordinate(soln.getResource(Namespace.s.getName())));
-            });
+            resultSet.forEachRemaining(soln -> futures.add(
+                    removeCoordinate(soln.getResource(Namespace.s.getName()))));
             return CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]));
         });
     }
@@ -471,11 +460,7 @@ public class RDFStorage implements MapStorage {
 
         public String dumpQuery(SelectBuilder sb) {
             StringBuilder builder = new StringBuilder();
-            exec(sb).thenAccept(resultSet -> {
-                resultSet.forEachRemaining(s -> {
-                    builder.append(s.toString()).append("\n");
-                });
-            }).join();
+            exec(sb).thenAccept(resultSet -> resultSet.forEachRemaining(s -> builder.append(s.toString()).append("\n"))).join();
             return builder.isEmpty() ? "No data" : builder.toString();
         }
 
@@ -521,5 +506,4 @@ public class RDFStorage implements MapStorage {
             }
         }
     }
-
 }

@@ -112,7 +112,7 @@ public class PositionUtilsTest {
     @MethodSource("nextPositionTestData")
     public void nextPositionTest(String name, Position position, Location relativeLocation, Position expectedPosition) {
         Position actualPosition  = Position.PositionUtils.nextPosition(position, relativeLocation);
-        assertThat(actualPosition.getHeading()).describedAs("heading").isEqualTo(expectedPosition.getHeading(), withPrecision(AngleUtils.TOLERANCE));
+        assertThat(actualPosition.heading()).describedAs("heading").isEqualTo(expectedPosition.heading(), withPrecision(AngleUtils.TOLERANCE));
         assertThat(actualPosition.getX()).describedAs("x").isEqualTo(expectedPosition.getX(), withPrecision(TOLERANCE));
         assertThat(actualPosition.getY()).describedAs("y").isEqualTo(expectedPosition.getY(), withPrecision(TOLERANCE));
     }

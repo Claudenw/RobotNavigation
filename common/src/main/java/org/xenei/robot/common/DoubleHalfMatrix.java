@@ -1,4 +1,4 @@
-package org.xenei.robot.mapper;
+package org.xenei.robot.common;
 
 /**
  * A matrix of double where x[a,b] == x[b,a]. Only half the matrix is kept in
@@ -15,15 +15,15 @@ public class DoubleHalfMatrix {
     }
 
     public void set(int i, int j, double d) {
-        int idx1 = i < j ? i : j;
-        int idx2 = i < j ? j : i;
+        int idx1 = Math.min(i, j);
+        int idx2 = Math.max(i, j);
         idx2 -= idx1;
         matrix[idx1][idx2] = d;
     }
 
     public double get(int i, int j) {
-        int idx1 = i < j ? i : j;
-        int idx2 = i < j ? j : i;
+        int idx1 = Math.min(i, j);
+        int idx2 = Math.max(i, j);
         idx2 -= idx1;
         return matrix[idx1][idx2];
     }

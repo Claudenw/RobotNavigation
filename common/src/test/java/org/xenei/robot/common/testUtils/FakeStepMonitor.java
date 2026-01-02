@@ -2,7 +2,6 @@ package org.xenei.robot.common.testUtils;
 
 import org.xenei.robot.common.ChassisInfo;
 import org.xenei.robot.common.Mover;
-import org.xenei.robot.common.messages.Topic;
 import org.xenei.robot.common.utils.RobutContext;
 
 import java.util.concurrent.atomic.AtomicReference;
@@ -17,25 +16,18 @@ public class FakeStepMonitor implements org.xenei.robot.common.StepMonitor, Runn
     private final int leftIncrement;
     private final int rightIncrement;
     private final ChassisInfo chassisInfo;
-    private final AtomicReference<Mover.MotorState> motorState;
-    private final Topic<Mover.MotorState> motorStateTopic;
+    private final AtomicReference<Byte> motorState;
+    private final RobutContext.ByteTopic motorStateTopic;
 
     public FakeStepMonitor(RobutContext ctxt, int leftLimit, int rightLimit) {
         this.motorState = new AtomicReference<>(Mover.MotorState.STOP);
-        this.motorStateTopic = ctxt.bus.motor;
+        ctxt.motorStateTopic.listen(i -> motorState.set((byte)i));
+        motorStateTopic = ctxt.motorStateTopic;
         this.chassisInfo = ctxt.chassisInfo;
         this.leftLimit = leftLimit;
         this.leftIncrement = leftLimit < 0 ? -1 : 1;
         this.rightLimit = rightLimit;
         this.rightIncrement = rightLimit < 0 ? -1 : 1;
-    }
-
-    public void register() {
-        this.motorStateTopic.register(motorState::set);
-    }
-
-    public void unregister() {
-        this.motorStateTopic.unregister(motorState::set);
     }
 
     @Override
@@ -76,7 +68,7 @@ public class FakeStepMonitor implements org.xenei.robot.common.StepMonitor, Runn
     @Override
     public void run() {
         // read the motor state
-        while (!Mover.MotorState.RUN.equals(motorState.get())) {
+        while (Mover.MotorState.RUN != motorState.get()) {
             // do not merge the following 2 lines or the logic will short circuit.
             boolean keepRunning = leftSteps < leftLimit;
             keepRunning |= rightSteps < rightLimit;

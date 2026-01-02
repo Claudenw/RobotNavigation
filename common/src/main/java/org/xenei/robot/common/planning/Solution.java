@@ -2,25 +2,25 @@ package org.xenei.robot.common.planning;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.BiPredicate;
 import java.util.stream.Stream;
 
-import org.xenei.robot.common.mapping.MapCoordinate;
+import org.xenei.robot.common.mapping.MapLocation;
+import org.xenei.robot.common.mapping.MapTargetData;
 
 public class Solution {
 
-    private final List<SolutionRecord> path;
+    private final List<MapLocation> path;
 
     public Solution() {
         path = new ArrayList<>();
     }
 
-    public MapCoordinate end() {
+    public MapLocation end() {
         return get(path.size() - 1);
     }
 
-    private MapCoordinate get(int idx) {
-        return !path.isEmpty() ? path.get(idx).coord : null;
+    private MapLocation get(int idx) {
+        return !path.isEmpty() ? path.get(idx) : null;
     }
 
     public boolean isEmpty() {
@@ -33,10 +33,9 @@ public class Solution {
      * @param coordinate
      *            the coordinate to add.
      */
-    public void add(MapCoordinate coordinate) {
-        SolutionRecord sr = new SolutionRecord(coordinate);
-        if (!path.contains(sr)) {
-            path.add(sr);
+    public void add(MapLocation coordinate) {
+        if (!path.contains(coordinate)) {
+            path.add(coordinate);
         }
     }
 
@@ -48,110 +47,54 @@ public class Solution {
         if (isEmpty()) {
             return Double.POSITIVE_INFINITY;
         }
-        return recalculateCost();
+        double cost = 0;
+        MapLocation start = path.get(0);
+        for (int i = 1; i <= stepCount(); i++) {
+            MapLocation end = path.get(i);
+            double dist = start.distance(end);
+            System.out.format("%s to %s dist=%s%n", start, end, dist);
+            cost += start.distance(end);
+            start = end;
+        }
+        return cost;
     }
 
-    public MapCoordinate start() {
+    public MapLocation start() {
         return get(0);
     }
 
-    public Stream<MapCoordinate> stream() {
-        return path.stream().map(s -> s.coord);
+    public Stream<MapLocation> stream() {
+        return path.stream();
     }
 
-    /**
-     * Walks the solution backwards and recalculates the cost for each segment in
-     * the solution..
-     *
-     * @return the total cost of the solution.
-     */
-    private double recalculateCost() {
-        int limit = stepCount();
-        SolutionRecord oldPr;
-        double accumulator = 0.0;
-        SolutionRecord newPr = path.get(limit);
-        path.set(limit, newPr);
-        for (int i = limit - 1; i >= 0; i--) {
-            oldPr = path.get(i);
-            accumulator += oldPr.coord.distance(newPr.coord);
-            newPr = new SolutionRecord(oldPr.coord, accumulator);
-            path.set(i, newPr);
-        }
-        return accumulator;
-    }
+    private void removeUnnecessarySteps() {
+        List<MapLocation> result = new ArrayList<>();
+        int[] targetData = new int[path.size()];
 
-    private void removeUnnecessarySteps(BiPredicate<MapCoordinate, MapCoordinate> clearCheck) {
-        List<SolutionRecord> result = new ArrayList<>();
-        result.add(path.get(0));
-        int idx = 0;
-        int limit = stepCount();
-        while (idx < limit) {
-            SolutionRecord current = path.get(idx);
-            double minCost = current.cost;
-            int nextIdx = limit;
-            for (int scan = idx + 1; scan < limit; scan++) {
-                SolutionRecord scanning = path.get(scan);
-                if (clearCheck.test(current.coord, scanning.coord)) {
-                    if (scanning.cost < minCost) {
-                        minCost = scanning.cost;
-                        nextIdx = scan;
-                    }
+        for (int i=0; i < path.size() -1; i++) {
+            for (int j = i+1; j < path.size(); j++) {
+                MapTargetData data = path.get(i).getTargetData(path.get(j));
+                if (!data.indirect()) {
+                    targetData[i] = j;
                 }
             }
-            result.add(path.get(nextIdx));
-            idx = nextIdx;
         }
-        setPath(result);
-    }
-
-    private void setPath(List<SolutionRecord> lst) {
-        path.clear();
-        path.addAll(lst);
+        result.add(path.get(0));
+        int idx = 0;
+        while (idx != targetData.length -1) {
+            int nxt = targetData[idx];
+            result.add(path.get(nxt));
+            idx = nxt;
+        }
+        path.retainAll(result);
     }
 
     /**
      * Builds the shortest path based on the path stack and the target.
-     *
-     * @param clearCheck
-     *            a predicate that returns clear if the path between the two
-     *            coordinates is clear.
      */
-    public void simplify(BiPredicate<MapCoordinate, MapCoordinate> clearCheck) {
+    public void simplify() {
         if (path.size() > 2) {
-            recalculateCost();
-            removeUnnecessarySteps(clearCheck);
-        }
-    }
-
-    private static class SolutionRecord {
-        final MapCoordinate coord;
-        final double cost;
-
-        SolutionRecord(MapCoordinate p) {
-            this(p, 0.0);
-        }
-
-        SolutionRecord(MapCoordinate p, double cost) {
-            this.coord = p;
-            this.cost = cost;
-        }
-
-        @Override
-        public String toString() {
-            return String.format("%s c:%.4f", coord, cost);
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (o instanceof SolutionRecord) {
-                return coord.equals(((SolutionRecord) o).coord);
-            }
-            return false;
-        }
-
-        @Override
-        public int hashCode() {
-            return coord.hashCode();
+            removeUnnecessarySteps();
         }
     }
 }

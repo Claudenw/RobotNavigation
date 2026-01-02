@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 import org.apache.commons.lang3.NotImplementedException;
@@ -16,6 +17,9 @@ import org.locationtech.jts.geom.Coordinate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xenei.robot.common.Compass;
+import org.xenei.robot.common.DeadReckoning;
+import org.xenei.robot.common.Location;
+import org.xenei.robot.common.Position;
 import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.rpi.testUtils.CoordinateUtils;
 import org.xenei.robot.rpi.testUtils.TestChassisInfo;
@@ -32,19 +36,18 @@ public class RpiMoverTest {
     @ParameterizedTest(name = "{index} {0}")
     @MethodSource("setHeadingParameters")
     public void setHeadingTest(String name, double radiusFactor, double angle) {
-        TestingCompass compass = new TestingCompass(0);
-
         RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT, TestChassisInfo.DEFAULT);
+        DeadReckoning deadReckoning = DeadReckoning.from(ctxt, Position.ORIGIN);
+        TestingCompass compass = new TestingCompass(0);
+        TestingPositionSupplier positionSupplier = new TestingPositionSupplier(compass, deadReckoning::get);
         TestingMotor left = new TestingMotor(1, TestChassisInfo.DEFAULT.radius * radiusFactor, compass);
         TestingMotor right = new TestingMotor(-1, TestChassisInfo.DEFAULT.radius * radiusFactor, compass);
-        Coordinate coords = new Coordinate(0, 0);
-        underTest = new RpiMover(ctxt, compass, coords, left, right);
-
+        underTest = new RpiMover(ctxt, positionSupplier, left, right);
         underTest.setHeading(0);
-        assertEquals(0, underTest.position().getHeading());
+        assertEquals(0, underTest.position().heading());
         underTest.setHeading(angle);
-        assertTrue(DoubleUtils.eq(angle, underTest.position().getHeading(), 0.01));
-        CoordinateUtils.assertEquivalent(coords, underTest.position().getCoordinate(), 0.01);
+        assertTrue(DoubleUtils.eq(angle, underTest.position().heading(), 0.01));
+        CoordinateUtils.assertEquivalent(Location.ORIGIN, underTest.position().getCoordinate(), 0.01);
         assertEquals(2, left.runCount);
         assertEquals(2, right.runCount);
         // if (radiusFactor < 1.0)
@@ -74,15 +77,30 @@ public class RpiMoverTest {
         TestingMotor left = new TestingMotor(1, TestChassisInfo.DEFAULT.radius, compass);
         TestingMotor right = new TestingMotor(-1, TestChassisInfo.DEFAULT.radius, compass);
         Coordinate coords = new Coordinate(0, 0);
-        underTest = new RpiMover(ctxt, compass, coords, left, right);
+        underTest = new RpiMover(ctxt, DeadReckoning.from(ctxt, Position.ORIGIN), left, right);
 
         underTest.setHeading(0);
-        assertEquals(0, underTest.position().getHeading());
-        assertTrue(DoubleUtils.eq(0, underTest.position().getHeading(), 0.01));
+        assertEquals(0, underTest.position().heading());
+        assertTrue(DoubleUtils.eq(0, underTest.position().heading(), 0.01));
         assertEquals(coords, underTest.position().getCoordinate());
         assertEquals(0, left.runCount);
         assertEquals(0, right.runCount);
         // assertEquals(TestChassisInfo.DEFAULT.radius, underTest.getHeadingFactor());
+    }
+
+    static class TestingPositionSupplier implements Supplier<Position> {
+        private final Compass compass;
+        private Supplier<Location> locationSupplier;
+
+        TestingPositionSupplier(Compass compass, Supplier<Location> locationSupplier) {
+            this.compass = compass;
+            this.locationSupplier = locationSupplier;
+        }
+
+        @Override
+        public Position get() {
+            return Position.asPosition(locationSupplier.get(), compass.heading());
+        }
     }
 
     static class TestingCompass implements Compass {
@@ -91,27 +109,16 @@ public class RpiMoverTest {
         TestingCompass(double heading) {
             this.heading = heading;
         }
-
         @Override
         public double heading() {
             return heading;
-        }
-
-        @Override
-        public double instantaneousHeading() {
-            return 0;
         }
 
         public synchronized void increment(double value) {
             heading += value;
         }
 
-        @Override
-        public double sd() {
-            return 0.1;
-        }
-
-        public int decimalPlaces() {
+        public int headingAccuracy() {
             throw new NotImplementedException();
         }
     }

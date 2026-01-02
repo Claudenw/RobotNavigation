@@ -10,50 +10,23 @@ import org.xenei.robot.common.mapping.MapLocation;
 /**
  * An implementation of {@link MapCoordinate} that identifies an open path
  * segment from the current position to Segment coordinate.
+ * @param nextLocation the Location after this step.
+ * @param cost  the cost of this step.
+ * @param distance The distance from this coordinate to the target.
  */
-public final class Segment implements Comparable<Segment>, GeometricObject {
-
-    private final MapLocation nextLocation;
-    private final double cost;
-    private final double distance;
+public record Segment(MapLocation nextLocation, double cost,
+                      double distance) implements Comparable<Segment>, GeometricObject {
     /**
      * The default comparator for Segments
      */
-    public static final Comparator<Segment> COMPARATOR = Comparator.comparing(Segment::getNextLocation).thenComparing(Segment::distance)
+    public static final Comparator<Segment> COMPARATOR = Comparator.comparing(Segment::nextLocation).thenComparing(Segment::distance)
             .thenComparing(Segment::cost);
 
-    public Segment(MapLocation nextLocation, double cost, double distance) {
-        this.nextLocation = nextLocation;
-        this.cost = cost;
-        this.distance = distance;
-    }
-
-    public MapLocation getNextLocation() {
-        return nextLocation;
-    }
-    /**
-     * The cost of this step.
-     *
-     * @return the cost of this step.
-     */
-    public double cost() {
-        return cost;
-    }
-
-    /**
-     * The distance from this coordinate to the target.
-     *
-     * @return the distance for this step
-     */
-    public double distance() {
-        return distance;
-    }
 
     @Override
     public int compareTo(Segment o) {
         return COMPARATOR.compare(this, o);
     }
-
 
     @Override
     public Geometry getGeometry() {

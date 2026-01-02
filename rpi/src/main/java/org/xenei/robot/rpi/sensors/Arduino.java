@@ -6,13 +6,15 @@ import java.nio.ShortBuffer;
 import java.util.List;
 import java.util.function.Supplier;
 
+import io.nats.client.Connection;
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xenei.robot.common.ChassisInfo;
-import org.xenei.robot.common.DistanceSensor;
+import org.xenei.robot.common.sensor.distance.DistanceSensor;
 import org.xenei.robot.common.Position;
 import org.xenei.robot.common.ScaleInfo;
-import org.xenei.robot.common.messages.Topic;
+import org.xenei.robot.common.mapping.ThetaAndRange;
 import org.xenei.robot.common.utils.RobutContext;
 import org.xenei.robot.common.utils.TimingUtils;
 
@@ -26,13 +28,13 @@ public class Arduino implements DistanceSensor {
     private final I2CDevice device;
     private final byte[] buffer;
     private final ShortBuffer sb;
-    Topic<DistanceSensor.Readings> topic;
+    private final Connection connection;
     private final Supplier<Position> positionSupplier;
 
     private static final Logger LOG = LoggerFactory.getLogger(Arduino.class);
 
-    public Arduino(Topic<Readings> topic, Supplier<Position> positionSupplier) {
-        this.topic = topic;
+    public Arduino(final Connection connection, final Supplier<Position> positionSupplier) {
+        this.connection = connection;
         this.positionSupplier = positionSupplier;
         device = new I2CDevice(CONTROLLER, ADDRESS);
         buffer = new byte[2];
@@ -59,9 +61,14 @@ public class Arduino implements DistanceSensor {
             if (timing > 0) {
                 double range = timing / TIME_TO_M;
                 if (range < maxRange()) {
-                    DistanceReading reading = new DistanceReading(0, timing / TIME_TO_M);
+
+                    ThetaAndRange reading = new ThetaAndRange(0, timing / TIME_TO_M);
                     Readings readings = new Readings(position, List.of(reading));
-                    topic.send(readings);
+                    try {
+                        connection.publish("sensor.distance", DistanceSensor.Serde.serialize(readings));
+                    } catch (TException e) {
+                        LOG.error(e.getMessage());
+                    }
                 }
             }
         } else {

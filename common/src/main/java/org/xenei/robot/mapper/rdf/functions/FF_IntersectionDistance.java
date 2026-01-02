@@ -9,11 +9,11 @@ import org.locationtech.jts.geom.Geometry;
 import org.xenei.robot.common.utils.RobutContext;
 import org.xenei.robot.mapper.rdf.WktDataType;
 
-public class FF_IntersectionDistance extends FunctionBase3 {
+public final class FF_IntersectionDistance extends FunctionBase3 {
 
     private WktDataType dataType;
 
-    protected FF_IntersectionDistance() {
+    FF_IntersectionDistance() {
     }
 
     @Override

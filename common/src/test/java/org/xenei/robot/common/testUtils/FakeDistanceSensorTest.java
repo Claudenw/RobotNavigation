@@ -2,14 +2,18 @@ package org.xenei.robot.common.testUtils;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.IOException;
+import java.io.StringWriter;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
+import io.nats.client.Options;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.locationtech.jts.geom.Coordinate;
@@ -18,14 +22,13 @@ import org.xenei.robot.common.ChassisInfoTest;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Obstacle;
 import org.xenei.robot.common.Position;
-import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.common.mapping.Map;
+import org.xenei.robot.common.mapping.MapCoordinate;
 import org.xenei.robot.common.mapping.MapObstacle;
 import org.xenei.robot.common.mapping.MapTest;
 import org.xenei.robot.common.planning.Solution;
 import org.xenei.robot.common.utils.RobutContext;
-import org.xenei.robot.mapper.MapDistanceSensorAdapter;
-import org.xenei.robot.mapper.visualization.MapViz;
+import org.xenei.robot.mapper.visualization.TextViz;
 
 public class FakeDistanceSensorTest {
     private FakeDistanceSensor underTest;
@@ -40,68 +43,80 @@ public class FakeDistanceSensorTest {
 
     @Test
     @Disabled
-    public void map1Test() {
+    void map1Test() {
         TestingPositionSupplier positionSupplier = new TestingPositionSupplier(null);
-        Map map = new Map(
-                new RobutContext(ScaleInfo.DEFAULT, ChassisInfoTest.DEFAULT),
-                new MapTest.TestingStorage());
-        underTest = new FakeDistanceSensor1(MapLibrary.map1(map), positionSupplier);
-        double x = 13.5;
-        double y = 15.5;
-        int h = 0;
+        RobutContext.Builder builder = RobutContext.builder();
+        builder.setOptions(builder.defaultOptions());
+        try (RobutContext ctxt = builder.build()) {
+            Map map = new Map(ctxt, new MapTest.TestingStorage());
+            underTest = new FakeDistanceSensor1(MapLibrary.map1(map), positionSupplier);
+            double x = 13.5;
+            double y = 15.5;
+            int h = 0;
 
-        Set<MapObstacle> obstacles = underTest.map().getObstacles().join().collect(Collectors.toSet());
-        Location[] expected = {makeLoc(0.5000, 0.0000), makeLoc(0.5000, 0.0000), makeLoc(0.5000, 0.5000),
-                makeLoc(0.0000, 0.5000), makeLoc(0.0000, 0.5000), makeLoc(0.0000, 0.5000), makeLoc(-0.5000, 0.5000),
-                makeLoc(-1.000, 0.5000), makeLoc(-2.5000, 0.5000), makeLoc(-2.5000, -0.5000), makeLoc(-1.000, -0.5000),
-                makeLoc(-0.5000, -0.5000), makeLoc(-1.5000, -4.5000), makeLoc(0.5000, -5.5000),
-                makeLoc(0.5000, -1.0000), makeLoc(0.5000, -0.5000), makeLoc(0.5000, 0.0000)};
-        positionSupplier.position = makePosition(x, y, Math.toRadians(h));
-        final List<Location> actual = new ArrayList<>();
-        map.getContext().bus.distance
-                .register(readings -> actual.addAll(readings.readings()));
-        underTest.run();
-        CoordinateUtils.assertEquivalent(expected, actual, 0.000001);
-        for (Location l : actual) {
-            assertCoordinateInObstacles(obstacles, positionSupplier.get().nextPosition(l));
-        }
+            Set<MapObstacle> obstacles = underTest.map().getObstacles().join().collect(Collectors.toSet());
+            Location[] expected = {makeLoc(0.5000, 0.0000), makeLoc(0.5000, 0.0000), makeLoc(0.5000, 0.5000),
+                    makeLoc(0.0000, 0.5000), makeLoc(0.0000, 0.5000), makeLoc(0.0000, 0.5000), makeLoc(-0.5000, 0.5000),
+                    makeLoc(-1.000, 0.5000), makeLoc(-2.5000, 0.5000), makeLoc(-2.5000, -0.5000), makeLoc(-1.000, -0.5000),
+                    makeLoc(-0.5000, -0.5000), makeLoc(-1.5000, -4.5000), makeLoc(0.5000, -5.5000),
+                    makeLoc(0.5000, -1.0000), makeLoc(0.5000, -0.5000), makeLoc(0.5000, 0.0000)};
+            positionSupplier.position = makePosition(x, y, Math.toRadians(h));
+            final List<Location> actual = new ArrayList<>();
+            ctxt.distanceSensorTopic.listen(readings -> actual.addAll(readings.readings()));
+            underTest.run();
+            CoordinateUtils.assertEquivalent(expected, actual, 0.000001);
+            for (Location l : actual) {
+                assertCoordinateInObstacles(obstacles, positionSupplier.get().nextPosition(l));
+            }
 
-        expected = new Location[]{makeLoc(13.5000, 0.0000), makeLoc(1.5000, 0.5000), makeLoc(0.5000, 0.5000),
-                makeLoc(0.5000, 1.0000), makeLoc(0.5000, 5.5000), makeLoc(-0.5000, 2.000), makeLoc(-0.5000, 0.5000),
-                makeLoc(-0.5000, 0.5000), makeLoc(-0.5000, 0.000), makeLoc(-0.5000, 0.0000), makeLoc(-0.5000, -0.5000),
-                makeLoc(-0.5000, -0.5000), makeLoc(0.000, -0.5000), makeLoc(0.0000, -0.5000), makeLoc(0.0000, -0.5000),
-                makeLoc(0.5000, -0.5000), makeLoc(1.5000, -0.5000)};
-        positionSupplier.position = Position.asPosition(positionSupplier.get().getCoordinate(), Math.PI);
+            expected = new Location[]{
+                    makeLoc(13.5000, 0.0000), makeLoc(1.5000, 0.5000), makeLoc(0.5000, 0.5000),
+                    makeLoc(0.5000, 1.0000), makeLoc(0.5000, 5.5000), makeLoc(-0.5000, 2.000), makeLoc(-0.5000, 0.5000),
+                    makeLoc(-0.5000, 0.5000), makeLoc(-0.5000, 0.000), makeLoc(-0.5000, 0.0000), makeLoc(-0.5000, -0.5000),
+                    makeLoc(-0.5000, -0.5000), makeLoc(0.000, -0.5000), makeLoc(0.0000, -0.5000), makeLoc(0.0000, -0.5000),
+                    makeLoc(0.5000, -0.5000), makeLoc(1.5000, -0.5000)
+            };
+            positionSupplier.position = Position.asPosition(positionSupplier.get().
 
-        actual.clear();
-        underTest.run();
-        CoordinateUtils.assertEquivalent(expected, actual, 0.000001);
-        for (Location l : actual) {
-            assertCoordinateInObstacles(obstacles, positionSupplier.get().nextPosition(l));
+                    getCoordinate(), Math.PI);
+
+            actual.clear();
+            underTest.run();
+            CoordinateUtils.assertEquivalent(expected, actual, 0.000001);
+            for (Location l : actual) {
+                assertCoordinateInObstacles(obstacles, positionSupplier.get().nextPosition(l));
+            }
         }
     }
 
     @Test
-    public void map2Test() throws InterruptedException {
+    void map2Test() throws InterruptedException, IOException {
         Supplier<Position> positionSupplier = new TestingPositionSupplier(makePosition(-1, -3, 0));
-        Solution solution = new Solution();
-        Map map = new Map(new RobutContext(ScaleInfo.DEFAULT, ChassisInfoTest.DEFAULT), new MapTest.TestingStorage());
-        solution.add(map.asMapPosition(positionSupplier.get()));
+        Options.Builder optionsBuilder = Options.builder()
+                .userInfo("demo", "demo") // Set a user and plain text password
+                .connectionName("RobutContext:Map2Text");
+        RobutContext.Builder builder = RobutContext.builder().setId("Map2Test")
+                .setOptions(optionsBuilder)
+                .setChassisInfo(ChassisInfoTest.DEFAULT);
 
-        underTest = new FakeDistanceSensor1(MapLibrary.map2(map), positionSupplier);
-        MapViz mapViz = new MapViz(1, underTest.map(), () -> solution, positionSupplier, () -> null);
-        map.getContext().scheduleAtFixedRate(mapViz::redraw, 0, 500, TimeUnit.MILLISECONDS);
-        map.getContext().bus.distance.register(MapDistanceSensorAdapter.create(map));
-        underTest.run();
+        Thread vizThread = null;
+        StringWriter sw = new StringWriter();
+        try (RobutContext ctxt = builder.build();
+             TextViz textViz = new TextViz(1, ctxt.getConnectionOptions(), ctxt.vizName, sw)) {
+            vizThread = new Thread(textViz);
+            vizThread.start();
+            Solution solution = new Solution();
+            Map map = new Map(ctxt, new MapTest.TestingStorage());
+            solution.add(map.asMapPosition(positionSupplier.get()));
 
-        DebugViz debugViz = new DebugViz(1, map, () -> solution, positionSupplier, () -> null);
-        debugViz.redraw();
-        Thread.sleep(1000);
-        // Set<Obstacle> obstacles = underTest.map().getObstacles().join();
-        // underTest.run();
-        // for (Location l : actual) {
-        // assertCoordinateInObstacles(obstacles, position.nextPosition(l));
-        // }
+            underTest = new FakeDistanceSensor1(MapLibrary.map2(map), positionSupplier);
+            ctxt.enableRemoteVisualization(underTest.map(), () -> solution, positionSupplier, () -> null);
+            map.registerDistanceSensors();
+            underTest.run();
+            MapCoordinate mc = map.asMapCoordinate(new Coordinate(1, -3));
+            Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(() -> map.isObstacle(mc));
+            Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(() -> sw.toString().contains("# # @ # #"));
+        }
     }
 
     /**

@@ -3,7 +3,6 @@ package org.xenei.robot.common.mapping;
 import org.locationtech.jts.geom.Geometry;
 import org.xenei.robot.common.Obstacle;
 
-
 import java.util.UUID;
 
 public final class MapObstacle implements Obstacle, MapObject {
@@ -21,7 +20,7 @@ public final class MapObstacle implements Obstacle, MapObject {
         this(map, geometry, UUID.randomUUID());
     }
 
-    public final UUID uuid() {
+    public UUID uuid() {
         return uuid;
     }
 

@@ -2,7 +2,7 @@
 //
 // import org.junit.jupiter.api.Test;
 // import org.xenei.robot.common.AbortedException;
-// import org.xenei.robot.common.DistanceSensor;
+// import org.xenei.robot.common.sensor.distance.DistanceSensor;
 // import org.xenei.robot.common.Location;
 // import org.xenei.robot.common.Mover;
 // import org.xenei.robot.common.Position;

@@ -1,14 +1,31 @@
 package org.xenei.robot.common;
 
+import org.apache.thrift.TException;
+import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.protocol.TProtocol;
+import org.apache.thrift.transport.TByteBuffer;
+import org.apache.thrift.transport.TMemoryBuffer;
 import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.CoordinateXY;
 import org.xenei.robot.common.mapping.ThetaAndRange;
 import org.xenei.robot.common.utils.AngleUtils;
 import org.xenei.robot.common.utils.CoordUtils;
+import org.xenei.robot.common.utils.SerializerDeserializer;
+import org.xenei.robot.common.utils.ThriftSerde;
+
+import java.nio.ByteBuffer;
 
 /**
  * A position is a location and a heading.
  */
-public interface Position extends Location  {
+public interface Position extends Location, Compass  {
+
+    int BYTES = Position.BYTES + Double.BYTES;
+
+    /**
+     * A representation of the origin location (0,0)
+     */
+    Position ORIGIN = asPosition(Location.ORIGIN, 0.0);
 
     static Position asPosition(Coordinate coord, double heading) {
         return new Position() {
@@ -19,7 +36,7 @@ public interface Position extends Location  {
             }
 
             @Override
-            public double getHeading() {
+            public double heading() {
                 return heading;
             }
 
@@ -39,17 +56,11 @@ public interface Position extends Location  {
             }
 
             @Override
-            public double getHeading() {
+            public double heading() {
                 return AngleUtils.normalize(heading);
             }
         };
     }
-    /**
-     * Gets the heading.
-     *
-     * @return the heading current heading in radians.
-     */
-    double getHeading();
 
     /**
      * Calculates the heading required to move from the current absolute position to
@@ -63,13 +74,74 @@ public interface Position extends Location  {
         return PositionUtils.headingTo(this, mapCoordinate);
     }
 
-//    default Location relativeLocation(Location absoluteLocation) {
-//        return PositionUtils.relativeLocation(this, absoluteLocation);
-//    }
-
     default Position nextPosition(Location relativeLocation) {
         return Position.PositionUtils.nextPosition(this, relativeLocation);
     }
+
+    /**
+     * Calculates the next position.
+     * <p>
+     * The heading will be the theta from the relative coordinates.
+     * </p>
+     *
+     * @param relativeCoordinates
+     *            The coordinates relative to this position to move to.
+     * @return the new Position centered on the new position with the proper
+     *         heading.
+     */
+    default Position nextPosition(Coordinate relativeCoordinates) {
+        return PositionUtils.nextPosition(this, relativeCoordinates);
+    }
+
+    /**
+     * Calculates the next position by moving the specified distance.
+     * <p>
+     * The heading does not change
+     * </p>
+     *
+     * @param scaledRange
+     *            The distance to travel.
+     * @return the new Position centered on the new position with the proper
+     *         heading.
+     */
+    default Position nextPosition(double scaledRange) {
+        return PositionUtils.nextPosition(this, scaledRange);
+    }
+
+    class Serde implements SerializerDeserializer<Position>, ThriftSerde<Position> {
+        Location.Serde lSerde = new Location.Serde();
+
+        public void serialize(Position position, TProtocol proto) throws TException {
+            lSerde.serialize(position, proto);
+            proto.writeDouble(position.heading());
+        }
+
+        public byte[] serialize(Position position)  {
+            try {
+                TMemoryBuffer result = new TMemoryBuffer(Position.BYTES);
+                TProtocol proto = new TBinaryProtocol(result);
+                serialize(position, proto);
+                return result.getBuffer();
+            } catch (TException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        public Position deserialize(byte[] bytes)  {
+            try {
+                TByteBuffer buffer = new TByteBuffer(ByteBuffer.wrap(bytes));
+                TProtocol proto = new TBinaryProtocol(buffer);
+                return deserialize(proto);
+            } catch (TException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        public Position deserialize(TProtocol proto) throws TException {
+            return Position.asPosition(lSerde.deserialize(proto), proto.readDouble());
+        }
+    }
+
 
     final class PositionUtils {
 
@@ -103,13 +175,13 @@ public interface Position extends Location  {
          *         heading.
          */
         static public Position nextPosition(Position position, Location relativeLocation) {
-            ThetaAndRange thetaAndRange = new ThetaAndRange(position.getHeading() + relativeLocation.theta(),
+            ThetaAndRange thetaAndRange = new ThetaAndRange(position.heading() + relativeLocation.theta(),
                     relativeLocation.range());
-            return Position.asPosition(position.plus(thetaAndRange), position.getHeading() + relativeLocation.theta());
+            return Position.asPosition(position.plus(thetaAndRange), position.heading() + relativeLocation.theta());
         }
 
         static public Position nextPosition(Position position, double range) {
-            double heading = position.getHeading();
+            double heading = position.heading();
             return asPosition(CoordUtils.add(position.getCoordinate(), CoordUtils.fromAngle(heading, range)), heading);
         }
 
@@ -124,7 +196,7 @@ public interface Position extends Location  {
          */
         static public double headingTo(Position position, Location location) {
             if (position.getCoordinate().equals2D(location.getCoordinate())) {
-                return position.getHeading();
+                return position.heading();
             }
             Coordinate pCoordinate = position.getCoordinate();
             Coordinate lCoordinate = location.getCoordinate();
@@ -137,7 +209,7 @@ public interface Position extends Location  {
 
         static public String toString(Position position) {
             String name = position.getClass().isAnonymousClass() ? "Position" : position.getClass().getSimpleName();
-            return String.format("%s[%s, h: %s]", name, position.getCoordinate(), position.getHeading());
+            return String.format("%s[%s, h: %s]", name, position.getCoordinate(), position.heading());
         }
     }
 }

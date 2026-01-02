@@ -1,5 +1,6 @@
 package org.xenei.robot.common;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -18,35 +19,39 @@ public class DeadReckoningTest {
 
     @BeforeEach
     void beforeDeadReckoningTest() {
-        ctxt = new RobutContext(ScaleInfo.DEFAULT, ChassisInfoTest.ONE_METER);
+        RobutContext.Builder builder = RobutContext.builder();
+        builder.setOptions(builder.defaultOptions())
+                .setChassisInfo(ChassisInfoTest.ONE_METER);
+        ctxt = builder.build();
         scaleInfo = ctxt.scaleInfo;
         testingStorage = new MapTest.TestingStorage();
         map = new Map(ctxt, testingStorage);
     }
 
-    MapPosition createPosition(Coordinate coordinate, double heading) {
-        return map.asMapPosition(map.asMapCoordinate(coordinate), heading);
+    @AfterEach
+    void afterDeadReckoningTest() {
+        ctxt.close();
     }
 
     @Test
     void constructorTest() {
-        DeadReckoning deadReckoning = new DeadReckoning(ctxt);
+        DeadReckoning deadReckoning = DeadReckoning.from(ctxt, Position.ORIGIN);
         ScaleInfoTest.assertEquals(scaleInfo, Location.ORIGIN, deadReckoning.get());
         Assertions.assertEquals(0.0, deadReckoning.heading(), scaleInfo.getResolution());
-        Assertions.assertEquals(2, deadReckoning.decimalPlaces());
+        Assertions.assertEquals(2, deadReckoning.headingAccuracy());
 
-        MapPosition position = createPosition(new Coordinate(5.5, 3.1), 7.8);
-        deadReckoning = new DeadReckoning(ctxt, position);
+        MapPosition position = map.asMapPosition(new Coordinate(5.5, 3.1), 7.8);
+        deadReckoning = DeadReckoning.from(ctxt, position);
         ScaleInfoTest.assertEquals(scaleInfo, position, deadReckoning.get());
         Assertions.assertEquals(7.8, deadReckoning.heading(), scaleInfo.getResolution());
-        Assertions.assertEquals(2, deadReckoning.decimalPlaces());
+        Assertions.assertEquals(2, deadReckoning.headingAccuracy());
     }
 
     @Test
     void instantaneousHeadingTest() {
-        Position position = Position.asPosition(Location.ORIGIN.getCoordinate(), 0);
+        Position position = Position.ORIGIN;
         FakeStepMonitor fakeStepMonitor = new FakeStepMonitor(ctxt, 5, 5);
-        DeadReckoning deadReckoning = new DeadReckoning(ctxt);
+        DeadReckoning deadReckoning = DeadReckoning.from(ctxt, position);
         deadReckoning.track(fakeStepMonitor);
         fakeStepMonitor.takeStep();
         ScaleInfoTest.assertEquals(scaleInfo, position, deadReckoning.get());

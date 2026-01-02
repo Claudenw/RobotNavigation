@@ -1,6 +1,7 @@
 package org.xenei.robot.common.mapping;
 
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.locationtech.jts.geom.Coordinate;
 import org.xenei.robot.common.AbstractLocationTest;
 import org.xenei.robot.common.ChassisInfoTest;
@@ -8,14 +9,22 @@ import org.xenei.robot.common.Location;
 import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.common.utils.RobutContext;
 
-public class MapLocationTest extends AbstractLocationTest {
+public final class MapLocationTest extends AbstractLocationTest {
 
-    protected static final RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT, ChassisInfoTest.DEFAULT);
-    protected Map map;
+    private RobutContext ctxt;
+    private Map map;
+
+    @BeforeEach
+    void setup() {
+        RobutContext.Builder builder = RobutContext.builder();
+        builder.setOptions(builder.defaultOptions())
+                .setChassisInfo(ChassisInfoTest.DEFAULT);
+        ctxt = builder.build();
+    }
 
     @AfterEach
-    void cleanupMap() {
-        map = null;
+    void teardown() {
+        ctxt.close();
     }
 
     @Override

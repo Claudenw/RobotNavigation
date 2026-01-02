@@ -5,12 +5,13 @@ import java.io.InputStreamReader;
 import java.util.Scanner;
 import java.util.concurrent.TimeUnit;
 
+import io.nats.client.Connection;
 import org.locationtech.jts.geom.Coordinate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xenei.robot.Robut;
 import org.xenei.robot.common.ChassisInfo;
-import org.xenei.robot.common.DistanceSensor;
+import org.xenei.robot.common.sensor.distance.DistanceSensor;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.common.utils.CoordUtils;
@@ -30,12 +31,12 @@ public class RobutBuilder {
         return ChassisInfo.builder().width(0.24).wheelSize(3.2).motorInfo(ULN2003.STEPPER_28BYJ48).build();
     }
 
-    public static Robut build(Coordinate origin) throws InterruptedException {
+    public static Robut build(final Coordinate origin, final Connection natsConnection) throws InterruptedException {
         RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT, chassisInfo());
         BaseMover mover = new RpiMover(ctxt, new CompassImpl(), origin);
-        BumpSensorImpl bumpSensor = new BumpSensorImpl(ctxt);
+        BumpSensorImpl bumpSensor = new BumpSensorImpl(ctxt, 500, 42);
         BumpSensorLogicModule bumpSensorLogicModule = new BumpSensorLogicModule(ctxt, mover);
-        DistanceSensor distSensor = new Arduino(ctxt.bus.distance, mover::position);
+        DistanceSensor distSensor = new Arduino(natsConnection, mover::position);
         try {
             return new Robut(ctxt, distSensor, mover);
         } finally {

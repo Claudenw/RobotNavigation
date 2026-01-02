@@ -65,7 +65,7 @@ abstract class VisualizationLibrary<T extends VisualizationLibrary.AbstractDrawi
             cmds.add(getPoly(mapCoord.getGeometry(), mapCoord.isIndirect(target) ? Color.CYAN : Color.BLUE));
         })));
 
-        List<MapCoordinate> lst = solutionSupplier.get().stream().toList();
+        List<MapLocation> lst = solutionSupplier.get().stream().toList();
         if (lst.size() > 1) {
             cmds.add(getPoly(geometryUtils.asPath(0.25, lst.toArray(new MapCoordinate[0])), Color.WHITE));
         } else if (lst.size() == 1) {

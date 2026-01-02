@@ -14,9 +14,7 @@ import java.util.Optional;
 import java.util.Queue;
 import java.util.function.Supplier;
 
-import org.apache.jena.arq.querybuilder.AskBuilder;
-import org.apache.jena.arq.querybuilder.WhereBuilder;
-import org.apache.jena.sparql.core.Var;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.locationtech.jts.geom.Coordinate;
@@ -32,22 +30,19 @@ import org.xenei.robot.common.mapping.MapTest;
 import org.xenei.robot.common.mapping.NavigationSnapshot;
 import org.xenei.robot.common.Position;
 import org.xenei.robot.common.ScaleInfo;
-import org.xenei.robot.common.UnmodifiableCoordinate;
-import org.xenei.robot.common.planning.Planner;
 import org.xenei.robot.common.planning.Solution;
 import org.xenei.robot.common.planning.Segment;
 import org.xenei.robot.common.testUtils.CoordinateUtils;
+import org.xenei.robot.common.testUtils.MapLibrary;
 import org.xenei.robot.common.testUtils.TestingPositionSupplier;
 import org.xenei.robot.common.utils.AngleUtils;
 import org.xenei.robot.common.utils.RobutContext;
-import org.xenei.robot.mapper.rdf.Namespace;
 
 public class PlannerImplTest {
-    final private RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT, ChassisInfoTest.DEFAULT);
-    private Planner underTest;
+    private RobutContext ctxt;
+    private PlannerImpl underTest;
     private Map map;
     private MapTest.TestingStorage testingStorage;
-
 
     final private ArgumentCaptor<MapCoordinate> coordinateCaptor = ArgumentCaptor.forClass(MapCoordinate.class);
     final private ArgumentCaptor<MapCoordinate> targetCaptor = ArgumentCaptor.forClass(MapCoordinate.class);
@@ -66,19 +61,28 @@ public class PlannerImplTest {
 
     @BeforeEach
     void setup() {
+        RobutContext.Builder builder = RobutContext.builder();
+        builder.setOptions(builder.defaultOptions())
+                .setChassisInfo(ChassisInfoTest.DEFAULT);
+        ctxt = builder.build();
         testingStorage = new MapTest.TestingStorage();
-        map = new Map(ctxt, new MapTest.TestingStorage());
+        map = new Map(ctxt, testingStorage);
+    }
+
+    @AfterEach
+    void teardown() {
+        ctxt.close();
     }
 
     @Test
     void setTargetTest() {
-        MapCoordinate fc = map.asMapCoordinate(new Coordinate(1, 1));
+        MapCoordinate mapCoordinate = map.asMapCoordinate(new Coordinate(1, 1));
 
         TestingPositionSupplier supplier = new TestingPositionSupplier(Position.asPosition(Location.ORIGIN, 0));
         underTest = new PlannerImpl(map, supplier);
 
-        assertEquals(ctxt.scaleInfo.round(AngleUtils.RADIANS_45), underTest.setTarget(fc));
-        assertEquals(fc.getCoordinate(), underTest.getTarget().getCoordinate());
+        assertEquals(ctxt.scaleInfo.scale(AngleUtils.RADIANS_45), ctxt.scaleInfo.scale(underTest.setTarget(mapCoordinate)));
+        assertEquals(mapCoordinate.getCoordinate(), underTest.getTarget().getCoordinate());
 
         Solution solution = underTest.getSolution();
         assertEquals(0, solution.stepCount());
@@ -107,7 +111,7 @@ public class PlannerImplTest {
 
         // verify solution has 2 items (1 step)
         await().atMost(2, SECONDS).untilAsserted(() -> assertEquals(1, underTest.getSolution().stepCount()));
-        List<MapCoordinate> sol = underTest.getSolution().stream().toList();
+        List<MapLocation> sol = underTest.getSolution().stream().toList();
         assertEquals(2, sol.size());
         assertEquals(initial.getCoordinate(), sol.get(0).getCoordinate());
         assertEquals(finalLocation.getCoordinate(), sol.get(1).getCoordinate());
@@ -128,9 +132,9 @@ public class PlannerImplTest {
         underTest.replaceTarget(newTarget);
         snapshot = underTest.getSnapshot();
         assertTrue(initialSnapshot.didTargetChange(snapshot));
-        assertTrue(map.getContext().scaleInfo.areEquivalent(newTarget, underTest.getTarget()));
+        assertTrue(map.getContext().scaleInfo.compare(ScaleInfo.OP.EQ, newTarget, underTest.getTarget()));
         assertEquals(2, underTest.getTargets().size());
-        assertTrue(map.getContext().scaleInfo.areEquivalent(finalLocation, underTest.getFinalTarget()));
+        assertTrue(map.getContext().scaleInfo.compare(ScaleInfo.OP.EQ, finalLocation, underTest.getFinalTarget()));
 
     }
 
@@ -148,34 +152,36 @@ public class PlannerImplTest {
         MapCoordinate newTarget = map.asMapCoordinate(new Coordinate(4, 4));
         underTest.replaceTarget(newTarget);
         targetData = location.getTargetData(map.asMapLocation(newTarget));
-        assertThat(targetData.distance()).isEqualTo(ctxt.scaleInfo.scale(Math.sqrt(74)));
+        assertThat(targetData.distance()).isEqualTo(Math.sqrt(74));
 
         // verify solution has 1 item
         Solution solution = underTest.getSolution();
-        List<MapCoordinate> sol = solution.stream().toList();
+        List<MapLocation> sol = solution.stream().toList();
         assertEquals(1, sol.size());
         assertEquals(initial.getCoordinate(), sol.get(0).getCoordinate());
         assertEquals(0.0, solution.cost());
     }
 
-    /*
-     * public Optional<Step> selectTarget() { Position pos = positionSupplier.get();
-     * if (pos.equals2D(getTarget(), map.getContext().scaleInfo.getResolution())) {
-     * LOG.debug("Reached intermediate target"); map.setVisited(getFinalTarget(),
-     * target.pop()); if (target.isEmpty()) { LOG.debug("Reached final target");
-     * return Optional.empty(); } } Optional<Step> selected =
-     * map.getBestStep(pos.getCoordinate()); if (selected.isPresent()) { if
-     * (!map.areEquivalent(selected.get().getCoordinate(), getTarget())) {
-     * target.push(selected.get().getCoordinate()); if (LOG.isDebugEnabled()) {
-     * LOG.debug("New target registered: " + selected.get()); } } } return selected;
-     * }
-     */
+    @Test
+    void exploreTest() {
+        MapLibrary.map2(map);
+        Location finalLocation = map.asMapLocation(makeLoc(-1, 1));
+        Location stepLocation = map.asMapLocation(makeLoc(0, -2));
+        MapPosition mapPosition = map.asMapPosition(makePosition(-1, -3));
+
+        TestingPositionSupplier positionSupplier = new TestingPositionSupplier(mapPosition);
+        underTest = new PlannerImpl(map, positionSupplier, finalLocation);
+        Optional<Segment> result = underTest.explore(mapPosition);
+        assertTrue(result.isPresent());
+        assertThat(result.get().nextLocation().sameCoordinate(stepLocation)).isTrue();
+    }
 
     @Test
     public void selectSegmentTest() {
-        Location finalLocation = makeLoc(-1, 1);
-        Location stepLocation = makeLoc(0, -2);
-        Position initial = makePosition(-1, -3);
+        MapLibrary.map2(map);
+        Location finalLocation = map.asMapLocation(makeLoc(-1, 1));
+        Location stepLocation = map.asMapLocation(makeLoc(0, -2));
+        MapPosition initial = map.asMapPosition(makePosition(-1, -3));
 
         TestingPositionSupplier positionSupplier = new TestingPositionSupplier(initial);
         underTest = new PlannerImpl(map, positionSupplier, finalLocation);
@@ -183,19 +189,19 @@ public class PlannerImplTest {
         // first target (segment = target)
         Optional<Segment> optionalSegment = underTest.selectSegment();
         assertTrue(optionalSegment.isPresent());
-        CoordinateUtils.assertEquivalent(optionalSegment.get(), underTest.getTarget());
+        CoordinateUtils.assertEquivalent(optionalSegment.get().nextLocation(), underTest.getTarget());
 
         // second target (segment = stepLocation)
-        map.asMapLocation(stepLocation).getTargetData(map.asMapLocation(finalLocation));
+        MapTargetData mtd = map.asMapLocation(stepLocation).getTargetData(map.asMapLocation(finalLocation));
         optionalSegment = underTest.selectSegment();
         assertTrue(optionalSegment.isPresent());
-        CoordinateUtils.assertEquivalent(optionalSegment.get(), stepLocation);
+        CoordinateUtils.assertEquivalent(optionalSegment.get().nextLocation(), stepLocation);
 
         // change the position to step location.
         positionSupplier.position = makePosition(stepLocation);
         optionalSegment = underTest.selectSegment();
         assertTrue(optionalSegment.isPresent());
-        CoordinateUtils.assertEquivalent(optionalSegment.get(), underTest.getTarget());
+        CoordinateUtils.assertEquivalent(optionalSegment.get().nextLocation(), finalLocation);
 
         // change the position to the end location
         // target should be null

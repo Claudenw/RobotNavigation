@@ -4,7 +4,6 @@ import java.util.Collection;
 import java.util.Optional;
 
 import org.xenei.robot.common.Location;
-import org.xenei.robot.common.mapping.MapCoordinate;
 import org.xenei.robot.common.mapping.NavigationSnapshot;
 
 public interface Planner {
@@ -44,8 +43,8 @@ public interface Planner {
     double setTarget(Location target);
 
     /**
-     * Replaces the current planner target without clearing the current plan. If the
-     * only one target is in the planner stack then this method adds a record.
+     * Replaces the current planner target without clearing the current plan. If there
+     * is only one target is in the planner stack then this method adds a record.
      *
      * @param target
      *            The coordinates to head toward.

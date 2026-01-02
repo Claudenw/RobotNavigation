@@ -4,6 +4,7 @@ import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.xenei.robot.common.GeometricObject;
 import org.xenei.robot.common.Location;
+import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.common.UnmodifiableCoordinate;
 import org.xenei.robot.common.utils.CoordUtils;
 import org.xenei.robot.common.utils.RobutContext;
@@ -15,8 +16,8 @@ public class MapCoordinate implements MapObject, GeometricObject, Comparable<Map
 
     /**
      * Coordinates that are on the map.
-     * @param onMap
-     * @param mapCoordinate
+     * @param onMap The map to which this coordinate belongs
+     * @param mapCoordinate the unscaled coordinate
      */
     MapCoordinate(Map onMap, Coordinate mapCoordinate) {
         this.onMap = onMap;
@@ -37,12 +38,14 @@ public class MapCoordinate implements MapObject, GeometricObject, Comparable<Map
 
     @Override
     public final boolean sameCoordinate(Location other) {
-        return getMap().getContext().scaleInfo.areEquivalent(this, other);
+        ScaleInfo scaleInfo = getMap().getContext().scaleInfo;
+        return scaleInfo.compare(ScaleInfo.OP.EQ, this, other);
     }
 
     @Override
     public final boolean sameCoordinate(Coordinate other) {
-        return getMap().getContext().scaleInfo.areEquivalent(this.getCoordinate(), other);
+        ScaleInfo scaleInfo = getMap().getContext().scaleInfo;
+        return scaleInfo.compare(ScaleInfo.OP.EQ, this.getCoordinate(), other);
     }
 
 
@@ -81,7 +84,7 @@ public class MapCoordinate implements MapObject, GeometricObject, Comparable<Map
 
     @Override
     public int compareTo(MapCoordinate other) {
-        if (getMap().getContext().scaleInfo.areEquivalent(this, other)) {
+        if (getMap().getContext().scaleInfo.compare(ScaleInfo.OP.EQ, this, other)) {
             return 0;
         }
         return getCoordinate().compareTo(other.getCoordinate());
@@ -94,9 +97,8 @@ public class MapCoordinate implements MapObject, GeometricObject, Comparable<Map
 
     @Override
     public boolean equals(Object obj) {
-        if (obj instanceof MapCoordinate) {
-            MapCoordinate other = (MapCoordinate) obj;
-            return getMap().getContext().scaleInfo.areEquivalent(this, other);
+        if (obj instanceof MapCoordinate other) {
+            return getMap().getContext().scaleInfo.compare(ScaleInfo.OP.EQ, this, other);
         }
         return false;
     }

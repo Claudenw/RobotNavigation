@@ -22,21 +22,26 @@ import org.locationtech.jts.geom.Coordinate;
 
 import org.locationtech.jts.geom.Geometry;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.xenei.robot.common.GeometricObject;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Obstacle;
 import org.xenei.robot.common.Position;
 import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.common.planning.Solution;
+import org.xenei.robot.common.sensor.distance.DistanceSensor;
 import org.xenei.robot.common.utils.CoordUtils;
 import org.xenei.robot.common.utils.GeometryUtils;
 import org.xenei.robot.common.utils.RobutContext;
 
 public final class Map {
+    private static final Logger LOG = LoggerFactory.getLogger(Map.class);
     private final RobutContext ctxt;
     final MapStorage storage;
     final ScaleInfo scaleInfo;
     private final ObstacleHandler obstacleHandler;
+    private RobutContext.TopicRegistration distanceSensorRegistration;
 
     /**
      * Compares Coordinates by XY positions.
@@ -120,7 +125,15 @@ public final class Map {
         return asMapLocation(asMapCoordinate(coordinate));
     }
 
+    /**
+     * Returns the map location for the location.
+     * @param location the location to map.
+     * @return the map location of {@code null} if the location is null.
+     */
     public MapLocation asMapLocation(Location location) {
+        if (location == null) {
+            return null;
+        }
         if (location instanceof MapLocation) {
             return (MapLocation) location;
         }
@@ -132,7 +145,7 @@ public final class Map {
         if (position instanceof MapPosition) {
             return (MapPosition) position;
         }
-        return asMapPosition(asMapCoordinate(position), position.getHeading());
+        return asMapPosition(asMapCoordinate(position), position.heading());
     }
 
     public MapPosition asMapPosition(Location location, double heading) {
@@ -296,8 +309,21 @@ public final class Map {
      */
     public RobutContext getContext() {
         return ctxt;
-    };
+    }
 
+    /**
+     * Registers the map with the distance sensors
+     */
+    public void registerDistanceSensors() {
+        if (distanceSensorRegistration == null) {
+            ScaleInfo scaleInfo = getContext().scaleInfo;
+            RobutContext.Topic<DistanceSensor.Readings> topic = getContext().distanceSensorTopic;
+            distanceSensorRegistration = topic.listen(readings -> readings.readings().stream().map(scaleInfo::round)
+                    .filter(relativeLocation -> !relativeLocation.isNaN() && !relativeLocation.isInfinite())
+                    .map(relativeLocation -> asMapCoordinate(CoordUtils.add(readings.origin().getCoordinate(), relativeLocation.getCoordinate())))
+                    .forEach(this::createObstacleInBackground));
+        }
+    }
 
     /**
      * A Visualization of a map.
@@ -334,6 +360,7 @@ public final class Map {
          * @return the argument.
          */
         private MapObstacle addCache(MapObstacle obstacle) {
+            LOG.debug("Added obstacle {}", obstacle.uuid());
             activeObstacles.put(obstacle.uuid(), obstacle.getGeometry());
             cache.put(obstacle.uuid(), obstacle.getGeometry());
             return obstacle;
@@ -349,22 +376,21 @@ public final class Map {
         }
 
         /**
-         * Retrieve all the obstacles from the cache that intersect or cover the geometry.
+         * Retrieve all the obstacles from the cache that touch geometry.
          * Updates the LRU cache entry for the found objects.
          * @param geometry the geometry to match.
          * @return the set of Obstacles that interset the geometry.
          */
         @VisibleForTesting
-        Set<Obstacle> matchingCache(Geometry geometry) {
+        Stream<Obstacle> matchingCache(Geometry geometry) {
             HashMap<UUID, Geometry> result = new HashMap<>(activeObstacles);
-            result.entrySet().removeIf(entry -> !ctxt.scaleInfo.areEquivalent(entry.getValue().distance(geometry), 0));
+            result.entrySet().removeIf(entry -> ctxt.scaleInfo.compare(ScaleInfo.OP.NE, entry.getValue().distance(geometry), 0));
             result.keySet().forEach(cache::get);
-            return result.entrySet().stream().map(entry -> new MapObstacle(Map.this, entry.getValue(), entry.getKey()))
-                    .collect(Collectors.toSet());
+            return result.entrySet().stream().map(entry -> new MapObstacle(Map.this, entry.getValue(), entry.getKey()));
         }
 
         private CompletableFuture<MapObstacle> processObstacles(GeometricObject obstacle, Stream<Obstacle> obstacles) {
-            List<Obstacle> obstacleList = obstacles.collect(Collectors.toList());
+            List<Obstacle> obstacleList = obstacles.toList();
 
             if (obstacleList.isEmpty()) {
                 if (obstacle instanceof MapObstacle) {
@@ -388,9 +414,7 @@ public final class Map {
                     coordinateMapLocationMap.values().stream().filter(mapLocation -> geometry.covers(mapLocation.getGeometry()))
                             .collect(Collectors.toSet());
             if (!locationsToRemove.isEmpty()) {
-                coordinateMapLocationMap.values().forEach(mapLocation -> {
-                    mapLocation.removeTargets(locationsToRemove);
-                });
+                coordinateMapLocationMap.values().forEach(mapLocation -> mapLocation.removeTargets(locationsToRemove));
                 for (MapLocation location : locationsToRemove) {
                     coordinateMapLocationMap.remove(location.getCoordinate());
                 }
@@ -412,11 +436,14 @@ public final class Map {
 
         boolean isClearPath(MapCoordinate start, MapCoordinate end) {
             Geometry path = ctxt.geometryUtils.asPath(ctxt.scaledRadius, start.getCoordinate(), end.getCoordinate());
-            return matchingCache(path).isEmpty() && storage.findTouchingObstacles(GeometricObject.of(path)).join().findAny().isEmpty();
+            return matchingCache(path).findAny().isEmpty() && storage.findTouchingObstacles(GeometricObject.of(path)).join().findAny().isEmpty();
         }
 
         boolean isObstacle(MapCoordinate point) {
-            return !matchingCache(point.getGeometry()).isEmpty() || storage.findTouchingObstacles(point).join().findAny().isPresent();
+            return matchingCache(point.getGeometry())
+                    .anyMatch(obstacle -> ctxt.geometryUtils.scale(obstacle.getGeometry()).covers(point.getGeometry()))
+                     || storage.findTouchingObstacles(point).join()
+                    .anyMatch(obstacle -> ctxt.geometryUtils.scale(obstacle.getGeometry()).covers(point.getGeometry()));
         }
     }
 }

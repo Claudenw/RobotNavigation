@@ -46,7 +46,7 @@ public class Namespace {
     public static final Var o = Var.alloc("o");
 
     public static void init(RobutContext context) {
-        new WktDataType(context.geometryFactory, context.cache);
+        new WktDataType(context.cache);
         new Functions().register();
     }
 

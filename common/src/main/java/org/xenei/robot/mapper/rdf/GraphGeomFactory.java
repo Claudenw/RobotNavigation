@@ -1,4 +1,4 @@
-package org.xenei.robot.mapper;
+package org.xenei.robot.mapper.rdf;
 
 import java.util.Objects;
 
@@ -14,7 +14,6 @@ import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.xenei.robot.common.mapping.MapCoordinate;
 import org.xenei.robot.common.utils.GeometryUtils;
-import org.xenei.robot.mapper.rdf.Namespace;
 
 public final class GraphGeomFactory {
 

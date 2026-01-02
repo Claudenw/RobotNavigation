@@ -3,16 +3,15 @@ package org.xenei.robot.mover;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xenei.robot.common.Mover;
-import org.xenei.robot.common.messages.Topic;
+import org.xenei.robot.common.sensor.bump.BumpSensorModel;
 import org.xenei.robot.common.utils.RobutContext;
-import org.xenei.robot.ml.SensorLayer;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
 
 /**
  * starts with accept sensor layer. select a corrective action. ignore sensor
- * layer wile taking corrective action. move enough to untrigger event. check
+ * layer while taking corrective action. move enough to untrigger event. check
  * sensor layer if pause go to select a corrective action if run: set stop if
  * stop: reset trigger?
  */
@@ -23,27 +22,32 @@ public class BumpSensorLogicModule implements Mover.LogicModule {
     private final BaseMover mover;
     private final AtomicBoolean sensorLayerEnabled;
     private Lock lock;
-    private final Topic<Mover.MotorState> motorStateTopic;
+    private final RobutContext.ByteTopic motorStateTopic;
+    private final RobutContext.TopicRegistration bumpSensorRegistration;
 
     public BumpSensorLogicModule(RobutContext ctxt, BaseMover mover) {
-        motorStateTopic = ctxt.bus.motor;
+        motorStateTopic = ctxt.motorStateTopic;
         sensorLayerEnabled = new AtomicBoolean(true);
         rangeSteps = ctxt.chassisInfo.steps(ctxt.scaleInfo.getResolution());
         this.mover = mover;
         this.mover.register(this);
-        ctxt.bus.bump.register(this::processSensorLayer);
+        this.bumpSensorRegistration = ctxt.bumpSensorTopic.listen(this::processSensorLayer);
+    }
+
+    public void shutdown() {
+        bumpSensorRegistration.unsubscribe();
     }
 
     /**
-     * @param sensorLayer
-     *            the input argument
+     * @param sensorResult
+     *            the result from the Sensor model.
      */
-    private void processSensorLayer(SensorLayer sensorLayer) {
+    private void processSensorLayer(BumpSensorModel.SensorResult sensorResult) {
         if (sensorLayerEnabled.get() && lock.tryLock()) {
             try {
                 motorStateTopic.send(Mover.MotorState.PAUSE);
                 sensorLayerEnabled.set(false);
-                takeCorrectiveAction(sensorLayer);
+                takeCorrectiveAction(sensorResult);
             } finally {
                 lock.unlock();
                 sensorLayerEnabled.set(true);
@@ -51,42 +55,28 @@ public class BumpSensorLogicModule implements Mover.LogicModule {
         }
     }
 
-    private void takeCorrectiveAction(SensorLayer sensorLayer) {
-        switch (sensorLayer.getAnswer()) {
-            case FF -> {
-                mover.takeSteps(rangeSteps, rangeSteps, sensorLayer.getTrigger());
+    private void takeCorrectiveAction(BumpSensorModel.SensorResult sensorLayer) {
+        try {
+            switch (sensorLayer.getAnswer()) {
+                case FF -> mover.takeSteps(rangeSteps, rangeSteps, sensorLayer.bumpState());
+                case FS -> mover.takeSteps(rangeSteps, 0, sensorLayer.bumpState());
+                case FR -> mover.takeSteps(rangeSteps, -rangeSteps, sensorLayer.bumpState());
+                case SF -> mover.takeSteps(0, rangeSteps, sensorLayer.bumpState());
+                case SS -> mover.takeSteps(0, 0, sensorLayer.bumpState());
+                case SR -> mover.takeSteps(0, -rangeSteps, sensorLayer.bumpState());
+                case RF -> mover.takeSteps(-rangeSteps, rangeSteps, sensorLayer.bumpState());
+                case RS -> mover.takeSteps(-rangeSteps, 0, sensorLayer.bumpState());
+                case RR -> mover.takeSteps(-rangeSteps, -rangeSteps, sensorLayer.bumpState());
+                case DONT_CARE -> {
+                    LOG.error("Invalid SensorLayer answer: DONT_CARE ");
+                    return;
+                }
             }
-            case FS -> {
-                mover.takeSteps(rangeSteps, 0, sensorLayer.getTrigger());
-            }
-            case FR -> {
-                mover.takeSteps(rangeSteps, -rangeSteps, sensorLayer.getTrigger());
-            }
-            case SF -> {
-                mover.takeSteps(0, rangeSteps, sensorLayer.getTrigger());
-            }
-            case SS -> {
-                mover.takeSteps(0, 0, sensorLayer.getTrigger());
-            }
-            case SR -> {
-                mover.takeSteps(0, -rangeSteps, sensorLayer.getTrigger());
-            }
-            case RF -> {
-                mover.takeSteps(-rangeSteps, rangeSteps, sensorLayer.getTrigger());
-            }
-            case RS -> {
-                mover.takeSteps(-rangeSteps, 0, sensorLayer.getTrigger());
-            }
-            case RR -> {
-                mover.takeSteps(-rangeSteps, -rangeSteps, sensorLayer.getTrigger());
-            }
-            case DONT_CARE -> {
-                LOG.error("Invalid SensorLayer answer: DONT_CARE ");
-                return;
-            }
+            mover.sleep(rangeSteps);
+        } catch (IllegalArgumentException e) {
+            LOG.error("Invalid SensorLayer answer", e);
         }
-        mover.sleep(rangeSteps);
-        while (Mover.MotorState.RUN.equals(mover.getMotorState())) {
+        while (Mover.MotorState.RUN == mover.getMotorState()) {
             mover.sleep();
         }
     }

@@ -1,12 +1,7 @@
 package org.xenei.robot.common;
 
 import org.locationtech.jts.geom.Coordinate;
-import org.locationtech.jts.geom.Geometry;
-import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.PrecisionModel;
-import org.locationtech.jts.util.NumberUtil;
-import org.xenei.robot.common.mapping.MapCoordinate;
-import org.xenei.robot.common.mapping.MapPosition;
 import org.xenei.robot.common.utils.DoubleUtils;
 
 public final class ScaleInfo {
@@ -20,11 +15,54 @@ public final class ScaleInfo {
         return new Builder();
     }
 
+    @FunctionalInterface
+    public interface OpFunc {
+        boolean test(double a, double b, double tolerance);
+    }
+
+    public enum OP {
+        EQ((double a, double b, double tolerance) -> Math.abs(a - b) <= tolerance),
+        LT((double a, double b, double tolerance) -> a + tolerance < b),
+        GT((double a, double b, double tolerance) -> a  > b + tolerance),
+        NE((double a, double b, double tolerance) -> Math.abs(a - b) > tolerance),
+        LE((double a, double b, double tolerance) -> a + tolerance <= b),
+        GE((double a, double b, double tolerance) -> a >= b + tolerance);
+
+        private final OpFunc func;
+        OP(OpFunc func) {
+            this.func = func;
+        }
+
+        boolean exec(double a, double b, double tolerance) {
+            return func.test(a, b, tolerance);
+        }
+    }
+
+    /**
+     * The smallest change recorded on a map.
+     */
     private final double resolution;
+    /**
+     * How much the map is scaled from 1:1
+     */
     private final double scale;
+    /**
+     * The number of decimal places in the calculations.
+     */
     private final int decimalPlaces;
+    /**
+     * = 10 ^ decimalPlaces.  Values are calculated at value * truncationFactor
+     * and then reduced to Values / truncationFactor and rounded at decimalPlaces.
+     */
     private final double truncationFactor;
+    /**
+     * resolution * truncationFactor.
+     * Used to force values into cells on a map.
+     */
     private final int modulusFactor;
+    /**
+     * For graphing calculations.
+     */
     private final PrecisionModel precisionModel;
 
     /**
@@ -69,8 +107,8 @@ public final class ScaleInfo {
      * @return {@code true} if the values are the same within the resolution
      *         the scale.
      */
-    public boolean areEquivalent(double a, double b) {
-        return NumberUtil.equalsWithTolerance(a, b, resolution);
+    public boolean compare(OP op, double a, double b) {
+        return op.exec(a, b, resolution);
     }
 
     /**
@@ -78,14 +116,18 @@ public final class ScaleInfo {
      * scale.
      *
      * @param a
-     *            the first coordinate.
+     *            the coordinate.
      * @param b
-     *            the second coordinate.
-     * @return {@code true} if the coordinates are the same within the resolution
+     *            the coordinate.
+     * @return {@code true} if the values are the same within the resolution
      *         the scale.
      */
-    public boolean areEquivalent(Location a, Location b) {
-        return areEquivalent(a.getCoordinate(), b.getCoordinate());
+    public boolean compare(OP op, Coordinate a, Coordinate b) {
+        if (op == OP.EQ) {
+            return op.exec(a.x, b.x, resolution) && op.exec(a.y, b.y, resolution);
+        } else {
+            return op.exec(a.x, b.x, resolution) || op.exec(a.y, b.y, resolution);
+        }
     }
 
     /**
@@ -93,15 +135,20 @@ public final class ScaleInfo {
      * scale.
      *
      * @param a
-     *            the first coordinate.
+     *            the coordinate.
      * @param b
-     *            the second coordinate.
-     * @return {@code true} if the coordinates are the same within the resolution
+     *            the coordinate.
+     * @return {@code true} if the values are the same within the resolution
      *         the scale.
      */
-    public boolean areEquivalent(Coordinate a, Coordinate b) {
-        return a.equals2D(b, resolution);
+    public boolean compare(OP op, Location a, Location b) {
+        if (op == OP.EQ) {
+            return op.exec(a.getX(), b.getX(), resolution) && op.exec(a.getY(), b.getY(), resolution);
+        } else {
+            return op.exec(a.getX(), b.getX(), resolution) || op.exec(a.getY(), b.getY(), resolution);
+        }
     }
+
 
     /**
      * Gets the number of decimal places in the display.
@@ -137,7 +184,7 @@ public final class ScaleInfo {
     public Position round(Position pos) {
         return pos.isInfinite()
                 ? pos
-                : Position.asPosition(new Coordinate(round(pos.getX()), round(pos.getY())), round(pos.getHeading()));
+                : Position.asPosition(new Coordinate(round(pos.getX()), round(pos.getY())), round(pos.heading()));
     }
 
     /**

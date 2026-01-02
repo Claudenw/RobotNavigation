@@ -6,22 +6,24 @@ import java.util.Optional;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
+import com.google.common.annotations.VisibleForTesting;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xenei.robot.common.Position;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Mover;
+import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.common.mapping.MapLocation;
 import org.xenei.robot.common.mapping.MapPath;
 import org.xenei.robot.common.mapping.MapTargetData;
 import org.xenei.robot.common.mapping.NavigationSnapshot;
 import org.xenei.robot.common.mapping.Map;
 import org.xenei.robot.common.mapping.MapPosition;
-import org.xenei.robot.common.messages.Topic;
 import org.xenei.robot.common.planning.Planner;
 import org.xenei.robot.common.planning.Solution;
 import org.xenei.robot.common.planning.Segment;
 import org.xenei.robot.common.planning.TargetStack;
+import org.xenei.robot.common.utils.RobutContext;
 
 
 public class PlannerImpl implements Planner {
@@ -29,8 +31,6 @@ public class PlannerImpl implements Planner {
     private final TargetStack target;
     private final Map map;
     private final Supplier<? extends Position> positionSupplier;
-    private final Topic<Mover.MoveTo> moveToTopic;
-    private final Topic<Mover.MotorState> motorTopic;
     private Solution solution;
     private NavigationSnapshot snapshot;
     private MapPath onPath;
@@ -60,18 +60,18 @@ public class PlannerImpl implements Planner {
     public PlannerImpl(Map map, Supplier<? extends Position> positionSupplier, Location target) {
         this.map = map;
         this.onPath = null;
-        this.moveToTopic = map.getContext().bus.moveTo;
-        this.motorTopic = map.getContext().bus.motor;
-        motorTopic.register(motorState -> {
-            if (Mover.MotorState.STOP.equals(motorState)) {
-                selectSegment().ifPresent(segment -> moveToTopic.send(new Mover.MoveTo(segment.getNextLocation())));
-            }
-        });
+        RobutContext.Topic<Location> moveToTopic = map.getContext().moveToTopic;
+        map.getContext().motorStateTopic.listen(
+                motorState -> {
+                    if (Mover.MotorState.STOP == motorState) {
+                        selectSegment().ifPresent(segment -> moveToTopic.send(segment.nextLocation()));
+                    }
+                });
         this.target = new TargetStack();
         this.positionSupplier = positionSupplier;
         this.solution = new Solution();
 
-        this.snapshot = new NavigationSnapshot(map.asMapPosition(positionSupplier.get()), map.asMapLocation(target));
+        this.snapshot = new NavigationSnapshot(map.asMapPosition(positionSupplier.get()), target == null ? null : map.asMapLocation(target));
         solution.add(snapshot.position);
         if (snapshot.target != null) {
             setTarget(snapshot.target);
@@ -102,19 +102,24 @@ public class PlannerImpl implements Planner {
     @Override
     public Optional<Segment> selectSegment() {
         MapPosition position = map.asMapPosition(positionSupplier.get());
+        if (target.isEmpty() || position.sameCoordinate(getFinalTarget()))
+        {
+            return Optional.empty();
+        }
         Optional<Segment> selected = selectSegment(position);
 
         if (selected.isPresent()) {
             Segment segment = selected.get();
-            if (!segment.getNextLocation().sameCoordinate(getTarget())) {
-                target.push(segment);
+            if (!segment.nextLocation().sameCoordinate(getTarget())) {
+                target.push(segment.nextLocation());
                 if (LOG.isDebugEnabled()) {
-                    LOG.debug("New target registered: " + selected.get());
+                    LOG.debug("New target registered: {}", selected.get());
                 }
             }
-        } else {
-            double dist = position.distance(target.peek().getNextLocation());
-            selected = Optional.of(new Segment(target.peek().getNextLocation(), dist, dist));
+        }
+        else {
+            double dist = position.distance(target.peek());
+            selected = Optional.of(new Segment(target.peek(), dist, dist));
         }
         return selected;
     }
@@ -124,7 +129,7 @@ public class PlannerImpl implements Planner {
 
         if (position.sameCoordinate(getTarget())) {
             LOG.debug("Reached intermediate target");
-            target.pop().getNextLocation().setVisited();
+            target.pop();
             if (target.isEmpty()) {
                 LOG.debug("Reached final target");
                 return Optional.empty();
@@ -144,13 +149,14 @@ public class PlannerImpl implements Planner {
         return result.or(() -> explore(position));
     }
 
-    private Optional<Segment> explore(MapPosition position) {
+    @VisibleForTesting
+    Optional<Segment> explore(MapPosition position) {
         double cost = Double.POSITIVE_INFINITY;
         MapLocation newTarget = null;
         double distance = Double.POSITIVE_INFINITY;
 
-
-        Collection<MapLocation> candidateLocations = position.getCandidateLocations(getFinalTarget()).collect(Collectors.toSet());
+        Collection<MapLocation> candidateLocations = position.getCandidateLocations(getFinalTarget())
+                .filter(candidate -> !position.sameCoordinate(candidate)).collect(Collectors.toSet());
         for (MapLocation potentialTarget : candidateLocations) {
             MapTargetData potentialTargetData = position.getTargetData(potentialTarget);
             if (!potentialTargetData.indirect()) {
@@ -170,22 +176,17 @@ public class PlannerImpl implements Planner {
         return Optional.of(segment);
     }
 
-//    @Override
-//    public void recalculateCosts() {
-//        // recalculate the distances
-//        map.recalculate(target.peek());
-//    }
-
     @Override
     public double setTarget(Location target) {
         Position pos = positionSupplier.get();
         LOG.info("Setting target to {} starting from {}", target, pos);
-        motorTopic.send(Mover.MotorState.PAUSE);
+        map.getContext().motorStateTopic.send(Mover.MotorState.PAUSE);
         this.target.clear();
-        //this.target.push(map.recalculate(target));
-
+        MapLocation start = map.asMapLocation(pos);
+        MapLocation finish = map.asMapLocation(target);
+        this.target.push(finish);
         solution = new Solution();
-        solution.add(map.asMapLocation(pos));
+        solution.add(start);
 
         return pos.headingTo(target);
     }
@@ -193,41 +194,38 @@ public class PlannerImpl implements Planner {
     @Override
     public void replaceTarget(Location newLocation) {
         MapLocation newTarget = map.asMapLocation(newLocation);
-        if (!map.getContext().scaleInfo.areEquivalent(getTarget(), newTarget)) {
+        if (!map.getContext().scaleInfo.compare(ScaleInfo.OP.EQ, getTarget(), newTarget)) {
             if (this.target.size() == 1) {
-                this.target.clear();
-                this.target.push(new Segment(newTarget, 0, 0));
+                this.target.push(newTarget);
             } else {
                 LOG.info("Replacing target to {} with {} while at {}", getTarget(), newTarget, Position.PositionUtils.toString(positionSupplier.get()));
                 this.target.pop();
-                final MapTargetData mapTargetData = getTarget().getTargetData(newTarget);
-                double cost = mapTargetData.indirect() ? 2 * mapTargetData.distance() : mapTargetData.distance();
-                this.target.push(new Segment(newTarget, cost, mapTargetData.distance()));
+                this.target.push(newTarget);
             }
-            this.snapshot = new NavigationSnapshot(snapshot.position, map.asMapLocation(newTarget));
+            this.snapshot = new NavigationSnapshot(snapshot.position, newTarget);
         }
     }
 
     @Override
     public MapLocation getTarget() {
-        return target.isEmpty() ? null : target.peek().getNextLocation();
+        return target.isEmpty() ? null : target.peek();
     }
 
     @Override
     public MapLocation getFinalTarget() {
-        return target.isEmpty() ? null : target.get(0).getNextLocation();
+        return target.isEmpty() ? null : target.get(0);
     }
 
     @Override
     public List<? extends Location> getTargets() {
-        return target.stream().map(Segment::getNextLocation).toList();
+        return target.stream().toList();
     }
 
     @Override
     public void recordSolution() {
         Solution solution = this.solution;
         this.solution = new Solution();
-        solution.simplify(map::isClearPath);
+        solution.simplify();
         if (solution.stepCount() > 0) {
             map.addPath(solution.stream().map(map::asMapLocation));
         }
@@ -236,7 +234,7 @@ public class PlannerImpl implements Planner {
     /**
      * For testing only
      *
-     * @return
+     * @return the map this planner is using.
      */
     public Map getMap() {
         return map;

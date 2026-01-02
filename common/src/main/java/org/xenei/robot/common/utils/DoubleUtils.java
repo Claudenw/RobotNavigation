@@ -9,15 +9,34 @@ public final class DoubleUtils {
 
     public static final double SQRT2 = Math.sqrt(2.0);
     public static final double DEFAULT_TOLERANCE = Precision.EPSILON;
+    public static final int DEFAULT_DECIMAL_PLACES = decimalPlaces(DEFAULT_TOLERANCE);
 
     private DoubleUtils() {
     }
 
+    /**
+     * Calculate the number of decimal places from a tolerance value.
+     * @param tolerance the tolerance value.
+     * @return the number of decimal places.
+     */
+    public static int decimalPlaces(double tolerance) {
+        return (int) Math.log10(1.0/tolerance);
+    }
+
+    /**
+     * Calculate the  tolerance from the number of decimal places.
+     * @param decimalPlaces the number of decimal places.
+     * @return the tolerance.
+     */
     public static double tolerance(int decimalPlaces) {
         return 1 / Math.pow(10, decimalPlaces);
     }
 
-    // bitmasking negative number check
+    /**
+     * bitmasking negative number check
+     * @param d the value to check.
+     * @return {@code true} if the value is negative.
+     */
     public static boolean isNeg(double d) {
         return (Double.doubleToLongBits(d) & 0x8000000000000000L) != 0;
     }

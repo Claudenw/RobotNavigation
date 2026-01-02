@@ -1,4 +1,4 @@
-package org.xenei.robot.mapper;
+package org.xenei.robot.mapper.rdf;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -15,16 +15,17 @@ import org.apache.jena.rdf.model.Literal;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.Resource;
 import org.apache.jena.vocabulary.RDF;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.locationtech.jts.geom.Coordinate;
 import org.xenei.robot.common.ChassisInfoTest;
 import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.common.utils.RobutContext;
-import org.xenei.robot.mapper.rdf.Namespace;
 
 public class GraphGeomFactoryTest {
 
-    private static RobutContext ctxt = new RobutContext(ScaleInfo.DEFAULT, ChassisInfoTest.DEFAULT);
+    private RobutContext ctxt;
 
     private Dataset createDataset(Model m) {
         Dataset ds = DatasetFactory.create(m);
@@ -34,6 +35,19 @@ public class GraphGeomFactoryTest {
             throw new RuntimeException(e);
         }
         return ds;
+    }
+
+    @BeforeEach
+    void setup() {
+        RobutContext.Builder builder = RobutContext.builder();
+        builder.setOptions(builder.defaultOptions())
+                .setChassisInfo(ChassisInfoTest.DEFAULT);
+        ctxt = builder.build();
+    }
+
+    @AfterEach
+    void teardown() {
+        ctxt.close();
     }
 
     // @Test
@@ -54,7 +68,7 @@ public class GraphGeomFactoryTest {
     // }
 
     @Test
-    public void calcDistanceTest() {
+    void calcDistanceTest() {
         Coordinate c = new Coordinate(1, 1);
         Coordinate b = new Coordinate(1, 5);
 
@@ -74,7 +88,7 @@ public class GraphGeomFactoryTest {
     }
 
     @Test
-    public void asRDFTest() {
+    void asRDFTest() {
         Coordinate p = new Coordinate(-1, 3);
 
         Resource r = ctxt.graphGeomFactory.asRDF(p, Namespace.Coord);

@@ -1,6 +1,9 @@
 package org.xenei.robot.common.utils;
 
-public class AngleUtils {
+public final class AngleUtils {
+
+    private AngleUtils() {
+    }
 
     /** the number of radian in 45 degrees */
     public static final double RADIANS_45 = Math.PI / 4;
@@ -24,10 +27,7 @@ public class AngleUtils {
      */
     public static final double TOLERANCE = 0.000000000000001;
 
-    private AngleUtils() {
-    }
-
-    public static final double normalize(double angle) {
+    public static double normalize(double angle) {
         if (Double.isNaN(angle)) {
             return 0.0;
         }

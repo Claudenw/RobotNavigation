@@ -6,13 +6,14 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.xenei.robot.common.ChassisInfoTest;
-import org.xenei.robot.common.ScaleInfo;
+
 import org.xenei.robot.common.mapping.MapBuilder;
 import org.xenei.robot.common.mapping.Map;
 import org.xenei.robot.common.mapping.MapTest;
-import org.xenei.robot.common.planning.Solution;
 import org.xenei.robot.common.utils.RobutContext;
 import org.xenei.robot.mapper.visualization.TextViz;
+
+import java.io.IOException;
 
 public class MapLibrary {
 
@@ -96,31 +97,45 @@ public class MapLibrary {
         return options;
     }
 
-    public static void main(String[] args) throws ParseException {
+    public static void main(String[] args) throws ParseException, IOException {
         CommandLine commandLine = DefaultParser.builder().build().parse(getOptions(), args);
         int mapNumber = commandLine.getParsedOptionValue("m");
-        Map map = new Map(new RobutContext(ScaleInfo.DEFAULT, ChassisInfoTest.DEFAULT), new MapTest.TestingStorage());
-        switch (mapNumber) {
-            case 1 :
-                map1(map);
-                break;
-            case 2 :
-                map2(map);
-                break;
-            case 3 :
-                map3(map);
-                break;
-            default :
-                System.err.println("Unknown map number: " + mapNumber);
-                System.exit(1);
-        }
-        if (commandLine.hasOption("v")) {
-            TextViz textVis = new TextViz(1, map, Solution::new, () -> null, () -> null);
-            textVis.redraw();
-        }
-        if (commandLine.hasOption("o")) {
-            System.out.println(" =========== Obstacles ==========");
-            map.getObstacles().thenAccept(s -> s.forEach(System.out::println)).join();
+        RobutContext.Builder builder = RobutContext.builder();
+        builder.setOptions(builder.defaultOptions())
+                .setChassisInfo(ChassisInfoTest.DEFAULT)
+                .setId("MapLibrary");
+        Thread textVizThread = null;
+        TextViz textVis = null;
+        try (RobutContext ctxt = builder.build()) {
+            if (commandLine.hasOption("v")) {
+                textVis = new TextViz(1, ctxt.getConnectionOptions(), ctxt.vizName, System.out);
+                textVizThread = new Thread(textVis);
+                textVizThread.start();
+            }
+
+            Map map = new Map(ctxt, new MapTest.TestingStorage());
+            switch (mapNumber) {
+                case 1:
+                    map1(map);
+                    break;
+                case 2:
+                    map2(map);
+                    break;
+                case 3:
+                    map3(map);
+                    break;
+                default:
+                    System.err.println("Unknown map number: " + mapNumber);
+                    System.exit(1);
+            }
+            if (commandLine.hasOption("o")) {
+                System.out.println(" =========== Obstacles ==========");
+                map.getObstacles().thenAccept(s -> s.forEach(System.out::println)).join();
+            }
+        } finally {
+            if (textVis != null) {
+                textVis.close();
+            }
         }
     }
 

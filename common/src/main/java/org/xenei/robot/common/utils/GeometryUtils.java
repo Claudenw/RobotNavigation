@@ -10,6 +10,7 @@ import java.util.stream.Stream;
 
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.OctagonalEnvelope;
 import org.locationtech.jts.geom.Point;
@@ -19,13 +20,16 @@ import org.locationtech.jts.operation.buffer.BufferOp;
 import org.locationtech.jts.operation.buffer.BufferParameters;
 import org.xenei.robot.common.GeometricObject;
 import org.xenei.robot.common.Location;
+import org.xenei.robot.common.ScaleInfo;
 
 public final class GeometryUtils {
 
-    private final RobutContext ctxt;
+    private final GeometryFactory geometryFactory;
+    private final ScaleInfo scaleInfo;
 
-    public GeometryUtils(RobutContext ctxt) {
-        this.ctxt = ctxt;
+    public GeometryUtils(GeometryFactory geometryFactory, ScaleInfo scaleInfo) {
+        this.geometryFactory = geometryFactory;
+        this.scaleInfo = scaleInfo;
     }
 
     public Polygon asPolygon(Coordinate coord, double radius) {
@@ -44,7 +48,7 @@ public final class GeometryUtils {
             angle += radians;
         }
         cell[edges] = cell[0];
-        return ctxt.geometryFactory.createPolygon(cell);
+        return geometryFactory.createPolygon(cell);
     }
 
     public Polygon asPolygon(Location coord, double radius) {
@@ -60,11 +64,11 @@ public final class GeometryUtils {
     }
 
     public Polygon asPolygon(Coordinate... coord) {
-        return ctxt.geometryFactory.createPolygon(coord);
+        return geometryFactory.createPolygon(coord);
     }
 
     public Polygon asPolygon(Collection<Coordinate> coord) {
-        return ctxt.geometryFactory.createPolygon(coord.toArray(new Coordinate[0]));
+        return geometryFactory.createPolygon(coord.toArray(new Coordinate[0]));
     }
 
     public Geometry addBuffer(double buffer, Geometry initial) {
@@ -90,7 +94,7 @@ public final class GeometryUtils {
     }
 
     public Point asPoint(Coordinate c) {
-        return ctxt.geometryFactory.createPoint(c);
+        return geometryFactory.createPoint(c);
     }
 
     public Point asPoint(Location c) {
@@ -98,21 +102,21 @@ public final class GeometryUtils {
     }
 
     public LineString asLine(Coordinate... coords) {
-        return ctxt.geometryFactory.createLineString(coords);
+        return geometryFactory.createLineString(coords);
     }
 
     public LineString asLine(Stream<? extends Location> coords) {
-        return ctxt.geometryFactory.createLineString(coords.map(Location::getCoordinate).toArray(Coordinate[]::new));
+        return geometryFactory.createLineString(coords.map(Location::getCoordinate).toArray(Coordinate[]::new));
     }
 
     public Geometry scale(Geometry geometry) {
         GeometryEditor.CoordinateOperation  operation = new GeometryEditor.CoordinateOperation() {
             @Override
             public Coordinate[] edit(Coordinate[] coordinates, Geometry geometry) {
-                return Arrays.stream(geometry.getCoordinates()).map(ctxt.scaleInfo::scale).toArray(Coordinate[]::new);
+                return Arrays.stream(geometry.getCoordinates()).map(scaleInfo::scale).toArray(Coordinate[]::new);
             }
         };
-        GeometryEditor editor = new GeometryEditor(ctxt.geometryFactory);
+        GeometryEditor editor = new GeometryEditor(geometryFactory);
         return editor.edit(geometry, operation);
     }
 
@@ -143,12 +147,12 @@ public final class GeometryUtils {
             for (int j = i + 1; j < points.length; j++) {
                 double d = points[i].distance(points[j]);
                 if (d <= maxDistance) {
-                    lst.add(ctxt.geometryFactory
+                    lst.add(geometryFactory
                             .createLineString(new Coordinate[]{points[i], points[j]}));
                 }
             }
         }
-        Geometry result = ctxt.geometryFactory.createMultiLineString(lst.toArray(new LineString[0]));
+        Geometry result = geometryFactory.createMultiLineString(lst.toArray(new LineString[0]));
         result.normalize();
         return result;
     }

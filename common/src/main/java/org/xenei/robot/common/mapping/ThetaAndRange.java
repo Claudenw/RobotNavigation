@@ -4,7 +4,7 @@ import org.locationtech.jts.geom.Coordinate;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.utils.CoordUtils;
 
-public record ThetaAndRange(double theta, double range) implements Location{
+public record ThetaAndRange(double theta, double range) implements Location {
 
     /**
      * Gets the relative location of the reading.

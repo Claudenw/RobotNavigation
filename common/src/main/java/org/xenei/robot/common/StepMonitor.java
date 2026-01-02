@@ -4,7 +4,7 @@ public interface StepMonitor {
 
     default boolean hasStepDifferential() {
         return leftSteps() != rightSteps();
-    };
+    }
 
     double leftRotation();
 

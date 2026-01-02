@@ -31,7 +31,7 @@ public class NavigationSnapshot {
      * @return the heading.
      */
     public double heading() {
-        return position == null ? Double.NaN : position.getHeading();
+        return position == null ? Double.NaN : position.heading();
     }
 
     /**
@@ -81,7 +81,7 @@ public class NavigationSnapshot {
         if (position == null) {
             return positionToCheck != null;
         }
-        return positionToCheck == null || !DoubleUtils.eq(position.getHeading(), positionToCheck.getHeading());
+        return positionToCheck == null || !DoubleUtils.eq(position.heading(), positionToCheck.heading());
     }
 
     /**

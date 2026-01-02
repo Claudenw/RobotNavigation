@@ -17,12 +17,12 @@ import org.xenei.robot.common.utils.AngleUtils;
 public class ScaleInfoTest {
 
     public static void assertEquals(ScaleInfo scaleInfo, Location a, Location b) {
-        assertTrue(scaleInfo.areEquivalent(a, b), () -> String.format("%s != %s", a, b));
+        assertTrue(scaleInfo.compare(ScaleInfo.OP.EQ, a, b), () -> String.format("%s != %s", a, b));
     }
 
     public static void assertEquals(ScaleInfo scaleInfo, Position a, Position b) {
-        if (!scaleInfo.areEquivalent(a, b) || !NumberUtil.equalsWithTolerance(AngleUtils.normalize(a.getHeading()),
-                AngleUtils.normalize(b.getHeading()), scaleInfo.getResolution())) {
+        if (!scaleInfo.compare(ScaleInfo.OP.EQ, a, b) || !NumberUtil.equalsWithTolerance(AngleUtils.normalize(a.heading()),
+                AngleUtils.normalize(b.heading()), scaleInfo.getResolution())) {
             fail(String.format("Expected %s ≈ %s (±%s)", a, b, scaleInfo.getResolution()));
         }
     }

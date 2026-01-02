@@ -1,5 +1,6 @@
 package org.xenei.robot.common.mapping;
 
+import org.locationtech.jts.geom.Coordinate;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Position;
 import org.xenei.robot.common.utils.CoordUtils;
@@ -17,51 +18,21 @@ public final class MapPosition extends MapLocation implements Position {
      *
      * @return the heading current heading in radians.
      */
-    public double getHeading() {
+    public double heading() {
         return heading;
     }
 
-    /**
-     * Calculates the next position.
-     * <p>
-     * The heading will be the theta from the relative coordinates.
-     * </p>
-     *
-     * @param relativeCoordinates
-     *            The coordinates relative to this position to move to.
-     * @return the new Position centered on the new position with the proper
-     *         heading.
-     */
-    public MapPosition nextPosition(MapCoordinate relativeCoordinates) {
+    @Override
+    public MapPosition nextPosition(Location relativeLocation) {
+        return getMap().asMapPosition(PositionUtils.nextPosition(this, relativeLocation));
+    }
+
+    @Override
+    public MapPosition nextPosition(Coordinate relativeCoordinates) {
         return getMap().asMapPosition(PositionUtils.nextPosition(this, relativeCoordinates));
     }
 
-    /**
-     * Calculates the next position.
-     * <p>
-     * The heading will be the theta from the relative coordinates.
-     * </p>
-     *
-     * @param thetaAndRange
-     *            The coordinates relative to this position to move to.
-     * @return the new Position centered on the new position with the proper
-     *         heading.
-     */
-    public MapPosition nextPosition(ThetaAndRange thetaAndRange) {
-        return getMap().asMapPosition(PositionUtils.nextPosition(this, thetaAndRange));
-    }
-
-    /**
-     * Calculates the next position by moving the specified distance.
-     * <p>
-     * The heading does not change
-     * </p>
-     *
-     * @param scaledRange
-     *            The distance to travel.
-     * @return the new Position centered on the new position with the proper
-     *         heading.
-     */
+    @Override
     public MapPosition nextPosition(double scaledRange) {
         return getMap().asMapPosition(PositionUtils.nextPosition(this, scaledRange));
     }
@@ -80,9 +51,6 @@ public final class MapPosition extends MapLocation implements Position {
         return getMap().asMapPosition(this, heading + theta);
     }
 
-    public MapPosition nextPosition(Location relativeLocation) {
-        return getMap().asMapPosition(Position.PositionUtils.nextPosition(this, relativeLocation));
-    }
 
     public MapObstacle createRelativeObstacle(MapCoordinate relativeStart,
                                                              MapCoordinate relativeEnd) {
@@ -91,7 +59,7 @@ public final class MapPosition extends MapLocation implements Position {
     }
 
     public boolean isNan() {
-        return CoordUtils.isNaN(this.getCoordinate()) || Double.isNaN(getHeading());
+        return CoordUtils.isNaN(this.getCoordinate()) || Double.isNaN(heading());
     }
 
     @Override

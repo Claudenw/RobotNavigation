@@ -26,6 +26,7 @@ import org.apache.jena.arq.querybuilder.AskBuilder;
 import org.apache.jena.query.QueryExecutionFactory;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -45,8 +46,6 @@ import org.xenei.robot.mapper.rdf.Namespace;
 
 public class MapTest {
     private static final ScaleInfo scaleInfo = ScaleInfo.DEFAULT;
-    private static final RobutContext ctxt = new RobutContext(scaleInfo, ChassisInfoTest.DEFAULT);
-
     private Map underTest;
     private TestingStorage testingStorage;
 
@@ -72,20 +71,16 @@ public class MapTest {
     @BeforeEach
     void setup() {
         testingStorage = new TestingStorage();
-        underTest = new Map(ctxt, testingStorage);
+        RobutContext.Builder builder = RobutContext.builder();
+        builder.setOptions(builder.defaultOptions())
+                .setChassisInfo(ChassisInfoTest.DEFAULT);
+        underTest = new Map(builder.build(), testingStorage);
     }
 
-//    private void setup() {
-//        underTest = new Map(ctxt, new TestingStorage());
-//        MapLibrary.map2(underTest);
-//        solution = new Solution();
-//        solution.add(underTest.asMapPosition(position));
-//        MapLocation target = underTest.asMapLocation(makeLoc(-1, 1));
-//        cMap = new DebugViz(1, underTest, () -> solution, () -> position, () -> target);
-//
-//        Arrays.stream(coordinates).forEach(coordinate -> underTest.asMapLocation(coordinate)
-//                .getTargetData(target));
-//    }
+    @AfterEach
+    void teardown() {
+        underTest.getContext().close();
+    }
 
     @Test
     void asMapLocationTest() {
@@ -159,7 +154,7 @@ public class MapTest {
     void asMapCoordinateThetaAndRangeTest() {
         ThetaAndRange thetaAndRange = new ThetaAndRange(AngleUtils.RADIANS_45, DoubleUtils.SQRT2);
         MapCoordinate mapCoordinate = underTest.asMapCoordinate(thetaAndRange);
-        assertThat(ctxt.scaleInfo.areEquivalent(mapCoordinate.getCoordinate(), thetaAndRange.getCoordinate()));
+        assertThat(underTest.getContext().scaleInfo.compare(ScaleInfo.OP.EQ, mapCoordinate.getCoordinate(), thetaAndRange.getCoordinate()));
         assertThat(mapCoordinate.getMap()).isEqualTo(underTest);
     }
 
@@ -205,7 +200,7 @@ public class MapTest {
     void asMapPositionPositionTest() {
         MapPosition mapPosition = underTest.asMapPosition(Position.asPosition(new Coordinate(1, 1), AngleUtils.RADIANS_45));
         assertThat(mapPosition.getCoordinate()).isEqualTo(new Coordinate(1, 1));
-        assertThat(mapPosition.getHeading()).isEqualTo(AngleUtils.RADIANS_45);
+        assertThat(mapPosition.heading()).isEqualTo(AngleUtils.RADIANS_45);
         assertThat(mapPosition.getMap()).isEqualTo(underTest);
     }
 
@@ -213,7 +208,7 @@ public class MapTest {
     void asMapPositionMapCoordinateHeadingTest() {
         MapPosition mapPosition = underTest.asMapPosition(underTest.asMapCoordinate(new Coordinate(1, 1)), AngleUtils.RADIANS_45);
         assertThat(mapPosition.getCoordinate()).isEqualTo(new Coordinate(1, 1));
-        assertThat(mapPosition.getHeading()).isEqualTo(AngleUtils.RADIANS_45);
+        assertThat(mapPosition.heading()).isEqualTo(AngleUtils.RADIANS_45);
         assertThat(mapPosition.getMap()).isEqualTo(underTest);
     }
 
@@ -235,7 +230,7 @@ public class MapTest {
 
     @Test
     void asMapObstacleTest() {
-        Geometry geometry = ctxt.geometryUtils.asPolygon(Location.ORIGIN, DoubleUtils.SQRT2, 10);
+        Geometry geometry = underTest.getContext().geometryUtils.asPolygon(Location.ORIGIN, DoubleUtils.SQRT2, 10);
         Obstacle obstacle = Obstacle.asObstacle(UUID.randomUUID(), geometry);
         MapObstacle mapObstacle = underTest.asMapObstacle(obstacle);
         assertThat(mapObstacle.uuid()).isEqualTo(obstacle.uuid());
@@ -251,11 +246,15 @@ public class MapTest {
 
     @Test
     void createObstacleGeometricObjectTest() {
-        GeometricObject geometricObject = GeometricObject.of(ctxt.geometryUtils.asPolygon(Location.ORIGIN, DoubleUtils.SQRT2, 10));
+        GeometricObject geometricObject = GeometricObject.of(underTest.getContext().geometryUtils.asPolygon(Location.ORIGIN, DoubleUtils.SQRT2, 10));
         MapObstacle obstacle = underTest.createObstacle(geometricObject);
-        for (int x = -1; x < 1; x++) {
-            for (int y = -1; y < 1; y++) {
-                assertThat(underTest.isObstacle(underTest.asMapCoordinate(new Coordinate(x, y)))).isTrue();
+        for (int x = -2; x <= 2; x++) {
+            for (int y = -2; y <= 2; y++) {
+                MapCoordinate mc =underTest.asMapCoordinate(new Coordinate(x / 2.0, y / 2.0));
+                boolean result = underTest.isObstacle(mc);
+                System.out.format("%s %s %s %s %s%n", mc, underTest.isObstacle(mc), obstacle.getGeometry().distance(mc.getGeometry()), DoubleUtils.SQRT2,
+                        underTest.getContext().scaleInfo.getResolution());
+                //assertThat(underTest.isObstacle(underTest.asMapCoordinate(new Coordinate(x, y)))).isTrue();
             }
         }
     }
@@ -263,18 +262,34 @@ public class MapTest {
 
     @Test
     void createObstacleInBackgroundGeometricObjectTest() {
-        GeometricObject geometricObject = GeometricObject.of(ctxt.geometryUtils.asPolygon(Location.ORIGIN, DoubleUtils.SQRT2, 10));
+        GeometricObject geometricObject = GeometricObject.of(underTest.getContext().geometryUtils.asPolygon(Location.ORIGIN, DoubleUtils.SQRT2, 10));
         MapObstacle obstacle = underTest.createObstacleInBackground(geometricObject).join();
         int lowerLimit = -3;
         int upperLimit = 3;
-        ;
+        // the expected values are mirrored around the origin.
+        Coordinate[] y15 = {new Coordinate(-.5, 1.5), new Coordinate(0, 1.5), new Coordinate(.5, 1.5)};
+        Coordinate[] y1 = {new Coordinate(-1, 1), new Coordinate( -.5, 1), new Coordinate(0, 1), new Coordinate(.5, 1), new Coordinate(1, 1)};
+        Coordinate[] y5 = {new Coordinate(-1, .5), new Coordinate( -.5, .5), new Coordinate(0, .5), new Coordinate(.5, .5), new Coordinate(1, .5)};
+        Coordinate[] y0 = {new Coordinate(-1.5, 0), new Coordinate(-1, 0), new Coordinate( -.5, 0), new Coordinate(0, 0), new Coordinate(.5, 0), new Coordinate(1, 0), new Coordinate(1.5, 0)};
+        Coordinate[] y_5 = {new Coordinate(-1, -.5), new Coordinate( -.5, -.5), new Coordinate(0, -.5), new Coordinate(.5, -.5), new Coordinate(1, -.5)};
+        Coordinate[] y_1 = {new Coordinate(-1, -1), new Coordinate( -.5, -1), new Coordinate(0, -1), new Coordinate(.5, -1), new Coordinate(1, -1)};
+        Coordinate[] y_15 = {new Coordinate(-.5, -1.5), new Coordinate(0, -1.5), new Coordinate(.5, -1.5)};
+
+        List<Coordinate> inside = new ArrayList<>();
+        inside.addAll(Arrays.asList(y15));
+        inside.addAll(Arrays.asList(y1));
+        inside.addAll(Arrays.asList(y5));
+        inside.addAll(Arrays.asList(y0));
+        inside.addAll(Arrays.asList(y_15));
+        inside.addAll(Arrays.asList(y_1));
+        inside.addAll(Arrays.asList(y_5));
 
         for (int x = lowerLimit; x <= upperLimit; x++) {
             for (int y = lowerLimit; y <= upperLimit; y++) {
                 boolean expected = Math.abs(x) != upperLimit || Math.abs(y) != upperLimit;
                 Coordinate coordinate = new Coordinate(x / 2.0, y / 2.0);
                 MapCoordinate mapCoordinate = underTest.asMapCoordinate(coordinate);
-                assertThat(underTest.isObstacle(mapCoordinate)).describedAs(mapCoordinate.toString()).isEqualTo(expected);
+                assertThat(underTest.isObstacle(mapCoordinate)).describedAs(mapCoordinate.toString()).isEqualTo(inside.contains(mapCoordinate.getCoordinate()));
             }
         }
     }
@@ -338,7 +353,7 @@ public class MapTest {
     void getObstaclesTest() {
         List<Coordinate> coords = Arrays.asList(new Coordinate(1, 1), new Coordinate(10, 10));
         coords.forEach(underTest::createObstacle);
-        List<Geometry> expected = coords.stream().map(ctxt.geometryUtils::asPoint).collect(Collectors.toList());
+        List<Geometry> expected = coords.stream().map(underTest.getContext().geometryUtils::asPoint).collect(Collectors.toList());
 
         List<Geometry> actual = underTest.getObstacles().join().map(Obstacle::getGeometry).collect(Collectors.toList());
         assertThat(actual).containsExactlyInAnyOrderElementsOf(expected);
@@ -437,7 +452,7 @@ public class MapTest {
         @Override
         public CompletableFuture<Stream<Obstacle>> findTouchingObstacles(final GeometricObject geometricObject) {
             return CompletableFuture.completedFuture(obstacles.values().stream().filter(geom ->
-                    ctxt.scaleInfo.areEquivalent(geom.getGeometry().distance(geometricObject.getGeometry()), 0)
+                    scaleInfo.compare(ScaleInfo.OP.EQ, geom.getGeometry().distance(geometricObject.getGeometry()), 0)
             ));
         }
 

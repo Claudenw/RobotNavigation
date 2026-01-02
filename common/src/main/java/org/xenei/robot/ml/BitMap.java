@@ -33,11 +33,9 @@ public class BitMap {
     public int[] indices() {
         int[] indices = new int[Integer.bitCount(validOptions)];
         int idx = 0;
-        short mask = 1;
         for (int bitIndex = 0; bitIndex < MAX_IDX; bitIndex++) {
             if ((validOptions & bitIndex) != 0) {
                 indices[idx++] = bitIndex;
-                mask <<= 1;
             }
         }
         return indices;

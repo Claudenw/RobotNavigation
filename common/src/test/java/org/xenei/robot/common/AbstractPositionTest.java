@@ -37,7 +37,7 @@ public abstract class AbstractPositionTest extends AbstractLocationTest {
         Position underTest = convertPosition(position);
         Position convertedExpectedPosition = convertPosition(expectedPosition);
         Position actualPosition  = underTest.nextPosition(relativeLocation);
-        assertThat(actualPosition.getHeading()).describedAs("heading").isEqualTo(convertedExpectedPosition.getHeading(), withPrecision(tolerance()));
+        assertThat(actualPosition.heading()).describedAs("heading").isEqualTo(convertedExpectedPosition.heading(), withPrecision(tolerance()));
         assertThat(actualPosition.getX()).describedAs("x").isEqualTo(expectedPosition.getX(), withPrecision(tolerance()));
         assertThat(actualPosition.getY()).describedAs("y").isEqualTo(expectedPosition.getY(), withPrecision(tolerance()));
     }

@@ -1,5 +1,6 @@
 package org.xenei.robot.mover;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -63,12 +64,16 @@ public class BaseMoverTest {
     protected BumpSensorModel bumpSensorModel;
     protected ScaleInfo scaleInfo;
 
-    protected BaseMover getInstance() {
+    @BeforeEach
+    void setupBaseMoverTest() {
         scaleInfo = ScaleInfo.DEFAULT;
-        ctxt = new RobutContext(scaleInfo, ChassisInfoTest.DEFAULT);
-        deadReckoning = new DeadReckoning(ctxt);
+        RobutContext.Builder builder = RobutContext.builder();
+        builder.setOptions(builder.defaultOptions())
+                .setChassisInfo(ChassisInfoTest.DEFAULT);
+        ctxt = builder.build();
+        deadReckoning = DeadReckoning.from(ctxt, Position.ORIGIN);
         bumpSensorModel = new BumpSensorModel(ctxt, 8);
-        return new BaseMover(ctxt, deadReckoning, bumpSensorModel) {
+        underTest = new BaseMover(ctxt, deadReckoning, bumpSensorModel) {
             @Override
             public Position position() {
                 return deadReckoning.get();
@@ -83,16 +88,21 @@ public class BaseMoverTest {
         };
     }
 
-    @BeforeEach
-    void setupBaseMoverTest() {
-        underTest = getInstance();
+    @AfterEach
+    void teardown() {
+        ctxt.close();
     }
 
-    private class TestLogicModule implements Mover.LogicModule {
+    private static class TestLogicModule implements Mover.LogicModule {
         Lock lock;
         @Override
         public void setLock(Lock lock) {
             this.lock = lock;
+        }
+
+        @Override
+        public void shutdown() {
+
         }
     }
 
@@ -145,7 +155,7 @@ public class BaseMoverTest {
     @Test
     void getMotorStateTest() {
         assertEquals(Mover.MotorState.STOP, underTest.getMotorState());
-        for (Mover.MotorState state : Mover.MotorState.values()) {
+        for (byte state = 0; state <= Mover.MotorState.MAX_STATE; state++) {
             underTest.motorState.set(state);
             assertEquals(state, underTest.getMotorState());
         }

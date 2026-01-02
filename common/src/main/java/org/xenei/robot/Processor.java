@@ -1,6 +1,5 @@
 package org.xenei.robot;
 
-import java.io.IOException;
 import java.util.Collection;
 import java.util.Optional;
 import java.util.function.Supplier;
@@ -10,20 +9,19 @@ import org.slf4j.LoggerFactory;
 import org.xenei.robot.common.Location;
 import org.xenei.robot.common.Mover;
 import org.xenei.robot.common.Position;
+import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.common.mapping.MapCoordinate;
 import org.xenei.robot.common.mapping.MapLocation;
 import org.xenei.robot.common.mapping.NavigationSnapshot;
 import org.xenei.robot.common.mapping.Map;
 import org.xenei.robot.common.mapping.MapPosition;
 import org.xenei.robot.common.mapping.Mapper;
-import org.xenei.robot.common.messages.Topic;
 import org.xenei.robot.common.planning.Planner;
 import org.xenei.robot.common.planning.Segment;
 import org.xenei.robot.common.planning.Solution;
 import org.xenei.robot.common.utils.DoubleUtils;
 import org.xenei.robot.common.utils.RobutContext;
 import org.xenei.robot.mapper.MapperImpl;
-import org.xenei.robot.mapper.visualization.RemoteVis;
 import org.xenei.robot.mover.BaseMover;
 import org.xenei.robot.planner.PlannerImpl;
 
@@ -36,43 +34,29 @@ public class Processor {
     private final Mapper mapper;
     private final MappedMover mover;
     private final Supplier<MapPosition> positionSupplier;
-    private final RemoteVis remoteVis;
-    private final RobutContext.Visualizations visualizations;
-    private final Topic<Mover.MotorState> motorStateTopic;
-    private final Topic<Mover.MoveTo> moveToTopic;
+    private final RobutContext.Topic<Location> moveToTopic;
 
     public Processor(BaseMover mover, Supplier<Position> positionSupplier, Map map) {
         this.ctxt = map.getContext();
-        this.visualizations = ctxt.visualizations;
-        this.motorStateTopic = ctxt.bus.motor;
-        this.moveToTopic = ctxt.bus.moveTo;
+        this.moveToTopic = ctxt.moveToTopic;
         this.mover = new MappedMover(mover);
         this.positionSupplier = () -> map.asMapPosition(positionSupplier.get());
         this.map = map;
         this.planner = new MappedPlanner(new PlannerImpl(map, this.positionSupplier));
-        this.mapper = new MapperImpl(map, planner::getFinalTarget);
-        try {
-            this.remoteVis = new RemoteVis(map, planner::getSolution, positionSupplier, planner::getFinalTarget);
-            LOG.debug("Initial position: {}", positionSupplier.get());
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        this.mapper = new MapperImpl(map);
+        LOG.debug("Registered reading consumer");
     }
 
     public Planner getPlanner() {
         return planner;
     }
 
-    public Mapper getMapper() {
-        return mapper;
-    }
-
     private boolean checkTarget(NavigationSnapshot snapshot) {
-        if (!ctxt.scaleInfo.areEquivalent(snapshot.position, planner.getFinalTarget())) {
+        if (!ctxt.scaleInfo.compare(ScaleInfo.OP.EQ, snapshot.position, planner.getFinalTarget())) {
             // if we can see the final target go that way.
             if (mapper.isClearPath(snapshot.position, planner.getFinalTarget())) {
                 double newHeading = snapshot.position.headingTo(planner.getFinalTarget());
-                boolean cont = DoubleUtils.eq(newHeading, snapshot.position.getHeading());
+                boolean cont = DoubleUtils.eq(newHeading, snapshot.position.heading());
                 if (!cont) {
                     // heading is different so reset the heading, scan, and check again.
                     // mover.setHeading(snapshot.currentPosition.headingTo(planner.getRootTarget()));
@@ -84,7 +68,7 @@ public class Processor {
                     cont = mapper.isClearPath(testingSnapshot.position, planner.getFinalTarget());
                     if (!cont) {
                         // can't see the position really so reset the heading.
-                        mover.setHeading(snapshot.position.getHeading());
+                        mover.setHeading(snapshot.position.heading());
                     }
                 }
                 if (cont) {
@@ -93,7 +77,6 @@ public class Processor {
                     planner.replaceTarget(planner.getFinalTarget());
                     return true;
                 }
-                visualizations.redraw();
             }
         }
         // if we can not see the target replan.
@@ -110,55 +93,19 @@ public class Processor {
         return newSnapshot();
     }
 
-    // private NavigationSnapshot move(Step step) {
-    // Location relativeLoc =
-    // mover.position().relativeLocation(step.getCoordinate());
-    // mover.move(relativeLoc);
-    //
-    //
-    // map.setVisited(planner.getFinalTarget(),
-    // mover.move(relativeLoc).getCoordinate()).join();
-    // NavigationSnapshot snapshot = newSnapshot();
-    // planner.registerPositionChange(snapshot);
-    // return snapshot;
-    // }
-
     public void moveTo(Location finalLocation) {
         MapLocation mapLocation = map.asMapLocation(finalLocation);
         NavigationSnapshot snapshot = new NavigationSnapshot(map.asMapPosition(positionSupplier.get()), mapLocation);
         double heading = planner.setTarget(snapshot.target);
         if (LOG.isDebugEnabled()) {
-            LOG.debug("calculated heading {} compare to {}", heading, positionSupplier.get().getHeading());
+            LOG.debug("calculated heading {} compare to {}", heading, positionSupplier.get().heading());
         }
-        moveToTopic.send(new Mover.MoveTo(mapLocation));
+        moveToTopic.send(mapLocation);
     }
-    // while (planner.getTarget() != null) {
-    // Optional<Step> opStep = planner.selectTarget();
-    // if (planner.getTarget() == null) {
-    // break;
-    // }
-    // if (opStep.isPresent()) {
-    // Step step = opStep.get();
-    // Position nextPosition =
-    // map.getContext().scaleInfo.round(step.nextPosition(snapshot.position));
-    // if (snapshot.didHeadingChange(nextPosition)) {
-    // snapshot = setHeading(nextPosition.getHeading());
-    // }
-    // // can we still see the target
-    // if (checkTarget(snapshot)) {
-    // snapshot = move(step);
-    // }
-    // // should we abort
-    // abortTest.check(this);
-    // } else {
-    // LOG.error("NO STEP SELECTED");
-    // break;
-    // }
-    // }
-    // ctxt.triggerVisualizations();
-    // planner.recordSolution();
-    // }
 
+    /**
+     * Wraps a Mover so that the positions returned are Map positions.
+     */
     class MappedMover implements Mover {
         private final Mover delegate;
 
@@ -185,6 +132,11 @@ public class Processor {
         public void register(LogicModule logicModule) {
             delegate.register(logicModule);
         }
+
+        @Override
+        public void close() throws Exception {
+            delegate.close();
+        }
     }
 
     public class MappedPlanner implements Planner {
@@ -196,7 +148,8 @@ public class Processor {
 
         @Override
         public MapLocation getTarget() {
-            return map.asMapLocation(delegate.getTarget());
+            Location loc = delegate.getTarget();
+            return loc == null ? null : map.asMapLocation(delegate.getTarget());
         }
 
         @Override

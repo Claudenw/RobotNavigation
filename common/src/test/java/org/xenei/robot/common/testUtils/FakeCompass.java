@@ -16,27 +16,12 @@ public class FakeCompass implements Compass {
     }
 
     @Override
-    public Position getPosition(Coordinate location) {
-        return Position.asPosition(location, heading());
-    }
-
-    @Override
     public double heading() {
         return headingSupplier.get();
     }
 
     @Override
-    public double instantaneousHeading() {
-        return headingSupplier.get();
-    }
-
-    @Override
-    public double sd() {
-        return 0;
-    }
-
-    @Override
-    public int decimalPlaces() {
+    public int headingAccuracy() {
         return 2;
     }
 
@@ -44,6 +29,6 @@ public class FakeCompass implements Compass {
     public String toString() {
         double h = heading();
         return String.format("FakeCompass[Heading: %s %s degrees]", h,
-                DoubleUtils.round(Math.toDegrees(h), decimalPlaces() + 1));
+                DoubleUtils.round(Math.toDegrees(h), headingAccuracy() + 1));
     }
 }

@@ -1,4 +1,4 @@
-package org.xenei.robot.mapper;
+package org.xenei.robot.common;
 
 /**
  * A matrix of int where x[a,b] == x[b,a]. Only half the matrix is kept in
@@ -6,9 +6,9 @@ package org.xenei.robot.mapper;
  */
 
 public class IntHalfMatrix {
-    int[][] matrix;
+    private final int[][] matrix;
 
-    IntHalfMatrix(int size) {
+    public IntHalfMatrix(int size) {
         matrix = new int[size][];
         for (int i = 0; i < size; i++) {
             matrix[i] = new int[size - i];
@@ -17,6 +17,13 @@ public class IntHalfMatrix {
 
     public int size() {
         return matrix[0].length;
+    }
+
+    public void set(int i, int j, int value) {
+        int idx1 = Math.min(i, j);
+        int idx2 = Math.max(i, j);
+        idx2 -= idx1;
+        matrix[idx1][idx2] = value;
     }
 
     /**
@@ -29,8 +36,8 @@ public class IntHalfMatrix {
      * @return this IntHalfMatrix.
      */
     public IntHalfMatrix increment(int i, int j) {
-        int idx1 = i < j ? i : j;
-        int idx2 = i < j ? j : i;
+        int idx1 = Math.min(i, j);
+        int idx2 = Math.max(i, j);
         idx2 -= idx1;
         matrix[idx1][idx2]++;
         return this;
@@ -46,8 +53,8 @@ public class IntHalfMatrix {
      * @return this IntHalfMatrix.
      */
     public IntHalfMatrix decrement(int i, int j) {
-        int idx1 = i < j ? i : j;
-        int idx2 = i < j ? j : i;
+        int idx1 = Math.min(i, j);
+        int idx2 = Math.max(i, j);
         idx2 -= idx1;
         matrix[idx1][idx2]--;
         return this;
@@ -62,8 +69,8 @@ public class IntHalfMatrix {
     }
 
     public int get(int i, int j) {
-        int idx1 = i < j ? i : j;
-        int idx2 = i < j ? j : i;
+        int idx1 = Math.min(i, j);
+        int idx2 = Math.max(i, j);
         idx2 -= idx1;
         return matrix[idx1][idx2];
     }
@@ -79,12 +86,12 @@ public class IntHalfMatrix {
     }
 
     @FunctionalInterface
-    interface Reducer {
+    public interface Reducer {
         int apply(int previousValue, int arg);
     }
 
-    static Reducer plus = (x, y) -> x + y;
-    static Reducer min = (x, y) -> x < y ? x : y;
+    static Reducer plus = Integer::sum;
+    static Reducer min = Math::min;
 
     @Override
     public String toString() {
@@ -100,14 +107,14 @@ public class IntHalfMatrix {
     }
 
     @FunctionalInterface
-    interface Modifier {
+    public interface Modifier {
         int mod(int a);
     }
 
     static int arrayReducer(int[] values, Reducer r) {
         int result = 0;
-        for (int i = 0; i < values.length; i++) {
-            result = r.apply(result, values[i]);
+        for (int value : values) {
+            result = r.apply(result, value);
         }
         return result;
     }

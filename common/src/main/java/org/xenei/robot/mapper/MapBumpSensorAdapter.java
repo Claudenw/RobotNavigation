@@ -4,18 +4,20 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.locationtech.jts.geom.Coordinate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.xenei.robot.common.BumpSensor;
+import org.xenei.robot.common.sensor.bump.BumpSensor;
 import org.xenei.robot.common.Position;
-import org.xenei.robot.common.ScaleInfo;
 import org.xenei.robot.common.mapping.Map;
 import org.xenei.robot.common.utils.AngleUtils;
 import org.xenei.robot.common.utils.CoordUtils;
 
 import java.util.HashMap;
-import java.util.function.Consumer;
+import java.util.function.IntConsumer;
 import java.util.function.Supplier;
 
-public class MapBumpSensorAdapter implements Consumer<BumpSensor.BumpState> {
+/**
+ * Listens for Bump sensor notices and creates Obstacles in the Map.
+ */
+public class MapBumpSensorAdapter implements IntConsumer {
     private static final Logger LOG = LoggerFactory.getLogger(MapBumpSensorAdapter.class);
     private final Map map;
     private final Supplier<Position> positionSupplier;
@@ -54,18 +56,17 @@ public class MapBumpSensorAdapter implements Consumer<BumpSensor.BumpState> {
     }
 
     @Override
-    public void accept(BumpSensor.BumpState bumpState) {
-        if (bumpState.getValue() == 0) {
+    public void accept(int bumpSensorMap) {
+        if (bumpSensorMap == 0) {
             return;
         }
+        byte bumpMap = (byte) bumpSensorMap;
         Position position = positionSupplier.get();
         LOG.debug("Sense position: {}", position);
 
-        ScaleInfo scaleInfo = map.getContext().scaleInfo;
-
         double range = map.getContext().chassisInfo.radius * 2;
         for (BumpSensor.State state : BumpSensor.State.values()) {
-            if (bumpState.is(state)) {
+            if (state.match(bumpMap)) {
                 Pair<Double, Double> thetas = ANGLES.get(state);
                 Coordinate start = CoordUtils.add(position.getCoordinate(), CoordUtils.fromAngle(thetas.getLeft(), range));
                 Coordinate end = CoordUtils.add(position.getCoordinate(), CoordUtils.fromAngle(thetas.getRight(), range));
